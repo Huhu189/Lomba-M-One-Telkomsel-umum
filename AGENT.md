@@ -46,6 +46,14 @@ AI agent bekerja sebagai senior full-stack engineer sekaligus security engineer.
 Batas jurnal maksimal 5 berlaku untuk ENTRI JURNAL, bukan jumlah prompt ke AI; jumlah prompt tidak dibatasi dan seluruh prompt/jawaban tetap utuh di docs/log-mentah/ (tidak boleh disunting). Rencana entri jurnal: (1) struktur, scaffold slice 00, penjelasan fitur; (2) slice 01–03; (3) slice 04–06; (4) slice 07–09; (5) slice 10 + deploy + perbaikan akhir.
 Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar, layar guru. **Tidak boleh dipotong**: deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur), keamanan inti (auth, policy IDOR, kunci jawaban, deadline server), jurnal + log mentah jujur.
 
+## Format Dokumentasi (revisi)
+- Dokumen internal/agent tetap **Markdown (.md)**: `AGENT.md`, `chunks/*.json`, dan berkas `docs/*.md`.
+- **Word (.docx) adalah dokumentasi BONUS** untuk dibaca manusia, di `docs/word/`:
+  `AGENT.docx` (prompt mentah v1 + v2), `ringkasan-prompt.docx` (ringkasan prompt/jurnal),
+  dan `log-mentah.docx` (log mentah **UTUH** dari berkas sesi asli — tanpa potong/ringkas).
+- `docs/export-word.sh` mengekspor ulang dokumen Word; jalankan setiap akhir slice.
+- **Log mentah diperbarui pada setiap commit** (append-only; tidak boleh disunting).
+
 ## Format Laporan (tiap akhir slice)
 (a) daftar file dibuat/diubah (lengkap, bukan potongan); (b) migration + test (Pest/Vitest) yang dijalankan beserta perintah dan hasilnya; (c) hasil `verify.sh` (wajib hijau); (d) commit kecil per langkah dengan tanggal asli. Bedakan jujur "sudah dijalankan" vs "ditulis tapi belum dijalankan".
 
