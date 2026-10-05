@@ -1,0 +1,30 @@
+{
+  "id": "slice-04",
+  "title": "Slice 04: Attempt, Pengacakan, Jawaban, Submit Idempoten, Deadline, Penilaian Objektif, Hasil",
+  "depends_on": ["slice-03", "security", "anticheat", "quality-gates"],
+  "loads": ["security", "anticheat", "quality-gates"],
+  "goal": "Murid mengerjakan kuis dari awal sampai hasil dengan jaminan server-side: satu attempt aktif, jawaban aman, submit idempoten, deadline server.",
+  "scope": [
+    "Attempt: unique satu attempt aktif per murid per kuis; started_at server; deadline_at = started_at + durasi (server).",
+    "Pengacakan soal dan opsi di server (seed per attempt) dan disimpan per attempt; urutan yang dilihat murid mengikuti seed.",
+    "Jawaban: unique satu jawaban per soal per attempt; autosave cadangan Zustand persist (tanpa kunci); jawaban DB dulu lalu cache.",
+    "Submit idempoten (idempotency key), aman dobel klik dan dua tab; transaksi dan lockForUpdate pada submit dan penilaian.",
+    "Timer klien hanya tampilan dikoreksi server_now; submit setelah deadline ditolak atau ditandai terlambat.",
+    "Penilaian objektif via registry tipe soal; per soal berstatus dinilai / perlu ditinjau / gagal; penilaian gagal satu soal tidak menjatuhkan lainnya; tidak ada 500 mentah ke klien.",
+    "Halaman ulangan frontend: renderer semua soal objektif, countdown, error boundary khusus ulangan, autosave.",
+    "Halaman hasil murid: skor, status per soal, tanpa kunci jawaban."
+  ],
+  "constraints": [
+    "Kunci jawaban tidak pernah dikirim ke klien.",
+    "Policy IDOR di semua endpoint attempt/jawaban.",
+    "Tidak ada 500 mentah ke klien."
+  ],
+  "tests": [
+    "Pest: akses attempt murid lain ditolak; submit ganda tidak menggandakan hasil; submit setelah deadline ditolak/ditandai; kunci jawaban tidak muncul di respons mana pun; penilaian satu soal gagal tidak membatalkan lainnya; pengacakan konsisten per seed.",
+    "Vitest: renderer tiap jenis soal objektif; pemulihan jawaban dari cadangan Zustand; countdown koreksi server_now."
+  ],
+  "done_when": [
+    "Alur kerjakan kuis sampai hasil bisa didemokan penuh.",
+    "verify.sh hijau."
+  ]
+}

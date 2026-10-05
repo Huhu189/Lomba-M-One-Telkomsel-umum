@@ -1,0 +1,45 @@
+{
+  "id": "00-index",
+  "title": "Peta Dokumen Acuan AI Agent",
+  "version": "1.0",
+  "generated_at": "2026-10-05",
+  "description": "Platform ulangan/form online sekolah — M-ONE Telkomsel Coding Competition. Peta seluruh dokumen acuan untuk AI agent.",
+  "entrypoints": [
+    { "path": "AGENT.md", "role": "Dokumen acuan utama: peran, aturan lomba, stack, keamanan, pagar mutu, cara kerja, larangan." },
+    { "path": "chunk_map.json", "role": "Urutan slice, dependensi, anggaran prompt, urutan pemotongan, hal yang tidak boleh dipotong." },
+    { "path": "docs/jurnal-prompt.md", "role": "Jurnal prompt (maksimal 5 entri) yang dikumpulkan ke panitia." },
+    { "path": "docs/log-mentah/", "role": "Log mentah interaksi prompt per entri, tanpa penyuntingan." },
+    { "path": "docs/catatan-demo.md", "role": "Cara mendemokan aplikasi pada tiap akhir slice." },
+    { "path": "docs/word/", "role": "Ekspor .docx untuk dikumpulkan (AGENT.docx, jurnal-prompt.docx, log-mentah.docx, catatan-demo.docx)." }
+  ],
+  "chunks": [
+    { "id": "rules-lomba", "path": "chunks/rules-lomba.json" },
+    { "id": "stack", "path": "chunks/stack.json" },
+    { "id": "security", "path": "chunks/security.json" },
+    { "id": "quality-gates", "path": "chunks/quality-gates.json" },
+    { "id": "structure", "path": "chunks/structure.json" },
+    { "id": "theme", "path": "chunks/theme.json" },
+    { "id": "anticheat", "path": "chunks/anticheat.json" },
+    { "id": "slice-00", "path": "chunks/slice-00.json" },
+    { "id": "slice-01", "path": "chunks/slice-01.json" },
+    { "id": "slice-02", "path": "chunks/slice-02.json" },
+    { "id": "slice-03", "path": "chunks/slice-03.json" },
+    { "id": "slice-04", "path": "chunks/slice-04.json" },
+    { "id": "slice-05", "path": "chunks/slice-05.json" },
+    { "id": "slice-06", "path": "chunks/slice-06.json" },
+    { "id": "slice-07", "path": "chunks/slice-07.json" },
+    { "id": "slice-08", "path": "chunks/slice-08.json" },
+    { "id": "slice-09", "path": "chunks/slice-09.json" },
+    { "id": "slice-10", "path": "chunks/slice-10.json" }
+  ],
+  "always_loaded_chunks": [
+    "rules-lomba",
+    "stack",
+    "security",
+    "quality-gates",
+    "structure",
+    "theme",
+    "anticheat"
+  ],
+  "note": "Chunk topik selalu dimuat; chunk slice dimuat sesuai slice yang dikerjakan."
+}

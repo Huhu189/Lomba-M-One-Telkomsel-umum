@@ -1,0 +1,30 @@
+{
+  "id": "slice-00",
+  "title": "Slice 00: Scaffold, Tooling, Tema, Icons, Toast",
+  "depends_on": ["rules-lomba", "stack", "security", "quality-gates", "structure", "theme", "anticheat"],
+  "loads": ["structure", "theme", "quality-gates"],
+  "goal": "Monorepo berjalan dan bisa didemokan: ketiga layanan hidup, pagar mutu hijau, tema dan komponen dasar siap. Belum ada fitur bisnis.",
+  "scope": [
+    "Scaffold resmi: composer create-project laravel/laravel backend; npm create vite -- --template react frontend; npm init realtime.",
+    "Struktur folder: backend app/Sections/<Nama>/{Http,Models,Services,Policies,Enums} (Auth, School, Question, Quiz, Attempt, Scoring, Cheat, Presence, Material, Avatar, Settings, Cache); frontend src/sections/<nama>/, src/shared/{api,ui,theme,store}, src/security/, src/icons.jsx.",
+    "Pasang dependensi sesuai chunk stack; aktifkan pagar mutu: strict_types, Pest + arch tests, Pint, jsconfig checkJs strict, ESLint, Vitest, verify.sh di root.",
+    "Variabel tema CSS dari chunk theme; icons.jsx berisi ikon SVG buatan sendiri; toast buatan sendiri; kerangka Fastify dengan endpoint kesehatan.",
+    "Konfigurasi dasar keamanan: Sanctum SPA, CORS/cookies, Model::shouldBeStrict di non-produksi, health endpoint backend.",
+    "README singkat cara menjalankan; jalankan verify.sh sampai hijau."
+  ],
+  "constraints": [
+    "Tidak mengerjakan fitur bisnis apa pun di slice ini.",
+    "Tidak ada placeholder atau TODO.",
+    "Scaffold resmi hanya untuk inisialisasi."
+  ],
+  "tests": [
+    "Pest: health endpoint /api/health merespons 200; arch test lulus.",
+    "Vitest: toast dan icons ter-render; komponen tema demo ter-render.",
+    "Realtime: test node --test untuk endpoint /health.",
+    "./verify.sh hijau di root."
+  ],
+  "done_when": [
+    "Ketiga layanan bisa dijalankan dan didemokan bersamaan.",
+    "verify.sh hijau dan hasilnya dicatat di docs/log-mentah/."
+  ]
+}

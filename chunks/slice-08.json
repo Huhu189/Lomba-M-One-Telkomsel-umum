@@ -1,0 +1,28 @@
+{
+  "id": "slice-08",
+  "title": "Slice 08: Materi, Layar Guru, Avatar dan Moderasi",
+  "depends_on": ["slice-07", "security", "quality-gates"],
+  "loads": ["security", "quality-gates"],
+  "goal": "Materi pelajaran tersaji aman, layar guru tersinkron ke device murid, dan avatar termoderasi lewat laporan.",
+  "scope": [
+    "Klasifikasi file dari magic bytes (Cat 1 umum aman, Cat 2 berisiko, Cat 3 tidak dikenal; Cat 2 dan 3 jadi .upload).",
+    "Unggah dan penyajian per chunk dengan hash, manifest, kuota, pembersihan potongan yatim, URL bertanda tangan, X-Accel-Redirect, nosniff, unduhan paksa untuk tipe berisiko.",
+    "PPT diterima sebagai PDF/gambar; file dimuat murid lewat URL bertanda tangan.",
+    "Materi dan tema: kelola materi, progres tema murid; lokasi media dari cache L1 -> Redis -> database.",
+    "Layar guru ke murid hanya bila toggle menyala (sinkron konten: item aktif, slide, posisi dan status video).",
+    "Avatar: JPEG/PNG/WebP saja (SVG ditolak), batas ukuran, di-encode ulang ke ukuran tetap di server, nama acak, avatar bawaan.",
+    "Lapor avatar: satu laporan per murid per avatar, rate limit; setelah N laporan unik (default 3) avatar disembunyikan dari orang lain (pemilik tetap melihat) dan masuk antrean tinjau guru; pulihkan/hapus tercatat di audit."
+  ],
+  "constraints": [
+    "File fisik di storage di luar folder publik; penyajian lewat URL bertanda tangan.",
+    "SVG tidak pernah diterima sebagai avatar."
+  ],
+  "tests": [
+    "Pest: klasifikasi magic bytes; URL bertanda tangan kedaluwarsa; avatar tersembunyi setelah N laporan unik dan laporan ganda tidak dihitung; pulihkan/hapus tercatat di audit.",
+    "Vitest: unggah materi guru dan progres tema murid."
+  ],
+  "done_when": [
+    "Materi bisa diunggah dan dimuat murid dengan aman.",
+    "Avatar dan moderasi berjalan; verify.sh hijau."
+  ]
+}

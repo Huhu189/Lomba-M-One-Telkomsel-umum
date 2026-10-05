@@ -1,0 +1,28 @@
+{
+  "id": "slice-10",
+  "title": "Slice 10: Cache L1, Ekspor xlsx, Mode Gelap, Octane Swoole, Deploy VPS",
+  "depends_on": ["slice-00", "slice-04", "slice-07", "quality-gates"],
+  "loads": ["quality-gates", "stack"],
+  "goal": "Optimasi terakhir, mode gelap, Octane Swoole aktif tanpa kebocoran state, dan aplikasi ter-deploy di VPS dengan link yang bisa dibuka.",
+  "scope": [
+    "Cache bertingkat: L1 SQLite di tmpfs (WAL, satu state aktif per kuis) aktif saat traffic kuis > 10 req/s dan dibuang saat < 2 req/s; L2 Redis; L3 database; L1 hanya salinan sementara.",
+    "Invalidasi: DB dulu, lalu Redis, lalu L1, lewat pub/sub dan SSE, dengan validation check sebelum state baru dipakai.",
+    "Ekspor xlsx bila dibutuhkan (OpenSpout) atau tetap CSV; mode gelap via data-bs-theme dengan palet mode gelap.",
+    "Octane Swoole: pasang ekstensi PHP swoole di VPS, aktifkan, dan uji kebocoran state antar request; catat jujur bila gagal.",
+    "Deploy VPS Linux: MySQL, Redis, Node SSE, sertifikat TLS, header keamanan termasuk CSP kompatibel Vite, X-Accel-Redirect; link deploy yang bisa dibuka.",
+    "Perbaikan akhir dari hasil demo dan uji."
+  ],
+  "constraints": [
+    "Tidak boleh dipotong: deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur bila gagal), keamanan inti, jurnal dan log mentah jujur.",
+    "Urutan potong bila waktu mepet: cache L1, ekspor xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru."
+  ],
+  "tests": [
+    "Pest: invalidasi tiga lapis berurutan DB -> Redis -> L1; uji kebocoran state Octane (nilai statis tidak bocor antar request).",
+    "Vitest: toggle mode gelap mengubah data-bs-theme dan variabel CSS.",
+    "Uji manual: link deploy dibuka dari perangkat luar."
+  ],
+  "done_when": [
+    "Link deploy hidup dan didemokan dari perangkat lain.",
+    "Octane Swoole jalan atau ada catatan jujur bila gagal; verify.sh hijau."
+  ]
+}

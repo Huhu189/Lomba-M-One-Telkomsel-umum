@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Dependensi & artefak build
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Lingkungan & rahasia
+.env
+.env.backup
+*.key
+
+# Log & cache
+*.log
+.phpunit.result.cache
+.phpunit.cache/
+/storage/pail/

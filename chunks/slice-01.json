@@ -1,0 +1,29 @@
+{
+  "id": "slice-01",
+  "title": "Slice 01: Auth dan Identitas",
+  "depends_on": ["slice-00", "structure", "security", "quality-gates"],
+  "loads": ["security", "quality-gates"],
+  "goal": "Murid bisa daftar, verifikasi email, login, logout, dan lupa password; guru/admin dibuat lewat seeder atau impor CSV; sesi aman mode SPA.",
+  "scope": [
+    "Register murid + verifikasi email (tautan bertanda tangan, email lewat queue, SMTP Google, throttle kirim ulang).",
+    "Guru dibuat admin atau diimpor CSV; tanpa self-register untuk guru/admin.",
+    "Login, logout, lupa password (token hash, sekali pakai, respons identik).",
+    "Roles dan permissions via spatie/laravel-permission; session cookie HttpOnly/Secure/SameSite=Lax; /sanctum/csrf-cookie aktif.",
+    "Throttle + anti user-enumeration di login, register, kirim ulang verifikasi, lupa password; password minimal 10 karakter, Argon2id bila tersedia.",
+    "Akun suspended/belum verifikasi/terhapus ditolak di semua jalur dan pada sesi berjalan.",
+    "Halaman frontend: login, registrasi, lupa password, reset password; penanganan 401/419 tanpa loop redirect."
+  ],
+  "constraints": [
+    "Token tidak pernah disimpan di localStorage/sessionStorage.",
+    "Respons enumerasi identik untuk kasus yang sama.",
+    "Tidak ada placeholder atau TODO."
+  ],
+  "tests": [
+    "Pest: register + verifikasi + login + logout; brute force kena 429; enumerasi tidak terbedakan; token reset sekali pakai; akun suspended ditolak; guru tidak bisa self-register.",
+    "Vitest: form auth dengan validasi Zod dan state error; alur 401/419."
+  ],
+  "done_when": [
+    "Alur auth murid lengkap di demo dan verify.sh hijau.",
+    "Arch test memastikan controller tidak memanggil DB:: langsung."
+  ]
+}

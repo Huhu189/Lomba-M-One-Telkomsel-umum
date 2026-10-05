@@ -1,0 +1,32 @@
+{
+  "id": "rules-lomba",
+  "title": "Aturan Lomba M-ONE Telkomsel Coding Competition",
+  "depends_on": [],
+  "loads": [],
+  "goal": "Mematuhi seluruh aturan lomba: proses dari nol yang jujur, repo public sejak commit pertama, deploy sejak awal, dan pengumpulan lengkap sebelum 15 Okt 2026 15.30 WIB.",
+  "scope": [
+    "Kategori Umum (SMA/SMK, Mahasiswa, Umum), individu, subtema Web Education for Kids (SD), stack bebas.",
+    "Timeline: mulai 5 Okt 2026 09.30 WIB, batas kumpul 15 Okt 2026 15.30 WIB, pengumuman 25 Okt 2026.",
+    "Yang dikumpulkan: link GitHub public, dokumen acuan AI agent, jurnal prompt (maksimal 5) beserta log mentah, link deploy (hosting bebas).",
+    "Repo dimulai dari kosong dan public sejak commit pertama; dilarang project lama, fork, atau template; scaffold resmi hanya untuk inisialisasi.",
+    "Commit kecil dan sering dengan tanggal asli; dilarang force push, rebase, amend commit yang sudah di-push, dan mengubah tanggal commit.",
+    "Sanksi: project lama -35%; terlambat dengan konfirmasi -10%; diskualifikasi untuk plagiarisme, repo private, manipulasi prompt, tidak terbukti dari nol, telat tanpa konfirmasi.",
+    "Bobot nilai: proses vibe coding 25%, fungsionalitas dan tema 25%, UI/UX dan responsif 20%, kualitas teknis 15%, inovasi dan kreativitas 15%.",
+    "Aplikasi harus ter-deploy; deploy tidak boleh ditunda; setiap akhir slice aplikasi tetap bisa dijalankan dan didemokan.",
+    "Jika spesifikasi resmi lomba bertentangan dengan prompt, spesifikasi lomba menang: sebutkan konfliknya, lalu ikuti lomba; konfirmasi panitia disimpan di docs/bukti-konfirmasi-panitia/."
+  ],
+  "constraints": [
+    "Jurnal prompt maksimal 5 entri, log mentah disertakan apa adanya.",
+    "Tidak ada manipulasi riwayat git dalam bentuk apa pun.",
+    "Dokumen untuk dikumpulkan tersedia dalam bentuk .docx di docs/word/."
+  ],
+  "tests": [
+    "Repo public dan bisa diakses tanpa izin sejak commit pertama.",
+    "Jurnal-prompt.md berisi maksimal 5 entri dan cocok dengan log mentah.",
+    "Link deploy bisa dibuka dan aplikasi berjalan pada setiap akhir slice."
+  ],
+  "done_when": [
+    "Semua artefak pengumpulan lengkap sebelum deadline.",
+    "Bukti proses dari nol (commit kecil bertanggal asli) terlihat di riwayat git."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "slice-02",
+  "title": "Slice 02: Sekolah, Kelas, Mapel, Murid, Impor CSV, Pengaturan Tiga Lapis",
+  "depends_on": ["slice-01", "structure", "quality-gates"],
+  "loads": ["structure", "quality-gates"],
+  "goal": "Data induk berjalan: satu sekolah per instalasi, kelas, mapel, murid, impor/ekspor CSV streaming, dan pengaturan tiga lapis dengan cache.",
+  "scope": [
+    "Tabel schools (satu baris) sebagai lapis pengaturan ter atas; kelas, mapel, murid terhubung foreign key dan NOT NULL.",
+    "Impor CSV (league/csv): streaming, validasi per baris, batas error 100, upsert per 500 baris dalam transaksi.",
+    "Ekspor streaming dengan escape sel berawalan = + - @.",
+    "Pengaturan tiga lapis: tabel settings scope school/class/quiz; kuis > kelas > sekolah kecuali sekolah menandai locked; hasil di-cache dan diinvalidasi saat berubah.",
+    "Berlaku untuk retry, batas percobaan, remedial, ranking, layar guru, mode tim, dan saklar anti-cheat.",
+    "Halaman frontend: kelola kelas, mapel, murid, dan layar impor/ekspor CSV."
+  ],
+  "constraints": [
+    "Guru/admin memakai endpoint ini lewat Policy; murid hanya baca.",
+    "Escape CSV wajib untuk sel berawalan = + - @."
+  ],
+  "tests": [
+    "Pest: impor CSV valid/gagal per baris; batas error 100; upsert 500 baris dalam transaksi; ekspor ter-escape; resolusi pengaturan tiga lapis termasuk lock sekolah; invalidasi cache saat pengaturan berubah.",
+    "Vitest: form impor dengan laporan error per baris."
+  ],
+  "done_when": [
+    "Impor CSV demo dengan file uji dan verify.sh hijau.",
+    "Pengaturan tiga lapis bisa diubah guru dan hasilnya tersaji murid."
+  ]
+}

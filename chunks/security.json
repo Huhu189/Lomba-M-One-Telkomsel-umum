@@ -1,0 +1,38 @@
+{
+  "id": "security",
+  "title": "Prinsip Keamanan: Do Not Trust Client",
+  "depends_on": ["stack"],
+  "loads": ["quality-gates"],
+  "goal": "Semua keputusan sensitif ditentukan server; klien tidak pernah dipercaya untuk role, user_id, waktu, urutan soal, atau skor.",
+  "scope": [
+    "Role, user_id, waktu, urutan soal, dan skor selalu ditentukan server; guru/admin tidak bisa self-register.",
+    "Laravel = otoritas bisnis; database = sumber kebenaran; Redis = cache/state realtime; file fisik di storage di luar folder publik.",
+    "Jawaban DB dulu lalu cache; penghapusan bertahap: tandai di DB (transaksi), invalidasi Redis, invalidasi L1, hapus fisik lewat job.",
+    "Pengacakan soal dan opsi di server (seed per attempt) dan disimpan per attempt; kunci jawaban tidak pernah dikirim ke klien.",
+    "deadline_at = started_at + durasi dihitung server; timer klien hanya tampilan, dikoreksi server_now; submit setelah deadline ditolak atau ditandai terlambat.",
+    "Submit idempoten (idempotency key), aman dobel klik dan dua tab; Policy di setiap endpoint untuk mencegah IDOR.",
+    "Mutasi sensitif (koreksi nilai, hapus avatar, ubah pengaturan terkunci) = autentikasi + permission + alasan + token konfirmasi sekali pakai berumur pendek + audit append-only.",
+    "Penilaian gagal per soal tidak menjatuhkan seluruh ulangan: tiap soal berstatus dinilai / perlu ditinjau / gagal; tidak ada 500 mentah ke klien.",
+    "Sinyal kecurangan = bahan tinjauan guru, bukan vonis.",
+    "Anti user-enumeration dan throttle di login, register, kirim ulang verifikasi, lupa password; cookie HttpOnly, Secure, SameSite=Lax; CSRF lewat /sanctum/csrf-cookie dan X-XSRF-TOKEN; header keamanan termasuk CSP kompatibel Vite; redirect hanya ke whitelist; password minimal 10 karakter, Argon2id bila tersedia.",
+    "Akun suspended, belum terverifikasi, atau dihapus ditolak di semua jalur dan pada sesi berjalan.",
+    "Tidak ada rahasia, token, atau password di log atau respons API."
+  ],
+  "constraints": [
+    "Tidak menyimpan token atau data sensitif di localStorage/sessionStorage (kecuali cadangan jawaban tanpa kunci).",
+    "Tidak mengirim kunci jawaban atau alasan mentah AI ke murid.",
+    "Tidak ada enkripsi atau hash buatan sendiri."
+  ],
+  "tests": [
+    "Akses attempt murid lain ditolak (Policy/IDOR).",
+    "Kunci jawaban tidak muncul di respons API mana pun.",
+    "Role tidak bisa dinaikkan dari klien.",
+    "Brute force login kena 429; respons enumerasi tidak terbedakan.",
+    "Token reset dan ticket SSE tidak bisa dipakai dua kali.",
+    "Submit setelah deadline ditolak atau ditandai terlambat."
+  ],
+  "done_when": [
+    "Semua endpoint sensitif punya Policy dan Form Request.",
+    "Audit append-only aktif untuk mutasi sensitif."
+  ]
+}

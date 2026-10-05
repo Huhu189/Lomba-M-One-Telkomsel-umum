@@ -1,0 +1,27 @@
+{
+  "id": "slice-09",
+  "title": "Slice 09: Upload Jawaban, Penilaian AI, Mode Tim",
+  "depends_on": ["slice-04", "slice-08", "security", "quality-gates"],
+  "loads": ["security", "quality-gates"],
+  "goal": "Murid bisa melampirkan jawaban gambar/rekaman/file, uraian dinilai AI sebagai saran, dan kuis bisa berjalan mode tim.",
+  "scope": [
+    "Upload jawaban hanya di halaman ulangan: gambar canvas (di-encode ulang ke PNG di server), rekam diri (batas durasi, izin sekolah/orang tua, toggle), upload file; terikat attempt dan soal, ditolak setelah deadline.",
+    "Upload jawaban per chunk dengan hash, bisa dilanjutkan, karantina .upload.",
+    "Penilaian AI hanya di backend lewat queue: satu POST per ulangan (di-chunk bila besar), jawaban murid sebagai data dengan pembatas, respons wajib JSON sesuai skema.",
+    "Skor AI dibatasi rentang soal; skor AI hanya saran; alasan mentah tidak ke murid; kunci API hanya di server; gagal/timeout = perlu ditinjau.",
+    "Mode tim: kuis berstatus individu atau tim; satu jawaban bersama per tim (dengan versi), skor tim dibagi sama ke anggota, ranking per tim."
+  ],
+  "constraints": [
+    "Upload ditolak setelah deadline.",
+    "Kunci API AI hanya di server; tidak ada kunci di log.",
+    "Skor AI tidak pernah menimpa skor final tanpa koreksi guru."
+  ],
+  "tests": [
+    "Pest: unggahan setelah deadline ditolak; gambar di-encode ulang PNG; skor AI dibatasi rentang soal; gagal AI = perlu ditinjau; jawaban tim berversi dan skor dibagi sama.",
+    "Vitest: pemilih file dan perekam diri dengan toggle izin."
+  ],
+  "done_when": [
+    "Upload jawaban berjalan di halaman ulangan dan penilaian AI memberi saran di antrean koreksi.",
+    "verify.sh hijau."
+  ]
+}

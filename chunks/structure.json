@@ -1,0 +1,26 @@
+{
+  "id": "structure",
+  "title": "Struktur Project Monorepo",
+  "depends_on": ["stack"],
+  "loads": ["quality-gates"],
+  "goal": "Monorepo backend/, frontend/, realtime/ dari scaffold resmi dengan folder per bagian logika yang konsisten.",
+  "scope": [
+    "Monorepo: backend/ (composer create-project laravel/laravel), frontend/ (npm create vite -- --template react), realtime/ (npm init); dilarang menyalin kode dari proyek lain.",
+    "Backend: app/Sections/<Nama>/{Http,Models,Services,Policies,Enums} untuk Auth, School, Question, Quiz, Attempt, Scoring, Cheat, Presence, Material, Avatar, Settings, Cache.",
+    "Frontend: src/sections/<nama>/, src/shared/{api,ui,theme,store}, src/security/, src/icons.jsx.",
+    "Realtime: service Fastify + ioredis ESM dengan endpoint kesehatan, tanpa akses database.",
+    "README di root menjelaskan cara menjalankan ketiga bagian."
+  ],
+  "constraints": [
+    "Scaffold resmi hanya untuk inisialisasi; tidak menyalin kode dari proyek lain.",
+    "Struktur Sections/sections wajib dipakai untuk kode fitur baru."
+  ],
+  "tests": [
+    "Semua folder Sections/sections dari daftar ada.",
+    "Endpoint kesehatan ketiga layanan merespons 200."
+  ],
+  "done_when": [
+    "Struktur monorepo sesuai peta ini dan verify.sh hijau.",
+    "Tidak ada kode fitur yang diletakkan di luar Sections/sections."
+  ]
+}

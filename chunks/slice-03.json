@@ -1,0 +1,26 @@
+{
+  "id": "slice-03",
+  "title": "Slice 03: Bank Soal, Kuis, Tag, Soal Objektif",
+  "depends_on": ["slice-02", "structure", "quality-gates"],
+  "loads": ["structure", "quality-gates"],
+  "goal": "Guru mengelola bank soal delapan jenis, kuis terjadwal, dan tag tema; soal objektif siap dipakai mesin kuis.",
+  "scope": [
+    "Bank soal dan kuis: jadwal, durasi, mapel, kelas, publikasi dengan validasi kelengkapan, soal terkunci saat kuis berjalan.",
+    "Delapan jenis soal: pilihan ganda, benar/salah, isian singkat, uraian, menjodohkan, mengurutkan, letak kata, hubung kata; isi soal terstruktur (teks + MathML template), media opsional.",
+    "Soal objektif dulu: pilihan ganda, benar/salah, menjodohkan, mengurutkan (registry tipe soal: validator, renderer, penilai per tipe).",
+    "Tag soal dan tema pemahaman adalah satu konsep (tabel tags).",
+    "Editor soal frontend dengan renderer per tipe dan preview MathML native."
+  ],
+  "constraints": [
+    "Kunci jawaban tidak pernah keluar dari server (resource murid tanpa kolom kunci).",
+    "Soal tidak bisa diubah saat kuis berjalan."
+  ],
+  "tests": [
+    "Pest: validasi publikasi kelengkapan; kunci soal terkunci saat kuis berjalan; kunci jawaban tidak muncul di respons murid; CRUD tag.",
+    "Vitest: renderer pilihan ganda, benar/salah, menjodohkan, mengurutkan."
+  ],
+  "done_when": [
+    "Guru bisa membuat kuis dengan soal objektif dan murid melihat daftar kuis.",
+    "verify.sh hijau."
+  ]
+}

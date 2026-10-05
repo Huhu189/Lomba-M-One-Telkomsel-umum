@@ -1,0 +1,80 @@
+{
+  "id": "chunk_map",
+  "title": "Peta Chunk: urutan slice, dependensi, anggaran prompt, rencana pemotongan",
+  "version": "1.0",
+  "generated_at": "2026-10-05",
+  "slice_order": [
+    "slice-00",
+    "slice-01",
+    "slice-02",
+    "slice-03",
+    "slice-04",
+    "slice-05",
+    "slice-06",
+    "slice-07",
+    "slice-08",
+    "slice-09",
+    "slice-10"
+  ],
+  "dependencies": {
+    "slice-00": ["rules-lomba", "stack", "security", "quality-gates", "structure", "theme", "anticheat"],
+    "slice-01": ["slice-00", "structure", "security", "quality-gates"],
+    "slice-02": ["slice-01", "structure", "quality-gates"],
+    "slice-03": ["slice-02", "structure", "quality-gates"],
+    "slice-04": ["slice-03", "security", "anticheat", "quality-gates"],
+    "slice-05": ["slice-04", "quality-gates"],
+    "slice-06": ["slice-04", "security", "quality-gates"],
+    "slice-07": ["slice-04", "anticheat", "structure", "quality-gates"],
+    "slice-08": ["slice-07", "security", "quality-gates"],
+    "slice-09": ["slice-04", "slice-08", "security", "quality-gates"],
+    "slice-10": ["slice-00", "slice-04", "slice-07", "quality-gates"]
+  },
+  "supporting_chunks_loaded_per_slice": {
+    "slice-00": ["structure", "theme", "quality-gates"],
+    "slice-01": ["security", "quality-gates"],
+    "slice-02": ["structure", "quality-gates"],
+    "slice-03": ["structure", "quality-gates"],
+    "slice-04": ["security", "anticheat", "quality-gates"],
+    "slice-05": ["quality-gates"],
+    "slice-06": ["security", "quality-gates"],
+    "slice-07": ["anticheat", "structure", "quality-gates"],
+    "slice-08": ["security", "quality-gates"],
+    "slice-09": ["security", "quality-gates"],
+    "slice-10": ["quality-gates", "stack"]
+  },
+  "prompt_budget": {
+    "max_entries": 5,
+    "allocation": [
+      { "prompt": 1, "scope": "struktur project + dokumen acuan + slice 00 (scaffold)" },
+      { "prompt": 2, "scope": "slice 01-03 (auth, sekolah/kelas/CSV/pengaturan, bank soal/kuis/soal objektif)" },
+      { "prompt": 3, "scope": "slice 04-06 (attempt/submit/penilaian objektif, skor/retry/ranking, isian/uraian/koreksi manual)" },
+      { "prompt": 4, "scope": "slice 07-09 (anti-cheat/presence/SSE, materi/layar guru/avatar, upload jawaban/AI/mode tim)" },
+      { "prompt": 5, "scope": "slice 10 + deploy VPS + perbaikan akhir" }
+    ]
+  },
+  "cut_order_when_time_is_short": [
+    "cache L1",
+    "ekspor xlsx",
+    "mode gelap",
+    "mode tim",
+    "penilaian AI",
+    "rekam diri",
+    "avatar dan moderasi",
+    "layar guru"
+  ],
+  "never_cut": [
+    "deploy dengan link yang bisa dibuka",
+    "Octane Swoole (atau catatan jujur bila gagal)",
+    "keamanan inti: auth, policy IDOR, kunci jawaban tidak bocor, deadline server",
+    "jurnal prompt (maks 5) dan log mentah yang jujur"
+  ],
+  "reporting": {
+    "per_slice": [
+      "daftar berkas dibuat/diubah (lengkap)",
+      "migration dan test yang dibuat",
+      "hasil verify.sh (wajib hijau)",
+      "commit kecil dengan tanggal asli",
+      "berhenti dan lapor sebelum lanjut slice berikutnya"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "slice-05",
+  "title": "Slice 05: Skor Asli vs Ulang, Retry, Ranking, Badge, Remedial, Laporan per Tag",
+  "depends_on": ["slice-04", "quality-gates"],
+  "loads": ["quality-gates"],
+  "goal": "Sistem skor adil: skor asli permanen, retry terkontrol, ranking dari skor asli, remedial otomatis, dan laporan pemahaman per tag.",
+  "scope": [
+    "Skor asli tidak pernah berubah; skor ulang terpisah per attempt_no; retry toggle dengan batas dari pengaturan tiga lapis.",
+    "Ranking hanya memakai skor asli (seri: waktu selesai lebih cepat, lalu nama); toggle default mati; opsi top N.",
+    "Badge per mapel.",
+    "Remedial otomatis (toggle) dari soal bertag lemah, tidak mengubah skor asli.",
+    "Laporan per murid per tag dengan tingkat pemahaman (belum paham / mulai paham / paham); ambang dan data minimum diatur guru.",
+    "Halaman frontend: laporan murid, ranking, badge, progres tema."
+  ],
+  "constraints": [
+    "Ranking tidak pernah memakai skor ulang.",
+    "Skor asli immutable di database (tanpa kolom yang bisa diubah)."
+  ],
+  "tests": [
+    "Pest: skor asli tidak berubah setelah retry; ranking hanya memakai skor asli dengan tie-break benar; remedial tidak mengubah skor asli; badge terbentuk; laporan per tag mengikuti ambang guru.",
+    "Vitest: tampilan ranking dan progres tema."
+  ],
+  "done_when": [
+    "Demo retry dan ranking sesuai toggle pengaturan.",
+    "verify.sh hijau."
+  ]
+}

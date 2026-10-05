@@ -1,0 +1,27 @@
+{
+  "id": "quality-gates",
+  "title": "Pagar Mutu (wajib hijau tiap akhir slice)",
+  "depends_on": ["stack"],
+  "loads": ["structure"],
+  "goal": "Kualitas teknis terjaga otomatis: satu perintah verify menjalankan seluruh pemeriksaan dan wajib hijau tiap akhir slice.",
+  "scope": [
+    "Frontend: JSDoc + checkJs strict lewat jsconfig.json, script npm run check (typescript hanya devDependency untuk tsc).",
+    "Semua data dari luar (API, SSE, localStorage) selalu divalidasi lewat Zod.",
+    "Backend: declare(strict_types=1) di setiap berkas PHP, enum untuk status, Form Request, Policy, API Resource, Model::shouldBeStrict dan preventLazyLoading di non-produksi.",
+    "Database: foreign key, NOT NULL, unique (satu attempt aktif per murid per kuis; satu jawaban per soal per attempt), transaksi dan lockForUpdate pada submit dan penilaian.",
+    "ESLint (react-hooks, react/no-danger); Pest arch tests (controller tidak memanggil DB:: langsung, tidak ada dd/dump); Factory + Seeder untuk data uji.",
+    "Satu perintah ./verify.sh di root menjalankan: php artisan test, pint --test, npm run check, eslint, vitest; dijalankan tiap selesai slice dan diperbaiki sampai hijau."
+  ],
+  "constraints": [
+    "Tidak men-skip test atau melemahkan assertion agar verify hijau.",
+    "Tidak ada placeholder atau TODO di kode."
+  ],
+  "tests": [
+    "./verify.sh keluar 0 (semua bagian hijau) di akhir setiap slice.",
+    "Arch test gagal bila controller memanggil DB:: langsung atau ada dd/dump."
+  ],
+  "done_when": [
+    "verify.sh ada di root, bisa dijalankan ulang, dan hijau.",
+    "jsconfig checkJs strict, Pint, ESLint, Pest, dan Vitest terpasang dan aktif."
+  ]
+}

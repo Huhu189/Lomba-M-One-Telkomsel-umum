@@ -1,0 +1,28 @@
+{
+  "id": "stack",
+  "title": "Stack Final (tidak diganti tanpa kebutuhan kuat)",
+  "depends_on": ["rules-lomba"],
+  "loads": ["quality-gates"],
+  "goal": "Membangun di atas stack yang sudah ditetapkan tanpa menambah dependency tanpa justifikasi satu kalimat.",
+  "scope": [
+    "Backend: Laravel + Octane dengan server SWOOLE (bukan RoadRunner), MySQL, Redis, Sanctum mode SPA (sesi cookie, tanpa token di localStorage), spatie/laravel-permission, spatie/laravel-query-builder, spatie/laravel-activitylog (model penting saja), league/csv (OpenSpout hanya jika .xlsx dibutuhkan).",
+    "Backend dev: Pest, Pint, Debugbar (dev saja); pengembangan pakai php artisan serve; Octane Swoole diaktifkan di akhir (butuh ekstensi PHP swoole di VPS) dan diuji kebocoran state.",
+    "Frontend: React + Vite, JavaScript/JSX (tanpa TypeScript), React Router, Zustand (persist cadangan jawaban), TanStack Query, React Hook Form + Zod + @hookform/resolvers, Axios, dayjs, JSZip (dynamic import), DOMPurify, @tanstack/react-virtual, Bootstrap 5.3 (CSS saja, kustom lewat variabel CSS), react-error-boundary, Vitest.",
+    "Frontend buatan sendiri: toast dan ikon SVG dalam satu berkas icons.jsx; rumus MathML native dari template terstruktur.",
+    "Realtime: service Node.js terpisah, ESM, Fastify, ioredis, SSE saja (tanpa WebSocket); dev pakai node --watch.",
+    "Database dev/test SQLite in-memory; produksi MySQL."
+  ],
+  "constraints": [
+    "Dilarang ditambahkan: TypeScript, Laravel Excel, zip.js, Lucide, Sonner, clsx, KaTeX, Larastan, Socket.IO, NestJS, RoadRunner.",
+    "Dependency lain hanya dengan justifikasi satu kalimat.",
+    "Tidak memaksakan library atau arsitektur baru bila tidak perlu."
+  ],
+  "tests": [
+    "composer.json dan package.json hanya berisi dependensi dari daftar stack plus yang berjustifikasi.",
+    "Realtime berjalan sebagai proses Node ESM terpisah dan hanya memakai SSE."
+  ],
+  "done_when": [
+    "Seluruh dependensi stack terpasang dan terpakai di kode pada slice yang relevan.",
+    "Tidak ada package dari daftar dilarang di lockfile."
+  ]
+}

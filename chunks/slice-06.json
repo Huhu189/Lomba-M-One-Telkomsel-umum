@@ -1,0 +1,26 @@
+{
+  "id": "slice-06",
+  "title": "Slice 06: Isian, Uraian, Letak Kata, Hubung Kata, Koreksi Manual + Token Konfirmasi + Audit",
+  "depends_on": ["slice-04", "security", "quality-gates"],
+  "loads": ["security", "quality-gates"],
+  "goal": "Empat jenis soal non-objektif dinilai otomatis sebisanya, lalu guru mengoreksi manual lewat mutasi sensitif yang diaudit.",
+  "scope": [
+    "Isian singkat dan uraian: normalisasi, toleransi typo per kata, kemiripan huruf > 80% (ambang per soal), angka harus persis, penjaga negasi, sinonim, kata kunci berbobot.",
+    "Uraian: kata kunci dulu, lalu AI (slice 09), lalu guru.",
+    "Letak kata dan hubung kata: penilaian via registry tipe soal.",
+    "Koreksi manual guru lewat mutasi sensitif: autentikasi + permission + alasan + token konfirmasi sekali pakai berumur pendek + audit append-only; total dan skor tag dihitung ulang.",
+    "Antrean koreksi di halaman guru."
+  ],
+  "constraints": [
+    "Alasan mentah AI tidak pernah ke murid (AI di slice 09).",
+    "Penilaian gagal per soal tidak menjatuhkan lainnya."
+  ],
+  "tests": [
+    "Pest: normalisasi dan ambang kemiripan; angka harus persis; penjaga negasi; kata kunci berbobot; token konfirmasi sekali pakai; audit append-only tercatat; total dan skor tag dihitung ulang.",
+    "Vitest: form koreksi manual dengan token konfirmasi."
+  ],
+  "done_when": [
+    "Delapan jenis soal punya jalur penilaian (objektif/non-objektif/perlu tinjauan).",
+    "verify.sh hijau."
+  ]
+}

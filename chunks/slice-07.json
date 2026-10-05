@@ -1,0 +1,31 @@
+{
+  "id": "slice-07",
+  "title": "Slice 07: Anti-Cheat, Presence, Service Node SSE, Live Monitor",
+  "depends_on": ["slice-04", "anticheat", "structure", "quality-gates"],
+  "loads": ["anticheat", "structure", "quality-gates"],
+  "goal": "Proteksi ulangan tiga lapis berjalan fail-open, presence tanpa heartbeat berat, dan guru memantau murid lewat Live Monitor berbasis SSE.",
+  "scope": [
+    "Implementasi anti-cheat sesuai chunk anticheat: hook per proteksi di src/security/, orkestrator useExamSecurity, pengiriman berkelompok, enum server, catatan immutable, skor risiko.",
+    "Presence tanpa heartbeat terus-menerus: setiap request murid memperbarui last_seen di Redis (TTL 40-45 detik); POST ping bila 15 detik tanpa request lain; sendBeacon saat pagehide; job menyapu offline tiap 10 detik; tab tersembunyi bukan offline.",
+    "Live Monitor guru: snapshot awal lalu SSE dari Node (react-virtual, progres, panel kecurangan, status koneksi).",
+    "Laravel publish ke Redis pub/sub, Node subscribe dan meneruskan; Node tanpa akses database.",
+    "Ticket SSE sekali pakai (TTL 30-60 detik, terikat user + sesi, dihapus saat handshake, cek Origin, putus saat sesi berakhir).",
+    "X-Accel-Buffering: no dan keepalive 15-30 detik; tanpa Node dashboard memakai polling.",
+    "Layar guru ke murid: aktif hanya bila toggle menyala; guru kirim state konten lewat POST, server publish, Node meneruskan lewat SSE ke murid kelas itu (sinkron konten, bukan share layar).",
+    "Modal pemberitahuan proteksi aktif di awal ulangan (bukan gerbang)."
+  ],
+  "constraints": [
+    "Node tidak punya kredensial database.",
+    "Semua proteksi default mati via pengaturan tiga lapis.",
+    "Fail-open: error proteksi tidak menghentikan ujian."
+  ],
+  "tests": [
+    "Pest: ticket SSE sekali pakai; enum kategori kecurangan; catatan immutable; presence TTL dan sweep offline.",
+    "Vitest: hook proteksi ter-gate saklar; kirim berkelompok dan dedupe.",
+    "Node test: handshake ticket dan forwarding pub/sub."
+  ],
+  "done_when": [
+    "Live Monitor menampilkan presence dan catatan kecurangan secara live.",
+    "verify.sh hijau."
+  ]
+}

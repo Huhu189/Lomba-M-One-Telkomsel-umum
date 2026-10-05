@@ -1,0 +1,31 @@
+{
+  "id": "anticheat",
+  "title": "Konsep Anti-Cheat (implementasi baru di repo ini)",
+  "depends_on": ["security"],
+  "loads": ["quality-gates", "theme"],
+  "goal": "Perlindungan ulangan tiga lapis yang fail-open: bukti untuk guru, bukan vonis otomatis.",
+  "scope": [
+    "Prinsip: bukti bukan vonis; fail-open (proteksi error, ujian tetap jalan); default mati, dinyalakan guru lewat pengaturan tiga lapis dengan preset exam_mode; browser tidak dipercaya, server memvalidasi ulang; catatan tidak bisa diubah; jangan pernah mengklaim tahan 100%, semua deteksi sisi browser bisa diakali.",
+    "Tiga lapis: pagar (cegah aksi), sensor (catat kejadian), tinjauan guru (valid/invalid/pending).",
+    "Saklar: block_paste, block_right_click, block_text_select, block_print, block_screenshot, block_devtools, detect_window_resize, block_tab_switch, focus_lock, block_translate, exam_mode (preset), call_gate (opsional), protected_text_canvas (opsional, default mati).",
+    "Deteksi klien: paste/drop dan Ctrl+V (diblokir, dicatat, cooldown ~1,2 detik); seleksi/salin/potong/seret dan Ctrl+A/C/X; klik kanan diblokir tanpa catatan; cetak disembunyikan lewat CSS print; pindah tab/blur (satu catatan per kepergian, focus_lock mengunci layar 60 detik); keluar layar penuh (overlay + tombol kembali); devtools (selisih outer/inner > 200 px dengan skor, atau F12/Ctrl+Shift+I/J/C/Ctrl+U); screenshot (PrintScreen, Meta+Shift, tiga jari, heuristik daya+volume; layar di-blur sebelum OS menangkap); perubahan ukuran jendela hanya blur 3 detik dan tidak dikirim ke backend.",
+    "Deteksi tamper: simpan referensi asli addEventListener/preventDefault/stopPropagation; cek fungsi bawaan lewat Function.prototype.toString.call; node ber-URL chrome-extension/moz-extension/safari-web-extension; overlay baru (fixed/absolute/sticky, z-index tinggi, menutupi area ulangan); elemen canary tersembunyi; jadwal saat mount, +4 detik, tiap 15 detik, debounce MutationObserver 250 ms; CSS proteksi memulihkan diri; tindakan: hapus node asing, netralkan overlay, blur 4 detik; rawan false positive.",
+    "Pengiriman: hook per proteksi di src/security/, orkestrator useExamSecurity men-gate lewat pengaturan; POST terautentikasi instan, kirim berkelompok maks 50, dedupe, identitas dari sesi bukan payload, kategori divalidasi enum, client_at disimpan dan created_at dari server; antrean offline lokal maks 200 entri / 48 jam; retry bila tanpa respons, 5xx, 408, 429, buang bila 4xx lain; modal pemberitahuan proteksi aktif di awal ulangan (bukan gerbang).",
+    "Server: enum tipe klien (tab_switch, window_blur, fullscreen_exit, paste_attempt, text_select_attempt, screenshot_attempt, devtools_open, devtools_shortcut, tamper_suspected) dan turunan server (duplicate_session, long_offline, late_submit, clock_jump); catatan immutable (hanya review_status, reviewed_by, reviewed_at boleh berubah); skor risiko acuan: tamper 9, duplicate_session/devtools_open 8, screenshot/copy-paste 7, paste/text_select 5-6, tab_switch/blur 3-4; endpoint guru untuk daftar, tinjauan, dan deteksi IP sama.",
+    "Panggilan Zoom/Meet (opsional, default mati): layar verifikasi dengan tautan, notifikasi guru, submit terkunci sampai ACC di Live Monitor (bisa revoke); bila mati tidak pernah memblokir ujian; dipotong dulu bila waktu mepet.",
+    "Menambah tipe baru selalu menyentuh empat tempat: pengirim frontend, enum backend, skor risiko, label UI; sertakan test."
+  ],
+  "constraints": [
+    "Semua proteksi default mati dan digerakkan pengaturan tiga lapis.",
+    "Anti-cheat tidak pernah membuat ujian gagal jalan (fail-open)."
+  ],
+  "tests": [
+    "Enum backend menolak kategori di luar daftar.",
+    "Catatan immutable: hanya review_status/reviewed_by/reviewed_at yang bisa berubah.",
+    "Orkestrator tidak mengirim apa pun bila semua saklar mati."
+  ],
+  "done_when": [
+    "Live Monitor guru menampilkan catatan kejadian beserta skor risiko.",
+    "Tinjauan guru (valid/invalid/pending) tersimpan di audit append-only."
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "theme",
+  "title": "UI/UX, Palet, dan Aksesibilitas",
+  "depends_on": ["stack"],
+  "loads": ["structure"],
+  "goal": "Antarmuka Indonesia yang ramah anak SD: besar, jelas, responsif, dan konsisten lewat variabel CSS.",
+  "scope": [
+    "Halaman murid: login/registrasi, daftar kuis dan materi, halaman ulangan, hasil, progres tema.",
+    "Halaman guru: dashboard, kelola kuis dan bank soal, editor soal, pengaturan penilaian, antrean koreksi, impor/ekspor, kelola materi dan tema, laporan, Live Monitor.",
+    "State loading/error wajib; error boundary satu level aplikasi dan satu khusus halaman ulangan agar jawaban tidak hilang.",
+    "Autosave dengan cadangan Zustand persist; penanganan 401/419 tanpa loop redirect; countdown saat 429.",
+    "Aksesibilitas: label, fokus, aria-live, keyboard; responsif HP dan laptop; huruf dan tombol besar untuk anak SD.",
+    "Palet guru: latar #F8FAFC, sidebar/navbar #1A2F65, aksen dan tombol #0EA5E9, pendukung #95A7D5.",
+    "Palet murid: latar #F8FAFC, aksen #0EA5E9, sorotan hangat #EEF385 (selalu dengan garis tepi), pendukung #95A7D5.",
+    "Teks #0F172A (terang) atau #F8FAFC (gelap); teks di atas #0EA5E9, #95A7D5, #EEF385 selalu gelap.",
+    "Mode gelap: latar #0B1530, kartu #14214A, aktif #1A2F65; link #0369A1 (terang) atau #38BDF8 (gelap); garis tepi kolom isian #64748B.",
+    "Status: benar #15803D, salah #B91C1C, peringatan #B45309, info #0369A1, selalu dengan ikon atau teks.",
+    "Soft UI: sudut membulat, bayangan halus, tetapi kolom isian dan pilihan jawaban wajib bergaris tepi jelas.",
+    "Semua warna lewat variabel CSS dan data-bs-theme; mode terang dulu, gelap belakangan; halaman ulangan tenang dan minim ornamen."
+  ],
+  "constraints": [
+    "Bootstrap hanya CSS saja; kustomisasi lewat variabel CSS.",
+    "Toast dan ikon dibuat sendiri (icons.jsx), bukan library."
+  ],
+  "tests": [
+    "Vitest: toast muncul saat dipanggil dan ikon SVG ter-render dari icons.jsx.",
+    "Semua warna di komponen merujuk variabel CSS, bukan nilai hex langsung."
+  ],
+  "done_when": [
+    "Variabel CSS palet terpasang dan halaman demo menampilkan komponen dasar.",
+    "Halaman responsif di HP dan laptop dengan huruf dan tombol besar."
+  ]
+}
