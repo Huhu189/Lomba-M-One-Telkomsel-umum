@@ -1,6 +1,5 @@
 /**
- * Kerangka aplikasi + router (slice 01: halaman auth).
- * Demo slice 00 dilepas; status backend tetap tampil di beranda tamu.
+ * Kerangka aplikasi + router (slice 01: auth; slice 02: data induk + pengaturan).
  */
 import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
@@ -14,6 +13,11 @@ import HalamanLupaSandi from './sections/auth/HalamanLupaSandi.jsx'
 import HalamanAturUlangSandi from './sections/auth/HalamanAturUlangSandi.jsx'
 import HalamanVerifikasiEmail from './sections/auth/HalamanVerifikasiEmail.jsx'
 import HalamanPerluVerifikasi from './sections/auth/HalamanPerluVerifikasi.jsx'
+import HalamanKelas from './sections/school/HalamanKelas.jsx'
+import HalamanMapel from './sections/school/HalamanMapel.jsx'
+import HalamanMurid from './sections/school/HalamanMurid.jsx'
+import HalamanImporMurid from './sections/school/HalamanImporMurid.jsx'
+import HalamanPengaturan from './sections/settings/HalamanPengaturan.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 import { IkonMatahari, IkonBulan } from './icons.jsx'
 
@@ -105,10 +109,23 @@ function Beranda() {
   )
 }
 
+/** Menu data induk (hanya guru/admin). */
+function MenuData() {
+  return (
+    <nav className="d-flex flex-wrap gap-3 small mb-3">
+      <NavLink className="menu-data" to={RUTE.kelas}>Kelas</NavLink>
+      <NavLink className="menu-data" to={RUTE.mapel}>Mapel</NavLink>
+      <NavLink className="menu-data" to={RUTE.murid}>Murid</NavLink>
+      <NavLink className="menu-data" to={RUTE.pengaturan}>Pengaturan</NavLink>
+    </nav>
+  )
+}
+
 /** Kerangka aplikasi: header + router. */
 export default function App() {
   const [gelap, setGelap] = useState(false)
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
 
   // Listener sesi/throttle global sekali saja.
   useEffect(() => {
@@ -128,6 +145,8 @@ export default function App() {
     document.documentElement.setAttribute('data-bs-theme', jadiGelap ? 'dark' : 'light')
   }
 
+  const isGuru = user?.role === 'guru' || user?.role === 'admin'
+
   return (
     <div className="container py-4">
       <ToastHost />
@@ -145,6 +164,8 @@ export default function App() {
           {gelap ? <IkonMatahari label="Terang" /> : <IkonBulan label="Gelap" />}
         </button>
       </header>
+
+      {isGuru && <MenuData />}
 
       <main>
         <Routes>
@@ -169,12 +190,17 @@ export default function App() {
           <Route path={RUTE.aturUlangSandi} element={<HalamanAturUlangSandi />} />
           <Route path={RUTE.verifikasiEmail} element={<HalamanVerifikasiEmail />} />
           <Route path={RUTE.perluVerifikasi} element={<HalamanPerluVerifikasi />} />
+          <Route path={RUTE.kelas} element={<HalamanKelas />} />
+          <Route path={RUTE.mapel} element={<HalamanMapel />} />
+          <Route path={RUTE.murid} element={<HalamanMurid />} />
+          <Route path={RUTE.imporMurid} element={<HalamanImporMurid />} />
+          <Route path={RUTE.pengaturan} element={<HalamanPengaturan />} />
           <Route path="*" element={<Beranda />} />
         </Routes>
       </main>
 
       <footer className="text-center text-body-secondary small mt-4">
-        Slice 01 — Auth &amp; Identitas · <code>src/sections/auth/</code>
+        Slice 02 — Sekolah, Kelas, Mapel, Murid &amp; Pengaturan Tiga Lapis
       </footer>
     </div>
   )

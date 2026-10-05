@@ -223,3 +223,20 @@ body {
   min-height: 32px;
   min-width: 32px;
 }
+
+/* Menu data induk (slice 02) */
+.menu-data {
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.menu-data:hover {
+  color: var(--bs-primary);
+}
+
+.menu-data.active {
+  color: var(--bs-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

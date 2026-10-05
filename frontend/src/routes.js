@@ -9,4 +9,10 @@ export const RUTE = {
   aturUlangSandi: '/atur-ulang-sandi',
   verifikasiEmail: '/verifikasi-email',
   perluVerifikasi: '/perlu-verifikasi',
+  // Data induk & pengaturan (slice 02).
+  kelas: '/kelas',
+  mapel: '/mapel',
+  murid: '/murid',
+  imporMurid: '/murid/impor',
+  pengaturan: '/pengaturan',
 }
