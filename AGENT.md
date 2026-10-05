@@ -48,9 +48,11 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
 
 ## Format Dokumentasi (revisi)
 - Dokumen internal/agent tetap **Markdown (.md)**: `AGENT.md`, `chunks/*.json`, dan berkas `docs/*.md`.
-- **Word (.docx) adalah dokumentasi BONUS** untuk dibaca manusia, di `docs/word/`:
-  `AGENT.docx` (prompt mentah v1 + v2), `ringkasan-prompt.docx` (ringkasan prompt/jurnal),
-  dan `log-mentah.docx` (log mentah **UTUH** dari berkas sesi asli — tanpa potong/ringkas).
+- **Dokumentasi untuk AI** ada di `docs/word/` dalam dua format dengan isi identik:
+  `AGENT.docx` dan `AGENT.md` (prompt mentah v1 + v2).
+- **Ringkasan prompt dan log mentah utuh** berbentuk Word ditaruh di `docs/log-mentah/`:
+  `ringkasan-prompt.docx` (ringkasan prompt/jurnal) dan `log-mentah.docx` (log mentah
+  **UTUH** dari berkas sesi asli — tanpa potong/ringkas).
 - `docs/export-word.sh` mengekspor ulang dokumen Word; jalankan setiap akhir slice.
 - **Log mentah diperbarui pada setiap commit** (append-only; tidak boleh disunting).
 
