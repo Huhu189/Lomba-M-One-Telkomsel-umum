@@ -7,7 +7,7 @@
   "scope": [
     "Kategori Umum (SMA/SMK, Mahasiswa, Umum), individu, subtema Web Education for Kids (SD), stack bebas.",
     "Timeline: mulai 5 Okt 2026 09.30 WIB, batas kumpul 15 Okt 2026 15.30 WIB, pengumuman 25 Okt 2026.",
-    "Yang dikumpulkan: link GitHub public, dokumen acuan AI agent, jurnal prompt (maksimal 5) beserta log mentah, link deploy (hosting bebas).",
+    "Yang dikumpulkan: link GitHub public, dokumen acuan AI agent, jurnal prompt beserta log mentah utuh, link deploy (hosting bebas). Batas maksimal 5 berlaku untuk entri jurnal, bukan jumlah prompt ke AI.",
     "Repo dimulai dari kosong dan public sejak commit pertama; dilarang project lama, fork, atau template; scaffold resmi hanya untuk inisialisasi.",
     "Commit kecil dan sering dengan tanggal asli; dilarang force push, rebase, amend commit yang sudah di-push, dan mengubah tanggal commit.",
     "Sanksi: project lama -35%; terlambat dengan konfirmasi -10%; diskualifikasi untuk plagiarisme, repo private, manipulasi prompt, tidak terbukti dari nol, telat tanpa konfirmasi.",
@@ -16,13 +16,13 @@
     "Jika spesifikasi resmi lomba bertentangan dengan prompt, spesifikasi lomba menang: sebutkan konfliknya, lalu ikuti lomba; konfirmasi panitia disimpan di docs/bukti-konfirmasi-panitia/."
   ],
   "constraints": [
-    "Jurnal prompt maksimal 5 entri, log mentah disertakan apa adanya.",
+    "Jurnal maksimal 5 entri (bukan batas jumlah prompt); semua prompt dan jawaban tetap utuh di log-mentah/, tidak boleh disunting.",
     "Tidak ada manipulasi riwayat git dalam bentuk apa pun.",
     "Dokumen untuk dikumpulkan tersedia dalam bentuk .docx di docs/word/."
   ],
   "tests": [
     "Repo public dan bisa diakses tanpa izin sejak commit pertama.",
-    "Jurnal-prompt.md berisi maksimal 5 entri dan cocok dengan log mentah.",
+    "Jurnal-prompt.md berisi maksimal 5 entri dan tiap entri punya rujukan tanggal-jam ke log mentah.",
     "Link deploy bisa dibuka dan aplikasi berjalan pada setiap akhir slice."
   ],
   "done_when": [

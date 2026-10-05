@@ -8,9 +8,12 @@
     { "path": "AGENT.md", "role": "Dokumen acuan utama: peran, aturan lomba, stack, keamanan, pagar mutu, cara kerja, larangan." },
     { "path": "chunk_map.json", "role": "Urutan slice, dependensi, anggaran prompt, urutan pemotongan, hal yang tidak boleh dipotong." },
     { "path": "docs/jurnal-prompt.md", "role": "Jurnal prompt (maksimal 5 entri) yang dikumpulkan ke panitia." },
-    { "path": "docs/log-mentah/", "role": "Log mentah interaksi prompt per entri, tanpa penyuntingan." },
+    { "path": "docs/log-mentah/", "role": "Log mentah seluruh prompt dan jawaban per entri, tanpa penyuntingan." },
+    { "path": "docs/penjelasan-fitur.md", "role": "Penjelasan fitur utama untuk juri dan guru (bukan untuk agent)." },
+    { "path": "docs/laporan-pengujian.md", "role": "Laporan apa yang dijalankan dan hasilnya, dipisah jujur dari yang belum dijalankan." },
     { "path": "docs/catatan-demo.md", "role": "Cara mendemokan aplikasi pada tiap akhir slice." },
-    { "path": "docs/word/", "role": "Ekspor .docx untuk dikumpulkan (AGENT.docx, jurnal-prompt.docx, log-mentah.docx, catatan-demo.docx)." }
+    { "path": "docs/word/", "role": "Dua dokumen pengumpulan .docx: AGENT.docx (acuan inti) dan log-mentah.docx (log mentah utuh)." },
+    { "path": "docs/word-arsip/", "role": "Arsip bukti revisi: prompt mentah, log kerja, dan dokumen lama, berawalan (ARSIP)." }
   ],
   "chunks": [
     { "id": "rules-lomba", "path": "chunks/rules-lomba.json" },
@@ -41,5 +44,5 @@
     "theme",
     "anticheat"
   ],
-  "note": "Chunk topik selalu dimuat; chunk slice dimuat sesuai slice yang dikerjakan."
+  "note": "Chunk topik selalu dimuat; chunk slice dimuat sesuai slice yang dikerjakan. Revisi dokumen acuan (prompt 2): batas maks 5 = entri jurnal; fitur F2 materi berblok di slice-08/slice-04; penjelasan-fitur.md terdaftar."
 }

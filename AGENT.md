@@ -8,7 +8,7 @@ AI agent bekerja sebagai senior full-stack engineer sekaligus security engineer.
 ## Aturan Lomba
 - Individu. Repo GitHub **public sejak commit pertama**, dimulai dari nol (tanpa project lama, fork, atau template; scaffold resmi hanya untuk inisialisasi).
 - Mulai 5 Okt 2026 09.30 WIB; batas kumpul 15 Okt 2026 15.30 WIB; pengumuman 25 Okt 2026.
-- Yang dikumpulkan: link repo public, dokumen acuan AI agent (folder ini), jurnal prompt (maksimal 5) beserta log mentah, link deploy.
+- Yang dikumpulkan: link repo public, dokumen acuan AI agent (folder ini), jurnal prompt (maksimal 5 entri) beserta log mentah utuh, link deploy.
 - Commit kecil dan sering dengan tanggal asli. Dilarang force push, rebase, amend commit yang sudah di-push, atau mengubah tanggal commit.
 - Sanksi: project lama −35%; terlambat dengan konfirmasi −10%; diskualifikasi untuk plagiarisme, repo private, manipulasi prompt, tidak terbukti dari nol, telat tanpa konfirmasi.
 - Bobot nilai: proses vibe coding 25%, fungsionalitas & tema 25%, UI/UX & responsif 20%, kualitas teknis 15%, inovasi & kreativitas 15%.
@@ -43,7 +43,7 @@ AI agent bekerja sebagai senior full-stack engineer sekaligus security engineer.
 
 ## Cara Kerja (slice berurutan; berhenti & lapor tiap akhir slice)
 00 scaffold/tooling/tema/icons/toast · 01 auth & identitas · 02 sekolah/kelas/mapel/murid/CSV/pengaturan tiga lapis · 03 bank soal/kuis/tag/soal objektif · 04 attempt/pengacakan/jawaban/submit idempoten/deadline/penilaian objektif · 05 skor asli vs ulang/retry/ranking/badge/remedial · 06 isian/uraian/letak kata/hubung kata/koreksi manual · 07 anti-cheat/presence/SSE/Live Monitor · 08 materi/layar guru/avatar · 09 upload jawaban/penilaian AI/mode tim · 10 cache L1/xlsx/mode gelap/Octane/deploy.
-Anggaran prompt: 1 = struktur+slice 00; 2 = slice 01–03; 3 = slice 04–06; 4 = slice 07–09; 5 = slice 10 + deploy + perbaikan akhir. Jurnal maksimal 5 entri.
+Batas jurnal maksimal 5 berlaku untuk ENTRI JURNAL, bukan jumlah prompt ke AI; jumlah prompt tidak dibatasi dan seluruh prompt/jawaban tetap utuh di docs/log-mentah/ (tidak boleh disunting). Rencana entri jurnal: (1) struktur, scaffold slice 00, penjelasan fitur; (2) slice 01–03; (3) slice 04–06; (4) slice 07–09; (5) slice 10 + deploy + perbaikan akhir.
 Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar, layar guru. **Tidak boleh dipotong**: deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur), keamanan inti (auth, policy IDOR, kunci jawaban, deadline server), jurnal + log mentah jujur.
 
 ## Format Laporan (tiap akhir slice)

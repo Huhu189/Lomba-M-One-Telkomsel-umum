@@ -10,19 +10,30 @@
     "PPT diterima sebagai PDF/gambar; file dimuat murid lewat URL bertanda tangan.",
     "Materi dan tema: kelola materi, progres tema murid; lokasi media dari cache L1 -> Redis -> database.",
     "Layar guru ke murid hanya bila toggle menyala (sinkron konten: item aktif, slide, posisi dan status video).",
+    "F2 - Materi berblok dengan kuis sisipan: materi = urutan blok (teks, media, kuis); guru menandai blok kuis wajib atau opsional dan server yang menegakkan urutan blok.",
+    "F2 - Blok kuis hanya menunjuk kuis atau kumpulan soal yang sudah ada di bank soal (tanpa tipe soal atau penilai baru); saat murid mencapai blok, server membuat attempt lewat mesin kuis yang sama (dependensi: slice-04).",
+    "F2 - Kuis sisipan hanya memakai soal objektif dan isian; upload jawaban tetap hanya di halaman ulangan.",
+    "F2 - Kuis sisipan bertipe latihan: skor masuk laporan tema (tag), tidak masuk ranking, bukan skor asli ulangan; retry dan batas percobaan lewat pengaturan tiga lapis.",
+    "F2 - Dengan layar guru aktif, nomor blok ikut disinkronkan lewat SSE yang sama; tidak ada kuis di detik tertentu dalam video; anti-cheat mati kecuali dinyalakan guru.",
     "Avatar: JPEG/PNG/WebP saja (SVG ditolak), batas ukuran, di-encode ulang ke ukuran tetap di server, nama acak, avatar bawaan.",
     "Lapor avatar: satu laporan per murid per avatar, rate limit; setelah N laporan unik (default 3) avatar disembunyikan dari orang lain (pemilik tetap melihat) dan masuk antrean tinjau guru; pulihkan/hapus tercatat di audit."
   ],
   "constraints": [
     "File fisik di storage di luar folder publik; penyajian lewat URL bertanda tangan.",
-    "SVG tidak pernah diterima sebagai avatar."
+    "SVG tidak pernah diterima sebagai avatar.",
+    "F2: blok kuis tidak menambah tipe soal atau penilai baru; attempt kuis sisipan dibuat server lewat mesin kuis yang sama.",
+    "F2: skor kuis sisipan tidak pernah mengubah skor asli ulangan dan tidak masuk ranking.",
+    "F2: tidak ada kuis di detik tertentu dalam video; anti-cheat untuk kuis sisipan default mati."
   ],
   "tests": [
     "Pest: klasifikasi magic bytes; URL bertanda tangan kedaluwarsa; avatar tersembunyi setelah N laporan unik dan laporan ganda tidak dihitung; pulihkan/hapus tercatat di audit.",
-    "Vitest: unggah materi guru dan progres tema murid."
+    "Vitest: unggah materi guru dan progres tema murid.",
+    "F2 - Pest: server menolak lompat blok wajib; attempt kuis sisipan dibuat lewat mesin kuis yang sama; skor masuk laporan tag, tidak masuk ranking dan tidak mengubah skor asli; retry kuis sisipan mengikuti pengaturan tiga lapis.",
+    "F2 - Vitest: nomor blok ter-sinkron lewat SSE saat layar guru aktif."
   ],
   "done_when": [
     "Materi bisa diunggah dan dimuat murid dengan aman.",
+    "F2: murid menempuh materi berblok dengan kuis sisipan latihan dan gurunya melihat hasilnya di laporan tema.",
     "Avatar dan moderasi berjalan; verify.sh hijau."
   ]
 }

@@ -42,14 +42,15 @@
     "slice-09": ["security", "quality-gates"],
     "slice-10": ["quality-gates", "stack"]
   },
-  "prompt_budget": {
-    "max_entries": 5,
-    "allocation": [
-      { "prompt": 1, "scope": "struktur project + dokumen acuan + slice 00 (scaffold)" },
-      { "prompt": 2, "scope": "slice 01-03 (auth, sekolah/kelas/CSV/pengaturan, bank soal/kuis/soal objektif)" },
-      { "prompt": 3, "scope": "slice 04-06 (attempt/submit/penilaian objektif, skor/retry/ranking, isian/uraian/koreksi manual)" },
-      { "prompt": 4, "scope": "slice 07-09 (anti-cheat/presence/SSE, materi/layar guru/avatar, upload jawaban/AI/mode tim)" },
-      { "prompt": 5, "scope": "slice 10 + deploy VPS + perbaikan akhir" }
+  "journal_plan": {
+    "catatan": "Batas maks 5 berlaku untuk ENTRI JURNAL, bukan jumlah prompt ke AI; seluruh prompt dan jawaban tetap utuh di docs/log-mentah/ (tidak boleh disunting). Tiap entri jurnal berisi tujuan, prompt inti (ringkas), hasil, dan rujukan tanggal-jam ke log mentah.",
+    "max_journal_entries": 5,
+    "entries": [
+      { "entri": 1, "scope": "struktur, scaffold slice 00, dan penjelasan fitur (prompt pertama dan prompt revisi dokumen acuan)" },
+      { "entri": 2, "scope": "auth, sekolah dan kelas, bank soal (slice 01-03)" },
+      { "entri": 3, "scope": "engine kuis dan penilaian (slice 04-06)" },
+      { "entri": 4, "scope": "anti-cheat, realtime, materi, upload dan AI (slice 07-09)" },
+      { "entri": 5, "scope": "cache, Swoole, deploy, dan perbaikan akhir (slice 10)" }
     ]
   },
   "cut_order_when_time_is_short": [

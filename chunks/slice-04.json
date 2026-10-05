@@ -3,9 +3,10 @@
   "title": "Slice 04: Attempt, Pengacakan, Jawaban, Submit Idempoten, Deadline, Penilaian Objektif, Hasil",
   "depends_on": ["slice-03", "security", "anticheat", "quality-gates"],
   "loads": ["security", "anticheat", "quality-gates"],
-  "goal": "Murid mengerjakan kuis dari awal sampai hasil dengan jaminan server-side: satu attempt aktif, jawaban aman, submit idempoten, deadline server.",
+  "goal": "Murid mengerjakan kuis dari awal sampai hasil dengan jaminan server-side: satu attempt aktif, jawaban aman, submit idempoten, deadline server. Mesin ini juga dipakai kuis sisipan latihan materi berblok (F2, slice-08).",
   "scope": [
     "Attempt: unique satu attempt aktif per murid per kuis; started_at server; deadline_at = started_at + durasi (server).",
+    "F2 - Kuis sisipan latihan (materi berblok, slice-08) memakai mesin attempt yang sama dengan status khusus latihan: skor masuk laporan tema (tag), tidak masuk ranking, bukan skor asli; attempt latihan tidak menggagalkan attempt ulangan resmi yang sedang berjalan dan sebaliknya (pembedaan lewat status attempt di server, bukan tabel baru).",
     "Pengacakan soal dan opsi di server (seed per attempt) dan disimpan per attempt; urutan yang dilihat murid mengikuti seed.",
     "Jawaban: unique satu jawaban per soal per attempt; autosave cadangan Zustand persist (tanpa kunci); jawaban DB dulu lalu cache.",
     "Submit idempoten (idempotency key), aman dobel klik dan dua tab; transaksi dan lockForUpdate pada submit dan penilaian.",
