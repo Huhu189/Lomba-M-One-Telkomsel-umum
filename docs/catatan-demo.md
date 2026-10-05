@@ -40,3 +40,29 @@ Pemeriksaan kesehatan:
 - **Slice 08**: unggah materi, layar guru ke murid, avatar + laporan.
 - **Slice 09**: upload jawaban (gambar/rekam/file), saran penilaian AI, mode tim.
 - **Slice 10**: cache L1, mode gelap, Octane Swoole, demo dari link deploy VPS.
+
+---
+
+## Demo Slice 02 — Sekolah, Kelas, Mapel, Murid, Impor/Ekspor CSV, Pengaturan Tiga Lapis
+
+Prasyarat: backend `php artisan serve` (port 8000) dan frontend `npm run dev` (port 5173) hidup; database sudah di-seed:
+
+```bash
+cd backend && php artisan migrate:fresh --seed
+```
+
+Seeder membuat sekolah contoh, 3 kelas (6A/6B/5A), 3 mapel, dan akun admin `admin@sekolah.test` / `Passw0rd!Aman`.
+
+### Langkah demo (antarmuka http://localhost:5173)
+
+1. Masuk sebagai guru/admin (`admin@sekolah.test`). Menu **Kelas · Mapel · Murid · Pengaturan** muncul (hanya guru/admin).
+2. **Kelas**: tambah "4A" tingkat 4 → muncul di tabel; ubah/hapus berfungsi.
+3. **Mapel**: tambah "Seni Budaya" kode SBD.
+4. **Murid → Impor CSV**: unggah `backend/database/data/contoh-murid.csv` → laporan "4 baris berhasil diimpor, 0 baris gagal". Coba berkas dengan email salah / kelas tidak ada → muncul laporan galat per baris (maks 100 baris).
+5. **Murid → Ekspor CSV**: tautan Ekspor mengunduh CSV (kolom `nis,nisn,nama,email,kelas`).
+6. **Pengaturan**: nonaktifkan "Izinkan ulangan ulang (retry)" di lapis **Sekolah**; pilih lapis **Kelas** → nilai kelas menimpa sekolah; centang **"Kunci di sekolah"** → nilai sekolah menang.
+7. Masuk sebagai murid hasil impor (impor dengan kolom `kata_sandi`) → murid melihat pengaturan yang berlaku, tetapi tidak bisa mengubahnya.
+
+### Bukti lewat API (curl)
+
+Lihat `docs/laporan-pengujian.md` bagian A.4.3 — smoke nyata: csrf → login admin → impor 4 murid → daftar → ekspor CSV → set pengaturan → login murid → murid melihat `retry=false` → murid ubah = 403.
