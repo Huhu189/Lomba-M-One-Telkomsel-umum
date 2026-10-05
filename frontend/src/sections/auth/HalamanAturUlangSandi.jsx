@@ -1,6 +1,8 @@
 /**
  * Halaman Atur ulang kata sandi — token & email dari query string
  * (tautan email mengarah ke frontend: /atur-ulang-sandi?token=…&email=…).
+ * Tanpa token, form tidak ditampilkan (tidak ada gunanya) dan murid diarahkan
+ * meminta tautan baru.
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,25 +11,40 @@ import { useState } from 'react'
 import { skemaAturUlang } from './validasi.js'
 import { aturUlangSandi, pesanGalatApi, teksGalat } from './api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import Isian from '../../shared/ui/Isian.jsx'
+import Banner from '../../shared/ui/Banner.jsx'
+import MeterSandi from '../../shared/ui/MeterSandi.jsx'
+import { MaskotBuku } from '../../shared/ui/Maskot.jsx'
+import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonKunci, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
+import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
+import KartuAuth from './KartuAuth.jsx'
+import PeringatanTunggu from './PeringatanTunggu.jsx'
 
 export default function HalamanAturUlangSandi() {
   const [parameter] = useSearchParams()
   const token = parameter.get('token') ?? ''
   const emailDariTautan = parameter.get('email') ?? ''
+  const detikTunggu = useAuthStore((s) => s.detikTunggu)
   const [berhasil, setBerhasil] = useState(false)
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     setError,
+    clearErrors,
   } = useForm({
     resolver: zodResolver(skemaAturUlang),
     defaultValues: { token, email: emailDariTautan, password: '', konfirmasi: '' },
   })
 
+  const sandi = watch('password')
+
   const kirim = handleSubmit(async (data) => {
+    clearErrors('root')
     try {
       const pesan = await aturUlangSandi({
         token: data.token,
@@ -37,94 +54,111 @@ export default function HalamanAturUlangSandi() {
       setBerhasil(true)
       tampilkanToast('sukses', pesan)
     } catch (galat) {
-      setError('root', { message: pesanGalatApi(galat) })
-      tampilkanToast('salah', pesanGalatApi(galat))
+      if (!sudahDitampilkanSebagaiTunggu(galat)) {
+        setError('root', { message: pesanGalatApi(galat) })
+      }
     }
   })
 
+  if (berhasil) {
+    return (
+      <KartuAuth judul="Kata sandi sudah diganti!" tengah>
+        <MaskotBuku ukuran={150} label="Maskot buku tersenyum" className="mb-3" />
+        <p className="teks-lembut">Sekarang kamu bisa masuk memakai kata sandi yang baru.</p>
+        <TombolTaut to={RUTE.masuk} besar lebar>
+          Masuk sekarang
+        </TombolTaut>
+      </KartuAuth>
+    )
+  }
+
+  if (token === '') {
+    return (
+      <KartuAuth judul="Tautan belum lengkap" tengah>
+        <MaskotBuku ukuran={140} suasana="kaget" label="Maskot buku terkejut" className="mb-3" />
+        <p className="teks-lembut">
+          Buka tautan langsung dari email pengaturan ulang, atau minta tautan yang baru.
+        </p>
+        <TombolTaut to={RUTE.lupaSandi} besar lebar>
+          Minta tautan baru
+        </TombolTaut>
+      </KartuAuth>
+    )
+  }
+
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-8 col-lg-6 col-xl-5">
-        <div className="kartu-soft p-4 p-md-5">
-          <h1 className="h4 fw-bold mb-1">Atur ulang kata sandi</h1>
+    <KartuAuth
+      judul="Buat kata sandi baru"
+      sub={
+        emailDariTautan ? (
+          <>
+            Untuk akun <strong className="text-break">{emailDariTautan}</strong>.
+          </>
+        ) : (
+          'Masukkan email akunmu dan kata sandi baru.'
+        )
+      }
+      ikon={IkonKunci}
+    >
+      <form onSubmit={kirim} noValidate>
+        <PeringatanTunggu />
 
-          {berhasil ? (
-            <div className="status-benar" role="status">
-              <p className="fw-semibold">Kata sandi berhasil diganti.</p>
-              <Link to={RUTE.masuk}>Masuk dengan kata sandi baru</Link>
-            </div>
-          ) : (
-            <>
-              <p className="text-body-secondary mb-4">
-                Buat kata sandi baru (minimal 10 karakter) untuk{' '}
-                <strong>{emailDariTautan || 'email Anda'}</strong>.
-              </p>
+        {errors.root?.message && (
+          <Banner jenis="salah" judul="Belum berhasil">
+            {teksGalat(errors.root)}{' '}
+            <Link to={RUTE.lupaSandi} className="d-block mt-1">
+              Minta tautan baru
+            </Link>
+          </Banner>
+        )}
 
-              <form onSubmit={kirim} noValidate>
-                {errors.root?.message && (
-                  <div className="status-salah fw-semibold mb-3" role="alert">
-                    {teksGalat(errors.root)}
-                  </div>
-                )}
+        <input type="hidden" {...register('token')} />
+        {emailDariTautan ? (
+          <input type="hidden" {...register('email')} />
+        ) : (
+          <Isian
+            label="Email"
+            type="email"
+            ikon={IkonSurat}
+            autoComplete="email"
+            inputMode="email"
+            galat={teksGalat(errors.email)}
+            {...register('email')}
+          />
+        )}
 
-                <input type="hidden" {...register('token')} />
+        <Isian
+          label="Kata sandi baru"
+          type="password"
+          ikon={IkonKunci}
+          autoComplete="new-password"
+          bantuan="Minimal 10 karakter."
+          galat={teksGalat(errors.password)}
+          {...register('password')}
+        />
+        <MeterSandi sandi={sandi} />
 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" htmlFor="email">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    className="form-control"
-                    autoComplete="email"
-                    {...register('email')}
-                  />
-                  {errors.email && (
-                    <p className="status-salah small mb-0 mt-1">{teksGalat(errors.email)}</p>
-                  )}
-                </div>
+        <Isian
+          label="Ulangi kata sandi baru"
+          type="password"
+          ikon={IkonKunci}
+          autoComplete="new-password"
+          galat={teksGalat(errors.konfirmasi)}
+          {...register('konfirmasi')}
+        />
 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" htmlFor="password">
-                    Kata sandi baru (minimal 10 karakter)
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    className="form-control"
-                    autoComplete="new-password"
-                    {...register('password')}
-                  />
-                  {errors.password && (
-                    <p className="status-salah small mb-0 mt-1">{teksGalat(errors.password)}</p>
-                  )}
-                </div>
-
-                <div className="mb-4">
-                  <label className="form-label fw-semibold" htmlFor="konfirmasi">
-                    Ulangi kata sandi baru
-                  </label>
-                  <input
-                    id="konfirmasi"
-                    type="password"
-                    className="form-control"
-                    autoComplete="new-password"
-                    {...register('konfirmasi')}
-                  />
-                  {errors.konfirmasi && (
-                    <p className="status-salah small mb-0 mt-1">{teksGalat(errors.konfirmasi)}</p>
-                  )}
-                </div>
-
-                <button type="submit" className="btn btn-aksen px-4" disabled={isSubmitting}>
-                  {isSubmitting ? 'Menyimpan…' : 'Simpan kata sandi baru'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+        <Tombol
+          type="submit"
+          besar
+          lebar
+          className="mt-2"
+          memuat={isSubmitting}
+          teksMemuat="Menyimpan…"
+          disabled={detikTunggu > 0}
+        >
+          {detikTunggu > 0 ? `Tunggu ${detikTunggu} detik` : 'Simpan kata sandi baru'}
+        </Tombol>
+      </form>
+    </KartuAuth>
   )
 }

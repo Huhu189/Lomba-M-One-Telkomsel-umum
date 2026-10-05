@@ -195,6 +195,56 @@ export function IkonDaftar(props) {
   )
 }
 
+/** Ikon surat (email / verifikasi). @param {PropsIkon} props */
+export function IkonSurat(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="2" y="4" width="20" height="16" rx="3" />
+      <path d="m22 7-9.03 5.7a2 2 0 0 1-1.94 0L2 7" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon gembok (kata sandi). @param {PropsIkon} props */
+export function IkonKunci(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon keluar (logout). @param {PropsIkon} props */
+export function IkonKeluar(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon bintang (nilai / penghargaan). @param {PropsIkon} props */
+export function IkonBintang(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01Z" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon panah kiri (kembali). @param {PropsIkon} props */
+export function IkonPanahKiri(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </KerangkaIkon>
+  )
+}
+
 /** Peta nama ikon untuk demo dan pemakaian dinamis. */
 export const daftarIkon = {
   centang: IkonCentang,
@@ -212,4 +262,9 @@ export const daftarIkon = {
   kirim: IkonKirim,
   muatUlang: IkonMuatUlang,
   daftar: IkonDaftar,
+  surat: IkonSurat,
+  kunci: IkonKunci,
+  keluar: IkonKeluar,
+  bintang: IkonBintang,
+  panahKiri: IkonPanahKiri,
 }

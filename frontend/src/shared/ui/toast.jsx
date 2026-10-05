@@ -87,9 +87,9 @@ function ToastItem({ toast }) {
       className={`toast-item ${toast.jenis}`}
       role={toast.jenis === 'salah' ? 'alert' : 'status'}
     >
-      <Ikon className="ikon" label={labelJenis[toast.jenis] ?? 'Info'} />
+      <Ikon className="ikon" size={22} />
       <div>
-        <strong className="d-block small">{labelJenis[toast.jenis]}</strong>
+        <strong className="d-block small text-uppercase">{labelJenis[toast.jenis]}</strong>
         <span>{toast.pesan}</span>
       </div>
       <button
@@ -98,8 +98,9 @@ function ToastItem({ toast }) {
         aria-label="Tutup notifikasi"
         onClick={() => dismiss(toast.id)}
       >
-        ×
+        <IkonSilang size={18} />
       </button>
+      <span className="toast-waktu" aria-hidden="true" />
     </div>
   )
 }

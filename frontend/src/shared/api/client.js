@@ -7,6 +7,8 @@ import axios from 'axios'
 export const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
   withCredentials: true,
+  // Tanpa batas waktu, layar "Menyiapkan…" bisa menggantung selamanya bila backend macet.
+  timeout: 15_000,
   headers: { Accept: 'application/json' },
 })
 

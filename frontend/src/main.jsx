@@ -6,6 +6,11 @@ import { ErrorBoundary } from 'react-error-boundary'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import './theme/theme.css'
 import App from './App.jsx'
+import { MaskotBuku } from './shared/ui/Maskot.jsx'
+import { mulaiTema } from './shared/store/tema.js'
+
+// Pasang tema sebelum render pertama agar tidak berkedip terang → gelap.
+mulaiTema()
 
 const container = document.getElementById('root')
 if (!container) {
@@ -23,9 +28,10 @@ const queryClient = new QueryClient({
 function FallbackAplikasi() {
   return (
     <div role="alert" className="container py-5 text-center">
-      <h1 className="h4">Terjadi kesalahan yang tidak terduga.</h1>
-      <p>Silakan muat ulang halaman.</p>
-      <button type="button" className="btn btn-aksen" onClick={() => window.location.reload()}>
+      <MaskotBuku ukuran={150} suasana="sedih" label="Maskot buku sedih" className="mb-3" />
+      <h1 className="h3 fw-bold">Ada yang tidak beres.</h1>
+      <p className="teks-lembut">Jangan khawatir, coba muat ulang halamannya.</p>
+      <button type="button" className="btn btn-aksen btn-besar" onClick={() => window.location.reload()}>
         Muat ulang
       </button>
     </div>

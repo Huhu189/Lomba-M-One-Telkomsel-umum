@@ -1,15 +1,23 @@
 /**
- * Halaman Masuk (login) — RHF + Zod, toast, hitung mundur throttle.
- * Pesan galat kredensial dari backend sudah anti-enumerasi.
+ * Halaman Masuk (login) — RHF + Zod, hitung mundur throttle.
+ * Pesan galat kredensial dari backend sudah anti-enumerasi; tautan
+ * "kirim ulang verifikasi" selalu ditawarkan setelah gagal agar murid yang
+ * belum verifikasi tidak buntu (tanpa membocorkan status akun).
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'react-router-dom'
 import { skemaMasuk } from './validasi.js'
 import { pesanGalatApi, teksGalat } from './api.js'
-import { useAuthStore } from './authStore.js'
+import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import Isian from '../../shared/ui/Isian.jsx'
+import Banner from '../../shared/ui/Banner.jsx'
+import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonKunci, IkonPengguna, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
+import KartuAuth from './KartuAuth.jsx'
+import PeringatanTunggu from './PeringatanTunggu.jsx'
 
 /**
  * @param {{ berhasil?: (user: import('./authStore.js').DataUser) => void }} props
@@ -21,86 +29,90 @@ export default function HalamanMasuk({ berhasil }) {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
     setError,
+    clearErrors,
   } = useForm({
     resolver: zodResolver(skemaMasuk),
     defaultValues: { email: '', password: '' },
   })
 
   const kirim = handleSubmit(async (data) => {
+    clearErrors('root')
     try {
       const user = await masuk(data)
       tampilkanToast('sukses', `Selamat datang, ${user.name}!`)
       berhasil?.(user)
     } catch (galat) {
-      setError('root', { message: pesanGalatApi(galat) })
-      tampilkanToast('salah', pesanGalatApi(galat))
+      if (!sudahDitampilkanSebagaiTunggu(galat)) {
+        setError('root', { message: pesanGalatApi(galat) })
+      }
     }
   })
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-8 col-lg-6 col-xl-5">
-        <div className="kartu-soft p-4 p-md-5">
-          <h1 className="h4 fw-bold mb-1">Masuk</h1>
-          <p className="text-body-secondary mb-4">
-            Belum punya akun?{' '}
-            <Link to={RUTE.daftar}>Daftar sebagai murid</Link>
-          </p>
+    <KartuAuth
+      judul="Selamat datang kembali!"
+      sub="Masuk dulu, lalu lanjut belajar."
+      ikon={IkonPengguna}
+    >
+      <form onSubmit={kirim} noValidate>
+        <PeringatanTunggu />
 
-          <form onSubmit={kirim} noValidate>
-            {errors.root?.message && (
-              <div className="status-salah fw-semibold mb-3" role="alert">
-                {teksGalat(errors.root)}
-              </div>
-            )}
+        {errors.root?.message && (
+          <Banner jenis="salah" judul="Belum bisa masuk">
+            {teksGalat(errors.root)}{' '}
+            <Link
+              to={RUTE.perluVerifikasi}
+              state={{ email: getValues('email') }}
+              className="d-block mt-1"
+            >
+              Belum verifikasi email? Kirim ulang tautan
+            </Link>
+          </Banner>
+        )}
 
-            <div className="mb-3">
-              <label className="form-label fw-semibold" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="form-control"
-                autoComplete="email"
-                {...register('email')}
-              />
-              {errors.email && (
-                <p className="status-salah small mb-0 mt-1">{teksGalat(errors.email)}</p>
-              )}
-            </div>
+        <Isian
+          label="Email"
+          type="email"
+          ikon={IkonSurat}
+          autoComplete="email"
+          inputMode="email"
+          placeholder="nama@email.com"
+          galat={teksGalat(errors.email)}
+          {...register('email')}
+        />
 
-            <div className="mb-4">
-              <label className="form-label fw-semibold" htmlFor="password">
-                Kata sandi
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="form-control"
-                autoComplete="current-password"
-                {...register('password')}
-              />
-              {errors.password && (
-                <p className="status-salah small mb-0 mt-1">{teksGalat(errors.password)}</p>
-              )}
-            </div>
+        <Isian
+          label="Kata sandi"
+          type="password"
+          ikon={IkonKunci}
+          autoComplete="current-password"
+          galat={teksGalat(errors.password)}
+          {...register('password')}
+        />
 
-            <div className="d-flex flex-wrap align-items-center gap-3">
-              <button
-                type="submit"
-                className="btn btn-aksen px-4"
-                disabled={isSubmitting || detikTunggu > 0}
-              >
-                {detikTunggu > 0 ? `Tunggu ${detikTunggu} detik…` : 'Masuk'}
-              </button>
-              <Link to={RUTE.lupaSandi}>Lupa kata sandi?</Link>
-            </div>
-          </form>
+        <div className="text-end mb-4">
+          <Link to={RUTE.lupaSandi}>Lupa kata sandi?</Link>
         </div>
-      </div>
-    </div>
+
+        <Tombol
+          type="submit"
+          besar
+          lebar
+          memuat={isSubmitting}
+          teksMemuat="Memeriksa…"
+          disabled={detikTunggu > 0}
+        >
+          {detikTunggu > 0 ? `Tunggu ${detikTunggu} detik` : 'Masuk'}
+        </Tombol>
+      </form>
+
+      <p className="auth-pemisah">Belum punya akun?</p>
+      <TombolTaut to={RUTE.daftar} varian="tepi" lebar>
+        Daftar sebagai murid
+      </TombolTaut>
+    </KartuAuth>
   )
 }

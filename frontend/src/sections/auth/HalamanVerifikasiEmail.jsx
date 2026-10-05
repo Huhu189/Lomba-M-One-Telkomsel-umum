@@ -1,16 +1,17 @@
 /**
  * Halaman Verifikasi email — tautan bertanda tangan dari email mengarah ke
- * sini dengan query ?status=berhasil|gagal (redirect dari backend).
- * Memakai data URL saja (pagar mutu: data luar lewat Zod; query string
- * divalidasi manual dengan skema Zod).
+ * backend, lalu diarahkan ke sini dengan query ?status=berhasil|gagal.
+ * Query string divalidasi Zod (pagar mutu: data luar lewat Zod).
  */
 import { z } from 'zod'
-import { Link, useSearchParams } from 'react-router-dom'
-import { skemaKirimUlang } from './validasi.js'
-import { kirimUlangVerifikasi, pesanGalatApi } from './api.js'
-import { useAuthStore } from './authStore.js'
-import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useSearchParams } from 'react-router-dom'
+import { MaskotBuku } from '../../shared/ui/Maskot.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonPanahKiri } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
+import { useAuthStore } from './authStore.js'
+import KartuAuth from './KartuAuth.jsx'
+import KirimUlangVerifikasi from './KirimUlangVerifikasi.jsx'
 
 /** Skema query status dari redirect backend. */
 const skemaQueryStatus = z.object({
@@ -19,7 +20,6 @@ const skemaQueryStatus = z.object({
 
 export default function HalamanVerifikasiEmail() {
   const [parameter] = useSearchParams()
-
   const email = useAuthStore((s) => s.user?.email ?? '')
 
   const terurai = skemaQueryStatus.safeParse({
@@ -27,75 +27,34 @@ export default function HalamanVerifikasiEmail() {
   })
   const berhasil = terurai.success && terurai.data.status === 'berhasil'
 
-  /**
-   * Kirim ulang tautan untuk email yang diketik pengguna (tanpa sesi).
-   * @param {import('react').FormEvent<HTMLFormElement>} acara
-   */
-  async function kirimUlang(acara) {
-    acara.preventDefault()
-    const dataForm = new FormData(acara.currentTarget)
-    const hasil = skemaKirimUlang.safeParse({ email: String(dataForm.get('email') ?? '') })
-
-    if (!hasil.success) {
-      tampilkanToast('salah', hasil.error.issues[0]?.message ?? 'Email tidak valid.')
-      return
-    }
-
-    try {
-      const pesan = await kirimUlangVerifikasi(hasil.data.email)
-      tampilkanToast('info', pesan)
-    } catch (galat) {
-      tampilkanToast('salah', pesanGalatApi(galat))
-    }
+  if (berhasil) {
+    return (
+      <KartuAuth judul="Email terverifikasi!" tengah>
+        <MaskotBuku ukuran={160} label="Maskot buku bersorak gembira" melayang className="mb-3" />
+        <p className="teks-lembut">Akunmu sudah aktif. Yuk masuk dan mulai belajar.</p>
+        <TombolTaut to={RUTE.masuk} besar lebar>
+          Masuk sekarang
+        </TombolTaut>
+      </KartuAuth>
+    )
   }
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-8 col-lg-6 col-xl-5">
-        <div className="kartu-soft p-4 p-md-5 text-center">
-          {berhasil ? (
-            <>
-              <h1 className="h4 fw-bold status-benar">Email berhasil diverifikasi!</h1>
-              <p className="text-body-secondary">
-                Akun Anda sudah aktif. Silakan masuk untuk mulai belajar.
-              </p>
-              <Link className="btn btn-aksen px-4" to={RUTE.masuk}>
-                Masuk sekarang
-              </Link>
-            </>
-          ) : (
-            <>
-              <h1 className="h4 fw-bold status-salah">Verifikasi email gagal.</h1>
-              <p className="text-body-secondary">
-                Tautan tidak valid atau sudah kedaluwarsa. Minta tautan baru di bawah.
-              </p>
+    <KartuAuth judul="Tautan tidak berlaku" tengah>
+      <MaskotBuku ukuran={140} suasana="sedih" label="Maskot buku sedih" className="mb-3" />
+      <p className="teks-lembut mb-4">
+        Tautan ini sudah kedaluwarsa atau tidak benar. Tenang, kamu bisa minta tautan yang baru.
+      </p>
 
-              <form onSubmit={kirimUlang} noValidate className="mt-3">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" htmlFor="email-verifikasi">
-                    Email akun
-                  </label>
-                  <input
-                    id="email-verifikasi"
-                    name="email"
-                    type="email"
-                    className="form-control"
-                    defaultValue={email}
-                    autoComplete="email"
-                  />
-                </div>
-                <button type="submit" className="btn btn-aksen px-4">
-                  Kirim ulang tautan verifikasi
-                </button>
-              </form>
-
-              <p className="mt-3 mb-0">
-                <Link to={RUTE.masuk}>Kembali ke halaman masuk</Link>
-              </p>
-            </>
-          )}
-        </div>
+      <div className="text-start">
+        <KirimUlangVerifikasi emailAwal={email} />
       </div>
-    </div>
+
+      <div className="d-grid mt-3">
+        <TombolTaut to={RUTE.masuk} varian="teks" ikon={IkonPanahKiri}>
+          Kembali ke halaman masuk
+        </TombolTaut>
+      </div>
+    </KartuAuth>
   )
 }

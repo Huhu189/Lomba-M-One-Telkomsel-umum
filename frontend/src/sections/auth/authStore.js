@@ -5,7 +5,7 @@
  */
 import { create } from 'zustand'
 import { resetStatusSiaran } from '../../shared/api/client.js'
-import { ambilSaya, keluar, masuk as apiMasuk } from './api.js'
+import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.js'
 
 /**
  * @typedef {{
@@ -22,12 +22,14 @@ import { ambilSaya, keluar, masuk as apiMasuk } from './api.js'
 /**
  * @typedef {{
  *   user: DataUser | null,
+ *   sesiSiap: boolean,
  *   detikTunggu: number,
  *   aturUser: (user: DataUser | null) => void,
  *   masuk: (data: { email: string, password: string }) => Promise<DataUser>,
  *   keluar: () => Promise<void>,
  *   mulaiTungguThrottle: (detik: number) => void,
  *   muatUser: () => Promise<void>,
+ *   pulihkanSesi: () => Promise<void>,
  * }} AuthState
  */
 
@@ -40,11 +42,13 @@ let timerThrottle = /** @type {ReturnType<typeof setInterval>|null} */ (null)
  *   (updater: (state: AuthState) => Partial<AuthState>): void,
  *   (partial: Partial<AuthState>): void,
  * }} set
+ * @param {() => AuthState} get
  * @returns {AuthState}
  */
-function buatStoreAuth(set) {
+function buatStoreAuth(set, get) {
   return {
     user: null,
+    sesiSiap: false,
     detikTunggu: 0,
 
     aturUser: (user) => set({ user }),
@@ -88,6 +92,24 @@ function buatStoreAuth(set) {
     muatUser: async () => {
       set({ user: await ambilSaya() })
     },
+
+    /**
+     * Pulihkan sesi saat halaman dimuat/di-refresh. Cookie sesi ada di
+     * browser, tetapi state React hilang — tanpa ini murid tampak "keluar"
+     * setiap reload. Memakai /v1/sesi (tanpa 401) agar tamu tidak memicu
+     * event auth:sesi-habis dan toast "Sesi berakhir" yang menyesatkan.
+     */
+    pulihkanSesi: async () => {
+      try {
+        if (await cekTerautentikasi()) {
+          await get().muatUser()
+        }
+      } catch {
+        // Backend tidak terjangkau / sesi tidak sah: perlakukan sebagai tamu.
+      } finally {
+        set({ sesiSiap: true })
+      }
+    },
   }
 }
 
@@ -95,8 +117,14 @@ export const useAuthStore = create()(
   /** @type {import('zustand').StateCreator<AuthState, [], []>} */ (buatStoreAuth),
 )
 
+/** Penanda agar listener tidak terpasang ganda (StrictMode memanggil efek dua kali). */
+let listenerTerpasang = false
+
 /** Pasang listener event global sekali saat aplikasi dimuat (dipanggil dari App). */
 export function pasangListenerSesi() {
+  if (listenerTerpasang) return
+  listenerTerpasang = true
+
   window.addEventListener('auth:sesi-habis', () => {
     resetStatusSiaran()
     useAuthStore.getState().aturUser(null)
@@ -108,4 +136,15 @@ export function pasangListenerSesi() {
     )
     useAuthStore.getState().mulaiTungguThrottle(Number(detail?.detik ?? 0))
   })
+}
+
+/**
+ * Apakah galat ini sudah ditampilkan sebagai hitung mundur throttle (HTTP 429
+ * dengan Retry-After)? Dipakai form agar pesan tidak muncul dobel.
+ * @param {unknown} galat
+ * @returns {boolean}
+ */
+export function sudahDitampilkanSebagaiTunggu(galat) {
+  const status = /** @type {any} */ (galat)?.response?.status
+  return status === 429 && useAuthStore.getState().detikTunggu > 0
 }
