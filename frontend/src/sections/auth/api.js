@@ -1,0 +1,149 @@
+/**
+ * API auth (slice 01) — semua data dari luar selalu divalidasi Zod (pagar mutu).
+ * Tanpa token di localStorage: sesi murni cookie HttpOnly.
+ */
+import { z } from 'zod'
+import { client, ambilCsrfCookie } from '../../shared/api/client.js'
+
+/** Skema user dari /auth/saya & respons login (UserResource). */
+export const skemaUser = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string(),
+  role: z.string(),
+  status: z.string(),
+  statusLabel: z.string(),
+  emailTerverifikasi: z.boolean(),
+})
+
+/** Skema pesan generik backend. */
+export const skemaPesan = z.object({ message: z.string() })
+
+/** Skema diagnostik /v1/sesi. */
+export const skemaSesi = z.object({ terautentikasi: z.boolean() })
+
+/**
+ * Ambil pesan galat yang aman ditampilkan dari respons API.
+ * @param {unknown} galat
+ * @returns {string}
+ */
+export function pesanGalatApi(galat) {
+  const data = /** @type {{message?: unknown, errors?: Record<string, unknown[]>|undefined}} */ (
+    /** @type {any} */ (galat)?.response?.data
+  )
+
+  if (data && typeof data.message === 'string' && data.message !== '') {
+    return data.message
+  }
+
+  return 'Terjadi kesalahan. Coba lagi sebentar.'
+}
+
+/**
+ * Ubah objek galat react-hook-form menjadi teks aman untuk dirender.
+ * @param {{ message?: import('react').ReactNode } | undefined} galat
+ * @returns {string}
+ */
+export function teksGalat(galat) {
+  if (!galat) return ''
+  const pesan = galat.message
+  return typeof pesan === 'string' ? pesan : 'Isian belum valid.'
+}
+
+/**
+ * Daftar murid (role selalu dari server = murid).
+ * @param {{ name: string, email: string, password: string }} data
+ * @returns {Promise<string>} pesan netral backend
+ */
+export async function daftar(data) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/daftar', {
+    name: data.name,
+    email: data.email.toLowerCase(),
+    password: data.password,
+    password_confirmation: data.password,
+  })
+  return skemaPesan.parse(respons.data).message
+}
+
+/**
+ * Login sesi (cookie SPA).
+ * @param {{ email: string, password: string }} data
+ * @returns {Promise<z.infer<typeof skemaUser>>} user hasil parse Zod
+ */
+export async function masuk(data) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/masuk', {
+    email: data.email.toLowerCase(),
+    password: data.password,
+  })
+  const badan = z.object({ message: z.string(), user: skemaUser }).parse(respons.data)
+  return badan.user
+}
+
+/**
+ * Logout: hancurkan sesi di server.
+ * @returns {Promise<void>}
+ */
+export async function keluar() {
+  await ambilCsrfCookie()
+  await client.post('/v1/auth/keluar')
+}
+
+/**
+ * Data user yang sedang masuk (untuk TanStack Query).
+ * @returns {Promise<z.infer<typeof skemaUser>>}
+ */
+export async function ambilSaya() {
+  const respons = await client.get('/v1/auth/saya')
+  return skemaUser.parse(respons.data)
+}
+
+/**
+ * Cek status sesi (diagnostik, tanpa autentikasi).
+ * @returns {Promise<boolean>}
+ */
+export async function cekTerautentikasi() {
+  const respons = await client.get('/v1/sesi')
+  return skemaSesi.parse(respons.data).terautentikasi
+}
+
+/**
+ * Kirim ulang tautan verifikasi TANPA sesi (halaman PerluVerifikasi).
+ * @param {string} email
+ * @returns {Promise<string>} pesan netral backend
+ */
+export async function kirimUlangVerifikasi(email) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/kirim-ulang-verifikasi-publik', {
+    email: email.toLowerCase(),
+  })
+  return skemaPesan.parse(respons.data).message
+}
+
+/**
+ * Minta tautan lupa kata sandi (anti-enumerasi).
+ * @param {string} email
+ * @returns {Promise<string>} pesan netral backend
+ */
+export async function lupaSandi(email) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/lupa-sandi', { email: email.toLowerCase() })
+  return skemaPesan.parse(respons.data).message
+}
+
+/**
+ * Atur ulang kata sandi dengan token sekali pakai.
+ * @param {{ token: string, email: string, password: string }} data
+ * @returns {Promise<string>} pesan backend
+ */
+export async function aturUlangSandi(data) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/atur-ulang-sandi', {
+    token: data.token,
+    email: data.email.toLowerCase(),
+    password: data.password,
+    password_confirmation: data.password,
+  })
+  return skemaPesan.parse(respons.data).message
+}

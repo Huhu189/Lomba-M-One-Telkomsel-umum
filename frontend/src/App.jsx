@@ -1,46 +1,131 @@
 /**
- * Halaman demo slice 00 — kerangka aplikasi + tema + toast + ikon.
- * Belum ada fitur bisnis; fitur mulai slice 01 (lihat chunk_map.json).
+ * Kerangka aplikasi + router (slice 01: halaman auth).
+ * Demo slice 00 dilepas; status backend tetap tampil di beranda tamu.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import { daftarIkon } from './icons.jsx'
 import { ToastHost, tampilkanToast } from './shared/ui/toast.jsx'
 import { ambilHealth } from './shared/api/health.js'
+import { RUTE } from './routes.js'
+import HalamanMasuk from './sections/auth/HalamanMasuk.jsx'
+import HalamanDaftar from './sections/auth/HalamanDaftar.jsx'
+import HalamanLupaSandi from './sections/auth/HalamanLupaSandi.jsx'
+import HalamanAturUlangSandi from './sections/auth/HalamanAturUlangSandi.jsx'
+import HalamanVerifikasiEmail from './sections/auth/HalamanVerifikasiEmail.jsx'
+import HalamanPerluVerifikasi from './sections/auth/HalamanPerluVerifikasi.jsx'
+import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
+import { IkonMatahari, IkonBulan } from './icons.jsx'
 
-const JENIS_TOAST = /** @type {const} */ (['sukses', 'salah', 'peringatan', 'info'])
-
-/** Sediaan warna palet untuk kartu demo (dari chunk theme). */
-const PALET = [
-  { nama: 'Latar', varCss: '--latar', hex: '#F8FAFC' },
-  { nama: 'Aksen', varCss: '--aksen', hex: '#0EA5E9' },
-  { nama: 'Pendukung', varCss: '--pendukung', hex: '#95A7D5' },
-  { nama: 'Sorot hangat', varCss: '--sorot-hangat', hex: '#EEF385' },
-  { nama: 'Sidebar guru', varCss: '--guru-sidebar', hex: '#1A2F65' },
-  { nama: 'Teks', varCss: '--teks', hex: '#0F172A' },
-]
-
-/** Halaman demo (dirombak total pada slice berikutnya). */
-export default function App() {
-  const [gelap, setGelap] = useState(false)
+/** Halaman beranda: sambutan tamu / ringkas status murid yang masuk. */
+function Beranda() {
+  const user = useAuthStore((s) => s.user)
+  const keluar = useAuthStore((s) => s.keluar)
+  const navigate = useNavigate()
 
   const health = useQuery({
     queryKey: ['health'],
     queryFn: ambilHealth,
     refetchInterval: 30_000,
+    retry: 1,
   })
 
+  async function keluarSesi() {
+    try {
+      await keluar()
+      tampilkanToast('info', 'Anda sudah keluar.')
+      navigate(RUTE.masuk)
+    } catch {
+      tampilkanToast('salah', 'Gagal keluar. Coba lagi.')
+    }
+  }
+
+  if (user) {
+    return (
+      <div className="row justify-content-center">
+        <div className="col-lg-7">
+          <div className="kartu-soft p-4 p-md-5">
+            <h1 className="h4 fw-bold">Halo, {user.name}! 👋</h1>
+            <p className="text-body-secondary">
+              Kamu masuk sebagai <strong>{user.role}</strong> ({user.statusLabel}).
+              {user.emailTerverifikasi ? ' Email sudah terverifikasi.' : ' Email belum terverifikasi.'}
+            </p>
+            <p className="text-body-secondary">
+              Dashboard belajar lengkap menyusul di slice berikutnya.
+            </p>
+            <button type="button" className="btn btn-outline-primary" onClick={keluarSesi}>
+              Keluar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="row g-4">
+      <div className="col-lg-7">
+        <div className="kartu-soft p-4 p-md-5 h-100">
+          <h1 className="h3 fw-bold">Selamat datang di Ulangan Sekolah</h1>
+          <p className="text-body-secondary">
+            Belajar dan ulangan online untuk murid SD. Masuk untuk mulai, atau buat akun
+            baru — gratis untuk murid.
+          </p>
+          <div className="d-flex flex-wrap gap-2">
+            <NavLink className="btn btn-aksen px-4" to={RUTE.masuk}>
+              Masuk
+            </NavLink>
+            <NavLink className="btn btn-outline-primary px-4" to={RUTE.daftar}>
+              Daftar murid
+            </NavLink>
+          </div>
+        </div>
+      </div>
+      <div className="col-lg-5">
+        <div className="kartu-soft p-4 h-100">
+          <h2 className="h6 fw-bold text-uppercase text-body-secondary">Status sistem</h2>
+          {health.isError && (
+            <p className="status-salah fw-semibold mb-0" role="alert">
+              Backend tidak terjangkau.
+            </p>
+          )}
+          {health.data && (
+            <p className="mb-0">
+              Backend <span className="status-benar fw-semibold">hidup</span> · Database{' '}
+              {health.data.database ? (
+                <span className="status-benar fw-semibold">terhubung</span>
+              ) : (
+                <span className="status-salah fw-semibold">terputus</span>
+              )}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Kerangka aplikasi: header + router. */
+export default function App() {
+  const [gelap, setGelap] = useState(false)
+  const navigate = useNavigate()
+
+  // Listener sesi/throttle global sekali saja.
+  useEffect(() => {
+    pasangListenerSesi()
+
+    const saatSesiHabis = () => tampilkanToast('info', 'Sesi berakhir. Silakan masuk lagi.')
+    window.addEventListener('auth:sesi-habis', saatSesiHabis)
+    return () => window.removeEventListener('auth:sesi-habis', saatSesiHabis)
+  }, [])
+
   /**
-   * Ganti mode terang/gelap lewat data-bs-theme (Bootstrap 5.3 CSS).
+   * Ganti mode terang/gelap lewat data-bs-theme.
    * @param {boolean} jadiGelap
    */
   function ubahTema(jadiGelap) {
     setGelap(jadiGelap)
-    document.documentElement.setAttribute(
-      'data-bs-theme',
-      jadiGelap ? 'dark' : 'light',
-    )
+    document.documentElement.setAttribute('data-bs-theme', jadiGelap ? 'dark' : 'light')
   }
 
   return (
@@ -48,114 +133,48 @@ export default function App() {
       <ToastHost />
 
       <header className="d-flex flex-wrap align-items-center gap-3 mb-4">
-        <h1 className="h3 fw-bold mb-0 me-auto">Ulangan Sekolah — Slice 00</h1>
+        <NavLink to={RUTE.beranda} className="navbar-brand fw-bold me-auto">
+          Ulangan Sekolah
+        </NavLink>
         <button
           type="button"
-          className="btn btn-aksen"
+          className="btn btn-outline-primary"
           onClick={() => ubahTema(!gelap)}
+          aria-label={gelap ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
         >
-          {gelap ? '☀ Mode terang' : '🌙 Mode gelap'}
+          {gelap ? <IkonMatahari label="Terang" /> : <IkonBulan label="Gelap" />}
         </button>
       </header>
 
-      <div className="row g-4">
-        <section className="col-lg-6">
-          <div className="kartu-soft p-4 h-100">
-            <h2 className="h5 fw-bold">Status backend (via Zod)</h2>
-            {health.isPending && <p>Memuat status…</p>}
-            {health.isError && (
-              <p className="status-salah fw-bold" role="alert">
-                Backend tidak terjangkau — jalankan `php artisan serve` di backend/.
-              </p>
-            )}
-            {health.data && (
-              <ul className="mb-2">
-                <li>
-                  Layanan: <strong>{health.data.service}</strong> —{' '}
-                  <span className="status-benar">hidup</span>
-                </li>
-                <li>
-                  Database:{' '}
-                  {health.data.database ? (
-                    <span className="status-benar">terhubung</span>
-                  ) : (
-                    <span className="status-salah">terputus</span>
-                  )}
-                </li>
-                <li>Waktu server: {dayjs(health.data.time).format('DD MMM YYYY HH:mm:ss')}</li>
-              </ul>
-            )}
-            <button
-              type="button"
-              className="btn btn-outline-primary"
-              onClick={() => health.refetch()}
-            >
-              Muat ulang status
-            </button>
-          </div>
-        </section>
-
-        <section className="col-lg-6">
-          <div className="kartu-soft p-4 h-100">
-            <h2 className="h5 fw-bold">Demo toast (buatan sendiri)</h2>
-            <div className="d-flex flex-wrap gap-2">
-              {JENIS_TOAST.map((jenis) => (
-                <button
-                  key={jenis}
-                  type="button"
-                  className="btn btn-outline-primary text-capitalize"
-                  onClick={() => tampilkanToast(jenis, `Contoh toast jenis ${jenis}.`)}
-                >
-                  {jenis}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 mb-0 text-body-secondary small">
-              Toast memakai warna status dari variabel CSS, ikon + teks, aria-live.
-            </p>
-          </div>
-        </section>
-
-        <section className="col-lg-6">
-          <div className="kartu-soft p-4 h-100">
-            <h2 className="h5 fw-bold">Ikon SVG (src/icons.jsx)</h2>
-            <div className="d-flex flex-wrap gap-3 fs-4">
-              {Object.entries(daftarIkon).map(([nama, Ikon]) => (
-                <span
-                  key={nama}
-                  title={nama}
-                  style={{ color: 'var(--aksen)' }}
-                >
-                  <Ikon size={26} label={nama} />
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="col-lg-6">
-          <div className="kartu-soft p-4 h-100">
-            <h2 className="h5 fw-bold">Palet (variabel CSS)</h2>
-            <div className="row g-2">
-              {PALET.map((p) => (
-                <div className="col-6 col-md-4" key={p.varCss}>
-                  <div
-                    className="swatch"
-                    style={{ backgroundColor: `var(${p.varCss})` }}
-                  >
-                    {p.hex}
-                  </div>
-                  <p className="small text-center mb-0 mt-1">{p.nama}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
+      <main>
+        <Routes>
+          <Route path={RUTE.beranda} element={<Beranda />} />
+          <Route
+            path={RUTE.masuk}
+            element={
+              <HalamanMasuk
+                berhasil={() => navigate(RUTE.beranda, { replace: true })}
+              />
+            }
+          />
+          <Route
+            path={RUTE.daftar}
+            element={
+              <HalamanDaftar
+                berhasil={() => navigate(RUTE.perluVerifikasi, { replace: true })}
+              />
+            }
+          />
+          <Route path={RUTE.lupaSandi} element={<HalamanLupaSandi />} />
+          <Route path={RUTE.aturUlangSandi} element={<HalamanAturUlangSandi />} />
+          <Route path={RUTE.verifikasiEmail} element={<HalamanVerifikasiEmail />} />
+          <Route path={RUTE.perluVerifikasi} element={<HalamanPerluVerifikasi />} />
+          <Route path="*" element={<Beranda />} />
+        </Routes>
+      </main>
 
       <footer className="text-center text-body-secondary small mt-4">
-        Struktur: <code>src/sections/</code> · <code>src/shared/</code> ·{' '}
-        <code>src/security/</code> — fitur bisnis mulai slice 01.
+        Slice 01 — Auth &amp; Identitas · <code>src/sections/auth/</code>
       </footer>
     </div>
   )
