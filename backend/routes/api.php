@@ -6,6 +6,11 @@ use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
 use App\Sections\Health\Http\Controllers\HealthController;
+use App\Sections\School\Http\Controllers\KelasController;
+use App\Sections\School\Http\Controllers\MapelController;
+use App\Sections\School\Http\Controllers\MuridController;
+use App\Sections\School\Http\Controllers\SekolahController;
+use App\Sections\Settings\Http\Controllers\PengaturanController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -31,13 +36,41 @@ Route::prefix('v1')->group(function (): void {
         ->middleware(['signed', 'throttle:verifikasi'])
         ->name('verification.verify');
 
-    // Jalur beresin sesi (wajib masuk; akun tidak layak ditolak 'akun-aktif').
+    // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').
     Route::middleware(['auth:sanctum', 'akun-aktif'])->group(function (): void {
         Route::post('/auth/keluar', [AuthController::class, 'keluar'])->name('auth.keluar');
         Route::get('/auth/saya', [AuthController::class, 'saya'])->name('auth.saya');
         Route::post('/auth/kirim-ulang-verifikasi', [AuthController::class, 'kirimUlangVerifikasi'])
             ->middleware('throttle:verifikasi')
             ->name('auth.kirim-ulang-verifikasi');
+
+        // Sekolah (satu baris).
+        Route::get('/sekolah', [SekolahController::class, 'show'])->name('sekolah.show');
+        Route::put('/sekolah', [SekolahController::class, 'update'])->name('sekolah.update');
+
+        // Kelas.
+        Route::get('/kelas', [KelasController::class, 'index'])->name('kelas.index');
+        Route::post('/kelas', [KelasController::class, 'store'])->name('kelas.store');
+        Route::put('/kelas/{kelas}', [KelasController::class, 'update'])->name('kelas.update');
+        Route::delete('/kelas/{kelas}', [KelasController::class, 'destroy'])->name('kelas.destroy');
+
+        // Mapel.
+        Route::get('/mapel', [MapelController::class, 'index'])->name('mapel.index');
+        Route::post('/mapel', [MapelController::class, 'store'])->name('mapel.store');
+        Route::put('/mapel/{mapel}', [MapelController::class, 'update'])->name('mapel.update');
+        Route::delete('/mapel/{mapel}', [MapelController::class, 'destroy'])->name('mapel.destroy');
+
+        // Murid + impor/ekspor CSV.
+        Route::get('/murid', [MuridController::class, 'index'])->name('murid.index');
+        Route::post('/murid', [MuridController::class, 'store'])->name('murid.store');
+        Route::post('/murid/impor', [MuridController::class, 'impor'])->name('murid.impor');
+        Route::get('/murid/ekspor', [MuridController::class, 'ekspor'])->name('murid.ekspor');
+        Route::put('/murid/{murid}', [MuridController::class, 'update'])->name('murid.update');
+        Route::delete('/murid/{murid}', [MuridController::class, 'destroy'])->name('murid.destroy');
+
+        // Pengaturan tiga lapis.
+        Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
+        Route::put('/pengaturan', [PengaturanController::class, 'perbarui'])->name('pengaturan.perbarui');
     });
 });
 

@@ -5,21 +5,25 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Sections\Auth\Enums\UserStatus;
+use App\Sections\School\Models\Murid;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'status', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    use HasApiTokens;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory;
-
     use HasRoles;
     use Notifiable;
 
@@ -63,5 +67,11 @@ class User extends Authenticatable
     public function isMurid(): bool
     {
         return $this->hasRole('murid');
+    }
+
+    /** @return HasOne<Murid, $this> */
+    public function murid(): HasOne
+    {
+        return $this->hasOne(Murid::class, 'user_id');
     }
 }

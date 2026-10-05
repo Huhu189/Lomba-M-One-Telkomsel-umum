@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Sections\School\Models\Kelas;
+use App\Sections\School\Models\Mapel;
+use App\Sections\School\Models\Murid;
+use App\Sections\School\Models\Sekolah;
+use App\Sections\School\Policies\KelasPolicy;
+use App\Sections\School\Policies\MapelPolicy;
+use App\Sections\School\Policies\MuridPolicy;
+use App\Sections\School\Policies\SekolahPolicy;
+use App\Sections\Settings\Models\Pengaturan;
+use App\Sections\Settings\Policies\PengaturanPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -32,6 +43,13 @@ class AppServiceProvider extends ServiceProvider
 
         // Respons resource tanpa pembungkus "data" (skema flat untuk klien).
         JsonResource::withoutWrapping();
+
+        // Policy model berada di luar App\Models, jadi didaftarkan eksplisit.
+        Gate::policy(Sekolah::class, SekolahPolicy::class);
+        Gate::policy(Kelas::class, KelasPolicy::class);
+        Gate::policy(Mapel::class, MapelPolicy::class);
+        Gate::policy(Murid::class, MuridPolicy::class);
+        Gate::policy(Pengaturan::class, PengaturanPolicy::class);
 
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
         RateLimiter::for('auth', function (Request $request) {

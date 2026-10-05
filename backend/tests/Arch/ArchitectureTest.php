@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Arch;
 
 use App\Sections\Auth\Enums\UserRole;
+use Illuminate\Support\Facades\DB;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,14 @@ arch('tidak ada dd, dump, ray, atau var_dump di kode aplikasi')
 arch('controller hanya berbicara dengan service dan lapisan HTTP')
     ->expect('App\Sections\Http\Controllers')
     ->toOnlyUse(['App\Sections', 'App\Http\Controllers', 'Illuminate\Http', 'Illuminate\Routing']);
+
+arch('controller tidak memanggil fasade DB secara langsung')
+    ->expect([
+        'App\Sections\Auth\Http\Controllers',
+        'App\Sections\School\Http\Controllers',
+        'App\Sections\Settings\Http\Controllers',
+    ])
+    ->not->toUse(DB::class);
 
 test('enum UserRole memiliki tiga peran yang diharapkan', function () {
     expect(array_column(UserRole::cases(), 'value'))
