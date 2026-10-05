@@ -1,0 +1,225 @@
+/*
+ * Tema aplikasi — semua warna lewat variabel CSS (chunk theme).
+ * Palet:
+ *  Latar terang  #F8FAFC | Sidebar guru #1A2F65 | Aksen #0EA5E9
+ *  Pendukung     #95A7D5 | Sorot hangat #EEF385 (selalu + garis tepi)
+ *  Teks          #0F172A (terang) / #F8FAFC (gelap)
+ *  Mode gelap    latar #0B1530 | kartu #14214A | aktif #1A2F65
+ *  Link          #0369A1 (terang) / #38BDF8 (gelap) | garis input #64748B
+ *  Status        benar #15803D | salah #B91C1C | peringatan #B45309 | info #0369A1
+ *  Teks di atas #0EA5E9 / #95A7D5 / #EEF385 selalu gelap.
+ */
+
+:root {
+  --latar: #f8fafc;
+  --kartu: #ffffff;
+  --aktif: #1a2f65;
+  --teks: #0f172a;
+  --teks-lembut: #475569;
+  --guru-sidebar: #1a2f65;
+  --aksen: #0ea5e9;
+  --pendukung: #95a7d5;
+  --sorot-hangat: #eef385;
+  --teks-di-aksen: #0f172a;
+  --link: #0369a1;
+  --garis-input: #64748b;
+  --status-benar: #15803d;
+  --status-salah: #b91c1c;
+  --status-peringatan: #b45309;
+  --status-info: #0369a1;
+  --radius: 14px;
+  --bayangan: 0 2px 12px rgba(15, 23, 42, 0.08);
+
+  /* Peta ke variabel Bootstrap 5.3 (CSS saja, tanpa build Sass) */
+  --bs-body-bg: var(--latar);
+  --bs-body-color: var(--teks);
+  --bs-body-font-size: 1.0625rem;
+  --bs-primary: var(--aksen);
+  --bs-primary-rgb: 14, 165, 233;
+  --bs-link-color: var(--link);
+  --bs-link-color-rgb: 3, 105, 161;
+  --bs-border-color: #dbe2ea;
+  --bs-border-radius: var(--radius);
+}
+
+[data-bs-theme='dark'] {
+  --latar: #0b1530;
+  --kartu: #14214a;
+  --aktif: #1a2f65;
+  --teks: #f8fafc;
+  --teks-lembut: #b7c3d6;
+  --link: #38bdf8;
+  --teks-di-aksen: #0f172a;
+  --bs-body-bg: var(--latar);
+  --bs-body-color: var(--teks);
+  --bs-link-color: var(--link);
+  --bs-link-color-rgb: 56, 189, 248;
+  --bs-border-color: #2a3a63;
+  --bayangan: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  min-height: 100vh;
+}
+
+/* Tombol besar untuk anak SD */
+.btn-akses,
+.btn {
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.btn-aksen {
+  background-color: var(--aksen);
+  color: var(--teks-di-aksen);
+  border: none;
+}
+
+.btn-aksen:hover,
+.btn-aksen:focus-visible {
+  background-color: var(--pendukung);
+  color: var(--teks-di-aksen);
+}
+
+/* Kolom isian dan pilihan jawaban WAJIB bergaris tepi jelas */
+.input-besar,
+.form-control,
+.form-select {
+  border: 2px solid var(--garis-input);
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  background-color: var(--kartu);
+  color: var(--teks);
+}
+
+.input-besar:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--aksen);
+  box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.25);
+}
+
+/* Soft UI: sudut membulat + bayangan halus */
+.kartu-soft {
+  background-color: var(--kartu);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+  border: 1px solid var(--bs-border-color);
+}
+
+.sidebar-guru {
+  background-color: var(--guru-sidebar);
+  color: #f8fafc;
+}
+
+.sidebar-guru .aktif {
+  background-color: var(--aktif);
+}
+
+/* Sorotan hangat murid: selalu dengan garis tepi */
+.sorot-hangat {
+  background-color: var(--sorot-hangat);
+  color: var(--teks-di-aksen);
+  border: 2px solid var(--teks-di-aksen);
+  border-radius: 12px;
+}
+
+.swatch {
+  border-radius: 10px;
+  border: 2px solid var(--bs-border-color);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--teks-di-aksen);
+}
+
+:focus-visible {
+  outline: 3px solid var(--aksen);
+  outline-offset: 2px;
+}
+
+/* Status: selalu dengan ikon atau teks (kelas ini dipakai bersama ikon) */
+.status-benar {
+  color: var(--status-benar);
+}
+
+.status-salah {
+  color: var(--status-salah);
+}
+
+.status-peringatan {
+  color: var(--status-peringatan);
+}
+
+.status-info {
+  color: var(--status-info);
+}
+
+/* Area toast buatan sendiri */
+.toast-area {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(92vw, 24rem);
+}
+
+.toast-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background-color: var(--kartu);
+  color: var(--teks);
+  box-shadow: var(--bayangan);
+  border: 1px solid var(--bs-border-color);
+  border-left-width: 6px;
+}
+
+.toast-item .ikon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toast-item.sukses {
+  border-left-color: var(--status-benar);
+}
+
+.toast-item.salah {
+  border-left-color: var(--status-salah);
+}
+
+.toast-item.peringatan {
+  border-left-color: var(--status-peringatan);
+}
+
+.toast-item.info {
+  border-left-color: var(--status-info);
+}
+
+.toast-tutup {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--teks-lembut);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  min-height: 32px;
+  min-width: 32px;
+}
