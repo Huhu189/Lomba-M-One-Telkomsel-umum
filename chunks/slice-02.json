@@ -14,7 +14,8 @@
   ],
   "constraints": [
     "Guru/admin memakai endpoint ini lewat Policy; murid hanya baca.",
-    "Escape CSV wajib untuk sel berawalan = + - @."
+    "Escape CSV wajib untuk sel berawalan = + - @.",
+    "Mapel = data induk tingkat sekolah; TIDAK ada daftar guru pengampu per mapel (revisi pengguna, 6 Okt 2026) — guru/admin mengelola mapel sekolah tanpa penugasan guru ke mapel, dan slice lanjutan tidak menambahkannya."
   ],
   "tests": [
     "Pest: impor CSV valid/gagal per baris; batas error 100; upsert 500 baris dalam transaksi; ekspor ter-escape; resolusi pengaturan tiga lapis termasuk lock sekolah; invalidasi cache saat pengaturan berubah.",
