@@ -4,31 +4,64 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Sections\Auth\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'status', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
+
+    use HasRoles;
+    use Notifiable;
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Guard satu-satunya aplikasi ini (Sanctum mode SPA = sesi web).
      */
-    protected function casts(): array
+    protected $guard_name = 'web';
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'status' => UserStatus::class,
+    ];
+
+    /**
+     * Status akun yang boleh lewat (dipakai middleware & login).
+     */
+    public function isAktif(): bool
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->status === UserStatus::Aktif;
+    }
+
+    /**
+     * Alasan akun ditolak (null bila boleh masuk).
+     */
+    public function alasanAkunDitolak(): ?string
+    {
+        return match ($this->status) {
+            UserStatus::Suspended => 'Akun ditangguhkan. Hubungi sekolah.',
+            UserStatus::Dihapus => 'Akun sudah dihapus.',
+            UserStatus::Pending => 'Verifikasi email dulu sebelum masuk.',
+            UserStatus::Aktif => $this->hasVerifiedEmail() ? null : 'Verifikasi email dulu sebelum masuk.',
+        };
+    }
+
+    public function isGuru(): bool
+    {
+        return $this->hasRole('guru') || $this->hasRole('admin');
+    }
+
+    public function isMurid(): bool
+    {
+        return $this->hasRole('murid');
     }
 }
