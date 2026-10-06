@@ -215,3 +215,82 @@ Vitest (konversi lokal → UTC, input kosong/tidak valid, dan bolak-balik ISO �
   atau dua tab tidak menggandakan hasil.
 - **Fail-open di klien**: `BatasGalatUlangan.jsx` (react-error-boundary) mencegah satu galat render
   mematikan seluruh aplikasi.
+
+## A.7 Slice 05 — Skor Asli, Retry, Ranking, Badge, Remedial, dan Laporan per Tema
+
+### A.7.1 Pagar mutu — `./verify.sh` (dari root repo)
+
+```
+=== Backend Pest ===        >>> OK   Tests: 79 passed (491 assertions)
+=== Backend Pint ===        >>> OK   PASS 166 files
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK   0 error, 2 warning (react-hooks/incompatible-library dari watch() RHF)
+=== Frontend Vitest ===     >>> OK   25 berkas / 156 test
+=== Realtime node --test ===>>> OK   2 test
+verify.sh: SEMUA HIJAU
+```
+
+Tambahan: `npm run build` sukses (`dist/assets/index-*.js` 615,37 kB, gzip 182,43 kB; `index-*.css` 250,11 kB).
+Peringatan Vite "chunk > 500 kB" masih ada dan belum ditangani.
+
+### A.7.2 Test baru slice 05
+
+- `backend/tests/Feature/Slice05Test.php` (8 test / 100 assertion): respons `mulai` memuat `attempt_no` & `asli`;
+  retry menambah `attempt_no` **tanpa mengubah skor asli** (baris percobaan pertama tetap, hanya satu baris `asli`);
+  retry mengikuti saklar `retry` dan `batas_percobaan` (422 dengan pesan berbeda);
+  ranking hanya memakai skor asli dengan tie-break waktu selesai lebih cepat lalu nama, `top N` dipotong, saklar
+  `ranking` menyembunyikan isi dari murid (bawaan mati) tetapi guru tetap melihat, lalu peringkat murid tampil
+  setelah saklar dinyalakan; badge per mapel terbentuk dari rata-rata skor asli (100% → emas);
+  remedial menyusun latihan dari tema lemah, payload tanpa `"kunci"`, dan **tidak** menambah attempt sehingga skor
+  asli utuh, serta saklar `remedial` mematikan rekomendasi tanpa menghapus riwayat; laporan per tema mengikuti
+  ambang guru (50% → `paham`) dan murid selalu 403; guru tidak punya badge/progres (403).
+- Vitest baru: `report/tampilan.test.js` (9 test) untuk `tingkatTampilan`, `kelasLencana`, `ringkasTingkat`,
+  `urutkanPeringkat` (skor menurun, seri → waktu selesai → nama), `milikMurid`, dan skema Zod peringkat/progres.
+- **Catatan pagar mutu**: `backend/phpunit.xml` kini menyetel `memory_limit=512M`. Suite bertambah ke 79 test
+  dan 500-baris impor CSV membuat proses menyentuh batas bawaan 128M (fatal "Allowed memory size exhausted"
+  setelah `HealthTest`). Ini penyesuaian sumber daya, bukan pelonggaran asersi.
+
+### A.7.3 Smoke browser sungguhan (Chrome CDP) — `docs/smoke-ui-slice05.mjs` — 17/17 lulus
+
+1. Login guru (200); guru menjadwalkan ulang kuis terbit agar sedang berjalan (200).
+2. Guru menyalakan `retry`, menaikkan `batas_percobaan`, dan **mematikan** `ranking` lewat `PUT /v1/pengaturan`.
+3. Login murid (200); saklar ranking mati → `GET /v1/kuis/1/ranking` mengembalikan `tampil:false` dan `peringkat:[]`.
+4. Murid mulai ulang kuis → `attempt_no` bertambah (>1) dan `asli:false`; skor ulang tercatat sebagai baris terpisah.
+5. Halaman `/hasil/:id` menautkan **Peringkat** dan **Progres tema**.
+6. `/peringkat/1` memberi tahu "ranking sedang dimatikan guru"; `/progres-tema` menampilkan ambang + "Latihan
+   remedial"; `/badge` menampilkan lencana per mapel — ketiganya dirender browser sungguhan.
+7. `GET /v1/progres/saya`: tema berlabel tingkat (`belum_paham`) dan soal remedial tanpa kunci (3 soal).
+8. Guru menyalakan `ranking` → `GET /v1/kuis/1/ranking` memakai **attempt asli** (attempt 1), attempt retry
+   (attempt 4) tidak ada di daftar; guru tidak punya `peringkat_saya`.
+9. `GET /v1/kuis/1/laporan`: status 200 dengan ambang 80% dan dua murid sekelas; halaman `/kuis/1/laporan`
+   menampilkan "Laporan Tema" dan catatan "hanya nilai asli" (murid 403).
+10. Murid membuka `/peringkat/1` setelah saklar menyala: tabel tampil, baris sendiri disorot (`.sorot-hangat`).
+
+Keluaran terakhir:
+
+```
+LULUS · ranking memakai attempt asli, bukan attempt ulang · peringkat attempt 1 · retry attempt 4 · skor asli 1
+LULUS · halaman peringkat menampilkan tabel dan menyorot baris murid · baris disorot 1
+smoke slice 05: 17/17 lulus
+```
+
+### A.7.4 Keputusan teknis slice 05 (jujur)
+
+- **Skor asli = baris, bukan kolom yang bisa berubah.** Kolom `attempt_no` + `asli` (migrasi
+  `2026_10_06_000012`) membuat percobaan pertama tetap utuh; ranking menyaring `jenis='ulangan' AND asli=1`.
+  Tidak ada jalur dari klien untuk menyentuh baris itu — `AttemptPolicy` tetap menolak `jawab`/`kumpulkan`
+  pada attempt yang bukan milik murid, dan `simpanJawaban` menolak attempt yang sudah dikumpulkan.
+- **Saklar `ranking` bawaan mati** (chunk slice-05 & `docs/penjelasan-fitur.md`). Guru tetap bisa melihat
+  peringkat untuk keperluan laporan; murid hanya melihat saat saklar menyala. `RankingService` mengembalikan
+  `tampil` supaya klien bisa menjelaskan alasannya, bukan sekadar 403 tanpa konteks.
+- **Remedial bersifat baca-saja.** `RemedialService` hanya menyusun daftar soal dari tema lemah (dan melewati
+  soal yang sudah pernah dijawab benar); tidak ada penulisan ke `attempts`/`answers`, sehingga mustahil mengubah
+  skor asli.
+- **Ambang laporan ikut pengaturan tiga lapis.** Kunci baru `ambang_paham` (bawaan 80), `ambang_mulai_paham`
+  (60), dan `data_minimum_tag` (3) divalidasi 0–100 untuk ambang; tingkat `data_belum_cukup` mencegah label
+  "belum paham" hanya dari satu-dua soal.
+- **Section baru `Report`** menampung Ranking/Badge/Remedial/Laporan (controller hanya bicara dengan service,
+  tanpa fasade `DB`), mengikuti aturan "kode fitur berada di `Sections`".
+- **Perbaikan data dev**: dua attempt lama slice 04 masih `asli=1` (kolomnya baru ditambahkan dengan nilai
+  bawaan `true`) sehingga satu murid muncul dua kali di peringkat; baris kedua dirapikan menjadi
+  `attempt_no=2, asli=false` sebelum smoke.

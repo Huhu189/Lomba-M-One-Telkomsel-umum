@@ -23,7 +23,11 @@ Seluruh prompt dan jawaban (utuh, mentah, dengan tanggal-jam asli) ada di `docs/
 
 ## Entri 3 — Engine kuis dan penilaian (slice 04–06)
 
-- **Status**: belum terisi — slice 04–06 belum dikerjakan.
+- **Waktu**: 6 Oktober 2026 (slice 04 pagi–siang; slice 05 menyusul).
+- **Tujuan**: mengubah kerangka menjadi mesin ulangan sungguhan — murid mengerjakan kuis dengan pengacakan dan autosave, jawaban dinilai server, hasil tampil tanpa kunci; lalu sistem skor yang adil (skor asli permanen, retry terkontrol, ranking dari skor asli, badge per mapel, remedial otomatis, laporan pemahaman per tema/tag).
+- **Prompt inti (ringkas)**: (a) "lanjutkan" — slice 04 (pengerjaan, penilaian objektif, deadline server, submit idempoten, halaman hasil); (b) "lanjutkan" — slice 05 (retry, ranking, badge, remedial, laporan per tag) termasuk permintaan singkat "sudah tau paletnya kan? dan warna yang untuk guru dan murid?" yang dijawab dari `chunks/theme.json`: latar #F8FAFC, sidebar/panel guru #1A2F65, aksen #0EA5E9, pendukung #95A7D5, sorot hangat murid #EEF385 (selalu dengan garis tepi), teks #0F172A, dan mode gelap #0B1530/#14214A — semua hex hanya di blok variabel `theme.css`.
+- **Hasil**: slice 04 — migrasi `attempts`/`answers`, `AttemptService` (mulai/jawab/kumpulkan/`PenilaianObjektif`/`Pengacakan`), layar `/kerjakan/:kuisId` dan `/hasil/:attemptId`; temuan bug zona waktu (jadwal bergeser 7 jam) diperbaiki lewat `keIso()`/`keLokal()`. Slice 05 — kolom `attempt_no`/`asli`, section `Report` (Ranking/Badge/Remedial/LaporanTag), kunci pengaturan baru (`ambang_paham`, `ambang_mulai_paham`, `data_minimum_tag`) dan **ranking bawaan mati**, halaman `/peringkat/:kuisId`, `/kuis/:id/laporan`, `/badge`, `/progres-tema`. Kondisi terakhir: **Pest 79 passed (491 assertions)**, **Pint 166 berkas**, **Vitest 25 berkas/156 test**, **realtime 2 test**, `npm run build` sukses; smoke CDP slice 04 **13/13** dan slice 05 **17/17** lulus. Slice 06 (koreksi manual isian/uraian) belum dikerjakan.
+- **Rujukan log mentah**: `log-mentah/2026-10-05-prompt-2.md` — `2026-10-06 11:10 WIB` (slice 04: backend, verifikasi, frontend, bug jadwal 7 jam, pagar mutu, smoke 13/13) dan `2026-10-06` (slice 05: rintisan diverifikasi, section Report, test 8/100, frontend, `memory_limit` suite, smoke 17/17).
 
 ## Entri 4 — Anti-cheat, realtime, materi, upload dan AI (slice 07–09)
 

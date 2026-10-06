@@ -128,3 +128,47 @@ Prasyarat sama seperti demo slice 03 (backend 8000, frontend 5173, migrasi + see
 `docs/smoke-ui-slice04.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri: guru menjadwalkan ulang
 kuis, murid memilih opsi kunci, autosave diverifikasi lewat API, lalu mengumpulkan dan membuka hasil.
 Hasil terakhir **13/13 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.6.
+
+---
+
+## Demo Slice 05 — Skor Asli, Retry, Peringkat, Lencana, Remedial, dan Laporan Tema
+
+Prasyarat sama seperti demo slice 04 (backend 8000, frontend 5173). Tambahan satu migrasi slice 05:
+
+```bash
+cd backend && php artisan migrate --force   # 2026_10_06_000012_add_retry_columns_to_attempts_table
+```
+
+### Langkah demo (guru)
+
+1. Masuk `admin@sekolah.test`. Menu guru tetap **Kelas · Mapel · Murid · Bank Soal · Tag · Kuis · Pengaturan**;
+   laporan dibuka dari **Kuis → detail kuis**.
+2. **Pengaturan** (grup **Aturan ulangan / Tampilan & laporan / Laporan & pemahaman**):
+   - nyalakan **Izinkan ulangan ulang (retry)** dan atur **Batas percobaan** (mis. 3);
+   - biarkan **Tampilkan ranking** mati dulu (memang bawaan mati) — tunjukkan bahwa murid belum melihat peringkat;
+   - atur **Ambang paham (%)**, **Ambang mulai paham (%)**, dan **Data minimum per tema**;
+   - centang **Kunci di sekolah** bila ingin nilai sekolah mengalahkan pengaturan kelas/kuis.
+3. **Kuis → detail kuis → Laporan per tema**: setiap murid kelas ditampilkan dengan lencana **paham / mulai
+   paham / belum paham** per tema, plus catatan ambang yang sedang berlaku. Tombol **Lihat peringkat** membuka
+   peringkat; tombol **Peringkat** juga tersedia di halaman detail kuis.
+
+### Langkah demo (murid)
+
+4. Masuk `smoke.murid@sekolah.test`. Menu murid: **Ulangan Saya · Progres Tema · Lencana**.
+5. **Kerjakan ulang**: buka **Ulangan Saya → Kerjakan sekarang** pada kuis yang sudah pernah dikumpulkan (retry
+   menyala) → jawab → **Kumpulkan jawaban**. Halaman hasil menampilkan **skor ulang**; nilai asli tidak berubah.
+6. **Progres Tema**: bar per tema + lencana tingkat + bagian **Latihan remedial** berisi soal dari tema lemah
+   (tanpa kunci). Jelaskan: remedial hanya menyusun latihan, nilai asli tidak tersentuh.
+7. **Lencana**: lencana per mapel (emas ≥ 90, perak ≥ 75, perunggu ≥ 60) dari rata-rata **nilai asli**.
+8. **Peringkat** (`/peringkat/:kuisId`, dari halaman hasil atau daftar ulangan):
+   - saat saklar ranking masih mati → pesan "Gurumu mematikan tampilan peringkat untuk kelas ini";
+   - guru menyalakan **Tampilkan ranking** → murid memuat ulang halaman → tabel tampil, baris sendiri disorot
+     (sorot hangat) dengan tanda "(kamu)".
+9. **Bukti aturan inti**: setelah beberapa kali retry dengan nilai bagus, peringkat tetap memakai nilai percobaan
+   pertama — guru bisa membandingkan di **Laporan per tema** vs **Peringkat**.
+
+### Bukti lewat browser sungguhan
+
+`docs/smoke-ui-slice05.mjs` (Chrome CDP, port 9333) menjalankan alur di atas sendiri: guru mengatur saklar,
+murid mengerjakan ulang, halaman peringkat/progres/lencana/laporan dibuka sungguhan, dan peringkat diverifikasi
+memakai `attempt_id` asli. Hasil terakhir **17/17 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.7.
