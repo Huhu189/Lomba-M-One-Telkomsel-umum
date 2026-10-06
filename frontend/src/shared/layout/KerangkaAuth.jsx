@@ -1,10 +1,10 @@
 /**
- * Kerangka halaman auth: panel navy (merek, maskot, nilai jual) + area formulir.
+ * Kerangka halaman auth: panel navy (merek, nilai jual) + area formulir.
  * Di HP panel menyusut jadi pita atas dan kartu formulir menimpanya sedikit.
  */
 import { Outlet } from 'react-router-dom'
 import { IkonJam, IkonPerisai, IkonBintang } from '../../icons.jsx'
-import { HiasanLatar, MaskotBuku } from '../ui/Maskot.jsx'
+import { HiasanLatar } from '../ui/Maskot.jsx'
 import Merek from './Merek.jsx'
 import TombolTema from './TombolTema.jsx'
 
@@ -29,7 +29,6 @@ export default function KerangkaAuth() {
         </div>
 
         <div className="auth-panel-tengah position-relative">
-          <MaskotBuku ukuran={200} melayang className="mb-3" />
           <h2 className="h2 fw-bold mb-3">Belajar dan ulangan jadi lebih tenang.</h2>
           <ul className="auth-poin">
             {poin.map(({ Ikon, judul, isi }) => (

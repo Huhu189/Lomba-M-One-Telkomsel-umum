@@ -4,7 +4,7 @@ import Isian from './Isian.jsx'
 import Banner from './Banner.jsx'
 import Langkah from './Langkah.jsx'
 import MeterSandi from './MeterSandi.jsx'
-import { MaskotBuku } from './Maskot.jsx'
+import { HiasanLatar, IlustrasiSurat } from './Maskot.jsx'
 
 describe('Isian', () => {
   it('label terhubung ke input lewat htmlFor/id', () => {
@@ -66,11 +66,18 @@ describe('MeterSandi', () => {
   })
 })
 
-describe('MaskotBuku', () => {
-  it('dekoratif secara bawaan (aria-hidden), berlabel bila diberi label', () => {
-    expect(renderToStaticMarkup(<MaskotBuku />)).toContain('aria-hidden="true"')
-    const html = renderToStaticMarkup(<MaskotBuku label="Maskot" />)
-    expect(html).toContain('role="img"')
-    expect(html).toContain('aria-label="Maskot"')
+describe('Ilustrasi', () => {
+  it('IlustrasiSurat dekoratif (aria-hidden) dan memakai kelas warna tema', () => {
+    const html = renderToStaticMarkup(<IlustrasiSurat />)
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('il-pendukung')
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}/)
+  })
+
+  it('HiasanLatar dekoratif tanpa warna hex', () => {
+    const html = renderToStaticMarkup(<HiasanLatar className="hias" />)
+    expect(html).toContain('class="hias"')
+    expect(html).toContain('il-bulat')
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}/)
   })
 })

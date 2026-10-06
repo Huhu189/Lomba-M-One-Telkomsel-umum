@@ -960,11 +960,6 @@ a {
   max-width: 34rem;
 }
 
-.hero-maskot {
-  justify-self: center;
-  width: min(60vw, 260px);
-}
-
 .hero .btn-tepi {
   background-color: transparent;
   color: var(--teks-di-panel);
@@ -979,7 +974,6 @@ a {
 
 @media (min-width: 768px) {
   .hero {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     padding: 3.25rem 3rem;
   }
 }
@@ -1095,21 +1089,6 @@ a {
 .il-bayang {
   fill: var(--teks-di-aksen);
   opacity: 0.18;
-}
-
-.il-melayang {
-  animation: melayang 4s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes melayang {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
 }
 
 /* Muncul halus saat halaman dibuka */

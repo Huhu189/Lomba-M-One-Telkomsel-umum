@@ -8,7 +8,7 @@ import { useEffect } from 'react'
 import { IkonBintang, IkonJam, IkonPerisai } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
 import { inisial } from '../../shared/layout/KerangkaUmum.jsx'
-import { HiasanLatar, MaskotBuku } from '../../shared/ui/Maskot.jsx'
+import { HiasanLatar } from '../../shared/ui/Maskot.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { useAuthStore } from '../auth/authStore.js'
 
@@ -68,12 +68,6 @@ function BerandaTamu() {
             </TombolTaut>
           </div>
         </div>
-        <MaskotBuku
-          ukuran={240}
-          melayang
-          label="Maskot buku yang tersenyum"
-          className="hero-maskot position-relative"
-        />
       </section>
 
       <div className="row g-3 g-lg-4">

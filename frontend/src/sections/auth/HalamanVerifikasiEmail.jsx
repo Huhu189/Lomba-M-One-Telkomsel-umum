@@ -5,9 +5,8 @@
  */
 import { z } from 'zod'
 import { useSearchParams } from 'react-router-dom'
-import { MaskotBuku } from '../../shared/ui/Maskot.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
-import { IkonPanahKiri } from '../../icons.jsx'
+import { IkonBuku, IkonPanahKiri, IkonSilang } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
 import { useAuthStore } from './authStore.js'
 import KartuAuth from './KartuAuth.jsx'
@@ -30,7 +29,9 @@ export default function HalamanVerifikasiEmail() {
   if (berhasil) {
     return (
       <KartuAuth judul="Email terverifikasi!" tengah>
-        <MaskotBuku ukuran={160} label="Maskot buku bersorak gembira" melayang className="mb-3" />
+        <span className="fitur-ikon mx-auto" aria-hidden="true">
+          <IkonBuku size={28} />
+        </span>
         <p className="teks-lembut">Akunmu sudah aktif. Yuk masuk dan mulai belajar.</p>
         <TombolTaut to={RUTE.masuk} besar lebar>
           Masuk sekarang
@@ -41,7 +42,9 @@ export default function HalamanVerifikasiEmail() {
 
   return (
     <KartuAuth judul="Tautan tidak berlaku" tengah>
-      <MaskotBuku ukuran={140} suasana="sedih" label="Maskot buku sedih" className="mb-3" />
+      <span className="fitur-ikon lembut mx-auto" aria-hidden="true">
+        <IkonSilang size={28} />
+      </span>
       <p className="teks-lembut mb-4">
         Tautan ini sudah kedaluwarsa atau tidak benar. Tenang, kamu bisa minta tautan yang baru.
       </p>

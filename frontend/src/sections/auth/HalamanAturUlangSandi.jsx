@@ -14,7 +14,6 @@ import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Isian from '../../shared/ui/Isian.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import MeterSandi from '../../shared/ui/MeterSandi.jsx'
-import { MaskotBuku } from '../../shared/ui/Maskot.jsx'
 import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { IkonKunci, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
@@ -63,7 +62,9 @@ export default function HalamanAturUlangSandi() {
   if (berhasil) {
     return (
       <KartuAuth judul="Kata sandi sudah diganti!" tengah>
-        <MaskotBuku ukuran={150} label="Maskot buku tersenyum" className="mb-3" />
+        <span className="fitur-ikon mx-auto" aria-hidden="true">
+          <IkonKunci size={28} />
+        </span>
         <p className="teks-lembut">Sekarang kamu bisa masuk memakai kata sandi yang baru.</p>
         <TombolTaut to={RUTE.masuk} besar lebar>
           Masuk sekarang
@@ -75,7 +76,9 @@ export default function HalamanAturUlangSandi() {
   if (token === '') {
     return (
       <KartuAuth judul="Tautan belum lengkap" tengah>
-        <MaskotBuku ukuran={140} suasana="kaget" label="Maskot buku terkejut" className="mb-3" />
+        <span className="fitur-ikon hangat mx-auto" aria-hidden="true">
+          <IkonSurat size={28} />
+        </span>
         <p className="teks-lembut">
           Buka tautan langsung dari email pengaturan ulang, atau minta tautan yang baru.
         </p>
