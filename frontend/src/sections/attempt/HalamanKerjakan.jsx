@@ -7,7 +7,9 @@
  * - setiap perubahan langsung dicatat ke cadangan lokal, lalu dikirim diam-diam
  *   (autosave) dengan antrean ulang bila jaringan bermasalah;
  * - mengumpulkan memakai kunci idempotensi yang sama untuk attempt ini, jadi
- *   dobel klik atau dua tab tidak menggandakan hasil.
+ *   dobel klik atau dua tab tidak menggandakan hasil;
+ * - proteksi anti-cheat (slice 07) hanya dipasang bila guru menyalakannya lewat
+ *   pengaturan tiga lapis, dan selalu fail-open: proteksi rusak ≠ ulangan rusak.
  *
  * Catatan implementasi: jawaban dan sisa waktu DITURUNKAN (bukan disalin ke
  * state lewat effect) supaya tidak ada setState di badan effect.
@@ -21,9 +23,13 @@ import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
-import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
+import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
 import { formatSisa, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
+import useExamSecurity from '../../security/useExamSecurity.js'
+import ModalProteksi from '../../security/ModalProteksi.jsx'
+import { adaProteksiAktif } from '../../security/pengaturanProteksi.js'
+import usePresence from '../presence/usePresence.js'
 
 /** Jeda autosave per perubahan (ms). */
 const JEDA_KIRIM = 800
@@ -96,6 +102,7 @@ export default function HalamanKerjakan() {
   const [sekarang, setSekarang] = useState(() => Date.now())
   const [sedangKirim, setSedangKirim] = useState(false)
   const [sudahKumpul, setSudahKumpul] = useState(false)
+  const [sudahSetujuProteksi, setSudahSetujuProteksi] = useState(false)
 
   const antrean = useRef(new Map())
   const timerKirim = useRef(0)
@@ -103,6 +110,21 @@ export default function HalamanKerjakan() {
   const sedangKirimRef = useRef(false)
   const peringatanTersiar = useRef(false)
   const jalankanRef = useRef(/** @type {() => Promise<void>} */ (async () => {}))
+
+  const berjalan = attempt !== undefined && attempt.status === 'berjalan'
+
+  // Presence hemat data: ping hanya dipakai sebagai penambal celah 15 detik.
+  usePresence({ attemptId: attempt?.id ?? 0, aktif: berjalan })
+
+  // Proteksi ulangan: dipasang hanya saat attempt berjalan dan ada saklar menyala.
+  const { daftarSaklar, jumlahKejadian, kabur, kunciDetik } = useExamSecurity({
+    attemptId: attempt?.id ?? 0,
+    proteksi: attempt?.proteksi,
+    aktif: berjalan,
+    kirim: kirimKejadian,
+  })
+
+  const adaProteksi = attempt !== undefined && adaProteksiAktif(attempt.proteksi)
 
   // Jawaban = jawaban server + sisa antrean lokal, ditimpa perubahan murid.
   const jawaban = useMemo(() => {
@@ -251,6 +273,36 @@ export default function HalamanKerjakan() {
 
   return (
     <div className="row justify-content-center">
+      {adaProteksi && !sudahSetujuProteksi && (
+        <ModalProteksi daftar={daftarSaklar} onTutup={() => setSudahSetujuProteksi(true)} />
+      )}
+
+      {kabur && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100"
+          style={{ backdropFilter: 'blur(10px)', zIndex: 1060 }}
+          aria-hidden="true"
+        />
+      )}
+
+      {kunciDetik > 0 && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+          style={{ background: 'rgba(11, 21, 48, 0.92)', zIndex: 1090 }}
+          role="alert"
+        >
+          <div className="text-center" style={{ maxWidth: '26rem' }}>
+            <p className="h5 fw-bold text-white mb-2">Layar terkunci sementara</p>
+            <p className="small mb-3 text-white-50">
+              Kamu keluar dari jendela ulangan. Ulangan tetap berjalan, dan gurumu akan melihat catatannya.
+            </p>
+            <p className="display-6 fw-bold text-white mb-0" role="timer">
+              {kunciDetik}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="col-lg-9">
         <div className="kartu-soal p-3 p-md-4 mb-3">
           <div className="d-flex flex-wrap align-items-center gap-3">
@@ -272,6 +324,14 @@ export default function HalamanKerjakan() {
                 {terjawab} / {attempt.soal.length}
               </span>
             </div>
+            {adaProteksi && (
+              <div className="text-end">
+                <span className="teks-lembut small d-block">Pengaman</span>
+                <span className="badge-status lembut">
+                  aktif{jumlahKejadian > 0 ? ` · ${jumlahKejadian} catatan` : ''}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

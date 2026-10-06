@@ -4,7 +4,14 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { RUTE, ruteKerjakanKuis, ruteKoreksiKuis, ruteLaporanKuis, rutePeringkat } from '../../routes.js'
+import {
+  RUTE,
+  ruteKerjakanKuis,
+  ruteKoreksiKuis,
+  ruteLaporanKuis,
+  ruteMonitorKuis,
+  rutePeringkat,
+} from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
@@ -83,6 +90,11 @@ export default function HalamanKuisDetail() {
                 {sebagaiGuru && (
                   <Link className="btn btn-sm btn-tepi" to={ruteKoreksiKuis(data.id)}>
                     Koreksi manual
+                  </Link>
+                )}
+                {sebagaiGuru && (
+                  <Link className="btn btn-sm btn-tepi" to={ruteMonitorKuis(data.id)}>
+                    Live Monitor
                   </Link>
                 )}
               </div>

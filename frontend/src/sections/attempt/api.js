@@ -46,6 +46,12 @@ export const skemaAttempt = z.object({
   dikumpulkan_at: z.string().nullable(),
   soal: z.array(skemaSoalKerjakan),
   jawaban: z.array(skemaJawabanTersimpan),
+  // Saklar anti-cheat dari server (slice 07). Diterima sebagai peta; bentuk
+  // lain (mis. peta kosong yang terkirim sebagai daftar) diperlakukan "mati"
+  // oleh `proteksiEfektif`, bukan membuat layar murid gagal dibuka.
+  proteksi: z
+    .union([z.record(z.string(), z.boolean()), z.array(z.unknown())])
+    .optional(),
 })
 
 /** Hasil penilaian satu soal (tanpa kunci jawaban). */
@@ -160,6 +166,30 @@ export async function kumpulkanAttempt(attemptId, idempotencyKey) {
 export async function ambilHasil(attemptId) {
   const respons = await client.get(`/v1/attempt/${attemptId}/hasil`)
   return skemaHasil.parse(respons.data)
+}
+
+/**
+ * Ping kehadiran (slice 07). Dipanggil hanya bila 15 detik berlalu tanpa
+ * request lain — request biasa sudah memperbarui kehadiran sendiri.
+ * @param {number} attemptId
+ * @returns {Promise<void>}
+ */
+export async function pingKehadiran(attemptId) {
+  await ambilCsrfCookie()
+  await client.post(`/v1/attempt/${attemptId}/hadir`)
+}
+
+/**
+ * Kirim kejadian anti-cheat berkelompok (identitas TIDAK ikut — server
+ * membacanya dari sesi).
+ * @param {number} attemptId
+ * @param {Array<Record<string, unknown>>} kejadian
+ * @returns {Promise<number>} jumlah yang benar-benar tersimpan di server
+ */
+export async function kirimKejadian(attemptId, kejadian) {
+  await ambilCsrfCookie()
+  const respons = await client.post(`/v1/attempt/${attemptId}/kejadian`, { kejadian })
+  return z.object({ tersimpan: z.number() }).parse(respons.data).tersimpan
 }
 
 /**

@@ -28,6 +28,8 @@ export const RUTE = {
   laporanKuis: '/kuis/:id/laporan',
   // Koreksi manual guru (slice 06).
   koreksiKuis: '/kuis/:id/koreksi',
+  // Live Monitor guru (slice 07).
+  monitorKuis: '/kuis/:id/monitor',
   badge: '/badge',
   progresTema: '/progres-tema',
 }
@@ -84,4 +86,13 @@ export function ruteLaporanKuis(id) {
  */
 export function ruteKoreksiKuis(id) {
   return `/kuis/${id}/koreksi`
+}
+
+/**
+ * Tautan Live Monitor (guru) dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteMonitorKuis(id) {
+  return `/kuis/${id}/monitor`
 }
