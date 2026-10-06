@@ -294,3 +294,59 @@ smoke slice 05: 17/17 lulus
 - **Perbaikan data dev**: dua attempt lama slice 04 masih `asli=1` (kolomnya baru ditambahkan dengan nilai
   bawaan `true`) sehingga satu murid muncul dua kali di peringkat; baris kedua dirapikan menjadi
   `attempt_no=2, asli=false` sebelum smoke.
+
+## A.8 Rapikan Lokasi Berkas Uji + Dokumentasi Penanda
+
+### A.8.1 Berkas uji frontend dipusatkan di `src/__tests__/`
+
+Sebelumnya 25 berkas `*.test.js(x)` ditaruh di samping berkas sumbernya (tersebar di
+`sections/`, `shared/`, `theme/`, dan akar `src/`). Atas permintaan pengguna ("rapihkan lokasi
+file test, jangan di setiap folder"), seluruh berkas uji dipindahkan ke **satu lokasi terpusat**
+`frontend/src/__tests__/` dengan struktur yang mencerminkan `src/`:
+
+```
+src/__tests__/icons.test.jsx
+src/__tests__/theme/tema.test.js
+src/__tests__/shared/{api,store,ui}/…
+src/__tests__/sections/{attempt,auth,home,question,quiz,report,school,settings}/…
+```
+
+Semua spesifier impor relatif (termasuk `vi.mock('./api.js', …)` dan JSDoc `import('./api.js')`)
+diperbaiki otomatis dengan menghitung ulang jalur relatif, dan `import.meta.glob` di
+`theme/tema.test.js` diganti dari `'../**/*'` menjadi `'../../**/*'` supaya tetap memindai
+seluruh `src/`. `jsconfig.json` tidak perlu diubah karena `include: ["src"]` sudah mencakup
+`src/__tests__/`.
+
+Hasil setelah pemindahan (dijalankan, bukan diklaim):
+
+```
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK   0 error, 2 warning lama
+=== Frontend Vitest ===     >>> OK   25 berkas / 156 test
+./verify.sh: SEMUA HIJAU (Pest 79 passed / 491 assertions, Pint PASS 166 files, realtime 2 test)
+```
+
+Kebiasaan ini dicatat di `AGENT.md` bagian Pagar Mutu: berkas uji frontend terpusat di
+`src/__tests__/`, backend di `backend/tests/`, realtime di `realtime/test/`.
+
+### A.8.2 Berkas penanda pengguna dimasukkan ke dokumentasi utama
+
+Dua berkas penanda di `docs/log-mentah/` (`log_claude(tambahkan ke main dokumentasion.txt` dan
+`promt_claude.txt`) berisi hasil kerja AI lain yang merombak UI/UX slice 00–02 **di luar
+repository**, beserta prompt yang dikirim ke AI tersebut. Isinya dimasukkan **apa adanya** ke
+dokumentasi utama:
+
+- `docs/log-mentah/2026-10-06-log-claude-ui-baru.md` — log pekerjaan itu, dengan keterangan
+  jujur bahwa pekerjaan dilakukan di luar repo memakai salinan zip lalu disalin masuk, dan
+  bahwa tidak ada klaim di dalamnya yang dianggap bukti (harus diverifikasi ulang di repo ini).
+- `docs/log-mentah/2026-10-06-prompt-claude-ui-baru.md` — promptnya, apa adanya.
+- Keduanya otomatis ikut ke **`docs/log-mentah/log-mentah.docx`** (log mentah utama) karena
+  `export_word_sesi.py` menyertakan seluruh `docs/log-mentah/*.md`.
+- Prompt Claude juga dilampirkan sebagai prompt ketiga di **`docs/word/AGENT.docx` + `AGENT.md`**
+  (`export-word.sh` diperbarui: `PROMPT_V3`), dan diarsipkan sebagai
+  `docs/word-arsip/(ARSIP) prompt-claude.docx`.
+
+Verifikasi isi dokumen Word setelah ekspor ulang (dibaca dari `word/document.xml`):
+`log-mentah.docx` memuat `log-claude-ui-baru`, `prompt-claude-ui-baru`, dan "rombak UI/UX slice 00";
+`AGENT.docx` memuat `prompt-claude-ui-baru` dan kalimat prompt aslinya. Berkas `.txt` asli
+dibiarkan utuh (tidak dihapus) sebagai jejak berkas penanda.

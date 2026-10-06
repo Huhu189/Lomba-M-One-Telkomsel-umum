@@ -36,6 +36,8 @@ AI agent bekerja sebagai senior full-stack engineer sekaligus security engineer.
 
 ## Pagar Mutu
 - Frontend: JSDoc + `checkJs` strict (`jsconfig.json`, `npm run check`), semua data eksternal (API/SSE/localStorage) lewat Zod, ESLint (react-hooks, react/no-danger), Vitest.
+- **Lokasi berkas uji terpusat** (jangan ditaruh di samping berkas sumber): frontend di `frontend/src/__tests__/`
+  mengikuti struktur `src/`, backend di `backend/tests/`, realtime di `realtime/test/`.
 - Backend: `declare(strict_types=1)` di setiap file PHP, enum untuk status, Form Request, Policy, API Resource, `Model::shouldBeStrict` + `preventLazyLoading` di non-produksi.
 - Database: foreign key, NOT NULL, unique (satu attempt aktif per murid per kuis; satu jawaban per soal per attempt), transaksi + `lockForUpdate` pada submit/penilaian.
 - Pest arch tests: controller tidak memanggil `DB::` langsung, tidak ada dd/dump. Factory + Seeder untuk data uji.
@@ -49,10 +51,13 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
 ## Format Dokumentasi (revisi)
 - Dokumen internal/agent tetap **Markdown (.md)**: `AGENT.md`, `chunks/*.json`, dan berkas `docs/*.md`.
 - **Dokumentasi untuk AI** ada di `docs/word/` dalam dua format dengan isi identik:
-  `AGENT.docx` dan `AGENT.md` (prompt mentah v1 + v2).
+  `AGENT.docx` dan `AGENT.md` (prompt mentah v1 + v2 + prompt ke AI lain untuk rombak UI/UX).
 - **Ringkasan prompt dan log mentah utuh** berbentuk Word ditaruh di `docs/log-mentah/`:
   `ringkasan-prompt.docx` (ringkasan prompt/jurnal) dan `log-mentah.docx` (log mentah
   **UTUH** dari berkas sesi asli — tanpa potong/ringkas).
+- `docs/log-mentah/` memuat **seluruh** berkas log `*.md` apa adanya, termasuk log pekerjaan yang dilakukan
+  di luar repository lalu disalin masuk (`2026-10-06-log-claude-ui-baru.md` + promptnya). Pekerjaan luar repo
+  wajib dicatat tempatnya di log dan tidak boleh dijadikan bukti tanpa diverifikasi ulang di repo ini.
 - `docs/export-word.sh` mengekspor ulang dokumen Word; jalankan setiap akhir slice.
 - **Log mentah diperbarui pada setiap commit** (append-only; tidak boleh disunting).
 

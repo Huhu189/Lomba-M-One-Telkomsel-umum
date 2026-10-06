@@ -1,4 +1,4 @@
-# AGENT — Prompt Mentah (v1 + v2)
+# AGENT — Prompt Mentah (v1 + v2 + prompt Claude)
 
 Dokumentasi untuk AI. Isi berkas ini identik dengan `AGENT.docx`.
 
@@ -103,4 +103,25 @@ Menulis kode aplikasi, menginstal dependency aplikasi, atau mengerjakan slice 01
 
 FORMAT OUTPUT
 Bahasa Indonesia, ringkas dan terstruktur. Di akhir tulis: (a) berkas yang dibuat/diubah, (b) yang dijalankan dan hasilnya, (c) perbedaan yang ditemukan di Tahap 1 dan bagaimana diselesaikan, (d) hal yang perlu keputusan saya, (e) langkah berikutnya (slice 01, lalu slice 02-03 sebagai entri jurnal 2).
+
+
+
+===== 2026-10-06-prompt-claude-ui-baru.md =====
+
+# Prompt Claude — rombak UI/UX slice 00–02 (dikerjakan di luar repo, disalin masuk)
+
+Asal berkas: `docs/log-mentah/promt_claude.txt` — prompt yang dikirim pengguna ke AI lain untuk merombak UI/UX.
+Isi di bawah ini **apa adanya** (tidak disunting). Disalin ke dokumentasi utama sebagai bagian log mentah utuh.
+
+---
+
+Perhatikan, saat ini masih mvp dalam logic nay dan ui nya belum matang, kau boleh bua tui nya rombak ui nya dan ux nya matangkan dan boleh komfirm jika ada yang gak yakin
+(di upload file backend dan frontend dan juga docs)
+
+
+
+
+
+
+
 
