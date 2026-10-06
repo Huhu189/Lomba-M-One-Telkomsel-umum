@@ -155,3 +155,63 @@ kuis draf seeder diterbitkan). Test backend tetap memakai basis data test terpis
   `php artisan migrate --force` sebelum seeding/demo.
 - **Siswa tidak menerima kunci**: dijamin `SoalMuridResource`/`KuisMuridResource` di server dan diuji dua
   lapis (Pest memastikan JSON mentah tanpa `"kunci"`; Vitest memastikan skema murid tidak punya `kunci`).
+
+## A.6 Slice 04 — Pengerjaan Ulangan, Penilaian Objektif, dan Hasil
+
+### A.6.1 Pagar mutu — `./verify.sh` (dari root repo)
+
+```
+=== Backend Pest ===        >>> OK   Tests: 71 passed (391 assertions)
+=== Backend Pint ===        >>> OK   PASS 156 files
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK   0 error, 2 warning (react-hooks/incompatible-library dari watch() RHF)
+=== Frontend Vitest ===     >>> OK   24 berkas / 146 test
+=== Realtime node --test ===>>> OK   2 test
+verify.sh: SEMUA HIJAU
+```
+
+Tambahan: `npm run build` sukses (`dist/assets/index-*.js` 600,82 kB, gzip 179,78 kB).
+Peringatan Vite "chunk > 500 kB" masih ada dan belum ditangani.
+
+### A.6.2 Test baru slice 04
+
+- `backend/tests/Feature/AttemptTest.php` (12 test / 94 assertion): mulai attempt + deadline server +
+  tanpa kunci; satu attempt aktif per murid (idempoten); pengacakan soal stabil dan opsi berpermutasi;
+  IDOR ditolak di 4 endpoint; guru tidak bisa mulai tetapi bisa melihat hasil; jawaban tersimpan satu
+  baris, bisa diperbarui, dan pulih dari DB; jawaban ditolak setelah deadline dan untuk soal di luar kuis;
+  kumpulkan menilai + idempoten + menolak jawaban sesudahnya; terlambat ≤120 detik dinilai, >120 detik 422;
+  soal rusak (tipe tak dikenal) berstatus `gagal` tetapi soal lain tetap dinilai; hasil tanpa kunci/pembahasan;
+  kuis kelas lain 403 dan kuis di luar jadwal 422.
+- Vitest baru: `attempt/hitungMundur.test.js` (9), `attempt/simpananJawaban.test.js` (6, jsdom),
+  `attempt/skema.test.js` (6), dan 3 test konversi jadwal di `quiz/skema.test.js`.
+
+### A.6.3 Smoke browser sungguhan (Chrome CDP) — `docs/smoke-ui-slice04.mjs` — 13/13 lulus
+
+1. Login guru (200); guru menjadwalkan ulang kuis terbit agar sedang berjalan (200).
+2. Login murid (200); daftar ulangan menampilkan tombol "Kerjakan sekarang".
+3. `/kerjakan/1`: timer tampil `20:00`, soal tampil, **tanpa kata kunci/pembahasan**.
+4. Respons `POST /v1/kuis/1/mulai` diperiksa mentah: **tidak memuat** `kunci` maupun `pembahasan`.
+5. Klik opsi kunci → autosave terkirim; `GET /v1/attempt/1` memuat jawaban `"C"`.
+6. Penghitung "Terjawab 1 / 5" bertambah; "Kumpulkan jawaban" mengarahkan ke `/hasil/2`.
+7. Halaman hasil menampilkan skor; server melaporkan skor 1/8, benar 1, belum dijawab 4, tanpa lencana kunci.
+8. Kumpulkan ulang (idempoten) tetap 200 dan hasil tidak berubah; menjawab sesudah dikumpulkan ditolak (403).
+
+### A.6.4 Bug yang ditemukan dan diperbaiki — jadwal bergeser 7 jam
+
+`config('app.timezone') = UTC`, sedangkan `<input type="datetime-local">` mengirim waktu lokal tanpa
+offset. Jadwal yang diisi guru tersimpan 7 jam lebih lambat dari yang dimaksud sehingga murid melihat
+"Kuis belum dimulai" (bukti: jadwal 09:47 UTC tampil sebagai "16.47"). Perbaikan di sisi kirim:
+`keIso()`/`keLokal()` di `frontend/src/sections/quiz/status.js`, dipakai `HalamanKuis.jsx`, dan diuji
+Vitest (konversi lokal → UTC, input kosong/tidak valid, dan bolak-balik ISO → lokal → ISO).
+
+### A.6.5 Keputusan teknis slice 04 (jujur)
+
+- **Semua keputusan di server**: urutan soal/opsi (seed per attempt), skor, deadline, dan status `terlambat`
+  ditentukan backend; timer di klien hanya tampilan dan dikoreksi `server_now`.
+- **Tanpa `additional()` pada resource**: karena `withoutWrapping()` dipakai, `additional()` memaksa
+  pembungkus `data`; data tambahan ditaruh sebagai properti publik pada class resource.
+- **Payload jawaban berbentuk daftar** `[{question_id, jawaban}]`, bukan peta, agar kunci numerik aman di JSON.
+- **Submit idempoten**: kunci idempotensi per attempt dari klien + `lockForUpdate` di server; dobel klik
+  atau dua tab tidak menggandakan hasil.
+- **Fail-open di klien**: `BatasGalatUlangan.jsx` (react-error-boundary) mencegah satu galat render
+  mematikan seluruh aplikasi.

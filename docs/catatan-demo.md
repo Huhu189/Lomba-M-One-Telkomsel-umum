@@ -99,3 +99,32 @@ kuis draf **Latihan Operasi Hitung (draf)**, dan kuis terbit **Ulangan Operasi H
 ### Bukti lewat browser sungguhan
 
 `docs/smoke-ui-slice03.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri: guru membuat tag + satu soal lewat formulir, mengubah jadwal, menyusun 2 soal, menerbitkan kuis; lalu murid uji membuka kuisnya. Hasil terakhir **8/8 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.5.
+
+## Demo Slice 04 — Mengerjakan Ulangan, Penilaian Otomatis, dan Hasil
+
+Prasyarat sama seperti demo slice 03 (backend 8000, frontend 5173, migrasi + seed). Tambahan: jalankan
+`php artisan migrate --force` untuk dua migrasi slice 04 (`attempts`, `answers`).
+
+### Langkah demo (murid dan guru)
+
+1. **Guru menyiapkan jadwal** (masuk `admin@sekolah.test`): buka **Kuis** → ubah jadwal kuis terbit agar
+   mulai beberapa menit yang lalu dan selesai satu jam ke depan → simpan. Status berubah menjadi
+   **Sedang berjalan** pada jam yang benar (lihat A.6.4: kiriman jadwal kini dikonversi ke UTC).
+2. **Murid mengerjakan** (masuk `smoke.murid@sekolah.test`, kelas yang sama): menu **Ulangan Saya** →
+   tekan **Kerjakan sekarang**.
+   - timer berjalan (contoh 20:00) dan berubah warna saat sisa ≤5 menit / ≤1 menit;
+   - soal ditampilkan tanpa kunci; setiap jawaban tersimpan otomatis (indikator "Terjawab" bertambah);
+   - tutup lalu buka kembali halaman: jawaban tetap ada (dipulihkan dari server + cadangan lokal).
+3. **Kumpulkan**: tekan **Kumpulkan jawaban** → konfirmasi → diarahkan ke **halaman hasil**.
+   - Uji idempoten: klik/ubah dua kali, atau muat ulang — hasil tidak berubah.
+   - Bila waktu habis, jawaban dikumpulkan otomatis oleh klien; server tetap penentu akhir (toleransi
+     keterlambatan 120 detik).
+4. **Halaman hasil**: menampilkan skor, jumlah benar, nilai (persen), ringkasan penilaian
+   (dinilai / perlu tinjau / gagal / belum dijawab), dan rincian per soal — **tanpa kunci jawaban maupun
+   pembahasan** (server memang tidak mengirimkannya).
+
+### Bukti lewat browser sungguhan
+
+`docs/smoke-ui-slice04.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri: guru menjadwalkan ulang
+kuis, murid memilih opsi kunci, autosave diverifikasi lewat API, lalu mengumpulkan dan membuka hasil.
+Hasil terakhir **13/13 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.6.
