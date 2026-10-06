@@ -6,7 +6,6 @@ namespace App\Sections\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Sections\Auth\Enums\UserStatus;
 use App\Sections\Auth\Http\Requests\DaftarMuridRequest;
 use App\Sections\Auth\Http\Requests\MasukRequest;
 use App\Sections\Auth\Http\Resources\UserResource;
@@ -43,8 +42,7 @@ class AuthController extends Controller
     {
         $user = $login->masuk(
             (string) $request->input('email'),
-            (string) $request->input('password'),
-            (bool) $request->boolean('ingat'),
+            (string) $request->input('password'), $request->boolean('ingat'),
         );
 
         return response()->json([
@@ -97,17 +95,9 @@ class AuthController extends Controller
      */
     public function kirimUlangVerifikasiPublik(Request $request, VerifyEmailService $verifikasi): JsonResponse
     {
-        $email = mb_strtolower(trim((string) $request->input('email')));
-
-        $user = $email === '' ? null : User::query()->where('email', $email)->first();
-
-        // Pending (belum verifikasi) justru yang boleh kirim ulang; suspend/dihapus tidak.
-        $bolehKirim = $user !== null
-            && ! in_array($user->status, [UserStatus::Suspended, UserStatus::Dihapus], true);
-
-        if ($bolehKirim) {
-            $verifikasi->kirimUlang($user);
-        }
+        // Penelusuran email + penjaga status ada di service (controller tidak
+        // menyentuh model langsung) — respons tetap identik untuk semua kasus.
+        $verifikasi->kirimUlangPublik((string) $request->input('email'));
 
         return response()->json(['message' => 'Tautan verifikasi dikirim (jika email belum terverifikasi).']);
     }

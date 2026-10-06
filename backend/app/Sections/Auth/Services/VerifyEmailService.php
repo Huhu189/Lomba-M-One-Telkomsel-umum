@@ -20,14 +20,22 @@ class VerifyEmailService
      */
     public function verifikasi(User $user): void
     {
-        if (! $user->hasVerifiedEmail()) {
-            $user->forceFill([
-                'email_verified_at' => $user->freshTimestamp(),
-                'status' => UserStatus::Aktif->value,
-            ])->save();
-
-            event(new Verified($user));
+        if ($user->hasVerifiedEmail()) {
+            return;
         }
+
+        $perubahan = ['email_verified_at' => $user->freshTimestamp()];
+
+        // Status hanya dinaikkan dari Pending. Akun yang ditangguhkan atau sedang
+        // dihapus sekolah tidak boleh hidup kembali hanya karena tautan verifikasi
+        // (yang tandatangannya masih berlaku) dibuka.
+        if ($user->status === UserStatus::Pending) {
+            $perubahan['status'] = UserStatus::Aktif->value;
+        }
+
+        $user->forceFill($perubahan)->save();
+
+        event(new Verified($user));
     }
 
     /**
@@ -42,5 +50,29 @@ class VerifyEmailService
         }
 
         return $this->email->kirimVerifikasi($user);
+    }
+
+    /**
+     * Kirim ulang tautan TANPA sesi (akun pending belum bisa masuk).
+     *
+     * Penelusuran email dan penjaga status sengaja ada di sini supaya controller
+     * hanya bicara dengan service, bukan menyentuh model langsung.
+     */
+    public function kirimUlangPublik(string $email): void
+    {
+        $email = mb_strtolower(trim($email));
+
+        if ($email === '') {
+            return;
+        }
+
+        $user = User::query()->where('email', $email)->first();
+
+        // Pending (belum verifikasi) justru yang boleh kirim ulang; suspend/dihapus tidak.
+        if ($user === null || in_array($user->status, [UserStatus::Suspended, UserStatus::Dihapus], true)) {
+            return;
+        }
+
+        $this->kirimUlang($user);
     }
 }

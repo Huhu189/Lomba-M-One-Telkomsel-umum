@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Sections\Auth\Services;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class PasswordResetService
 {
@@ -30,22 +31,29 @@ class PasswordResetService
     /**
      * Terapkan kata sandi baru dari token (sekali pakai).
      *
-     * @param  array{token: string, email: string, password: string}  $data
+     * URL tautan reset dibangun di `AppServiceProvider` lewat
+     * `ResetPassword::createUrlUsing()` — `Password::reset()` hanya menerima dua
+     * argumen, jadi callback url tidak boleh ditulis di sini.
      */
-    public function terapkan(array $data): string
+    public function terapkan(string $email, string $token, string $password): string
     {
         $status = Password::reset(
-            $data,
-            function (User $user, string $password) {
+            ['email' => $email, 'token' => $token, 'password' => $password],
+            function (User $user, string $sandiBaru): void {
                 $user->forceFill([
-                    'password' => $password,
+                    'password' => $sandiBaru,
+                    // Kunci ingat-saya di semua perangkat lama ikut dicabut: cookie
+                    // "remember me" lama tidak lagi bisa memulihkan sesi.
+                    'remember_token' => Str::random(60),
                 ])->save();
-            },
-            function (User $user, string $token): string {
-                // Tautan menuju halaman frontend (SPA), bukan ke API.
-                $dasar = rtrim((string) Config::string('app.frontend_url'), '/');
 
-                return $dasar.'/atur-ulang-sandi?token='.$token.'&email='.urlencode($user->email);
+                // Sesi yang masih hidup di perangkat lain ikut diakhiri
+                // (SESSION_DRIVER=database, lihat config/session.php).
+                if (config('session.driver') === 'database') {
+                    DB::table((string) config('session.table', 'sessions'))
+                        ->where('user_id', $user->getKey())
+                        ->delete();
+                }
             },
         );
 

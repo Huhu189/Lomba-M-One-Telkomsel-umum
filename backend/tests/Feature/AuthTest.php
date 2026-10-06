@@ -6,12 +6,17 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Sections\Auth\Enums\UserStatus;
+use App\Sections\Auth\Services\RegisterService;
+use App\Sections\Auth\Services\VerifyEmailService;
 use Database\Seeders\RolesAndAdminSeeder;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+use ReflectionProperty;
 
 uses(RefreshDatabase::class);
 
@@ -262,4 +267,105 @@ it('logout mengakhiri sesi', function () {
 
     $this->getJson('/api/v1/sesi')->assertJson(['terautentikasi' => false]);
     $this->assertGuest();
+});
+
+it('notifikasi reset sandi membangun tautan ke halaman frontend (regresi URL)', function () {
+    $user = User::factory()->muridAktif()->create(['email' => 'lupa@murid.test']);
+    $token = app('auth.password.broker')->createToken($user);
+
+    // toMail() dipanggil langsung supaya URL benar-benar dibangun. Sebelum diperbaiki,
+    // notifikasi bawaan memakai route('password.reset') yang tidak ada di aplikasi ini,
+    // lalu galatnya ditelan fail-open → email reset tidak pernah sampai.
+    $pesan = (new ResetPassword($token))->toMail($user);
+    $dasar = rtrim((string) config('app.frontend_url'), '/');
+
+    expect($pesan->actionUrl)->toStartWith($dasar.'/atur-ulang-sandi')
+        ->and($pesan->actionUrl)->toContain('token='.$token)
+        ->and($pesan->actionUrl)->toContain(urlencode('lupa@murid.test'));
+});
+
+it('callback URL reset sandi terdaftar di provider (tanpa fallback route yang tidak ada)', function () {
+    $properti = new ReflectionProperty(ResetPassword::class, 'createUrlCallback');
+
+    expect($properti->getValue())->toBeCallable();
+});
+
+it('verifikasi email tidak mengaktifkan akun yang ditangguhkan', function () {
+    // Sengaja belum terverifikasi (status suspended + email_verified_at null).
+    $user = User::factory()->create([
+        'email' => 'tomi@murid.test',
+        'status' => UserStatus::Suspended->value,
+    ]);
+
+    expect($user->status)->toBe(UserStatus::Suspended)
+        ->and($user->hasVerifiedEmail())->toBeFalse();
+
+    app(VerifyEmailService::class)->verifikasi($user);
+
+    // Email tetap tercatat terverifikasi, tetapi penangguhan sekolah tidak dibatalkan.
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue()
+        ->and($user->fresh()->status)->toBe(UserStatus::Suspended);
+});
+
+it('daftar dengan email terdaftar dijawab 422 — keputusan sadar (lihat laporan A.10)', function () {
+    User::factory()->muridAktif()->create(['email' => 'sudah@murid.test']);
+
+    // Trade-off yang disengaja: 422 untuk email terdaftar memang bisa dipakai menebak
+    // email. Anti-enumerasi penuh menuntut auto-login setelah daftar dihapus (perilaku
+    // yang diminta pengguna), jadi perilaku ini dipertahankan dan dicatat jujur.
+    $this->postJson('/api/v1/auth/daftar', [
+        'name' => 'Rina Ganda',
+        'email' => 'sudah@murid.test',
+        'password' => 'kata-sandi-aman-10',
+        'password_confirmation' => 'kata-sandi-aman-10',
+    ])->assertStatus(422)->assertJsonValidationErrors(['email']);
+
+    expect(User::query()->where('email', 'sudah@murid.test')->count())->toBe(1);
+});
+
+it('atur ulang sandi mencabut sesi lama dan token ingat-saya', function () {
+    $user = User::factory()->muridAktif()->create([
+        'email' => 'cabut@murid.test',
+        'remember_token' => 'token-ingat-lama',
+    ]);
+    $token = app('auth.password.broker')->createToken($user);
+
+    // Simulasi driver sesi produksi + satu sesi aktif di perangkat lain.
+    config(['session.driver' => 'database']);
+    DB::table('sessions')->insert([
+        'id' => 'sesi-perangkat-lain',
+        'user_id' => $user->getKey(),
+        'payload' => base64_encode(serialize([])),
+        'last_activity' => now()->getTimestamp(),
+    ]);
+
+    $this->postJson('/api/v1/auth/atur-ulang-sandi', [
+        'token' => $token,
+        'email' => 'cabut@murid.test',
+        'password' => 'sandi-baru-kuat-99',
+        'password_confirmation' => 'sandi-baru-kuat-99',
+    ])->assertOk();
+
+    expect($user->fresh()->remember_token)->not->toBe('token-ingat-lama')
+        ->and(DB::table('sessions')->where('user_id', $user->getKey())->count())->toBe(0);
+});
+
+it('kolom role dan role Spatie selalu sinkron di semua jalur pembuatan user', function () {
+    $murid = User::factory()->create(['email' => 'sinkron-murid@murid.test']);
+    $guru = User::factory()->guru()->create(['email' => 'sinkron-guru@murid.test']);
+
+    expect($murid->role)->toBe('murid')
+        ->and($murid->hasRole('murid'))->toBeTrue()
+        ->and($guru->role)->toBe('guru')
+        ->and($guru->hasRole('guru'))->toBeTrue();
+
+    // Jalur pendaftaran publik (service), bukan lewat factory.
+    $daftar = app(RegisterService::class)->daftarMurid([
+        'name' => 'Rina Sinkron',
+        'email' => 'sinkron-daftar@murid.test',
+        'password' => 'kata-sandi-aman-10',
+    ])['user'];
+
+    expect($daftar->role)->toBe('murid')
+        ->and($daftar->getRoleNames()->all())->toBe(['murid']);
 });

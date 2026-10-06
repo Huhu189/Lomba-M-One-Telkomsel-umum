@@ -22,7 +22,9 @@ use App\Sections\School\Policies\MuridPolicy;
 use App\Sections\School\Policies\SekolahPolicy;
 use App\Sections\Settings\Models\Pengaturan;
 use App\Sections\Settings\Policies\PengaturanPolicy;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -63,13 +65,32 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Kuis::class, KuisPolicy::class);
         Gate::policy(Attempt::class, AttemptPolicy::class);
 
+        // Tautan reset sandi harus menuju halaman frontend (SPA), bukan ke API.
+        // Tanpa callback ini notifikasi bawaan Laravel memanggil route('password.reset')
+        // yang tidak ada di aplikasi ini, sehingga email reset gagal dikirim.
+        ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
+            /** @var CanResetPassword $notifiable */
+            $email = (string) $notifiable->getEmailForPasswordReset();
+            $dasar = rtrim((string) config('app.frontend_url'), '/');
+
+            return $dasar.'/atur-ulang-sandi?token='.$token.'&email='.urlencode($email);
+        });
+
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
+        // Dua batas: per akun+IP (menebak sandi satu akun) dan per IP (mengganti-ganti
+        // email dari satu alamat tetap terbatas).
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip().'|'.mb_strtolower((string) $request->input('email')));
+            $perAlamat = (string) $request->ip();
+            $perAkun = $perAlamat.'|'.mb_strtolower((string) $request->input('email'));
+
+            return [
+                Limit::perMinute(5)->by($perAkun),
+                Limit::perMinute(20)->by($perAlamat),
+            ];
         });
 
         RateLimiter::for('verifikasi', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
+            return Limit::perMinute(3)->by((string) $request->ip());
         });
     }
 }

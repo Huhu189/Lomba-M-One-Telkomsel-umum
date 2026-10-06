@@ -28,7 +28,11 @@ class PasswordResetController extends Controller
     public function aturUlang(AturUlangSandiRequest $request, PasswordResetService $reset): JsonResponse
     {
         return response()->json([
-            'message' => $reset->terapkan($request->validated()),
+            'message' => $reset->terapkan(
+                (string) $request->input('email'),
+                (string) $request->input('token'),
+                (string) $request->input('password'),
+            ),
         ]);
     }
 }

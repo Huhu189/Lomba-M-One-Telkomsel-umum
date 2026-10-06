@@ -27,11 +27,19 @@ class LoginService
             ]);
         };
 
-        if ($user === null || ! Hash::check($password, $user->password)) {
+        if ($user === null) {
+            // Tetap hitung satu hash walau akunnya tidak ada, supaya lama respons
+            // tidak membocorkan email mana yang terdaftar (timing attack).
+            Hash::check($password, self::sandiDummy());
+
             $gagal();
         }
         /** @var User $user */
-        if (($alasan = $user->alasanAkunDitolak()) !== null) {
+        if (! Hash::check($password, $user->password)) {
+            $gagal();
+        }
+
+        if ($user->alasanAkunDitolak() !== null) {
             // Pesan sama persis dengan kredensial salah agar tidak bisa dipakai menebak status akun.
             $gagal();
         }
@@ -50,6 +58,18 @@ class LoginService
     {
         Auth::guard('web')->login($user, $ingat);
         session()->regenerate();
+    }
+
+    /**
+     * Hash sekali pakai untuk menyamakan waktu respons saat akun tidak ditemukan.
+     * Memakai hasher yang sedang aktif (bcrypt di test, argon2id di produksi) agar
+     * biaya komputasinya setara dengan pemeriksaan kata sandi sungguhan.
+     */
+    private static function sandiDummy(): string
+    {
+        static $hash = null;
+
+        return $hash ??= Hash::make('sandi-dummy-anti-enumerasi');
     }
 
     /**

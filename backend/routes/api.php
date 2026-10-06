@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Sections\Attempt\Http\Controllers\AttemptController;
 use App\Sections\Auth\Http\Controllers\AuthController;
+use App\Sections\Auth\Http\Controllers\CekSesiController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
 use App\Sections\Health\Http\Controllers\HealthController;
@@ -20,8 +21,6 @@ use App\Sections\School\Http\Controllers\MuridController;
 use App\Sections\School\Http\Controllers\SekolahController;
 use App\Sections\Scoring\Http\Controllers\KoreksiController;
 use App\Sections\Settings\Http\Controllers\PengaturanController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -125,6 +124,5 @@ Route::prefix('v1')->group(function (): void {
 });
 
 // Titik pengecekan identitas cepat (dipakai diagnostik; identitas dari sesi).
-Route::get('/v1/sesi', function (Request $request): JsonResponse {
-    return response()->json(['terautentikasi' => $request->user() !== null]);
-});
+// Controller invokable (bukan closure) agar `route:cache` tidak ditolak.
+Route::get('/v1/sesi', CekSesiController::class)->name('sesi');
