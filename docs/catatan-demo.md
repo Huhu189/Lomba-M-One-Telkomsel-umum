@@ -172,3 +172,62 @@ cd backend && php artisan migrate --force   # 2026_10_06_000012_add_retry_column
 `docs/smoke-ui-slice05.mjs` (Chrome CDP, port 9333) menjalankan alur di atas sendiri: guru mengatur saklar,
 murid mengerjakan ulang, halaman peringkat/progres/lencana/laporan dibuka sungguhan, dan peringkat diverifikasi
 memakai `attempt_id` asli. Hasil terakhir **17/17 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.7.
+
+---
+
+## Demo Slice 06 — Delapan Tipe Soal + Koreksi Manual Ber-token
+
+Prasyarat sama seperti demo slice 05 (backend 8000, frontend 5173). Tambahan dua migrasi slice 06:
+
+```bash
+cd backend && php artisan migrate --force
+# 2026_10_06_000013_create_confirmation_tokens_and_manual_grading_columns
+# 2026_10_06_100035_create_activity_log_table
+```
+
+> Catatan data dev: kuis **"Latihan Operasi Hitung"** sudah memuat empat soal `SMOKE-06 …` (isian singkat,
+> uraian, letak kata, hubung kata) hasil smoke otomatis, jadi demo bisa langsung memakai kuis itu.
+
+### Langkah demo (guru) — menyusun empat tipe soal
+
+1. Masuk `admin@sekolah.test` → menu **Bank Soal → Soal baru**.
+2. Pada pilihan **Tipe soal**, tunjukkan bahwa kini ada delapan tipe. Pilih **Isian singkat**:
+   - isi **Jawaban baku** (mis. `9`) dan kolom **Sinonim** (mis. `sembilan`) — sinonim diterima sebagai
+     jawaban benar; centang **Angka harus persis** agar `12` tidak dianggap sama dengan `120`.
+   - kolom **Negasi** (opsional) menolak jawaban yang menyanggah, mis. `bukan`.
+3. Pilih **Uraian**: isi **Kata kunci** beserta **bobot**-nya (mis. `jumlah` = 1, `hasil` = 1) dan
+   **Ambang lulus** (bawaan 0,6). Jelaskan: uraian dinilai dari rasio bobot kata kunci yang muncul.
+4. Pilih **Letak kata**: isi daftar **Kata** + daftar **Posisi** (mis. Subjek/Predikat) lalu tentukan
+   kunci penempatan tiap kata. Pilih **Hubung kata**: isi daftar **Kiri** + **Kanan** lalu tentukan
+   sambungannya. Keduanya dinilai otomatis seperti soal objektif.
+5. **Kuis → detail kuis → Susun soal**: gabungkan soal-soal itu ke kuis, atur jadwal agar sedang berjalan,
+   lalu **Publikasi**.
+
+### Langkah demo (murid) — mengerjakan semua tipe
+
+6. Masuk `smoke.murid@sekolah.test` → **Ulangan Saya → Kerjakan sekarang**.
+7. Tunjukkan kendali yang berbeda per tipe: kotak teks pendek (isian), kotak teks panjang (uraian),
+   daftar pilih per kata (letak kata), daftar pilih per kata kiri (hubung kata). Jawaban tersimpan otomatis.
+8. Jawab isian dengan **sinonim** (mis. `sembilan` untuk kunci `9`) → dinilai benar.
+   Jawab uraian dengan kalimat yang belum memuat kata kuncinya → soal itu ditandai **perlu ditinjau**,
+   bukan dihukum nol.
+9. **Kumpulkan jawaban** → halaman hasil menampilkan ringkasan penilaian (dinilai / perlu tinjau / belum).
+
+### Langkah demo (guru) — koreksi manual ber-token
+
+10. Dari **detail kuis**, tekan **Koreksi manual** (atau langsung `/kuis/:id/koreksi`).
+11. Antrean menampilkan murid, nomor attempt, tipe, status **Perlu ditinjau guru**, teks soal, **jawaban
+    murid**, dan **kunci** (khusus guru).
+12. Isi **Skor baru** dan **Alasan koreksi** (minimal 10 karakter) → tekan **Minta token konfirmasi**.
+    Muncul keterangan "Token konfirmasi aktif sampai …" (berlaku 300 detik, sekali pakai).
+13. Tekan **Simpan koreksi** → baris itu keluar dari antrean dan nilai attempt dihitung ulang. Jelaskan:
+    setiap koreksi tercatat di activity log berisi skor sebelum/sesudah + alasan, sehingga nilai tidak bisa
+    diubah diam-diam.
+14. **Bukti penjaga**: coba "Simpan koreksi" tanpa token / dengan alasan < 10 karakter → ditolak; pakai
+    token yang sama dua kali → ditolak (422).
+
+### Bukti lewat browser sungguhan
+
+`docs/smoke-ui-slice06.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri, termasuk mengisi form
+koreksi dan menekan kedua tombolnya di DOM sungguhan. Hasil terakhir **27/27 lulus** — rincian di
+`docs/laporan-pengujian.md` bagian A.9.
