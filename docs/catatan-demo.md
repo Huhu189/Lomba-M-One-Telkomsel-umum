@@ -66,3 +66,36 @@ Seeder membuat sekolah contoh, 3 kelas (6A/6B/5A), 3 mapel, dan akun admin `admi
 ### Bukti lewat API (curl)
 
 Lihat `docs/laporan-pengujian.md` bagian A.4.3 — smoke nyata: csrf → login admin → impor 4 murid → daftar → ekspor CSV → set pengaturan → login murid → murid melihat `retry=false` → murid ubah = 403.
+
+---
+
+## Demo Slice 03 — Bank Soal, Tag, dan Kuis (Soal Objektif)
+
+Prasyarat: backend `php artisan serve` (8000), frontend `npm run dev` (5173), database sudah dimigrasi dan di-seed:
+
+```bash
+cd backend && php artisan migrate --force && php artisan db:seed
+```
+
+`BankSoalSeeder` (idempoten) menyiapkan: tag **Operasi Hitung**, 4 soal (satu per tipe objektif),
+kuis draf **Latihan Operasi Hitung (draf)**, dan kuis terbit **Ulangan Operasi Hitung** untuk kelas 5A.
+
+### Langkah demo (antarmuka http://localhost:5173, masuk sebagai guru `admin@sekolah.test`)
+
+1. **Menu**: setelah masuk, menu guru bertambah menjadi **Kelas · Mapel · Murid · Bank Soal · Tag · Kuis · Pengaturan**.
+2. **Tag**: buka **Tag** → tambah "Pecahan" (deskripsi bebas) → muncul di tabel bersama jumlah soal yang memakainya. Tag ini juga dipakai sebagai tema pemahaman di laporan (slice 05).
+3. **Bank Soal**: buka **Bank Soal** → saring per mapel/tag/tipe → **Tambah soal**:
+   - pilih mapel Matematika, tipe **Pilihan ganda**, tulis soal, isi opsi A–D, tandai satu radio sebagai **kunci**, isi skor → **Simpan soal**;
+   - coba juga tipe **Benar/salah**, **Menjodohkan** (isi kiri + kanan + pasangan), dan **Mengurutkan** (isi nomor urut benar tiap item);
+   - pratinjau di bawah formulir memakai renderer yang sama dengan layar murid, kunci ditandai lencana kuning;
+   - opsi **Media & MathML** menerima alamat gambar dan template MathML (dirender native, bukan gambar);
+   - mengosongkan isi soal lalu menekan Simpan menampilkan daftar galat berbahasa Indonesia (bukan 422 mentah).
+4. **Kuis**: buka **Kuis** → isi formulir (judul, mapel, kelas, durasi, jadwal mulai/selesai, acak soal/opsi) → **Buat kuis** (status **Draf**).
+   - **Susun soal** → centang soal dari bank soal, atur urutan dengan ↑/↓ → **Simpan susunan**;
+   - **Terbitkan** → bila soal/jadwal belum lengkap, muncul pesan galat yang jelas; bila lengkap, lencana berubah menjadi **Sedang berjalan / Belum dimulai / Selesai** sesuai jadwal;
+   - soal yang dipakai kuis yang sedang berjalan tidak bisa diubah/dihapus (server menolak dengan pesan "soal terkunci") — tunjukkan lewat Bank Soal.
+5. **Sisi murid**: masuk sebagai murid kelas tersebut → menu **Ulangan Saya** → kuis terbit muncul dengan status dan jumlah soal → **Lihat soal** menampilkan soal **tanpa kunci jawaban dan tanpa pembahasan** (server tidak pernah mengirimkannya). Kuis draf dan kuis kelas lain tidak muncul.
+
+### Bukti lewat browser sungguhan
+
+`docs/smoke-ui-slice03.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri: guru membuat tag + satu soal lewat formulir, mengubah jadwal, menyusun 2 soal, menerbitkan kuis; lalu murid uji membuka kuisnya. Hasil terakhir **8/8 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.5.
