@@ -37,6 +37,15 @@ class AttemptResource extends JsonResource
     public array $jawaban = [];
 
     /**
+     * Saklar proteksi anti-cheat yang berlaku untuk kuis ini (hasil pengaturan
+     * tiga lapis). Dikirim agar klien bisa men-gate sendiri; bila semua mati,
+     * klien tidak memasang sensor apa pun.
+     *
+     * @var array<string, bool>
+     */
+    public array $proteksi = [];
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -66,6 +75,9 @@ class AttemptResource extends JsonResource
             'dikumpulkan_at' => $this->dikumpulkan_at?->toIso8601String(),
             'soal' => $this->soal,
             'jawaban' => $this->jawaban,
+            // Dipaksa jadi objek JSON: peta kosong di PHP akan menjadi `[]`,
+            // sedangkan klien mengharapkan pasangan nama-saklar.
+            'proteksi' => (object) $this->proteksi,
         ];
     }
 }

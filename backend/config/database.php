@@ -181,6 +181,28 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
+        // Jalur data ke service realtime (SSE) — TANPA prefix kunci.
+        //
+        // Service Node hanya punya Redis sebagai sumber data, dan ia tidak tahu
+        // prefix internal Laravel. Kunci yang dikirim ke Node karena itu ditulis
+        // tanpa prefix supaya kedua sisi menyebut kunci yang sama; kanal pub/sub
+        // sendiri tidak pernah diberi prefix oleh Redis.
+        'realtime' => [
+            'url' => env('REDIS_URL'),
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
+            'password' => env('REDIS_PASSWORD'),
+            'port' => env('REDIS_PORT', '6379'),
+            'database' => env('REDIS_REALTIME_DB', '0'),
+            'options' => [
+                'prefix' => '',
+            ],
+            'max_retries' => env('REDIS_MAX_RETRIES', 3),
+            'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
+            'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
+            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+        ],
+
     ],
 
 ];

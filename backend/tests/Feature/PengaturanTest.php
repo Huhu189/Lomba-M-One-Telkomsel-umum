@@ -31,7 +31,9 @@ it('nilai bawaan tersedia sebelum ada pengaturan tersimpan', function (): void {
         ->assertJsonPath('pengaturan.retry.sumber', 'bawaan')
         ->assertJsonPath('pengaturan.batas_percobaan.nilai', 3)
         ->assertJsonPath('pengaturan.mode_tim.nilai', false)
-        ->assertJsonPath('pengaturan.anti_cheat.nilai', true);
+        // Anti-cheat default MATI (chunk anticheat): instalasi baru tidak
+        // memasang sensor apa pun sebelum guru memintanya.
+        ->assertJsonPath('pengaturan.anti_cheat.nilai', false);
 });
 
 it('guru mengubah pengaturan sekolah dan murid melihat nilainya', function (): void {

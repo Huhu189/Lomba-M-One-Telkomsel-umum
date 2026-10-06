@@ -9,6 +9,8 @@ use App\Sections\Attempt\Enums\JenisAttempt;
 use App\Sections\Attempt\Enums\StatusAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
+use App\Sections\Cheat\Enums\KategoriKecurangan;
+use App\Sections\Cheat\Services\KecuranganService;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
@@ -36,6 +38,7 @@ class AttemptService
     public function __construct(
         private readonly PenilaiSoal $penilaian,
         private readonly PengaturanService $pengaturan,
+        private readonly KecuranganService $kecurangan,
     ) {}
 
     /**
@@ -245,8 +248,63 @@ class AttemptService
                 'idempotency_key' => mb_substr($idempotencyKey, 0, 64),
             ])->save();
 
+            // Mengumpulkan lewat tenggat adalah kejadian yang hanya bisa dilihat
+            // server (waktu server), jadi kategorinya turunan server — dan hanya
+            // dicatat bila anti-cheat memang dinyalakan guru.
+            if ($terlambat && $this->antiCheatAktif($terkunci)) {
+                $this->kecurangan->catatTurunan($terkunci, KategoriKecurangan::LateSubmit, [
+                    'lewat_detik' => (string) $terkunci->deadline_at->diffInSeconds($sekarang),
+                ]);
+            }
+
             return $this->muatHasil($terkunci->refresh());
         });
+    }
+
+    /**
+     * Apakah anti-cheat dinyalakan untuk kuis attempt ini (pengaturan tiga lapis).
+     */
+    public function antiCheatAktif(Attempt $attempt): bool
+    {
+        $kuis = $attempt->kuis;
+
+        $peta = $this->pengaturan->semua(
+            (int) $attempt->school_id,
+            (int) $kuis->class_id,
+            (int) $kuis->getKey(),
+        )['pengaturan'];
+
+        return (bool) ($peta[KunciPengaturan::AntiCheat->value]['nilai'] ?? KunciPengaturan::AntiCheat->bawaan());
+    }
+
+    /**
+     * Saklar anti-cheat rinci untuk satu kuis (dipakai klien lewat payload attempt).
+     *
+     * @return array<string, bool>
+     */
+    public function saklarAntiCheat(Kuis $kuis): array
+    {
+        $peta = $this->pengaturan->semua(
+            (int) $kuis->school_id,
+            (int) $kuis->class_id,
+            (int) $kuis->getKey(),
+        )['pengaturan'];
+
+        $induk = (bool) ($peta[KunciPengaturan::AntiCheat->value]['nilai'] ?? KunciPengaturan::AntiCheat->bawaan());
+        $saklar = [];
+
+        foreach (KunciPengaturan::cases() as $kunci) {
+            if (! $kunci->antiCheat()) {
+                continue;
+            }
+
+            // Saklar induk mati = tidak ada proteksi aktif, walau saklar rinci
+            // pernah dinyalakan sebelum induknya dimatikan lagi.
+            $saklar[$kunci->value] = $induk
+                && (bool) ($peta[$kunci->value]['nilai'] ?? $kunci->bawaan());
+        }
+
+        return $saklar;
     }
 
     /**

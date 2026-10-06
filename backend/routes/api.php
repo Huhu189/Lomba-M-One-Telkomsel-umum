@@ -7,7 +7,11 @@ use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
+use App\Sections\Cheat\Http\Controllers\KecuranganController;
 use App\Sections\Health\Http\Controllers\HealthController;
+use App\Sections\Presence\Http\Controllers\KehadiranController;
+use App\Sections\Presence\Http\Controllers\MonitorController;
+use App\Sections\Presence\Http\Controllers\TiketSseController;
 use App\Sections\Question\Http\Controllers\SoalController;
 use App\Sections\Question\Http\Controllers\TagController;
 use App\Sections\Quiz\Http\Controllers\KuisController;
@@ -120,6 +124,17 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kuis/{kuis}/koreksi', [KoreksiController::class, 'antrean'])->name('koreksi.antrean');
         Route::post('/attempt/{attempt}/koreksi/token', [KoreksiController::class, 'token'])->name('koreksi.token');
         Route::post('/attempt/{attempt}/koreksi', [KoreksiController::class, 'simpan'])->name('koreksi.simpan');
+
+        // Anti-cheat + presence + Live Monitor (slice 07).
+        // Murid: kirim kejadian berkelompok + ping kehadiran.
+        Route::post('/attempt/{attempt}/kejadian', [KecuranganController::class, 'catat'])->name('kecurangan.catat');
+        Route::post('/attempt/{attempt}/hadir', [KehadiranController::class, 'ping'])->name('presence.ping');
+
+        // Guru: catatan kejadian, tinjauan, snapshot Live Monitor, ticket SSE.
+        Route::get('/kuis/{kuis}/kejadian', [KecuranganController::class, 'daftar'])->name('kecurangan.daftar');
+        Route::put('/kejadian/{kejadian}', [KecuranganController::class, 'tinjau'])->name('kecurangan.tinjau');
+        Route::get('/kuis/{kuis}/monitor', [MonitorController::class, 'show'])->name('monitor.show');
+        Route::post('/kuis/{kuis}/sse-tiket', [TiketSseController::class, 'terbitkan'])->name('sse.tiket');
     });
 });
 

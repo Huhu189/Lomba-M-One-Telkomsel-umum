@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Policies\AttemptPolicy;
+use App\Sections\Cheat\Models\KejadianKecurangan;
+use App\Sections\Cheat\Policies\KejadianKecuranganPolicy;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
 use App\Sections\Question\Policies\SoalPolicy;
@@ -64,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Soal::class, SoalPolicy::class);
         Gate::policy(Kuis::class, KuisPolicy::class);
         Gate::policy(Attempt::class, AttemptPolicy::class);
+        Gate::policy(KejadianKecurangan::class, KejadianKecuranganPolicy::class);
 
         // Tautan reset sandi harus menuju halaman frontend (SPA), bukan ke API.
         // Tanpa callback ini notifikasi bawaan Laravel memanggil route('password.reset')
