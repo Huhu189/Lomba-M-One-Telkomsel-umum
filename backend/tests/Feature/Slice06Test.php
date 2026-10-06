@@ -150,6 +150,16 @@ it('isian singkat: angka harus persis dan penjaga negasi menolak jawaban menyang
         // "1/2" bukan "0,5": angka harus persis.
         ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['1/2']], '0,5'))->toBeFalse();
 
+    // Sinonim kata pada kunci angka tetap diterima: penjaga angka_persis
+    // diperiksa per kandidat, jadi kunci "9" tidak menutup sinonim "sembilan".
+    $kunciAngka = ['jawaban_baku' => ['9'], 'sinonim' => [['sembilan']]];
+
+    expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kunciAngka, '9'))->toBeTrue()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kunciAngka, 'sembilan'))->toBeTrue()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kunciAngka, '10'))->toBeFalse()
+        // Angka tetap tidak boleh dikira-kira walau mirip hurufnya.
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['12']], '120'))->toBeFalse();
+
     $kalimat = ['jawaban_baku' => ['air mengalir dari tempat tinggi']];
 
     expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kalimat, 'air mengalir dari tempat tinggi'))->toBeTrue()

@@ -113,6 +113,11 @@ final class PenanganIsianSingkat implements PenanganTipeSoal
      * Kemiripan terbaik terhadap semua kandidat jawaban baku (0 bila kena
      * penjaga negasi atau angka tidak persis).
      *
+     * Penjaga `angka_persis` diperiksa PER KANDIDAT, bukan untuk seluruh
+     * kandidat satu indeks. Kalau diperiksa sekaligus, kunci angka akan menutup
+     * sinonim kata yang sengaja dicatat guru (mis. kunci "9" + sinonim
+     * "sembilan"), padahal sinonim itu justru ada supaya diterima.
+     *
      * @param  array<string, mixed>  $kunci
      */
     public static function kemiripanTerbaik(array $kunci, string $jawaban): float
@@ -132,15 +137,17 @@ final class PenanganIsianSingkat implements PenanganTipeSoal
         foreach (array_keys($baku) as $indeks) {
             $kandidat = self::kandidat($kunci, (int) $indeks);
 
-            if ($angkaPersis && ! BantuanTeks::angkaCocok(implode(' ', $kandidat), $jawaban)) {
-                continue;
-            }
-
             if (BantuanTeks::melawanNegasi($jawaban, $kandidat, $negasi)) {
                 continue;
             }
 
             foreach ($kandidat as $satu) {
+                // Angka pada kandidat wajib muncul persis, tetapi kandidat kata
+                // (sinonim) tetap dibandingkan dengan toleransi typo.
+                if ($angkaPersis && ! BantuanTeks::angkaCocok($satu, $jawaban)) {
+                    continue;
+                }
+
                 $terbaik = max($terbaik, BantuanTeks::kemiripan($satu, $jawaban));
             }
         }
