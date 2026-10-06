@@ -28,10 +28,10 @@ class RegisterService
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'status' => UserStatus::Pending->value,
-            'role' => 'murid',
         ]);
 
-        $user->assignRole('murid');
+        // Kolom `role` + role Spatie ditulis bersama lewat satu pintu.
+        $user->tetapkanPeran('murid');
 
         return [
             'user' => $user,

@@ -10,7 +10,6 @@ use App\Sections\School\Models\Murid;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
 /**
  * Kelola murid tunggal (di luar impor massal).
@@ -28,11 +27,11 @@ class MuridService
                 'email' => mb_strtolower((string) $data['email']),
                 'password' => Hash::make($data['kata_sandi'] ?? Str::password(16)),
                 'status' => UserStatus::Aktif->value,
-                'role' => 'murid',
             ]);
             // email_verified_at tidak mass-assignable; guru yang membuat = terverifikasi.
             $user->forceFill(['email_verified_at' => now()])->save();
-            $user->assignRole(Role::findOrCreate('murid', 'web'));
+            // Kolom `role` + role Spatie ditulis bersama lewat satu pintu.
+            $user->tetapkanPeran('murid');
 
             $murid = Murid::query()->create([
                 'school_id' => $sekolahId,

@@ -31,15 +31,24 @@ class UserFactory extends Factory
         ];
     }
 
+    /**
+     * Kolom `role` dan role Spatie selalu sinkron pada data uji (lihat User::tetapkanPeran),
+     * sehingga setiap state di bawah cukup mengubah kolomnya saja.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->tetapkanPeran((string) $user->role);
+        });
+    }
+
     /** Murid aktif + terverifikasi (siap login). */
     public function muridAktif(): static
     {
         return $this->state(fn () => [
             'email_verified_at' => now(),
             'status' => UserStatus::Aktif->value,
-        ])->afterCreating(function ($user) {
-            $user->assignRole('murid');
-        });
+        ]);
     }
 
     /** Guru aktif (akun guru hanya dari seeder/impor). */
@@ -49,9 +58,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'status' => UserStatus::Aktif->value,
             'role' => 'guru',
-        ])->afterCreating(function ($user) {
-            $user->assignRole('guru');
-        });
+        ]);
     }
 
     /** Akun ditangguhkan (untuk test blokir). */

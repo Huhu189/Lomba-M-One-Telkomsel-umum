@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'status', 'role'])]
@@ -24,6 +25,7 @@ class User extends Authenticatable
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
+
     use HasRoles;
     use Notifiable;
 
@@ -57,6 +59,20 @@ class User extends Authenticatable
             UserStatus::Pending => 'Verifikasi email dulu sebelum masuk.',
             UserStatus::Aktif => $this->hasVerifiedEmail() ? null : 'Verifikasi email dulu sebelum masuk.',
         };
+    }
+
+    /**
+     * SATU-SATUNYA penulis peran user.
+     *
+     * Aplikasi ini menyimpan peran dua kali: kolom `role` (dipakai query & tampilan)
+     * dan role Spatie (dipakai otorisasi). Menulisnya terpisah membuat keduanya bisa
+     * berbeda, jadi keduanya selalu ditulis lewat method ini. Role dibuat bila belum
+     * ada supaya impor tetap jalan walau seeder belum dijalankan.
+     */
+    public function tetapkanPeran(string $peran): void
+    {
+        $this->forceFill(['role' => $peran])->save();
+        $this->syncRoles([Role::findOrCreate($peran, 'web')]);
     }
 
     public function isGuru(): bool

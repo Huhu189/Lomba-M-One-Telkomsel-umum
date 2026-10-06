@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use League\Csv\Reader;
-use Spatie\Permission\Models\Role;
 
 /**
  * Impor murid dari CSV: streaming, validasi per baris, batas 100 galat,
@@ -59,8 +58,6 @@ class ImporMuridService
             ->get()
             ->keyBy(fn (Murid $murid): string => (string) $murid->nis);
 
-        $peranMurid = Role::findOrCreate('murid', 'web');
-
         $galat = [];
         $sukses = 0;
         $total = 0;
@@ -96,13 +93,13 @@ class ImporMuridService
             $batch[] = $baris;
 
             if (count($batch) >= self::UKURAN_BATCH) {
-                $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap, $peranMurid);
+                $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
                 $batch = [];
             }
         }
 
         if ($batch !== []) {
-            $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap, $peranMurid);
+            $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
         }
 
         return [
@@ -253,11 +250,11 @@ class ImporMuridService
      * @param  list<array{nama: string, email: string, kelas: string, nis: string|null, nisn: string|null, kata_sandi: string|null}>  $batch
      * @param  Collection<string, Kelas>  $kelasMap
      */
-    private function prosesBatch(array $batch, int $sekolahId, Collection $kelasMap, Role $peranMurid): int
+    private function prosesBatch(array $batch, int $sekolahId, Collection $kelasMap): int
     {
         $jumlah = 0;
 
-        DB::transaction(function () use ($batch, $sekolahId, $kelasMap, $peranMurid, &$jumlah): void {
+        DB::transaction(function () use ($batch, $sekolahId, $kelasMap, &$jumlah): void {
             $emails = array_column($batch, 'email');
             $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
 
@@ -270,11 +267,11 @@ class ImporMuridService
                         'email' => $baris['email'],
                         'password' => Hash::make($baris['kata_sandi'] ?? Str::password(16)),
                         'status' => UserStatus::Aktif->value,
-                        'role' => 'murid',
                     ]);
                     // email_verified_at tidak mass-assignable; admin yang mengimpor = terverifikasi.
                     $user->forceFill(['email_verified_at' => now()])->save();
-                    $user->assignRole($peranMurid);
+                    // Kolom `role` + role Spatie ditulis bersama lewat satu pintu.
+                    $user->tetapkanPeran('murid');
                     $users->put($baris['email'], $user);
                 } elseif ($user->name !== $baris['nama']) {
                     $user->forceFill(['name' => $baris['nama']])->save();
