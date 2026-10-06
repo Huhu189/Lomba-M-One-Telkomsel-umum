@@ -73,21 +73,21 @@ it('tautan verifikasi valid mengaktifkan akun; tanda tangan salah ditolak', func
     $tautanValid = URL::temporarySignedRoute('verification.verify', now()->addMinutes(30), [
         'id' => $user->getKey(),
         'hash' => sha1(mb_strtolower($user->getEmailForVerification())),
-    ]);
+    ], false);
 
     $this->get($tautanValid)->assertRedirect();
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue()
         ->and($user->fresh()->status)->toBe(UserStatus::Aktif);
 
-    // Tanda tangan yang dirusak → 403 oleh middleware 'signed' (bukan redirect).
+    // Tanda tangan dirusak → dialihkan ke halaman frontend (bukan JSON 403 mentah).
     $tautanDirusak = str_replace('&signature=', '&signature=x', (string) $tautanValid);
-    $this->get($tautanDirusak)->assertStatus(403);
+    $this->get($tautanDirusak)->assertRedirect(config('app.frontend_url').'/verifikasi-email?status=gagal');
 
     // Tanda tangan VALID tetapi id/hash tidak cocok → controller redirect 'gagal'.
     $tautanHashSalah = URL::temporarySignedRoute('verification.verify', now()->addMinutes(30), [
         'id' => 9999,
         'hash' => 'hashingganda',
-    ]);
+    ], false);
     $this->get($tautanHashSalah)->assertRedirect();
 });
 
@@ -218,6 +218,29 @@ it('notifikasi verifikasi membangun tautan nyata ke rute API (regresi nama rute)
 
     expect($pesan->actionUrl)->toContain('/auth/verifikasi-email/')
         ->and($pesan->actionUrl)->toContain('signature=');
+});
+
+it('tautan verifikasi tetap valid walau host/port berbeda dari saat email dibuat (regresi Invalid signature)', function () {
+    $user = User::factory()->create(['email' => 'proxy@murid.test']);
+
+    $tautan = (new VerifyEmail)->toMail($user)->actionUrl;
+
+    // Simulasi klik lewat proxy Vite (:5173) / host lain: hanya path+query yang dipakai.
+    $path = parse_url($tautan, PHP_URL_PATH).'?'.parse_url($tautan, PHP_URL_QUERY);
+    $this->get('http://localhost:5173'.$path)->assertRedirect(config('app.frontend_url').'/verifikasi-email?status=berhasil');
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+});
+
+it('tautan verifikasi kedaluwarsa dialihkan ke halaman frontend, bukan 403', function () {
+    $user = User::factory()->create(['email' => 'basi@murid.test']);
+
+    $tautan = URL::temporarySignedRoute('verification.verify', now()->subMinute(), [
+        'id' => $user->getKey(),
+        'hash' => sha1(mb_strtolower($user->getEmailForVerification())),
+    ], false);
+
+    $this->get($tautan)->assertRedirect(config('app.frontend_url').'/verifikasi-email?status=gagal');
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });
 
 it('kirim ulang verifikasi publik: respons identik walau email tak terdaftar', function () {

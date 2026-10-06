@@ -115,7 +115,7 @@ it('tautan verifikasi hanya berefek sekali walau diklik dua kali', function (): 
     $tautan = URL::temporarySignedRoute('verification.verify', now()->addMinutes(30), [
         'id' => $user->getKey(),
         'hash' => sha1(mb_strtolower($user->getEmailForVerification())),
-    ]);
+    ], false);
 
     $this->get($tautan)->assertRedirect();
     $terverifikasiPertama = $user->fresh()->email_verified_at;

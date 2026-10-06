@@ -3,6 +3,7 @@
  * backend, lalu diarahkan ke sini dengan query ?status=berhasil|gagal.
  * Query string divalidasi Zod (pagar mutu: data luar lewat Zod).
  */
+import { useEffect } from 'react'
 import { z } from 'zod'
 import { useSearchParams } from 'react-router-dom'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
@@ -20,11 +21,24 @@ const skemaQueryStatus = z.object({
 export default function HalamanVerifikasiEmail() {
   const [parameter] = useSearchParams()
   const email = useAuthStore((s) => s.user?.email ?? '')
+  const adaSesi = useAuthStore((s) => s.user !== null)
+  const muatUser = useAuthStore((s) => s.muatUser)
 
   const terurai = skemaQueryStatus.safeParse({
     status: parameter.get('status') ?? '',
   })
   const berhasil = terurai.success && terurai.data.status === 'berhasil'
+
+  // Murid baru daftar langsung masuk (auto-login) dengan data user "belum verifikasi" di
+  // store. Tanpa penyegaran, tombol "Masuk sekarang" memantul ke beranda lalu dilempar
+  // balik ke /perlu-verifikasi walau email sudah terverifikasi.
+  useEffect(() => {
+    if (berhasil && adaSesi) {
+      muatUser().catch(() => {
+        // Sesi tidak sah: store dibersihkan oleh event auth:sesi-habis.
+      })
+    }
+  }, [berhasil, adaSesi, muatUser])
 
   if (berhasil) {
     return (

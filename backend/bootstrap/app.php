@@ -8,6 +8,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -36,6 +37,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Tautan verifikasi dibuka langsung dari email oleh peramban (bukan XHR): tanda
+        // tangan rusak/kedaluwarsa harus mendarat di halaman frontend yang ramah, bukan JSON 403.
+        $exceptions->render(function (InvalidSignatureException $galat, Request $request) {
+            if ($request->routeIs('verification.verify')) {
+                return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/verifikasi-email?status=gagal');
+            }
+
+            return null;
+        });
 
         // Rute API selalu merespons JSON 401 bila belum masuk — termasuk permintaan
         // non-JSON (mis. unduhan CSV lewat tautan peramban) yang sebelumnya 500.

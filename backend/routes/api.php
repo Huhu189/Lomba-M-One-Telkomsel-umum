@@ -45,7 +45,7 @@ Route::prefix('v1')->group(function (): void {
     // Tautan verifikasi dari email (bertanda tangan, dibatasi jumlah klik).
     // Nama rute WAJIB 'verification.verify' — dipakai notifikasi VerifyEmail bawaan.
     Route::get('/auth/verifikasi-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:verifikasi'])
+        ->middleware(['signed:relative', 'throttle:verifikasi-klik'])
         ->name('verification.verify');
 
     // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').

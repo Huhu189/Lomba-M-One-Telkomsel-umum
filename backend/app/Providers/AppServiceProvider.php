@@ -25,6 +25,7 @@ use App\Sections\School\Policies\SekolahPolicy;
 use App\Sections\Settings\Models\Pengaturan;
 use App\Sections\Settings\Policies\PengaturanPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -79,6 +81,25 @@ class AppServiceProvider extends ServiceProvider
             return $dasar.'/atur-ulang-sandi?token='.$token.'&email='.urlencode($email);
         });
 
+        // Tautan verifikasi email: tanda tangan RELATIF (hanya path + expires), bukan URL penuh.
+        // Tanda tangan absolut ikut menghitung host:port, sehingga tautan jadi "Invalid
+        // signature" begitu host berbeda antara saat email dibuat dan saat diklik (queue
+        // worker/APP_URL, proxy Vite :5173 -> :8000, www vs non-www). Tanda tangan relatif
+        // tetap aman: path, id, hash, dan masa berlaku tetap tidak bisa diubah.
+        VerifyEmail::createUrlUsing(function (object $notifiable): string {
+            $relatif = URL::temporarySignedRoute(
+                'verification.verify',
+                now()->addMinutes((int) config('auth.verification.expire', 60)),
+                [
+                    'id' => $notifiable->getKey(),
+                    'hash' => sha1(mb_strtolower((string) $notifiable->getEmailForVerification())),
+                ],
+                false,
+            );
+
+            return rtrim((string) config('app.url'), '/').$relatif;
+        });
+
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
         // Dua batas: per akun+IP (menebak sandi satu akun) dan per IP (mengganti-ganti
         // email dari satu alamat tetap terbatas).
@@ -90,6 +111,13 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(5)->by($perAkun),
                 Limit::perMinute(20)->by($perAlamat),
             ];
+        });
+
+        // Klik tautan dari email: sudah dijaga tanda tangan + masa berlaku, jadi batasnya
+        // longgar. Satu kelas yang mendaftar serentak lewat NAT sekolah (satu IP) tidak
+        // boleh kena 429 hanya karena menekan tautan di waktu yang sama.
+        RateLimiter::for('verifikasi-klik', function (Request $request) {
+            return Limit::perMinute(120)->by((string) $request->ip());
         });
 
         RateLimiter::for('verifikasi', function (Request $request) {
