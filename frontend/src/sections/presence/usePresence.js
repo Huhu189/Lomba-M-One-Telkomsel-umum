@@ -15,12 +15,21 @@ import { pingKehadiran } from '../attempt/api.js'
 /** Setelah sekian detik tanpa aktivitas lain, baru kirim ping (detik). */
 export const JEDA_PING_DETIK = 15
 
+/** Jam bawaan — SATU referensi modul, bukan panah baru tiap render. */
+function jamSekarang() {
+  return Date.now()
+}
+
 /**
  * @param {{ attemptId: number, aktif: boolean, jam?: () => number }} opsi
  * @returns {void}
  */
 export default function usePresence(opsi) {
-  const { attemptId, aktif, jam = () => Date.now() } = opsi
+  const { attemptId, aktif } = opsi
+  // `jam` diselesaikan di luar destructuring: nilai bawaan berupa panah baru
+  // membuat efek ini bongkar-pasang (termasuk 3 pendengar window) di SETIAP
+  // render, dan menyetel ulang jendela 15 detik sehingga ping tak pernah jalan.
+  const jam = opsi.jam ?? jamSekarang
 
   useEffect(() => {
     if (!aktif) return undefined

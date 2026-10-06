@@ -37,6 +37,23 @@ const JEDA_KIRIM = 800
 const JEDA_ULANG = 5000
 /** Ambang peringatan waktu (detik). */
 const AMBANG_PERINGATAN = 300
+/** Berapa kali antrean dicoba dikirim sebelum mengumpulkan (jaringan sekolah bisa putus sesaat). */
+const PERCOBAAN_SEBELUM_KUMPUL = 3
+/** Jeda antar percobaan kirim sebelum mengumpulkan (ms). */
+const JEDA_SEBELUM_KUMPUL = 700
+
+/**
+ * Tunggu sekian milidetik — dipakai memberi kesempatan jaringan pulih sebelum
+ * jawaban dikumpulkan.
+ *
+ * @param {number} milidetik
+ * @returns {Promise<void>}
+ */
+function tungguMilidetik(milidetik) {
+  return new Promise((selesai) => {
+    window.setTimeout(selesai, milidetik)
+  }).then(() => undefined)
+}
 
 /**
  * Kirim seluruh antrean jawaban; yang gagal karena masalah jaringan
@@ -184,10 +201,32 @@ export default function HalamanKerjakan() {
       }
 
       try {
-        await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+        let sisa = await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+
+        // Kumpul MANUAL: beri jaringan kesempatan pulih dulu. Tanpa ini, jawaban
+        // terakhir yang belum terkirim hilang diam-diam — server hanya menilai
+        // jawaban yang benar-benar sudah tersimpan.
+        if (!otomatis) {
+          for (let percobaan = 1; percobaan < PERCOBAAN_SEBELUM_KUMPUL && sisa > 0; percobaan++) {
+            await tungguMilidetik(JEDA_SEBELUM_KUMPUL)
+            sisa = await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+          }
+
+          if (sisa > 0) {
+            tampilkanToast(
+              'salah',
+              'Sebagian jawaban belum tersimpan. Periksa koneksi internet, lalu tekan Kumpulkan lagi.',
+            )
+            return
+          }
+        }
+
         const kunci = kunciIdempotensi(attempt.id, kunciIdempotensiBaru)
         await kumpulkanAttempt(attempt.id, kunci)
-        bersihkan(attempt.id)
+
+        // Cadangan lokal hanya dihapus bila seluruh jawaban benar-benar tersimpan
+        // (kumpul otomatis saat waktu habis tetap mengirim apa adanya).
+        if (sisa === 0) bersihkan(attempt.id)
         setSudahKumpul(true)
         tampilkanToast('sukses', otomatis ? 'Waktu habis — jawaban terkumpul otomatis.' : 'Jawaban terkumpul.')
         navigate(ruteHasil(attempt.id), { replace: true })

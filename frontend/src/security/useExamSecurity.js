@@ -305,18 +305,31 @@ export default function useExamSecurity(opsi) {
       pasang(document, 'visibilitychange', tanganiSembunyi)
 
       if (efektif.focus_lock === true) {
-        pasang(window, 'blur', () => {
+        // Satu penghitung saja per effect: tanpa ini, keluar jendela berkali-kali
+        // memasang beberapa interval yang berjalan bersamaan sehingga hitungan
+        // 60 detik habis jauh lebih cepat dari yang tertulis.
+        let timerKunci = 0
+
+        const mulaiKunci = () => {
           setKunciDetik(KUNCI_LAYAR_DETIK)
-          const timer = window.setInterval(() => {
+
+          if (timerKunci !== 0) window.clearInterval(timerKunci)
+
+          timerKunci = window.setInterval(() => {
             setKunciDetik((lama) => {
               if (lama <= 1) {
-                window.clearInterval(timer)
+                window.clearInterval(timerKunci)
+                timerKunci = 0
                 return 0
               }
               return lama - 1
             })
           }, 1000)
-          bersihkan.push(() => window.clearInterval(timer))
+        }
+
+        pasang(window, 'blur', mulaiKunci)
+        bersihkan.push(() => {
+          if (timerKunci !== 0) window.clearInterval(timerKunci)
         })
       } else {
         pasang(window, 'blur', () => catat('window_blur', {}))
