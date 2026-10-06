@@ -465,3 +465,155 @@ regresi di `Slice06Test` (4 assertion baru) dan smoke diulang → **27/27 lulus*
 - **Presence/anti-cheat realtime (slice 07)** dan **materi + kuis sisipan F2 (slice 08)** belum dikerjakan;
   folder `frontend/src/sections/{cheat,presence}` masih kosong.
 - **Uji beban/taraf besar** (mis. 40 murid serentak) belum dijalankan.
+
+---
+
+## A.10 Audit Library & Kualitas Kode Slice 01 — Verdict dan Perbaikan
+
+### A.10.1 Sumber audit
+
+Pengguna menyerahkan `laporan-audit-slice-01.md` (audit statis atas snapshot zip: `src_2.zip`, `backend_3.zip`,
+`Arsip_4.zip`). Laporan itu dibuat **dari snapshot lama**, jadi sebagian temuannya sudah tidak berlaku di
+kode sekarang. Seluruh temuan diuji ulang terhadap kode berjalan sebelum diputuskan; hasilnya di bawah.
+Laporan aslinya (utuh) diarsipkan di `docs/log-mentah/2026-10-06-audit-library-kualitas-slice-01.md`.
+
+### A.10.2 Verdict tiap temuan
+
+| # | Verdict terhadap kode sekarang | Tindakan |
+|---|---|---|
+| B1 | **Nyata, tetapi bukan 500.** `PasswordBroker::reset()` hanya menerima 2 argumen (dicek di vendor `PasswordBroker.php:122`), jadi closure ke-3 diabaikan; tak ada `createUrlUsing` → `route('password.reset')` tidak ada. Galatnya **ditelan fail-open** oleh `PengirimEmail`, jadi gejalanya bukan error, melainkan **lupa sandi diam-diam tidak pernah sampai**. | **Diperbaiki** |
+| B2 | **Nyata** — `unique:users,email` di `DaftarMuridRequest` membocorkan email terdaftar lewat 422. | **Dipertahankan sadar + dicatat jujur** (lihat A.10.4) |
+| B3 | **Nyata** — `VerifyEmailService` selalu menulis `status = Aktif`. | **Diperbaiki** |
+| B4 | **Sudah beres** — `pulihkanSesi` sudah ada dan dipanggil di `App.jsx`. | Tidak ada perubahan |
+| B5 | **Sudah beres** — `pasangListenerSesi` punya penanda `listenerTerpasang`. | Tidak ada perubahan |
+| B6 | **Risiko laten saja** — semua request memakai `baseURL: '/api'` (satu origin), dan Axios 1.x tetap mengirim header XSRF bila same-origin. | Diperkuat lewat K9 (lihat di bawah) |
+| K1 | **Nyata** — `expect('App\Sections\Http\Controllers')` menunjuk namespace yang tidak ada → test lolos tanpa memeriksa apa pun. | **Diperbaiki** |
+| K2 | **Nyata** (selisih waktu login). | **Diperbaiki** |
+| K3 | **Nyata** (throttle hanya per `ip|email`). | **Diperbaiki** |
+| K4 | **Nyata** — `User::query()` langsung di controller. | **Diperbaiki** |
+| K5 | **Nyata** — `$alasan` tidak dipakai. | **Diperbaiki** |
+| K6 | **Sudah tidak ada** — ternary dua cabang identik sudah hilang. | Tidak ada perubahan |
+| K7 | **Nyata** — closure `/v1/sesi` menolak `route:cache`. | **Diperbaiki** |
+| K8 | **Nyata** — peran ditulis di dua tempat (`role` + Spatie). | **Diperbaiki** |
+| K9 | **Nyata** — `ambilCsrfCookie()` sebelum setiap request; `toLowerCase()` berulang. | **Diperbaiki** |
+| K10 | **Nyata** — `(bool)` berlebih, `terapkan(array)` bertipe longgar, sesi lama tidak dicabut setelah reset sandi. | **Diperbaiki** |
+| P1 | **Nyata** — sisa scaffold Tailwind/Vite di backend. | **Diperbaiki** |
+| P2 | **Sebagian usang** — `league/csv`, `query-builder`, `activitylog` **sudah dipakai** oleh slice 02/06; Octane & Debugbar memang belum (baru slice 10). | Dicatat |
+| P3 | **Sebagian usang** — `backend/.env` tidak ter-track (di `.gitignore`); `verify.sh` & `jsconfig.json` sudah ada. `vite-env.d.ts` **sengaja dipertahankan** (lihat A.10.5). | Dicatat |
+
+### A.10.3 Yang diperbaiki
+
+**B1 — tautan reset sandi menuju frontend.** `ResetPassword::createUrlUsing()` didaftarkan di
+`AppServiceProvider::boot()` dan membangun `{frontend_url}/atur-ulang-sandi?token=…&email=…`. Closure ke-3 yang
+tidak pernah dipanggil di `PasswordResetService::terapkan()` dihapus. Bukti: `AuthTest` kini mengambil
+notifikasi tanpa `Notification::fake()` untuk URL-nya dan memastikan URL diawali `FRONTEND_URL` (sekaligus
+memastikan callback benar-benar terdaftar, dibaca lewat `ReflectionProperty`).
+
+**B3 — akun suspended tidak dihidupkan tautan verifikasi.** `VerifyEmailService::verifikasi()` sekarang
+idempoten dan **hanya menaikkan status dari `Pending`**; status lain (`Suspended`, `Dihapus`) tetap, meski
+`email_verified_at` boleh diisi. Bukti: test "verifikasi tidak mengaktifkan akun suspended".
+
+**K2, K3, K4, K5.** `LoginService` memanggil `Hash::check($password, self::sandiDummy())` saat user tidak ada
+(hash dummy di-memoize sekali) sehingga waktu respons login seragam; `$alasan` yang tidak dipakai dibuang.
+Throttle `auth` kini **dua batas** — `5/menit` per `ip|email` dan `20/menit` per IP — supaya penyerang yang
+berganti-ganti email dari satu alamat tetap terbatas. Penelusuran email pada kirim-ulang verifikasi dipindah
+dari controller ke `VerifyEmailService::kirimUlangPublik()`; controller tidak lagi menyentuh model `User`.
+
+**K7 — `route:cache`.** Closure `/v1/sesi` diganti controller invokable `CekSesiController` (rute dinamai
+`sesi`). Terbukti `php artisan route:cache` sukses (menulis `bootstrap/cache/routes-v7.php`), lalu di-clear.
+
+**K8 — satu penulis peran.** Ditambahkan `User::tetapkanPeran(string)` sebagai **satu-satunya** penulis kolom
+`role` + role Spatie (`forceFill` + `syncRoles`). Dipakai oleh `RegisterService`, `MuridService`, dan
+`ImporMuridService`; parameter `Role` yang tadinya disuntikkan ke service dihapus. `UserFactory` memanggilnya
+lewat `afterCreating` sehingga seeder & factory tetap sinkron. Bukti: test "peran sinkron di semua jalur"
+membandingkan kolom `role` dengan `getRoleNames()` untuk jalur daftar, buat murid, dan impor.
+
+**K9 — klien CSRF frontend.** `ambilCsrfCookie()` sekarang menyimpan **janji** cookie (in-flight) alih-alih
+memanggil ulang setiap request, tidak menyimpan kegagalan, dan interceptor 419 memanggil `lupakanCsrfCookie()`
+untuk memaksa ambil ulang. Normalisasi email dipusatkan di helper `emailBersih()` (trim + lowercase)
+dan di skema Zod (`validasi.js` auth & school). Bukti: 3 test baru di blok "cache cookie CSRF" +
+test normalisasi email.
+
+**K10 — detail keras.** Cast `(bool)` berlebih dibuang. `PasswordResetService::terapkan()` kini menerima
+**argumen bernama** (`$email, $token, $password`) alih-alih `array` longgar. Setelah reset sandi,
+`remember_token` dicabut (`Str::random(60)`) dan baris `sessions` milik user dihapus bila
+`SESSION_DRIVER=database` — jadi sesi lama di perangkat lain ikut berakhir, bukan hanya kata sandinya berubah.
+Bukti: test "reset sandi mencabut sesi lain + remember_token".
+
+**K1 — arch test yang benar-benar memeriksa.** `ArchitectureTest.php` ditulis ulang: helper
+`namespaceController()` memindai folder controller yang benar-benar ada
+(`glob(dirname(__DIR__, 2).'/app/Sections/*/Http/Controllers')`) — `app_path()` **tidak boleh dipakai** di
+berkas arch karena container belum siap (fatal `Call to undefined method Illuminate\Container\Container::path()`).
+Ada test pengaman bahwa namespace terdeteksi (bukan daftar kosong), lalu
+`not->toUse([DB::class, Cache::class, Log::class, Schema::class])` untuk setiap controller. Terbukti tidak ada
+controller yang melanggar aturan `chunks/quality-gates.json` ("controller tidak memanggil `DB::` langsung").
+
+**P1 — scaffold dibersihkan.** `backend/resources/` (css/js/views) dan `backend/vite.config.js` dihapus
+(`git rm -r`); `backend/package.json` ditulis ulang menjadi delegasi tipis ke frontend
+(`npm --prefix ../frontend …`); `composer.json` script `setup` memakai `npm --prefix ../frontend`; dan
+`routes/web.php` tidak lagi menyajikan halaman selamat datang bawaan Laravel — root backend **mengalihkan ke
+frontend** (`GET http://127.0.0.1:8000/` → `302 → http://localhost:5173/`).
+
+### A.10.4 Keputusan yang dipertahankan sadar — B2 (jujur)
+
+Temuan B2 benar: pendaftaran dengan email yang sudah terdaftar membalas **422** berisi pesan validasi,
+sedangkan email baru membalas **201**, sehingga email terdaftar bisa ditebak. Ini memang bertentangan dengan
+klaim anti-enumerasi di `RegisterService::pesanResponsDaftar()` dan aturan keamanan #9 `AGENT.md`.
+
+Namun alur pendaftaran yang disetujui pengguna pada slice 01 adalah **langsung masuk setelah daftar**
+(auto-login). Kalau `unique` dihapus dan email terdaftar dibalas 201 dengan pesan yang sama (seperti usulan
+audit), maka pemilik email itu **tidak bisa login** — dan pengguna yang salah mengetik email miliknya sendiri
+akan bingung karena "daftar sukses" tetapi tidak masuk. Pilihan yang diambil pengguna:
+
+> **Pertahankan 422 + catat jujur.**
+
+Jadi B2 **tidak diperbaiki**; ia didokumentasikan terbuka di sini dan di `docs/catatan-demo.md`. Unique index
+di database tetap menjadi pengaman terakhir. Perbaikan penuh (pola "kami sudah kirim email ke alamat itu"
+tanpa auto-login) menunggu keputusan produk, dan sengaja tidak dikerjakan di sini agar tidak mengubah alur
+yang sudah disepakati.
+
+### A.10.5 Temuan tambahan dari pemeriksaan ulang
+
+- **`dompurify`, `jszip`, `@tanstack/react-virtual` belum dipakai.** Ini wajar (fiturnya belum ada: materi,
+  ekspor, daftar panjang). DOMPurify **tidak dibutuhkan** untuk soal saat ini karena `MediaSoal.jsx` memakai
+  `DOMParser` + whitelist sendiri + aturan ESLint `react/no-danger`, dan sudah ada test XSS. Tetap dicatat
+  sebagai ketergantungan yang menunggu pakai.
+- **Laravel Pail & Pao tetap dipertahankan** meski di luar daftar stack: keduanya menopang `composer dev`,
+  `php artisan dev`, dan `php artisan pail` yang benar-benar dipakai untuk pengembangan. Ini justifikasi
+  yang diminta aturan P1.
+- **`frontend/src/vite-env.d.ts` sengaja tidak dihapus.** Meski proyek ini JS-only, `jsconfig.json` tidak
+  menyetel `types` sendiri, sehingga baris `/// <reference types="vite/client" />` di berkas itulah yang
+  mengetik `import.meta.env` untuk `npm run check`. Menghapusnya akan memerahkan gate `checkJs`.
+
+### A.10.6 Pagar mutu setelah perbaikan
+
+```
+=== Backend Pest ===        >>> OK   Tests: 95 passed (629 assertions)
+=== Backend Pint ===        >>> OK   PASS 183 files
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK   0 error, 2 warning lama (react-hooks/incompatible-library dari watch() RHF)
+=== Frontend Vitest ===     >>> OK   27 berkas / 197 test
+=== Realtime node --test ===>>> OK   2 test
+verify.sh: SEMUA HIJAU
+```
+
+Tambahan yang dijalankan sekali jalan di akhir: `npm run build` sukses (305 modul; `index-*.js` 638,28 kB
+gzip 187,18 kB; `index-*.css` 250,11 kB) — peringatan Vite "chunk > 500 kB" masih ada dan belum ditangani;
+`php artisan route:cache` sukses; `GET http://127.0.0.1:8000/` → `302 → http://localhost:5173/`.
+
+Test baru putaran ini: **7 test backend** (6 di `AuthTest` — URL reset ke frontend, callback terdaftar,
+suspended tidak diaktifkan, daftar email terdaftar 422 sebagai dokumentasi trade-off B2, reset mencabut sesi +
+`remember_token`, peran sinkron di semua jalur — dan 1 di `HealthTest` untuk root redirect) serta
+**4 test frontend** (3 di `shared/api/client.test.js` blok cache cookie CSRF, 1 di
+`sections/auth/validasi.test.js` untuk normalisasi email).
+
+### A.10.7 Yang masih jujur belum dikerjakan
+
+- **B2 dibiarkan** sesuai keputusan pengguna (A.10.4).
+- **P2** — `laravel/octane` dan Debugbar memang belum dipasang; keduanya baru relevan di slice 10.
+  `activitylog`, `query-builder`, dan `league/csv` **sudah** dipakai sehingga temuan P2 untuk paket itu usang.
+- **P3** — `backend/.env` tidak pernah masuk git; bila zip lama pernah dibagikan, `php artisan key:generate`
+  perlu dijalankan sekali oleh pemilik repo (tidak bisa dilakukan otomatis di sini karena akan mengubah
+  kunci lokal aplikasi).
+- Peringatan Vite "chunk > 500 kB", uji beban, serta **slice 07–10** masih belum dikerjakan seperti tercatat
+  di A.9.6.

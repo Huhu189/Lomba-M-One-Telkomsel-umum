@@ -231,3 +231,29 @@ cd backend && php artisan migrate --force
 `docs/smoke-ui-slice06.mjs` (Chrome CDP, port 9333) menjalankan alur ini sendiri, termasuk mengisi form
 koreksi dan menekan kedua tombolnya di DOM sungguhan. Hasil terakhir **27/27 lulus** — rincian di
 `docs/laporan-pengujian.md` bagian A.9.
+
+---
+
+## Perbaikan Audit Slice 01 (putaran 6 Oktober 2026)
+
+Audit statis atas snapshot zip lama diperiksa ulang terhadap kode yang berjalan, lalu sebagian besar
+temuannya diperbaiki. Ringkasan lengkap ada di `docs/laporan-pengujian.md` bagian **A.10**.
+
+Yang bisa ditunjukkan saat demo:
+
+1. **Lupa sandi benar-benar berfungsi.** Kirim "lupa sandi" dari halaman depan → tautan di email menuju
+   halaman **frontend** `/atur-ulang-sandi?token=…&email=…` (sebelumnya tautan tidak pernah dibangun sama
+   sekali). Setelah sandi diganti, sesi lama di perangkat lain ikut berakhir.
+2. **Akun yang ditangguhkan sekolah tidak hidup lagi** hanya karena tautan verifikasi lama dibuka.
+3. **Root backend mengalihkan ke aplikasi.** Buka `http://localhost:8000/` → langsung diarahkan ke
+   `http://localhost:5173/`, bukan halaman selamat datang bawaan Laravel.
+4. **Pagar mutu**: `./verify.sh` hijau — Pest **95 passed (629 assertions)**, Pint 183 berkas,
+   Vitest **27 berkas / 197 test**, realtime 2 test.
+
+### Satu hal yang **sengaja tidak** diperbaiki (jujur)
+
+**Pendaftaran membalas 422 bila email sudah terdaftar**, sehingga email yang terdaftar bisa ditebak.
+Ini bertentangan dengan aturan anti-enumerasi di `AGENT.md`. Alasannya: alur pendaftaran yang disetujui
+adalah **langsung masuk setelah daftar**, jadi bila email terdaftar dibalas "sukses" tanpa akun baru,
+pemilik email itu justru tidak bisa masuk. Keputusan yang diambil: **pertahankan 422 dan catat jujur**.
+Perbaikan penuh menunggu keputusan produk (pola "kami sudah kirim email ke alamat itu" tanpa auto-login).
