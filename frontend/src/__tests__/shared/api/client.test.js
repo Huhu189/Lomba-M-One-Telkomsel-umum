@@ -11,7 +11,13 @@
  */
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
 import axios from 'axios'
-import { client, resetStatusSiaran } from '../../../shared/api/client.js'
+import {
+  ambilCsrfCookie,
+  axiosRoot,
+  client,
+  lupakanCsrfCookie,
+  resetStatusSiaran,
+} from '../../../shared/api/client.js'
 
 /**
  * Pasang adapter yang selalu gagal dengan AxiosError status tertentu.
@@ -39,6 +45,64 @@ function dengarkanEvent(nama) {
   window.addEventListener(nama, dengar)
   return dengar
 }
+
+describe('cache cookie CSRF', () => {
+  beforeEach(() => {
+    lupakanCsrfCookie()
+    resetStatusSiaran()
+  })
+
+  afterEach(() => {
+    axiosRoot.defaults.adapter = undefined
+    client.defaults.adapter = undefined
+    vi.restoreAllMocks()
+  })
+
+  it('hanya memanggil /sanctum/csrf-cookie sekali untuk banyak permintaan', async () => {
+    let panggilan = 0
+    axiosRoot.defaults.adapter = async (konfig) => {
+      panggilan += 1
+      return { data: null, status: 204, statusText: 'No Content', headers: {}, config: konfig }
+    }
+
+    await ambilCsrfCookie()
+    await ambilCsrfCookie()
+    await ambilCsrfCookie()
+
+    expect(panggilan).toBe(1)
+  })
+
+  it('kegagalan tidak disimpan, jadi percobaan berikutnya mengambil ulang', async () => {
+    let panggilan = 0
+    axiosRoot.defaults.adapter = async (konfig) => {
+      panggilan += 1
+      throw new axios.AxiosError('gagal', 'ERR_NETWORK', konfig)
+    }
+
+    await ambilCsrfCookie().catch(() => {})
+    await ambilCsrfCookie().catch(() => {})
+
+    expect(panggilan).toBe(2)
+  })
+
+  it('respons 419 membuang cache token CSRF', async () => {
+    let panggilan = 0
+    axiosRoot.defaults.adapter = async (konfig) => {
+      panggilan += 1
+      return { data: null, status: 204, statusText: 'No Content', headers: {}, config: konfig }
+    }
+
+    await ambilCsrfCookie()
+    expect(panggilan).toBe(1)
+
+    // Token kedaluwarsa di server → 419 → cache dibuang.
+    pasangAdapterGagal(419)
+    await client.get('/v1/tes').catch(() => {})
+
+    await ambilCsrfCookie()
+    expect(panggilan).toBe(2)
+  })
+})
 
 describe('interceptor sesi & throttle', () => {
   beforeEach(() => {

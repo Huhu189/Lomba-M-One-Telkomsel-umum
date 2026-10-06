@@ -11,10 +11,11 @@ export const skemaNama = z
   .min(2, 'Nama minimal 2 karakter.')
   .max(60, 'Nama maksimal 60 karakter.')
 
-/** Email: format valid, disimpan huruf kecil. */
+/** Email: format valid, spasi dipangkas, dan disimpan huruf kecil. */
 export const skemaEmail = z
   .string()
   .trim()
+  .toLowerCase()
   .min(1, 'Email wajib diisi.')
   .max(120, 'Email maksimal 120 karakter.')
   .pipe(z.email('Format email tidak valid.'))

@@ -25,10 +25,11 @@ export const skemaMapelForm = z.object({
     .optional(),
 })
 
-/** Email murid: format valid, disimpan huruf kecil. */
+/** Email murid: format valid, spasi dipangkas, dan disimpan huruf kecil. */
 export const skemaEmailMurid = z
   .string()
   .trim()
+  .toLowerCase()
   .min(1, 'Email wajib diisi.')
   .max(120, 'Email maksimal 120 karakter.')
   .pipe(z.email('Format email tidak valid.'))

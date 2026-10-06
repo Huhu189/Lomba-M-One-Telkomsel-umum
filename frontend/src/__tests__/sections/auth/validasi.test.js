@@ -50,6 +50,13 @@ describe('skema validasi auth', () => {
     expect(skemaKirimUlang.safeParse({ email: 'rina@sekolah.test' }).success).toBe(true)
   })
 
+  it('email dinormalkan (spasi dipangkas, huruf kecil) saat di-parse', () => {
+    const masuk = skemaMasuk.parse({ email: '  Rina@Sekolah.TEST  ', password: 'kata-sandi-aman-10' })
+    expect(masuk.email).toBe('rina@sekolah.test')
+
+    expect(skemaLupaSandi.parse({ email: 'BUDI@Sekolah.Test' }).email).toBe('budi@sekolah.test')
+  })
+
   it('skemaAturUlang mewajibkan token dari tautan email', () => {
     const data = { email: 'rina@sekolah.test', password: 'kata-sandi-aman-10', konfirmasi: 'kata-sandi-aman-10' }
     expect(skemaAturUlang.safeParse({ ...data, token: '' }).success).toBe(false)

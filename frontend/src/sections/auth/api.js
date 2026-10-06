@@ -69,6 +69,16 @@ export function teksGalat(galat) {
 }
 
 /**
+ * Normalisasi email sekali di satu tempat (trim + huruf kecil) supaya tidak ada
+ * pemanggil yang lupa. Server tetap menormalkan sendiri sebagai pengaman.
+ * @param {string} email
+ * @returns {string}
+ */
+function emailBersih(email) {
+  return email.trim().toLowerCase()
+}
+
+/**
  * Daftar murid (role selalu dari server = murid).
  * Backend langsung membuat sesi, jadi pemanggil bisa menyimpan `user` ke store.
  * @param {{ name: string, email: string, password: string }} data
@@ -78,7 +88,7 @@ export async function daftar(data) {
   await ambilCsrfCookie()
   const respons = await client.post('/v1/auth/daftar', {
     name: data.name,
-    email: data.email.toLowerCase(),
+    email: emailBersih(data.email),
     password: data.password,
     password_confirmation: data.password,
   })
@@ -93,7 +103,7 @@ export async function daftar(data) {
 export async function masuk(data) {
   await ambilCsrfCookie()
   const respons = await client.post('/v1/auth/masuk', {
-    email: data.email.toLowerCase(),
+    email: emailBersih(data.email),
     password: data.password,
   })
   const badan = z.object({ message: z.string(), user: skemaUser }).parse(respons.data)
@@ -135,7 +145,7 @@ export async function cekTerautentikasi() {
 export async function kirimUlangVerifikasi(email) {
   await ambilCsrfCookie()
   const respons = await client.post('/v1/auth/kirim-ulang-verifikasi-publik', {
-    email: email.toLowerCase(),
+    email: emailBersih(email),
   })
   return skemaPesan.parse(respons.data).message
 }
@@ -159,7 +169,7 @@ export async function kirimUlangVerifikasiSesi() {
  */
 export async function lupaSandi(email) {
   await ambilCsrfCookie()
-  const respons = await client.post('/v1/auth/lupa-sandi', { email: email.toLowerCase() })
+  const respons = await client.post('/v1/auth/lupa-sandi', { email: emailBersih(email) })
   return skemaPesan.parse(respons.data).message
 }
 
@@ -172,7 +182,7 @@ export async function aturUlangSandi(data) {
   await ambilCsrfCookie()
   const respons = await client.post('/v1/auth/atur-ulang-sandi', {
     token: data.token,
-    email: data.email.toLowerCase(),
+    email: emailBersih(data.email),
     password: data.password,
     password_confirmation: data.password,
   })

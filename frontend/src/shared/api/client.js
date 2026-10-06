@@ -33,15 +33,33 @@ export function resetStatusSiaran() {
   throttleTersiar = false
 }
 
+/**
+ * Cookie CSRF cukup diambil sekali per pemuatan halaman: Laravel hanya merotasinya
+ * saat sesi berganti (login/keluar) atau kedaluwarsa. Respons 419 di bawah akan
+ * membuang cache ini supaya permintaan berikutnya mengambil token baru.
+ * @type {Promise<unknown>|null}
+ */
+let janjiCsrf = null
+
+/** Buang cookie CSRF yang di-cache (dipakai setelah 419 / sesi berganti). */
+export function lupakanCsrfCookie() {
+  janjiCsrf = null
+}
+
 client.interceptors.response.use(
   (respons) => respons,
   (galat) => {
     const status = /** @type {number|undefined} */ (galat?.response?.status)
 
     // 401/419: sesi habis — kirim satu event, tanpa redirect paksa berulang.
-    if ((status === 401 || status === 419) && !sesiHabisTersiar) {
-      sesiHabisTersiar = true
-      window.dispatchEvent(new CustomEvent('auth:sesi-habis'))
+    if (status === 401 || status === 419) {
+      // 419 = token CSRF tidak cocok/kedaluwarsa: buang cache token.
+      if (status === 419) lupakanCsrfCookie()
+
+      if (!sesiHabisTersiar) {
+        sesiHabisTersiar = true
+        window.dispatchEvent(new CustomEvent('auth:sesi-habis'))
+      }
     }
 
     // 429: throttle — siarkan hitung mundur dari header Retry-After (sekali per gelombang).
@@ -66,8 +84,14 @@ client.interceptors.response.use(
 /**
  * Ambil cookie CSRF dari backend Sanctum (dipanggil sebelum login/submit).
  * Memakai axiosRoot agar URL persis /sanctum/csrf-cookie (tanpa awalan /api).
- * @returns {Promise<void>}
+ * @returns {Promise<unknown>}
  */
 export async function ambilCsrfCookie() {
-  await axiosRoot.get('/sanctum/csrf-cookie')
+  janjiCsrf ??= axiosRoot.get('/sanctum/csrf-cookie').catch((galat) => {
+    // Jangan simpan kegagalan: percobaan berikutnya harus mencoba lagi.
+    janjiCsrf = null
+    throw galat
+  })
+
+  return janjiCsrf
 }
