@@ -34,6 +34,7 @@ import HalamanPeringkat from './sections/report/HalamanPeringkat.jsx'
 import HalamanLaporan from './sections/report/HalamanLaporan.jsx'
 import HalamanBadge from './sections/report/HalamanBadge.jsx'
 import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
+import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
@@ -123,6 +124,9 @@ export default function App() {
 
             {/* Laporan per tema memuat data seluruh kelas — guru saja (slice 05). */}
             <Route path={RUTE.laporanKuis} element={<HalamanLaporan />} />
+
+            {/* Antrean koreksi manual memuat kunci jawaban — guru saja (slice 06). */}
+            <Route path={RUTE.koreksiKuis} element={<HalamanKoreksi />} />
           </Route>
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}

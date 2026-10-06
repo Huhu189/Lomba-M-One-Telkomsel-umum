@@ -3,8 +3,11 @@ import {
   TIPE,
   kontenDariState,
   kunciDariState,
+  pisahKata,
+  sinonimUraianDariTeks,
   stateDariSoal,
   stateSoalKosong,
+  teksDariSinonimUraian,
   urutanDariItem,
 } from '../../../sections/question/tipeSoal.js'
 import { skemaTagForm, validasiSoal } from '../../../sections/question/validasi.js'
@@ -54,11 +57,74 @@ function stateMengurutkan() {
   return state
 }
 
+/** State letak kata valid. */
+function stateLetakKata() {
+  const state = stateSoalKosong()
+  state.subject_id = '3'
+  state.tipe = TIPE.letakKata
+  state.teks = 'Letakkan kata pada posisi yang tepat.'
+  state.kata = [
+    { id: 'W1', teks: 'kucing' },
+    { id: 'W2', teks: 'berlari' },
+  ]
+  state.posisi = [
+    { id: 'P1', teks: 'Subjek' },
+    { id: 'P2', teks: 'Predikat' },
+  ]
+  state.penempatan = { W1: 'P1', W2: 'P2' }
+  return state
+}
+
+/** State hubung kata valid. */
+function stateHubungKata() {
+  const state = stateSoalKosong()
+  state.subject_id = '3'
+  state.tipe = TIPE.hubungKata
+  state.teks = 'Hubungkan kata dengan pasangannya.'
+  state.kiri = [
+    { id: 'K1', teks: 'besar' },
+    { id: 'K2', teks: 'panas' },
+  ]
+  state.kanan = [
+    { id: 'N1', teks: 'kecil' },
+    { id: 'N2', teks: 'dingin' },
+  ]
+  state.sambungan = { K1: 'N1', K2: 'N2' }
+  return state
+}
+
+/** State isian singkat valid. */
+function stateIsianSingkat() {
+  const state = stateSoalKosong()
+  state.subject_id = '3'
+  state.tipe = TIPE.isianSingkat
+  state.teks = 'Berapa hasil 4 + 5?'
+  state.jawabanBaku = [{ teks: '9', sinonim: 'sembilan' }]
+  return state
+}
+
+/** State uraian valid. */
+function stateUraian() {
+  const state = stateSoalKosong()
+  state.subject_id = '3'
+  state.tipe = TIPE.uraian
+  state.teks = 'Jelaskan cara menjumlahkan dua bilangan.'
+  state.kataKunci = [{ teks: 'jumlah', bobot: '' }]
+  return state
+}
+
 describe('validasiSoal', () => {
   it('menerima soal objektif yang lengkap', () => {
     expect(validasiSoal(statePilihanGanda())).toEqual([])
     expect(validasiSoal(stateMenjodohkan())).toEqual([])
     expect(validasiSoal(stateMengurutkan())).toEqual([])
+    expect(validasiSoal(stateLetakKata())).toEqual([])
+    expect(validasiSoal(stateHubungKata())).toEqual([])
+  })
+
+  it('menerima soal bertingkat isian singkat dan uraian', () => {
+    expect(validasiSoal(stateIsianSingkat())).toEqual([])
+    expect(validasiSoal(stateUraian())).toEqual([])
   })
 
   it('menolak soal yang belum diisi mapel, teks, dan opsinya', () => {
@@ -98,10 +164,44 @@ describe('validasiSoal', () => {
     )
   })
 
-  it('menolak tipe esai yang belum didukung', () => {
-    const state = statePilihanGanda()
-    state.tipe = TIPE.uraian
-    expect(validasiSoal(state)[0]).toContain('baru mendukung soal objektif')
+  it('menolak letak kata tanpa penempatan lengkap', () => {
+    const state = stateLetakKata()
+    state.penempatan = { W1: 'P1' }
+    expect(validasiSoal(state)).toContain('Setiap kata wajib punya posisi di kunci.')
+
+    state.penempatan = { W1: 'P1', W2: 'PX' }
+    expect(validasiSoal(state)).toContain('Ada penempatan yang menunjuk posisi tak dikenal.')
+  })
+
+  it('menolak hubung kata yang belum lengkap sambungannya', () => {
+    const state = stateHubungKata()
+    state.sambungan = { K1: 'N1' }
+    expect(validasiSoal(state)).toContain('Setiap item kiri wajib punya pasangan di kunci.')
+  })
+
+  it('menolak isian singkat tanpa jawaban baku', () => {
+    const state = stateIsianSingkat()
+    state.jawabanBaku = [{ teks: '   ', sinonim: '' }]
+    expect(validasiSoal(state)).toContain('Setiap jawaban baku wajib berupa teks.')
+  })
+
+  it('menolak ambang kemiripan di luar 0 sampai 1', () => {
+    const state = stateIsianSingkat()
+    state.ambang = '1.5'
+    expect(validasiSoal(state)[0]).toContain('Ambang kemiripan isian')
+
+    state.ambang = ''
+    expect(validasiSoal(state)).toEqual([])
+  })
+
+  it('menolak uraian tanpa kata kunci dan bobot bukan angka positif', () => {
+    const kosong = stateUraian()
+    kosong.kataKunci = []
+    expect(validasiSoal(kosong)).toContain('Uraian wajib punya minimal satu kata kunci.')
+
+    const bobotSalah = stateUraian()
+    bobotSalah.kataKunci = [{ teks: 'jumlah', bobot: '0' }]
+    expect(validasiSoal(bobotSalah)).toContain('Bobot kata kunci wajib bilangan lebih dari 0.')
   })
 })
 
@@ -140,6 +240,85 @@ describe('builder konten & kunci', () => {
       { id: 'b', teks: '', posisi: '1' },
     ]
     expect(urutanDariItem(item)).toEqual(['b', 'a'])
+  })
+
+  it('menyusun konten letak kata tanpa kunci penempatan ikut pada konten', () => {
+    const state = stateLetakKata()
+
+    expect(kontenDariState(state)).toEqual({
+      teks: 'Letakkan kata pada posisi yang tepat.',
+      kata: [
+        { id: 'W1', teks: 'kucing' },
+        { id: 'W2', teks: 'berlari' },
+      ],
+      posisi: [
+        { id: 'P1', teks: 'Subjek' },
+        { id: 'P2', teks: 'Predikat' },
+      ],
+    })
+    expect(kunciDariState(state)).toEqual({ penempatan: { W1: 'P1', W2: 'P2' } })
+  })
+
+  it('menyusun konten dan kunci hubung kata', () => {
+    const state = stateHubungKata()
+
+    expect(kontenDariState(state).kiri).toEqual([
+      { id: 'K1', teks: 'besar' },
+      { id: 'K2', teks: 'panas' },
+    ])
+    expect(kunciDariState(state)).toEqual({ sambungan: { K1: 'N1', K2: 'N2' } })
+  })
+
+  it('menyusun kunci isian singkat dengan sinonim dan ambang', () => {
+    const state = stateIsianSingkat()
+
+    expect(kunciDariState(state)).toEqual({
+      jawaban_baku: ['9'],
+      sinonim: [['sembilan']],
+      ambang: 0.8,
+    })
+
+    state.angkaPersis = false
+    state.negasi = 'bukan, tidak'
+    state.ambang = ''
+    expect(kunciDariState(state)).toEqual({
+      jawaban_baku: ['9'],
+      sinonim: [['sembilan']],
+      angka_persis: false,
+      negasi: ['bukan', 'tidak'],
+    })
+  })
+
+  it('menyusun kunci uraian dengan bobot opsional dan sinonim', () => {
+    const state = stateUraian()
+    expect(kunciDariState(state)).toEqual({ kata_kunci: [{ teks: 'jumlah' }], ambang_lulus: 0.6 })
+
+    state.kataKunci = [
+      { teks: 'jumlah', bobot: '2' },
+      { teks: 'hasil', bobot: '' },
+    ]
+    state.sinonimUraian = 'jumlah = tambah, total'
+    expect(kunciDariState(state)).toEqual({
+      kata_kunci: [{ teks: 'jumlah', bobot: 2 }, { teks: 'hasil' }],
+      ambang_lulus: 0.6,
+      sinonim: { jumlah: ['tambah', 'total'] },
+    })
+  })
+})
+
+describe('bantuan teks', () => {
+  it('pisahKata memangkas spasi dan membuang bagian kosong', () => {
+    expect(pisahKata(' sembilan , 9 , ')).toEqual(['sembilan', '9'])
+    expect(pisahKata('')).toEqual([])
+  })
+
+  it('sinonimUraianDariTeks bolak-balik dengan teksDariSinonimUraian', () => {
+    const peta = sinonimUraianDariTeks('jumlah = tambah, total\nhasil = jawaban')
+    expect(peta).toEqual({ jumlah: ['tambah', 'total'], hasil: ['jawaban'] })
+    expect(teksDariSinonimUraian(peta)).toBe('jumlah = tambah, total\nhasil = jawaban')
+
+    expect(sinonimUraianDariTeks('baris tanpa pemisah')).toEqual({})
+    expect(teksDariSinonimUraian(null)).toBe('')
   })
 })
 
@@ -192,6 +371,90 @@ describe('stateDariSoal', () => {
     })
 
     expect(state.item.map((satu) => satu.posisi)).toEqual(['2', '1'])
+  })
+
+  it('membuka soal isian singkat beserta sinonim, ambang, dan negasinya', () => {
+    const state = stateDariSoal({
+      id: 11,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'isian_singkat',
+      konten: { teks: 'Berapa hasil 4 + 5?' },
+      kunci: { jawaban_baku: ['9'], sinonim: [['sembilan']], ambang: 0.9, angka_persis: false, negasi: ['bukan'] },
+      pembahasan: null,
+      skor: 4,
+      aktif: true,
+    })
+
+    expect(state.jawabanBaku).toEqual([{ teks: '9', sinonim: 'sembilan' }])
+    expect(state.ambang).toBe('0.9')
+    expect(state.angkaPersis).toBe(false)
+    expect(state.negasi).toBe('bukan')
+  })
+
+  it('membuka soal uraian beserta kata kunci berbobot', () => {
+    const state = stateDariSoal({
+      id: 12,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'uraian',
+      konten: { teks: 'Jelaskan.' },
+      kunci: {
+        kata_kunci: [{ teks: 'jumlah', bobot: 2 }, { teks: 'hasil' }],
+        ambang_lulus: 0.5,
+        sinonim: { jumlah: ['tambah'] },
+      },
+      pembahasan: null,
+      skor: 10,
+      aktif: true,
+    })
+
+    expect(state.kataKunci).toEqual([
+      { teks: 'jumlah', bobot: '2' },
+      { teks: 'hasil', bobot: '' },
+    ])
+    expect(state.ambangLulus).toBe('0.5')
+    expect(state.sinonimUraian).toBe('jumlah = tambah')
+  })
+
+  it('membuka soal letak kata dan hubung kata apa adanya', () => {
+    const letak = stateDariSoal({
+      id: 13,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'letak_kata',
+      konten: {
+        teks: 'Letakkan.',
+        kata: [{ id: 'W1', teks: 'kucing' }],
+        posisi: [{ id: 'P1', teks: 'Subjek' }],
+      },
+      kunci: { penempatan: { W1: 'P1' } },
+      pembahasan: null,
+      skor: 5,
+      aktif: true,
+    })
+
+    expect(letak.kata).toEqual([{ id: 'W1', teks: 'kucing' }])
+    expect(letak.penempatan).toEqual({ W1: 'P1' })
+
+    const hubung = stateDariSoal({
+      id: 14,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'hubung_kata',
+      konten: {
+        teks: 'Hubungkan.',
+        kiri: [{ id: 'K1', teks: 'besar' }],
+        kanan: [{ id: 'N1', teks: 'kecil' }],
+      },
+      kunci: { sambungan: { K1: 'N1' } },
+      pembahasan: null,
+      skor: 5,
+      aktif: true,
+    })
+
+    expect(hubung.kanan).toEqual([{ id: 'N1', teks: 'kecil' }])
+    expect(hubung.sambungan).toEqual({ K1: 'N1' })
   })
 })
 

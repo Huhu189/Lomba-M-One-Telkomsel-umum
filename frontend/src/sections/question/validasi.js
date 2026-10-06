@@ -2,13 +2,15 @@
  * Skema form + validasi kelengkapan soal di sisi klien.
  *
  * Aturan di bawah mencerminkan registry backend (PenanganPilihanGanda,
- * PenanganBenarSalah, PenanganMenjodohkan, PenanganMengurutkan) supaya guru
- * melihat pesan jelas sebelum menabrak 422 dari server.
+ * PenanganBenarSalah, PenanganMenjodohkan, PenanganMengurutkan, PenanganLetakKata,
+ * PenanganHubungKata, PenanganIsianSingkat, PenanganUraian) supaya guru melihat
+ * pesan jelas sebelum menabrak 422 dari server.
  */
 import { z } from 'zod'
 import {
   TIPE,
-  TIPE_OBJEKTIF,
+  AMBANG_BAWAAN_ISIAN,
+  AMBANG_BAWAAN_URAIAN,
   MIN_OPSI,
   MAKS_OPSI,
   MIN_ITEM,
@@ -62,11 +64,6 @@ export function validasiSoal(state) {
 
   if (state.subject_id === '') galat.push('Pilih mapel dulu.')
 
-  if (!TIPE_OBJEKTIF.includes(state.tipe)) {
-    galat.push('Tahap ini baru mendukung soal objektif (pilihan ganda, benar/salah, menjodohkan, mengurutkan).')
-    return galat
-  }
-
   if (state.teks.trim() === '') galat.push('Isi soal wajib diisi.')
   if (state.matematika.trim().length > MAKS_MATEMATIKA) {
     galat.push(`Template MathML maksimal ${MAKS_MATEMATIKA} karakter.`)
@@ -78,6 +75,10 @@ export function validasiSoal(state) {
   if (state.tipe === TIPE.pilihanGanda) galat.push(...validasiPilihanGanda(state))
   if (state.tipe === TIPE.menjodohkan) galat.push(...validasiMenjodohkan(state))
   if (state.tipe === TIPE.mengurutkan) galat.push(...validasiMengurutkan(state))
+  if (state.tipe === TIPE.hubungKata) galat.push(...validasiHubungKata(state))
+  if (state.tipe === TIPE.letakKata) galat.push(...validasiLetakKata(state))
+  if (state.tipe === TIPE.isianSingkat) galat.push(...validasiIsianSingkat(state))
+  if (state.tipe === TIPE.uraian) galat.push(...validasiUraian(state))
 
   return galat
 }
@@ -105,10 +106,29 @@ function validasiPilihanGanda(state) {
  * @returns {string[]}
  */
 function validasiMenjodohkan(state) {
+  return validasiPasangan(state, 'Menjodohkan', state.pasangan)
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiHubungKata(state) {
+  return validasiPasangan(state, 'Hubung kata', state.sambungan)
+}
+
+/**
+ * Aturan bersama menjodohkan & hubung kata (beda hanya nama kunci pemetaan).
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @param {string} jenis
+ * @param {Record<string, string>} peta
+ * @returns {string[]}
+ */
+function validasiPasangan(state, jenis, peta) {
   const galat = []
 
   if (state.kiri.length < MIN_ITEM || state.kanan.length < MIN_ITEM) {
-    galat.push(`Menjodohkan wajib punya minimal ${MIN_ITEM} pasangan kiri dan kanan.`)
+    galat.push(`${jenis} wajib punya minimal ${MIN_ITEM} pasangan kiri dan kanan.`)
   }
 
   if (state.kiri.some((satu) => satu.teks.trim() === '')) galat.push('Setiap item kiri wajib punya teks.')
@@ -117,12 +137,103 @@ function validasiMenjodohkan(state) {
   const idKanan = state.kanan.map((satu) => satu.id)
 
   for (const satu of state.kiri) {
-    const pasangan = state.pasangan[satu.id] ?? ''
+    const pasangan = peta[satu.id] ?? ''
     if (pasangan === '') galat.push('Setiap item kiri wajib punya pasangan di kunci.')
     else if (!idKanan.includes(pasangan)) galat.push('Ada pasangan yang menunjuk item kanan tak dikenal.')
   }
 
   return [...new Set(galat)]
+}
+
+/**
+ * Letak kata: minimal dua kata & dua posisi, id unik, dan setiap kata punya
+ * posisi di kunci.
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiLetakKata(state) {
+  const galat = []
+
+  if (state.kata.length < MIN_ITEM || state.posisi.length < MIN_ITEM) {
+    galat.push(`Letak kata wajib punya minimal ${MIN_ITEM} kata dan ${MIN_ITEM} posisi.`)
+  }
+
+  if (state.kata.some((satu) => satu.teks.trim() === '')) galat.push('Setiap kata wajib punya teks.')
+  if (state.posisi.some((satu) => satu.teks.trim() === '')) galat.push('Setiap posisi wajib punya teks.')
+
+  const idKata = state.kata.map((satu) => satu.id)
+  const idPosisi = state.posisi.map((satu) => satu.id)
+
+  if (new Set(idKata).size !== idKata.length) galat.push('Id kata tidak boleh duplikat.')
+  if (new Set(idPosisi).size !== idPosisi.length) galat.push('Id posisi tidak boleh duplikat.')
+
+  for (const satu of state.kata) {
+    const posisi = state.penempatan[satu.id] ?? ''
+    if (posisi === '') galat.push('Setiap kata wajib punya posisi di kunci.')
+    else if (!idPosisi.includes(posisi)) galat.push('Ada penempatan yang menunjuk posisi tak dikenal.')
+  }
+
+  return [...new Set(galat)]
+}
+
+/**
+ * Isian singkat: wajib punya jawaban baku; ambang (bila diisi) 0–1.
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiIsianSingkat(state) {
+  const galat = []
+
+  if (state.jawabanBaku.length === 0) galat.push('Isian singkat wajib punya minimal satu jawaban baku.')
+  if (state.jawabanBaku.some((satu) => satu.teks.trim() === '')) {
+    galat.push('Setiap jawaban baku wajib berupa teks.')
+  }
+
+  if (!ambangWajar(state.ambang)) {
+    galat.push(`Ambang kemiripan isian harus angka lebih dari 0 sampai 1 (bawaan ${AMBANG_BAWAAN_ISIAN}).`)
+  }
+
+  return galat
+}
+
+/**
+ * Uraian: wajib punya kata kunci; bobot opsional tetapi harus > 0 bila diisi.
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiUraian(state) {
+  const galat = []
+
+  if (state.kataKunci.length === 0) galat.push('Uraian wajib punya minimal satu kata kunci.')
+  if (state.kataKunci.some((satu) => satu.teks.trim() === '')) {
+    galat.push('Setiap kata kunci wajib punya teks.')
+  }
+
+  for (const satu of state.kataKunci) {
+    if (satu.bobot.trim() === '') continue
+    const bobot = Number(satu.bobot)
+    if (!Number.isFinite(bobot) || bobot <= 0) {
+      galat.push('Bobot kata kunci wajib bilangan lebih dari 0.')
+      break
+    }
+  }
+
+  if (!ambangWajar(state.ambangLulus)) {
+    galat.push(`Ambang lulus uraian harus angka lebih dari 0 sampai 1 (bawaan ${AMBANG_BAWAAN_URAIAN}).`)
+  }
+
+  return galat
+}
+
+/**
+ * Ambang kosong dianggap memakai bawaan; selain itu wajib angka (0, 1].
+ * @param {string} nilai
+ * @returns {boolean}
+ */
+function ambangWajar(nilai) {
+  if (nilai.trim() === '') return true
+  const angka = Number(nilai)
+  return Number.isFinite(angka) && angka > 0 && angka <= 1
 }
 
 /**

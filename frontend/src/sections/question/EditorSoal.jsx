@@ -1,9 +1,9 @@
 /**
- * Editor soal objektif (slice 03).
+ * Editor bank soal (slice 03 + 06).
  *
- * Bidang berubah mengikuti tipe soal; validasi kelengkapan dijalankan di klien
- * (cermin registry backend) lalu pratinjau memakai renderer yang sama dengan
- * layar murid — jadi yang dilihat guru persis yang dilihat murid.
+ * Bidang berubah mengikuti tipe soal (delapan tipe); validasi kelengkapan
+ * dijalankan di klien (cermin registry backend) lalu pratinjau memakai renderer
+ * yang sama dengan layar murid — jadi yang dilihat guru persis yang dilihat murid.
  */
 import { useState } from 'react'
 import Banner from '../../shared/ui/Banner.jsx'
@@ -22,6 +22,137 @@ import {
   stateSoalKosong,
 } from './tipeSoal.js'
 import { validasiSoal } from './validasi.js'
+
+/**
+ * Fieldset pasangan kiri–kanan untuk menjodohkan & hubung kata. Backend memakai
+ * satu penangan yang sama (PenanganHubungKata extends PenanganMenjodohkan), jadi
+ * editornya pun satu — hanya nama kunci pemetaannya yang berbeda.
+ * @param {{
+ *   state: import('./tipeSoal.js').StateSoal,
+ *   ubah: (perubahan: Partial<import('./tipeSoal.js').StateSoal>) => void,
+ *   namaPeta: 'pasangan'|'sambungan',
+ *   judul: string,
+ * }} props
+ */
+function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
+  const peta = state[namaPeta]
+
+  /** @param {Record<string, string>} baru */
+  function simpanPeta(baru) {
+    ubah(namaPeta === 'sambungan' ? { sambungan: baru } : { pasangan: baru })
+  }
+
+  /** @param {number} index @param {string} teks */
+  function ubahKiri(index, teks) {
+    ubah({ kiri: state.kiri.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  }
+
+  /** @param {number} index */
+  function hapusKiri(index) {
+    if (state.kiri.length <= MIN_ITEM) return
+    const dibuang = state.kiri[index]
+    const baru = { ...peta }
+    delete baru[dibuang.id]
+    simpanPeta(baru)
+    ubah({ kiri: state.kiri.filter((_, posisi) => posisi !== index) })
+  }
+
+  /** @param {number} index @param {string} teks */
+  function ubahKanan(index, teks) {
+    ubah({ kanan: state.kanan.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  }
+
+  /** @param {number} index */
+  function hapusKanan(index) {
+    if (state.kanan.length <= MIN_ITEM) return
+    const dibuang = state.kanan[index]
+    simpanPeta(Object.fromEntries(Object.entries(peta).filter(([, ke]) => ke !== dibuang.id)))
+    ubah({ kanan: state.kanan.filter((_, posisi) => posisi !== index) })
+  }
+
+  return (
+    <fieldset className="col-12">
+      <legend className="h6 fw-semibold">{judul} (minimal {MIN_ITEM})</legend>
+
+      <div className="row g-3">
+        <div className="col-md-6">
+          <h3 className="h6 fw-semibold teks-lembut">Kiri</h3>
+          {state.kiri.map((satu, index) => (
+            <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <span className="opsi-huruf">{satu.id}</span>
+              <input
+                className="form-control form-control-sm flex-grow-1"
+                aria-label={`Teks kiri ${satu.id}`}
+                value={satu.teks}
+                onChange={(e) => ubahKiri(index, e.target.value)}
+              />
+              <select
+                className="form-select form-select-sm jodoh-pilih"
+                aria-label={`Pasangan kiri ${satu.id}`}
+                value={peta[satu.id] ?? ''}
+                onChange={(e) => simpanPeta({ ...peta, [satu.id]: e.target.value })}
+              >
+                <option value="">Pasangan…</option>
+                {state.kanan.map((pasang) => (
+                  <option key={pasang.id} value={pasang.id}>
+                    {pasang.id} — {pasang.teks || '(belum diisi)'}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                disabled={state.kiri.length <= MIN_ITEM}
+                onClick={() => hapusKiri(index)}
+              >
+                Hapus
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            disabled={state.kiri.length >= MAKS_OPSI}
+            onClick={() => ubah({ kiri: [...state.kiri, { id: idBerikut('K', state.kiri), teks: '' }] })}
+          >
+            Tambah kiri
+          </button>
+        </div>
+
+        <div className="col-md-6">
+          <h3 className="h6 fw-semibold teks-lembut">Kanan</h3>
+          {state.kanan.map((satu, index) => (
+            <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
+              <span className="opsi-huruf">{satu.id}</span>
+              <input
+                className="form-control form-control-sm"
+                aria-label={`Teks kanan ${satu.id}`}
+                value={satu.teks}
+                onChange={(e) => ubahKanan(index, e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                disabled={state.kanan.length <= MIN_ITEM}
+                onClick={() => hapusKanan(index)}
+              >
+                Hapus
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            disabled={state.kanan.length >= MAKS_OPSI}
+            onClick={() => ubah({ kanan: [...state.kanan, { id: idBerikut('N', state.kanan), teks: '' }] })}
+          >
+            Tambah kanan
+          </button>
+        </div>
+      </div>
+    </fieldset>
+  )
+}
 
 /**
  * @param {{
@@ -71,35 +202,80 @@ export default function EditorSoal({
     ubah({ opsi: sisa, jawaban })
   }
 
-  /** @param {number} index @param {string} teks */
-  function ubahKiri(index, teks) {
-    ubah({ kiri: state.kiri.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  /**
+   * Ubah satu baris jawaban baku isian (teks dan/atau sinonimnya).
+   * @param {number} index
+   * @param {Partial<import('./tipeSoal.js').BarisIsian>} perubahan
+   */
+  function ubahJawabanBaku(index, perubahan) {
+    ubah({
+      jawabanBaku: state.jawabanBaku.map((satu, posisi) =>
+        posisi === index ? { ...satu, ...perubahan } : satu,
+      ),
+    })
+  }
+
+  function tambahJawabanBaku() {
+    ubah({ jawabanBaku: [...state.jawabanBaku, { teks: '', sinonim: '' }] })
   }
 
   /** @param {number} index */
-  function hapusKiri(index) {
-    if (state.kiri.length <= MIN_ITEM) return
-    const dibuang = state.kiri[index]
-    const sisa = state.kiri.filter((_, posisi) => posisi !== index)
-    const pasangan = { ...state.pasangan }
-    delete pasangan[dibuang.id]
-    ubah({ kiri: sisa, pasangan })
+  function hapusJawabanBaku(index) {
+    if (state.jawabanBaku.length <= 1) return
+    ubah({ jawabanBaku: state.jawabanBaku.filter((_, posisi) => posisi !== index) })
   }
 
-  /** @param {number} index @param {string} teks */
-  function ubahKanan(index, teks) {
-    ubah({ kanan: state.kanan.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  /**
+   * Ubah satu baris kata kunci uraian.
+   * @param {number} index
+   * @param {Partial<import('./tipeSoal.js').BarisKataKunci>} perubahan
+   */
+  function ubahKataKunci(index, perubahan) {
+    ubah({
+      kataKunci: state.kataKunci.map((satu, posisi) =>
+        posisi === index ? { ...satu, ...perubahan } : satu,
+      ),
+    })
+  }
+
+  function tambahKataKunci() {
+    ubah({ kataKunci: [...state.kataKunci, { teks: '', bobot: '' }] })
   }
 
   /** @param {number} index */
-  function hapusKanan(index) {
-    if (state.kanan.length <= MIN_ITEM) return
-    const dibuang = state.kanan[index]
-    const sisa = state.kanan.filter((_, posisi) => posisi !== index)
-    const pasangan = Object.fromEntries(
-      Object.entries(state.pasangan).filter(([, ke]) => ke !== dibuang.id),
+  function hapusKataKunci(index) {
+    if (state.kataKunci.length <= 1) return
+    ubah({ kataKunci: state.kataKunci.filter((_, posisi) => posisi !== index) })
+  }
+
+  /** @param {number} index @param {string} teks */
+  function ubahKata(index, teks) {
+    ubah({ kata: state.kata.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  }
+
+  /** @param {number} index */
+  function hapusKata(index) {
+    if (state.kata.length <= MIN_ITEM) return
+    const dibuang = state.kata[index]
+    const penempatan = { ...state.penempatan }
+    delete penempatan[dibuang.id]
+    ubah({ kata: state.kata.filter((_, posisi) => posisi !== index), penempatan })
+  }
+
+  /** @param {number} index @param {string} teks */
+  function ubahPosisiKata(index, teks) {
+    ubah({ posisi: state.posisi.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)) })
+  }
+
+  /** @param {number} index */
+  function hapusPosisiKata(index) {
+    if (state.posisi.length <= MIN_ITEM) return
+    const dibuang = state.posisi[index]
+    const sisa = state.posisi.filter((_, posisi) => posisi !== index)
+    const penempatan = Object.fromEntries(
+      Object.entries(state.penempatan).filter(([, ke]) => ke !== dibuang.id),
     )
-    ubah({ kanan: sisa, pasangan })
+    ubah({ posisi: sisa, penempatan })
   }
 
   /** @param {number} index @param {string} teks */
@@ -138,7 +314,9 @@ export default function EditorSoal({
     <div className="kartu-soft p-4">
       <div className="d-flex flex-wrap align-items-baseline gap-2 mb-3">
         <h2 className="h6 fw-bold mb-0">{soal === null ? 'Tambah Soal' : `Ubah Soal #${soal.id}`}</h2>
-        <span className="teks-lembut small">Soal objektif: pilihan ganda, benar/salah, menjodohkan, mengurutkan.</span>
+        <span className="teks-lembut small">
+          Objektif (dinilai pasti) atau bertingkat (isian singkat &amp; uraian, dikoreksi guru bila perlu).
+        </span>
         {soal !== null && (
           <button type="button" className="btn btn-sm btn-outline-secondary ms-auto" onClick={onBatal}>
             Batal ubah
@@ -198,14 +376,11 @@ export default function EditorSoal({
             onChange={(e) => ubah({ tipe: e.target.value })}
           >
             {DAFTAR_TIPE.map((tipe) => (
-              <option key={tipe.nilai} value={tipe.nilai} disabled={!tipe.objektif}>
-                {tipe.label}{tipe.objektif ? '' : ' (belum tersedia)'}
+              <option key={tipe.nilai} value={tipe.nilai}>
+                {tipe.label}{tipe.objektif ? '' : ' (dinilai guru bila perlu)'}
               </option>
             ))}
           </select>
-          {!DAFTAR_TIPE.find((tipe) => tipe.nilai === state.tipe)?.objektif && (
-            <p className="status-salah small mb-0 mt-1">Tipe ini baru tersedia setelah soal objektif tuntas.</p>
-          )}
         </div>
 
         <div className="col-12">
@@ -296,29 +471,52 @@ export default function EditorSoal({
         )}
 
         {state.tipe === TIPE.menjodohkan && (
+          <FieldsetPasangan
+            state={state}
+            ubah={ubah}
+            namaPeta="pasangan"
+            judul="Pasangan menjodohkan"
+          />
+        )}
+
+        {state.tipe === TIPE.hubungKata && (
+          <FieldsetPasangan
+            state={state}
+            ubah={ubah}
+            namaPeta="sambungan"
+            judul="Sambungan hubung kata"
+          />
+        )}
+
+        {state.tipe === TIPE.letakKata && (
           <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Pasangan menjodohkan (minimal {MIN_ITEM})</legend>
+            <legend className="h6 fw-semibold">Kata + posisi (minimal {MIN_ITEM})</legend>
+            <p className="teks-lembut small">
+              Setiap kata wajib punya satu posisi. Penilaian otomatis: seluruh kata harus tepat.
+            </p>
 
             <div className="row g-3">
-              <div className="col-md-6">
-                <h3 className="h6 fw-semibold teks-lembut">Kiri</h3>
-                {state.kiri.map((satu, index) => (
+              <div className="col-md-7">
+                <h3 className="h6 fw-semibold teks-lembut">Kata</h3>
+                {state.kata.map((satu, index) => (
                   <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span className="opsi-huruf">{satu.id}</span>
                     <input
                       className="form-control form-control-sm flex-grow-1"
-                      aria-label={`Teks kiri ${satu.id}`}
+                      aria-label={`Teks kata ${satu.id}`}
                       value={satu.teks}
-                      onChange={(e) => ubahKiri(index, e.target.value)}
+                      onChange={(e) => ubahKata(index, e.target.value)}
                     />
                     <select
                       className="form-select form-select-sm jodoh-pilih"
-                      aria-label={`Pasangan kiri ${satu.id}`}
-                      value={state.pasangan[satu.id] ?? ''}
-                      onChange={(e) => ubah({ pasangan: { ...state.pasangan, [satu.id]: e.target.value } })}
+                      aria-label={`Posisi kata ${satu.id}`}
+                      value={state.penempatan[satu.id] ?? ''}
+                      onChange={(e) =>
+                        ubah({ penempatan: { ...state.penempatan, [satu.id]: e.target.value } })
+                      }
                     >
-                      <option value="">Pasangan…</option>
-                      {state.kanan.map((pasang) => (
+                      <option value="">Posisi…</option>
+                      {state.posisi.map((pasang) => (
                         <option key={pasang.id} value={pasang.id}>
                           {pasang.id} — {pasang.teks || '(belum diisi)'}
                         </option>
@@ -327,8 +525,8 @@ export default function EditorSoal({
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-danger"
-                      disabled={state.kiri.length <= MIN_ITEM}
-                      onClick={() => hapusKiri(index)}
+                      disabled={state.kata.length <= MIN_ITEM}
+                      onClick={() => hapusKata(index)}
                     >
                       Hapus
                     </button>
@@ -337,29 +535,29 @@ export default function EditorSoal({
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-primary"
-                  disabled={state.kiri.length >= MAKS_OPSI}
-                  onClick={() => ubah({ kiri: [...state.kiri, { id: idBerikut('K', state.kiri), teks: '' }] })}
+                  disabled={state.kata.length >= MAKS_OPSI}
+                  onClick={() => ubah({ kata: [...state.kata, { id: idBerikut('W', state.kata), teks: '' }] })}
                 >
-                  Tambah kiri
+                  Tambah kata
                 </button>
               </div>
 
-              <div className="col-md-6">
-                <h3 className="h6 fw-semibold teks-lembut">Kanan</h3>
-                {state.kanan.map((satu, index) => (
+              <div className="col-md-5">
+                <h3 className="h6 fw-semibold teks-lembut">Posisi</h3>
+                {state.posisi.map((satu, index) => (
                   <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
                     <span className="opsi-huruf">{satu.id}</span>
                     <input
                       className="form-control form-control-sm"
-                      aria-label={`Teks kanan ${satu.id}`}
+                      aria-label={`Teks posisi ${satu.id}`}
                       value={satu.teks}
-                      onChange={(e) => ubahKanan(index, e.target.value)}
+                      onChange={(e) => ubahPosisiKata(index, e.target.value)}
                     />
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-danger"
-                      disabled={state.kanan.length <= MIN_ITEM}
-                      onClick={() => hapusKanan(index)}
+                      disabled={state.posisi.length <= MIN_ITEM}
+                      onClick={() => hapusPosisiKata(index)}
                     >
                       Hapus
                     </button>
@@ -368,11 +566,184 @@ export default function EditorSoal({
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-primary"
-                  disabled={state.kanan.length >= MAKS_OPSI}
-                  onClick={() => ubah({ kanan: [...state.kanan, { id: idBerikut('N', state.kanan), teks: '' }] })}
+                  disabled={state.posisi.length >= MAKS_OPSI}
+                  onClick={() =>
+                    ubah({ posisi: [...state.posisi, { id: idBerikut('P', state.posisi), teks: '' }] })
+                  }
                 >
-                  Tambah kanan
+                  Tambah posisi
                 </button>
+              </div>
+            </div>
+          </fieldset>
+        )}
+
+        {state.tipe === TIPE.isianSingkat && (
+          <fieldset className="col-12">
+            <legend className="h6 fw-semibold">Jawaban baku + sinonim</legend>
+            <p className="teks-lembut small">
+              Jawaban murid dinilai mirip (toleran salah ketik ringan). Pisahkan sinonim dengan koma.
+            </p>
+
+            {state.jawabanBaku.map((satu, index) => (
+              <div key={index} className="row g-2 align-items-center mb-2">
+                <div className="col-md-5">
+                  <input
+                    className="form-control"
+                    aria-label={`Jawaban baku ${index + 1}`}
+                    value={satu.teks}
+                    onChange={(e) => ubahJawabanBaku(index, { teks: e.target.value })}
+                    placeholder="Jawaban baku, mis. 12"
+                  />
+                </div>
+                <div className="col-md-5">
+                  <input
+                    className="form-control"
+                    aria-label={`Sinonim jawaban ${index + 1}`}
+                    value={satu.sinonim}
+                    onChange={(e) => ubahJawabanBaku(index, { sinonim: e.target.value })}
+                    placeholder="Sinonim (opsional): dua belas, 12,0"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger"
+                    disabled={state.jawabanBaku.length <= 1}
+                    onClick={() => hapusJawabanBaku(index)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="d-flex flex-wrap align-items-center gap-3">
+              <button type="button" className="btn btn-sm btn-outline-primary" onClick={tambahJawabanBaku}>
+                Tambah jawaban
+              </button>
+
+              <div className="form-check m-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="soal-angka-persis"
+                  checked={state.angkaPersis}
+                  onChange={(e) => ubah({ angkaPersis: e.target.checked })}
+                />
+                <label className="form-check-label" htmlFor="soal-angka-persis">
+                  Angka harus persis (12 dianggap beda dari 12,5)
+                </label>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <label className="form-label fw-semibold mb-0" htmlFor="soal-ambang-isian">
+                  Ambang mirip
+                </label>
+                <input
+                  id="soal-ambang-isian"
+                  className="form-control form-control-sm w-auto"
+                  type="number"
+                  step="0.05"
+                  min="0.1"
+                  max="1"
+                  value={state.ambang}
+                  onChange={(e) => ubah({ ambang: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="form-label fw-semibold" htmlFor="soal-negasi">
+                Kata negasi yang membatalkan jawaban (opsional, pisah koma)
+              </label>
+              <input
+                id="soal-negasi"
+                className="form-control"
+                value={state.negasi}
+                onChange={(e) => ubah({ negasi: e.target.value })}
+                placeholder="bukan, tidak"
+              />
+            </div>
+          </fieldset>
+        )}
+
+        {state.tipe === TIPE.uraian && (
+          <fieldset className="col-12">
+            <legend className="h6 fw-semibold">Kata kunci penilaian</legend>
+            <p className="teks-lembut small">
+              Jawaban uraian dinilai dari kata kunci yang muncul. Bila belum yakin, soal masuk antrean
+              koreksi guru.
+            </p>
+
+            {state.kataKunci.map((satu, index) => (
+              <div key={index} className="row g-2 align-items-center mb-2">
+                <div className="col-md-7">
+                  <input
+                    className="form-control"
+                    aria-label={`Kata kunci ${index + 1}`}
+                    value={satu.teks}
+                    onChange={(e) => ubahKataKunci(index, { teks: e.target.value })}
+                    placeholder="mis. fotosintesis"
+                  />
+                </div>
+                <div className="col-md-3">
+                  <input
+                    className="form-control"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    aria-label={`Bobot kata kunci ${index + 1}`}
+                    value={satu.bobot}
+                    onChange={(e) => ubahKataKunci(index, { bobot: e.target.value })}
+                    placeholder="Bobot (opsional)"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger"
+                    disabled={state.kataKunci.length <= 1}
+                    onClick={() => hapusKataKunci(index)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button type="button" className="btn btn-sm btn-outline-primary" onClick={tambahKataKunci}>
+              Tambah kata kunci
+            </button>
+
+            <div className="row g-3 mt-1">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold" htmlFor="soal-ambang-uraian">
+                  Ambang lulus
+                </label>
+                <input
+                  id="soal-ambang-uraian"
+                  className="form-control"
+                  type="number"
+                  step="0.05"
+                  min="0.1"
+                  max="1"
+                  value={state.ambangLulus}
+                  onChange={(e) => ubah({ ambangLulus: e.target.value })}
+                />
+              </div>
+              <div className="col-md-8">
+                <label className="form-label fw-semibold" htmlFor="soal-sinonim-uraian">
+                  Sinonim kata kunci (opsional, tiap baris: kata = alias, alias)
+                </label>
+                <textarea
+                  id="soal-sinonim-uraian"
+                  className="form-control"
+                  rows={2}
+                  value={state.sinonimUraian}
+                  onChange={(e) => ubah({ sinonimUraian: e.target.value })}
+                  placeholder="fotosintesis = asimilasi"
+                />
               </div>
             </div>
           </fieldset>

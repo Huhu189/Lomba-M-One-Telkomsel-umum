@@ -26,6 +26,8 @@ export const RUTE = {
   // Peringkat, laporan tema, badge, dan progres (slice 05).
   peringkatKuis: '/peringkat/:kuisId',
   laporanKuis: '/kuis/:id/laporan',
+  // Koreksi manual guru (slice 06).
+  koreksiKuis: '/kuis/:id/koreksi',
   badge: '/badge',
   progresTema: '/progres-tema',
 }
@@ -73,4 +75,13 @@ export function rutePeringkat(id) {
  */
 export function ruteLaporanKuis(id) {
   return `/kuis/${id}/laporan`
+}
+
+/**
+ * Tautan antrean koreksi manual (guru) dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteKoreksiKuis(id) {
+  return `/kuis/${id}/koreksi`
 }
