@@ -31,8 +31,33 @@ Seluruh prompt dan jawaban (utuh, mentah, dengan tanggal-jam asli) ada di `docs/
 
 ## Entri 4 — Anti-cheat, realtime, materi, upload dan AI (slice 07–09)
 
-- **Status**: belum terisi — slice 07–09 belum dikerjakan.
+- **Waktu**: 6 Oktober 2026, malam (slice 07), setelah putaran audit slice 01 ditutup dan di-push.
+- **Tujuan**: mengubah ulangan agar bisa dipantau dengan jujur — proteksi tiga lapis yang **fail-open** dan
+default mati, presence yang hemat kuota (tanpa detak jantung), dan Live Monitor guru yang tetap berisi walau
+service realtime mati.
+- **Prompt inti (ringkas)**: pengguna lebih dulu bertanya "ada fitur yang belum selesai?" (jawaban saya:
+14 butir, slice 07–10, dengan deploy sebagai satu-satunya yang aturan lomba tandai tidak boleh dipotong),
+lalu memberi izin: "boleh lanjutkan". Deploy tetap ditunda sesuai permintaan sebelumnya ("tunda dulu, fokus
+fitur"), jadi yang dikerjakan adalah slice berikutnya secara berurutan: **slice 07**.
+- **Hasil**: section `Cheat` (enum 13 kategori + skor risiko, catatan **append-only**, service tulis/baca/tinjau
++ audit) dan `Presence` (kehadiran dari aktivitas normal dengan ambang 45 detik, deteksi sesi ganda, catatan
+lama tidak aktif, tiket SSE sekali pakai, snapshot Live Monitor); orkestrator klien `useExamSecurity`
+beserta pengirim kejadian berkelompok (dedupe, antrean offline 200 entri/48 jam, aturan retry), presence
+ping + `sendBeacon`, dan halaman guru `/kuis/:id/monitor` dengan polling 5 detik sebagai jalur keselamatan
+plus SSE dari Node bila hidup. Service Node mendapat endpoint `GET /sse/monitor` (tiket dari Redis, `GETDEL`,
+cek Origin, `X-Accel-Buffering: no`, keepalive). Kondisi terakhir: **Pest 107 passed (740 assertions)**,
+**Pint 203 berkas**, **Vitest 29 berkas/209 test**, **realtime 9 test**, dan smoke CDP
+`docs/smoke-ui-slice07.mjs` **21/21 lulus**.
+- **Dua bug nyata yang ditemukan pengujian**: (a) kunci tiket SSE di-prefix Laravel sehingga service Node
+  tidak pernah menemukannya (handshake selalu 401) — diperbaiki dengan koneksi Redis `realtime` tanpa prefix;
+  (b) **menutup layar Live Monitor mematikan seluruh service realtime**, karena pembersihan memanggil
+  `unsubscribe()`/`disconnect()` yang menyisakan promise tanpa penangkap di ioredis — diperbaiki dengan
+  penutupan sekali jalan memakai `quit()` plus test regresi.
+- **Rujukan log mentah**: `log-mentah/2026-10-05-prompt-2.md` — `2026-10-06 ±20.30–22.00 WIB` (pertanyaan
+"fitur mana yang belum selesai", izin "boleh lanjutkan", backend Cheat + Presence, test 12 baru, frontend
+security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai dokumentasi A.11).
 
 ## Entri 5 — Cache, Swoole, deploy, dan perbaikan akhir (slice 10)
 
-- **Status**: belum terisi — slice 10 belum dikerjakan.
+- **Status**: belum terisi — slice 08–10 (materi, avatar, tim, upload jawaban, AI, cache, Octane, deploy)
+  belum dikerjakan.

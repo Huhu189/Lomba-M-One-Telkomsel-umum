@@ -250,6 +250,51 @@ Yang bisa ditunjukkan saat demo:
 4. **Pagar mutu**: `./verify.sh` hijau — Pest **95 passed (629 assertions)**, Pint 183 berkas,
    Vitest **27 berkas / 197 test**, realtime 2 test.
 
+---
+
+## Demo Slice 07 — Anti-cheat, Presence, dan Live Monitor
+
+Prinsip yang ditunjukkan: **bukti, bukan vonis**, dan **fail-open** — proteksi yang rusak tidak boleh
+menggagalkan ulangan. Semua proteksi **mati secara bawaan**.
+
+### Langkah demo (guru) — menyalakan pengaman
+
+1. Buka `/pengaturan`, lihat kelompok **Anti-cheat**: saklar induk beserta saklar rincinya (blokir tempel,
+   blokir seleksi teks, catat pindah tab, kunci layar, deteksi alat pengembang, sembunyikan saat dicetak,
+   dan **preset ujian** yang menyalakan sekelompok sekaligus).
+2. Nyalakan **Aktifkan anti-cheat**, lalu **Blokir tempel (paste) jawaban** dan **Catat pindah tab /
+jendela**. Bisa diatur per sekolah, per kelas, atau per kuis (kuis menang).
+
+### Langkah demo (murid) — pengaman yang terbuka, bukan jebakan
+
+3. Murid membuka `/kerjakan/:kuisId`. Muncul **pemberitahuan** "Ulangan ini memakai pengaman" berisi daftar
+   pengaman yang aktif, dan murid menutupnya lalu **tetap bisa mengerjakan**. Jelaskan: ini pemberitahuan,
+   bukan gerbang — menyembunyikan aturan membuat anak merasa dijebak.
+4. Tunjukkan lencana **Pengaman aktif** di kepala layar; angka catatannya ikut bertambah saat kejadian
+   tercatat.
+5. Coba tempel teks dari luar -> tertolak, dan kejadiannya tercatat (bukan muncul peringatan menghukum).
+
+### Langkah demo (guru) — Live Monitor
+
+6. Dari detail kuis tekan **Live Monitor** (`/kuis/:id/monitor`). Tampak siapa yang sedang mengerjakan,
+   **progres** per murid, dan status kehadiran: **Hadir** dihitung dari aktivitas normal murid (memuat
+   ulangan, menyimpan jawaban) sehingga tidak ada detak jantung terus-menerus dan hemat kuota.
+7. Perhatikan lencana koneksi di kanan atas: **Langsung (SSE)** bila service realtime hidup, atau
+   **Polling 5 detik** bila tidak. Keduanya menampilkan data yang sama — itulah fail-open yang bisa
+   ditunjukkan dengan mematikan service Node di tengah demo (layar tetap berisi).
+8. Panel **Catatan kejadian** menampilkan kategori, **skor risiko**, waktu server vs waktu perangkat, dan
+   keterangan "dihitung server" untuk kejadian yang tidak datang dari perangkat murid.
+9. Tekan **Valid** / **Tidak valid** pada satu catatan -> status berubah, catatan keluar dari antrean, dan
+   tinjauannya masuk audit. Jelaskan: guru yang memutuskan, sistem hanya mengumpulkan bahan.
+10. **Bukti jujur yang bisa disebut**: deteksi di browser bisa diakali, jadi catatan ini tidak pernah
+    dinyatakan sebagai bukti pelanggaran — hanya bahan bertanya baik-baik ke murid.
+
+### Bukti lewat browser sungguhan
+
+`docs/smoke-ui-slice07.mjs` (Chrome CDP, port 9333) menjalankan seluruh alur di atas pada DOM sungguhan,
+termasuk menekan tombol tinjauan dan menyambung aliran SSE dengan tiket sekali pakai. Hasil terakhir
+**21/21 lulus** — rincian di `docs/laporan-pengujian.md` bagian A.11.
+
 ### Satu hal yang **sengaja tidak** diperbaiki (jujur)
 
 **Pendaftaran membalas 422 bila email sudah terdaftar**, sehingga email yang terdaftar bisa ditebak.

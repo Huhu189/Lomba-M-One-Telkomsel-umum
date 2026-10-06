@@ -27,7 +27,8 @@ Waktu, urutan soal, dan nilai ditentukan server — perangkat tidak bisa memalsu
 ### Manfaat untuk anak SD dan guru
 Anak SD sering salah menekan tombol atau perangkatnya tiba-tiba dipakai bergantian — cadangan jawaban otomatis menyelamatkan kerja mereka. Guru tidak lagi memeriksa kerja dobel atau memperdebatkan "tadi kumpul duluan siapa": server yang mencatat, adil untuk semua.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 04). Menyimpan jawaban otomatis, mengumpulkan dua kali tidak
+digandakan, dan waktu habis dikumpulkan otomatis oleh server.
 
 ---
 
@@ -45,7 +46,9 @@ Kunci jawaban hanya hidup di server. Penilaian yang gagal di satu soal tidak men
 ### Manfaat untuk anak SD dan guru
 Guru kelas 4 yang mengoreksi 30 lembar uraian "sebutkan ciri hewan berkaki dua" bisa pulang lebih cepat: yang jelas dinilai otomatis, yang ragu tinggal ditinjau. Anak yang tulisannya berantakan atau salah ketik tidak langsung dianggap salah — aplikasi memaklumi typo yang wajar untuk usia SD.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 06). Delapan tipe soal tersedia di editor guru, dinilai otomatis,
+lalu guru mengoreksi manual lewat token konfirmasi sekali pakai yang tercatat di audit.
+Pengoreksian bahasa oleh AI menyusul di slice 09.
 
 ---
 
@@ -63,7 +66,8 @@ Laporan dihitung server dari jawaban asli, bukan dari klaim perangkat murid. Lap
 ### Manfaat untuk anak SD dan guru
 Anak yang tertinggal jadi terlihat lebih awal — bukan baru ketahuan saat rapor. Guru tidak perlu menghitung manual per soal per murid; waktunya beralih ke mengajar ulang tema yang lemah.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 05). Halaman progres per tema untuk murid dan laporan per tema untuk
+guru, dengan ambang pemahaman dan data minimum yang diatur guru.
 
 ---
 
@@ -81,7 +85,8 @@ Semua perhitungan di server; skor asli tidak punya jalur perubahan dari klien. R
 ### Manfaat untuk anak SD dan guru
 Anak SD berani mencoba lagi tanpa takut nilai jeleknya "nempel selamanya", tapi nilai resmi tetap jujur. Guru bisa menyalakan ranking hanya saat cocok, dan remedial jalan sendiri untuk murid yang butuh.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 05). Ranking mati secara bawaan; lencana per mapel dan remedial
+otomatis tersedia.
 
 ---
 
@@ -99,7 +104,8 @@ Perubahan pengaturan lewat server, dengan izin dan pencatatan. Perangkat murid t
 ### Manfaat untuk anak SD dan guru
 Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil. Anak SD di semua kelas mendapat aturan yang konsisten.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07). Saklar anti-cheat juga memakai mekanisme
+yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik.
 
 ---
 
@@ -135,7 +141,7 @@ Kami jujur: **deteksi di browser bisa diakali**, dan aplikasi ini tidak pernah m
 ### Manfaat untuk anak SD dan guru
 Guru kelas 6 saat ulangan ulang semester tidak lagi berjalan bolak-balik: dari satu layar dia lihat siapa yang belum mulai, siapa diam lama, dan catatan kejadian yang perlu ditanya baik-baik ke murid. Anak SD tidak dituduh sembarangan — guru yang menilai konteksnya.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 07). Semua pengaman mati secara bawaan dan baru bekerja bila guru menyalakannya. Guru bisa meninjau tiap catatan (valid / tidak valid) langsung dari Live Monitor. Yang belum ada dan kami sebutkan apa adanya: deteksi gangguan proteksi tingkat lanjut, deteksi keluar layar penuh, dan pemanggilan Zoom/Meet untuk verifikasi — ketiganya ditunda, bukan disembunyikan.
 
 ---
 

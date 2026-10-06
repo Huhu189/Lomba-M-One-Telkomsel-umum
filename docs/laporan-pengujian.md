@@ -616,4 +616,108 @@ suspended tidak diaktifkan, daftar email terdaftar 422 sebagai dokumentasi trade
   perlu dijalankan sekali oleh pemilik repo (tidak bisa dilakukan otomatis di sini karena akan mengubah
   kunci lokal aplikasi).
 - Peringatan Vite "chunk > 500 kB", uji beban, serta **slice 07–10** masih belum dikerjakan seperti tercatat
-  di A.9.6.
+  di A.9.6. (Sebagian sudah tertutup oleh A.11 di bawah.)
+
+---
+
+## A.11 Slice 07 — Anti-cheat, Presence, dan Live Monitor
+
+### A.11.1 Pagar mutu — `./verify.sh` (dari root repo)
+
+```
+=== Backend Pest ===        >>> OK   Tests: 107 passed (740 assertions)
+=== Backend Pint ===        >>> OK   PASS 203 files
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK   0 error, 2 warning lama (react-hooks/incompatible-library dari watch() RHF)
+=== Frontend Vitest ===     >>> OK   29 berkas / 209 test
+=== Realtime node --test ===>>> OK   3 suite / 9 test (2 lama + 7 baru)
+verify.sh: SEMUA HIJAU
+```
+
+### A.11.2 Yang dibangun
+
+**Anti-cheat (server).** Section `Cheat`: `KategoriKecurangan` (9 kategori dari perangkat murid + 4 kategori
+turunan server dengan skor risiko acuan), `StatusTinjauan`, model `KejadianKecurangan` yang **append-only**
+(perubahan selain `review_status`/`reviewed_by`/`reviewed_at` ditolak di model, penghapusan ditolak),
+`KecuranganService` (tulis berkelompok maks 50, dedupe lewat sidik `attempt_id + sidik` unik, baca untuk guru,
+tinjau + activity log), policy, dua Form Request, resource, dan controller.
+
+**Anti-cheat (klien).** Folder `src/security/`: `pengaturanProteksi.js` (pembacaan saklar + preset `exam_mode`),
+`pengirimKejadian.js` (dedupe cooldown 1,2 detik, kelompok maks 50, antrean offline maks 200 entri/48 jam,
+retry hanya untuk tanpa respons/5xx/408/429, buang pada 4xx lain), orkestrator `useExamSecurity`,
+dan `ModalProteksi.jsx` sebagai **pemberitahuan, bukan gerbang**.
+
+**Presence.** Section `Presence`: `PresenceService` (kehadiran dari aktivitas normal, ambang segar 45 detik,
+deteksi **sesi ganda**, pencatatan **lama tidak aktif**), `SapuPresence` + penjadwalan tiap menit,
+`MonitorService` (snapshot: presence + progres + ringkasan kecurangan), `TokenSseService` (tiket sekali pakai,
+hash saja, TTL 45 detik), `PenyiarRealtime` (publish pub/sub), dan tiga controller.
+
+**Live Monitor + SSE.** Halaman guru `/kuis/:id/monitor` dengan **polling 5 detik yang selalu jalan** sebagai
+jalur utama-keselamatan, plus SSE dari service Node bila tersedia (polling melambat jadi 20 detik).
+Service Node mendapat endpoint `GET /sse/monitor?tiket=…`: handshake tiket diambil atomik dari Redis
+(`GETDEL`), tanpa kredensial database, cek Origin, `X-Accel-Buffering: no`, dan keepalive 20 detik.
+
+### A.11.3 Dua bug nyata yang ditemukan pengujian (dan diperbaiki)
+
+1. **Tiket SSE tidak pernah ditemukan service Node.** Laravel memberi prefix pada kunci Redis
+   (`ulangan-sekolah-database-sse:tiket:…`) sementara Node mencari `sse:tiket:…` — handshake selalu 401.
+   **Perbaikan:** koneksi Redis khusus `realtime` di `config/database.php` dengan `prefix => ''`, dipakai
+   hanya untuk jalur ke Node. Kanal pub/sub sendiri tidak pernah diberi prefix, jadi siaran tetap jalan.
+2. **Menutup layar Live Monitor mematikan seluruh service realtime.** Saat klien pergi, pembersihan memanggil
+   `unsubscribe()` lalu `disconnect()`. ioredis menolak promise yang belum selesai (`Connection is closed.`)
+   tanpa penangkap → **proses Node keluar**. Efek nyatanya: satu guru menutup tab, semua guru kehilangan
+   aliran. **Perbaikan:** penutupan dijaga sekali jalan, semua promise ditangani, memakai `quit()` yang
+   menyelesaikan antrean lebih dulu, dan koneksi langganan diberi penangkap `error` sendiri. Ditambahkan
+   test regresi (9 test Node) dan **smoke membuktikannya** — service tetap hidup setelah aliran ditutup.
+
+### A.11.4 Smoke browser sungguhan (Chrome CDP) — `docs/smoke-ui-slice07.mjs` — 21/21 lulus
+
+Skrip membuka jendela baru, menyalakan proteksi lewat API, lalu memakai antarmuka seperti manusia:
+
+1. Guru menyalakan `anti_cheat`, `block_paste`, `block_tab_switch` pada **lapis kuis** dan membuka jendela
+   jadwal kuis sementara (dipulihkan di akhir).
+2. Murid mengerjakan: server mengirim 11 saklar proteksi, dan **modal pemberitahuan muncul** di DOM;
+   setelah ditutup, ulangan tetap bisa dilanjutkan (bukti "bukan gerbang").
+3. Murid menempel teks → kejadian `paste_attempt` **tercatat di server** (dibuktikan dari antrean guru).
+4. Guru membuka `/kuis/:id/monitor`: daftar murid tampil, status **Hadir** terbaca dari aktivitas normal
+   (tanpa heartbeat), dan panel catatan menampilkan "Percobaan menempel jawaban".
+5. Guru menekan **Tidak valid** di DOM → catatan keluar dari antrean menunggu dan status berubah di server.
+6. Aliran SSE dari Node: **200**, memuat `event: siap` dengan `quiz_id` yang benar, header anti-buffer
+   terpasang, dan **tiket yang sama ditolak pada pemakaian kedua** (401).
+7. Di akhir, pengaturan proteksi dikembalikan **mati** dan jadwal kuis dipulihkan seperti semula.
+
+### A.11.5 Keputusan teknis slice 07 (jujur)
+
+- **Saklar induk `anti_cheat` diubah menjadi mati secara bawaan.** Chunk anticheat menulis "semua proteksi
+  default mati", sedangkan kode slice 02 dulu menyalakannya. Akibat perubahan ini, satu asersi di
+  `PengaturanTest` (yang mengunci `anti_cheat = true`) ikut diperbarui — bukan untuk meloloskan test, tetapi
+  karena nilai bawaannya memang harus sesuai chunk. Saklar rinci juga otomatis dianggap mati bila induknya mati.
+- **Presence disimpan sebagai satu peta per kuis**, bukan satu kunci Redis per attempt. Alasannya: satu
+  pembacaan mengambil seluruh daftar (40 murid) alih-alih 40 kunci berurutan, dan tetap cocok dengan driver
+  cache yang dipakai di dev/test sementara tetap ramah Redis di produksi. Isi dan semantiknya sama seperti
+  yang diminta chunk: `last_seen` dengan ambang 45 detik; tab yang disembunyikan tetap dianggap hadir.
+- **Penjadwal tidak bisa 10 detik.** Sapuan presence dijadwalkan tiap menit (batas cron Laravel) **dan**
+  dijalankan setiap kali guru membuka Live Monitor, sehingga status yang dilihat guru tetap segar tanpa
+  menyalahi jadwal yang mungkin dijalankan.
+- **Kategori turunan server tidak bisa dikirim klien.** `duplicate_session`, `long_offline`, `late_submit`,
+  dan `clock_jump` ditolak di validasi maupun di service — ini menutup celah murid "menuduh dirinya sendiri"
+  dengan kategori berat untuk mengaburkan catatan.
+- **`@tanstack/react-virtual` tetap belum dipakai.** Pada skala nyata (satu kelas, ±40 baris) daftar biasa
+  sudah benar dan lebih sederhana; memaksakan virtualisasi hanya menambah risiko tanpa manfaat. Catatan ini
+  menggantikan janji di A.10.5 yang menyebut paket itu menunggu fitur daftar panjang.
+
+### A.11.6 Yang jujur BELUM dikerjakan di slice 07
+
+- **Layar guru ke perangkat murid** (sinkron nomor blok/posisi lewat SSE) belum ada; ia bergantung pada materi
+  berblok (slice 08) dan sengaja ditunda bersama fitur itu.
+- **Deteksi tamper lanjutan** (canary, deteksi overlay asing, pemeriksaan `Function.prototype.toString`)
+  belum ditulis. Kategori `tamper_suspected` sudah ada di enum beserta skor risikonya, tetapi **belum ada yang
+  mengirimnya** — jadi jangan dianggap aktif.
+- **`fullscreen_exit`** belum dideteksi (tidak ada penanganan Fullscreen API), dan saklar
+  `block_screenshot` untuk saat ini hanya menangkap tombol PrintScreen + mengaburkan layar; heuristik
+  tiga jari/daya-volume yang disebut chunk belum ada.
+- **`call_gate` (panggilan Zoom/Meet) dan `protected_text_canvas`** tidak dibuat — keduanya ditandai opsional
+  dan dipotong lebih dulu menurut chunk.
+- **Deteksi IP sama antar murid** (salah satu butir chunk) belum ada.
+- **Uji beban dan koneksi SSE terhadap nginx sungguhan** belum dijalankan; verifikasi SSE masih di dev
+  (`localhost:5173` → Node `:4000`).
