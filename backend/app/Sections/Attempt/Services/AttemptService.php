@@ -13,7 +13,7 @@ use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Scoring\Enums\StatusPenilaian;
-use App\Sections\Scoring\Services\PenilaianObjektif;
+use App\Sections\Scoring\Services\PenilaiSoal;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Services\PengaturanService;
 use Illuminate\Support\Carbon;
@@ -34,7 +34,7 @@ class AttemptService
     public const TENGGAT_TERLAMBAT = 120;
 
     public function __construct(
-        private readonly PenilaianObjektif $penilaian,
+        private readonly PenilaiSoal $penilaian,
         private readonly PengaturanService $pengaturan,
     ) {}
 

@@ -18,6 +18,7 @@ use App\Sections\School\Http\Controllers\KelasController;
 use App\Sections\School\Http\Controllers\MapelController;
 use App\Sections\School\Http\Controllers\MuridController;
 use App\Sections\School\Http\Controllers\SekolahController;
+use App\Sections\Scoring\Http\Controllers\KoreksiController;
 use App\Sections\Settings\Http\Controllers\PengaturanController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -115,6 +116,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kuis/{kuis}/laporan', [LaporanController::class, 'show'])->name('laporan.show');
         Route::get('/badge/saya', [BadgeController::class, 'saya'])->name('badge.saya');
         Route::get('/progres/saya', [ProgresController::class, 'saya'])->name('progres.saya');
+
+        // Koreksi manual guru (slice 06): antrean → token konfirmasi → simpan.
+        Route::get('/kuis/{kuis}/koreksi', [KoreksiController::class, 'antrean'])->name('koreksi.antrean');
+        Route::post('/attempt/{attempt}/koreksi/token', [KoreksiController::class, 'token'])->name('koreksi.token');
+        Route::post('/attempt/{attempt}/koreksi', [KoreksiController::class, 'simpan'])->name('koreksi.simpan');
     });
 });
 

@@ -105,12 +105,22 @@ it('registry menolak struktur soal yang tidak lengkap', function (): void {
         'kunci' => ['jawaban' => 'Z'],
     ])->assertStatus(422)->assertJsonValidationErrors(['konten']);
 
+    // Sejak slice 06 isian/uraian/letak/hubung kata sudah didukung; yang ditolak
+    // adalah tipe yang tidak dikenal sama sekali.
+    $this->postJson('/api/v1/soal', [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'entah_apa',
+        'konten' => ['teks' => 'Ibu kota Indonesia?'],
+        'kunci' => ['jawaban' => 'Jakarta'],
+    ])->assertStatus(422)->assertJsonValidationErrors(['tipe']);
+
+    // Kunci isian yang salah bentuk (tanpa jawaban_baku) tetap ditolak registry.
     $this->postJson('/api/v1/soal', [
         'subject_id' => $this->mapel->id,
         'tipe' => 'isian_singkat',
         'konten' => ['teks' => 'Ibu kota Indonesia?'],
         'kunci' => ['jawaban' => 'Jakarta'],
-    ])->assertStatus(422)->assertJsonValidationErrors(['tipe']);
+    ])->assertStatus(422)->assertJsonValidationErrors(['konten']);
 });
 
 it('penilai registry benar untuk empat jenis soal objektif', function (): void {

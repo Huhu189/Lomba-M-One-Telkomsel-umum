@@ -8,10 +8,22 @@ namespace App\Sections\Question\Registry;
  * Menjodohkan.
  * konten: {teks, kiri:[{id,teks}], kanan:[{id,teks}], matematika?, media?}
  * kunci : {pasangan:{idKiri: idKanan}}
+ *
+ * Dipakai juga oleh hubung kata (slice 06) yang hanya berbeda nama kunci
+ * pemetaan dan sebutannya — logikanya sama persis.
  */
-final class PenanganMenjodohkan implements PenanganTipeSoal
+class PenanganMenjodohkan implements PenanganTipeSoal
 {
     private const MIN_PASANGAN = 2;
+
+    /** Nama kunci pemetaan di `kunci` (hubung kata memakai `sambungan`). */
+    protected const KUNCI_PETA = 'pasangan';
+
+    /** Sebutan jenis soal untuk pesan galat. */
+    public function nama(): string
+    {
+        return 'Menjodohkan';
+    }
 
     public function validasiKonten(array $konten): array
     {
@@ -25,7 +37,7 @@ final class PenanganMenjodohkan implements PenanganTipeSoal
         $kanan = BantuanKonten::daftar($konten, 'kanan');
 
         if (count($kiri) < self::MIN_PASANGAN || count($kanan) < self::MIN_PASANGAN) {
-            $galat[] = 'Menjodohkan wajib punya minimal '.self::MIN_PASANGAN.' pasangan kiri dan kanan.';
+            $galat[] = $this->nama().' wajib punya minimal '.self::MIN_PASANGAN.' pasangan kiri dan kanan.';
         }
 
         foreach (['kiri' => $kiri, 'kanan' => $kanan] as $nama => $daftar) {
@@ -44,10 +56,10 @@ final class PenanganMenjodohkan implements PenanganTipeSoal
 
     public function validasiKunci(array $konten, array $kunci): array
     {
-        $pasangan = $kunci['pasangan'] ?? null;
+        $pasangan = $kunci[static::KUNCI_PETA] ?? null;
 
         if (! is_array($pasangan) || $pasangan === []) {
-            return ['Kunci menjodohkan wajib berisi kunci.pasangan.'];
+            return ['Kunci '.mb_strtolower($this->nama()).' wajib berisi kunci.'.static::KUNCI_PETA.'.'];
         }
 
         $idKiri = BantuanKonten::idDaftar(BantuanKonten::daftar($konten, 'kiri'));
@@ -56,13 +68,13 @@ final class PenanganMenjodohkan implements PenanganTipeSoal
 
         foreach ($pasangan as $dari => $ke) {
             if (! in_array((string) $dari, $idKiri, true)) {
-                $galat[] = "kunci.pasangan memakai id kiri tak dikenal ({$dari}).";
+                $galat[] = 'kunci.'.static::KUNCI_PETA." memakai id kiri tak dikenal ({$dari}).";
             }
 
             if (! is_string($ke) && ! is_int($ke)) {
-                $galat[] = 'kunci.pasangan wajib memetakan id kiri ke id kanan.';
+                $galat[] = 'kunci.'.static::KUNCI_PETA.' wajib memetakan id kiri ke id kanan.';
             } elseif (! in_array((string) $ke, $idKanan, true)) {
-                $galat[] = "kunci.pasangan memakai id kanan tak dikenal ({$ke}).";
+                $galat[] = 'kunci.'.static::KUNCI_PETA." memakai id kanan tak dikenal ({$ke}).";
             }
         }
 
@@ -81,7 +93,7 @@ final class PenanganMenjodohkan implements PenanganTipeSoal
             return false;
         }
 
-        $pasangan = $kunci['pasangan'] ?? null;
+        $pasangan = $kunci[static::KUNCI_PETA] ?? null;
 
         if (! is_array($pasangan) || $pasangan === []) {
             return false;

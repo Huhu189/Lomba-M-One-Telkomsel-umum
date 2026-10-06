@@ -24,6 +24,7 @@ class Jawaban extends Model
         'benar' => 'boolean',
         'skor' => 'float',
         'dinilai_at' => 'datetime',
+        'dinilai_manual' => 'boolean',
     ];
 
     /** @return BelongsTo<Attempt, $this> */

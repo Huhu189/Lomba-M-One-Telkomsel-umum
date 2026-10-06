@@ -49,12 +49,6 @@ class SimpanSoalRequest extends FormRequest
                     return;
                 }
 
-                if (! $tipe->objektif()) {
-                    $validator->errors()->add('tipe', 'Tipe soal ini belum didukung; tahap sekarang hanya soal objektif.');
-
-                    return;
-                }
-
                 $konten = $this->input('konten');
                 $kunci = $this->input('kunci');
 

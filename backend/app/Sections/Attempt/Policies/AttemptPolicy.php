@@ -9,7 +9,7 @@ use App\Sections\Attempt\Models\Attempt;
 
 /**
  * Attempt: murid hanya boleh menyentuh attempt miliknya; guru boleh melihat
- * (untuk ditinjau/dinilai manual di slice 06 dan dipantau di slice 07).
+ * dan mengoreksi nilainya (koreksi manual slice 06, pemantauan slice 07).
  */
 class AttemptPolicy
 {
@@ -49,6 +49,15 @@ class AttemptPolicy
     public function hasil(User $user, Attempt $attempt): bool
     {
         return $this->view($user, $attempt);
+    }
+
+    /**
+     * Koreksi manual nilai (slice 06) — hanya guru/admin, dan hanya attempt
+     * yang sudah dikumpulkan (diperiksa lagi di service).
+     */
+    public function koreksi(User $user, Attempt $attempt): bool
+    {
+        return $user->isGuru();
     }
 
     public function delete(User $user, Attempt $attempt): bool

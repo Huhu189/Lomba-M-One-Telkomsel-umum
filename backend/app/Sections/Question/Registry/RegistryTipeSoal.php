@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Sections\Question\Registry;
 
 use App\Sections\Question\Enums\TipeSoal;
-use InvalidArgumentException;
 
 /**
- * Registry tipe soal: satu penangan (validator + penilai) per jenis soal objektif.
- * Menambah jenis baru = tambah penangan di sini + renderer frontend + test.
+ * Registry tipe soal: satu penangan (validator + penilai) per jenis soal.
+ * Delapan jenis kini punya penangan; menambah jenis baru = tambah penangan di
+ * sini + renderer frontend + test.
  */
 final class RegistryTipeSoal
 {
@@ -32,13 +32,16 @@ final class RegistryTipeSoal
         return array_map(static fn (TipeSoal $tipe): string => $tipe->value, TipeSoal::cases());
     }
 
+    /**
+     * Semua delapan jenis punya penangan sejak slice 06.
+     */
     public static function dukung(TipeSoal $tipe): bool
     {
-        return $tipe->objektif();
+        return true;
     }
 
     /**
-     * Penangan untuk tipe objektif.
+     * Penangan (validator + penilai) untuk satu tipe soal.
      */
     public static function penangan(TipeSoal $tipe): PenanganTipeSoal
     {
@@ -47,9 +50,10 @@ final class RegistryTipeSoal
             TipeSoal::BenarSalah => new PenanganBenarSalah,
             TipeSoal::Menjodohkan => new PenanganMenjodohkan,
             TipeSoal::Mengurutkan => new PenanganMengurutkan,
-            default => throw new InvalidArgumentException(
-                "Tipe soal {$tipe->value} belum punya penangan (dijadwalkan pada slice 06).",
-            ),
+            TipeSoal::LetakKata => new PenanganLetakKata,
+            TipeSoal::HubungKata => new PenanganHubungKata,
+            TipeSoal::IsianSingkat => new PenanganIsianSingkat,
+            TipeSoal::Uraian => new PenanganUraian,
         };
     }
 
@@ -62,10 +66,6 @@ final class RegistryTipeSoal
      */
     public static function validasi(TipeSoal $tipe, array $konten, array $kunci): array
     {
-        if (! self::dukung($tipe)) {
-            return ["Tipe soal {$tipe->value} belum didukung pada tahap ini."];
-        }
-
         $penangan = self::penangan($tipe);
 
         return array_values(array_unique([

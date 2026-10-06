@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Sections\Question\Enums;
 
 /**
- * Delapan jenis soal. Slice 03 baru memakai empat jenis objektif;
- * empat jenis lain disiapkan untuk slice 06.
+ * Delapan jenis soal. Enam di antaranya dinilai pasti (pilihan ganda, benar/salah,
+ * menjodohkan, mengurutkan, letak kata, hubung kata); isian singkat dan uraian
+ * dinilai bertingkat lewat kata kunci (slice 06).
  */
 enum TipeSoal: string
 {
@@ -20,14 +21,25 @@ enum TipeSoal: string
     case HubungKata = 'hubung_kata';
 
     /**
-     * Soal objektif = bisa dinilai otomatis tanpa koreksi guru.
+     * Soal objektif = dinilai pasti tanpa toleransi/tafsir; koreksi guru tidak
+     * diperlukan. Isian singkat dan uraian bukan objektif (lihat `bertingkat()`).
      */
     public function objektif(): bool
     {
         return match ($this) {
-            self::PilihanGanda, self::BenarSalah, self::Menjodohkan, self::Mengurutkan => true,
+            self::PilihanGanda, self::BenarSalah, self::Menjodohkan, self::Mengurutkan,
+            self::LetakKata, self::HubungKata => true,
             default => false,
         };
+    }
+
+    /**
+     * Soal bertingkat = dinilai otomatis sebisanya (kata kunci), lalu guru
+     * mengoreksi lewat antrean koreksi manual bila perlu.
+     */
+    public function bertingkat(): bool
+    {
+        return ! $this->objektif();
     }
 
     public function label(): string

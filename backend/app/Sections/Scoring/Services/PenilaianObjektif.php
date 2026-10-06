@@ -14,9 +14,12 @@ use Throwable;
  * menjatuhkan seluruh ulangan).
  *
  * Hasil selalu berupa array status + benar + skor sehingga pemanggil tidak
- * pernah menerima exception; soal yang tidak bisa dinilai ditandai
- * `perlu_tinjau` (esai / menunggu slice 06) atau `gagal` (data rusak/tipe tak
- * dikenal) dan guru bisa meninjaunya.
+ * pernah menerima exception; soal yang tidak bisa dinilai ditandai `gagal`
+ * (data rusak/tipe tak dikenal) dan guru bisa meninjaunya.
+ *
+ * Sejak slice 06 soal bertingkat (isian singkat, uraian) ditangani
+ * `PenilaianTeks`; `PenilaiSoal` yang memilih jalurnya. Tipe non-objektif yang
+ * sampai ke kelas ini (pemanggilan langsung) tetap ditandai `perlu_tinjau`.
  */
 final class PenilaianObjektif
 {

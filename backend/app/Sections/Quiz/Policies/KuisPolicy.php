@@ -64,4 +64,12 @@ class KuisPolicy
     {
         return $user->isGuru();
     }
+
+    /**
+     * Antrean koreksi manual (slice 06) — memuat kunci jawaban: guru saja.
+     */
+    public function koreksi(User $user, Kuis $kuis): bool
+    {
+        return $user->isGuru();
+    }
 }
