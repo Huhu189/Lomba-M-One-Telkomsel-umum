@@ -20,7 +20,7 @@ import {
   sinkronSoalKuis,
   ubahKuis,
 } from './api.js'
-import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
+import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from './status.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 
@@ -34,25 +34,6 @@ const nilaiAwal = {
   selesai_at: '',
   acak_soal: true,
   acak_opsi: true,
-}
-
-/**
- * Waktu ISO dari server → nilai <input type="datetime-local"> (waktu lokal).
- * @param {string|null} iso
- * @returns {string}
- */
-function keLokal(iso) {
-  if (iso === null) return ''
-
-  const waktu = new Date(iso)
-  /** @param {number} angka */
-  const duaDigit = (angka) => String(angka).padStart(2, '0')
-
-  return [
-    waktu.getFullYear(),
-    duaDigit(waktu.getMonth() + 1),
-    duaDigit(waktu.getDate()),
-  ].join('-') + `T${duaDigit(waktu.getHours())}:${duaDigit(waktu.getMinutes())}`
 }
 
 /**
@@ -99,8 +80,8 @@ export default function HalamanKuis() {
         subject_id: Number(data.subject_id),
         class_id: Number(data.class_id),
         durasi_menit: Number(data.durasi_menit),
-        mulai_at: data.mulai_at || null,
-        selesai_at: data.selesai_at || null,
+        mulai_at: keIso(data.mulai_at),
+        selesai_at: keIso(data.selesai_at),
         acak_soal: data.acak_soal,
         acak_opsi: data.acak_opsi,
       }

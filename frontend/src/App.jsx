@@ -23,6 +23,9 @@ import HalamanBankSoal from './sections/question/HalamanBankSoal.jsx'
 import HalamanTag from './sections/question/HalamanTag.jsx'
 import HalamanKuisDetail from './sections/quiz/HalamanKuisDetail.jsx'
 import PilihHalamanKuis from './sections/quiz/PilihHalamanKuis.jsx'
+import BatasGalatUlangan from './sections/attempt/BatasGalatUlangan.jsx'
+import HalamanKerjakan from './sections/attempt/HalamanKerjakan.jsx'
+import HalamanHasil from './sections/attempt/HalamanHasil.jsx'
 import HalamanMapel from './sections/school/HalamanMapel.jsx'
 import HalamanMurid from './sections/school/HalamanMurid.jsx'
 import HalamanImporMurid from './sections/school/HalamanImporMurid.jsx'
@@ -119,6 +122,17 @@ export default function App() {
           <Route element={<HanyaMasuk />}>
             <Route path={RUTE.kuis} element={<PilihHalamanKuis />} />
             <Route path={RUTE.kuisDetail} element={<HalamanKuisDetail />} />
+
+            {/* Pengerjaan ulangan dibungkus pagar galat khusus (fail-open). */}
+            <Route
+              path={RUTE.kerjakanKuis}
+              element={
+                <BatasGalatUlangan>
+                  <HalamanKerjakan />
+                </BatasGalatUlangan>
+              }
+            />
+            <Route path={RUTE.hasilAttempt} element={<HalamanHasil />} />
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />

@@ -20,6 +20,9 @@ export const RUTE = {
   tag: '/tag',
   kuis: '/kuis',
   kuisDetail: '/kuis/:id',
+  // Pengerjaan & hasil ulangan (slice 04).
+  kerjakanKuis: '/kerjakan/:kuisId',
+  hasilAttempt: '/hasil/:attemptId',
 }
 
 /**
@@ -29,4 +32,22 @@ export const RUTE = {
  */
 export function ruteKuisDetail(id) {
   return `/kuis/${id}`
+}
+
+/**
+ * Tautan layar pengerjaan ulangan dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteKerjakanKuis(id) {
+  return `/kerjakan/${id}`
+}
+
+/**
+ * Tautan halaman hasil dari id attempt.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteHasil(id) {
+  return `/hasil/${id}`
 }

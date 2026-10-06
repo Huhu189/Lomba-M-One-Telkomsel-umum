@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skemaKuis, skemaSoalTampil } from './api.js'
-import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
+import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from './status.js'
 
 /** Kuis draf versi guru (tanpa soal karena daftar tidak memuatnya). */
 const kuisGuru = {
@@ -80,5 +80,22 @@ describe('format kuis', () => {
   it('menulis jadwal dengan nama bulan Indonesia', () => {
     expect(formatJadwal('2026-10-06T10:00:00+07:00')).toContain('Okt')
     expect(formatJadwal(null)).toBe('—')
+  })
+})
+
+describe('konversi jadwal lokal ↔ ISO', () => {
+  it('memetakan waktu lokal ke UTC tanpa menggeser zona waktu server', () => {
+    expect(keIso('2026-10-06T10:00')).toBe(new Date(2026, 9, 6, 10, 0).toISOString())
+  })
+
+  it('mengembalikan null untuk input kosong atau tidak valid', () => {
+    expect(keIso('')).toBeNull()
+    expect(keIso('bukan-tanggal')).toBeNull()
+    expect(keLokal(null)).toBe('')
+  })
+
+  it('bolak-balik ISO → input lokal → ISO tetap sama', () => {
+    const iso = '2026-10-06T03:00:00.000Z'
+    expect(keIso(keLokal(iso))).toBe(iso)
   })
 })

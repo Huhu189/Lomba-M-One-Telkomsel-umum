@@ -4,7 +4,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { RUTE } from '../../routes.js'
+import { RUTE, ruteKerjakanKuis } from '../../routes.js'
 import { ambilKuis } from './api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
 
@@ -51,9 +51,16 @@ export default function HalamanKuisMurid() {
                     <p className="mb-2">{kuis.deskripsi}</p>
                   )}
 
-                  <Link className="btn btn-sm btn-tepi" to={`${RUTE.kuis}/${kuis.id}`}>
-                    Lihat soal
-                  </Link>
+                  <div className="d-flex flex-wrap gap-2">
+                    {kuis.sedang_berjalan && (
+                      <Link className="btn btn-sm btn-aksen" to={ruteKerjakanKuis(kuis.id)}>
+                        Kerjakan sekarang
+                      </Link>
+                    )}
+                    <Link className="btn btn-sm btn-tepi" to={`${RUTE.kuis}/${kuis.id}`}>
+                      Lihat soal
+                    </Link>
+                  </div>
                 </div>
               )
             })}

@@ -46,6 +46,41 @@ export function formatJadwal(iso) {
 }
 
 /**
+ * ISO dari server → nilai <input type="datetime-local"> (waktu lokal browser).
+ * @param {string|null} iso
+ * @returns {string}
+ */
+export function keLokal(iso) {
+  if (iso === null) return ''
+
+  const waktu = new Date(iso)
+  /** @param {number} angka */
+  const duaDigit = (angka) => String(angka).padStart(2, '0')
+
+  return (
+    [waktu.getFullYear(), duaDigit(waktu.getMonth() + 1), duaDigit(waktu.getDate())].join('-') +
+    `T${duaDigit(waktu.getHours())}:${duaDigit(waktu.getMinutes())}`
+  )
+}
+
+/**
+ * Nilai <input type="datetime-local"> (waktu lokal browser) → ISO UTC untuk server.
+ *
+ * Tanpa konversi ini jadwal akan bergeser sebesar offset zona waktu: server
+ * menyimpan waktu dalam UTC, sedangkan isi input adalah waktu lokal murid/guru,
+ * sehingga kuis tampak "belum dimulai" atau "sudah berakhir" pada jam yang salah.
+ * @param {string} lokal
+ * @returns {string|null}
+ */
+export function keIso(lokal) {
+  if (lokal === '') return null
+
+  const waktu = new Date(lokal)
+
+  return Number.isNaN(waktu.getTime()) ? null : waktu.toISOString()
+}
+
+/**
  * Durasi dalam menit → "45 menit" atau "1 jam 15 menit".
  * @param {number} menit
  * @returns {string}

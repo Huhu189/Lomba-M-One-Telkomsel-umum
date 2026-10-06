@@ -1329,3 +1329,24 @@ a {
 .urut-posisi {
   width: 5rem;
 }
+
+/* ---------- Pengerjaan ulangan (slice 04) ---------- */
+
+.timer-ulangan {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 1.4rem;
+  line-height: 1.1;
+}
+
+.timer-ulangan.aman {
+  color: var(--teks);
+}
+
+.timer-ulangan.peringatan {
+  color: var(--status-peringatan);
+}
+
+.timer-ulangan.kritis {
+  color: var(--status-salah);
+}

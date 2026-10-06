@@ -4,8 +4,9 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { RUTE } from '../../routes.js'
+import { RUTE, ruteKerjakanKuis } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import { ambilKuisDetail } from './api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
@@ -62,6 +63,12 @@ export default function HalamanKuisDetail() {
                 <p className="teks-lembut small">
                   Kamu melihat versi guru: kunci jawaban dan pembahasan ikut ditampilkan.
                 </p>
+              )}
+
+              {!sebagaiGuru && data.sedang_berjalan && (
+                <div className="mb-2">
+                  <TombolTaut to={ruteKerjakanKuis(data.id)}>Kerjakan sekarang</TombolTaut>
+                </div>
               )}
 
               <div className="d-flex flex-column gap-3 mt-3">
