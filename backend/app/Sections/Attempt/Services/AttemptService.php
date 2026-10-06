@@ -84,6 +84,15 @@ class AttemptService
             ->where('aktif', true)
             ->first();
 
+        // Attempt yang ditinggalkan (tab ditutup sebelum waktu habis) ditutup dulu.
+        // Tanpa ini murid mentok selamanya: `jawab` menolak (deadline lewat),
+        // `kumpulkan` menolak (lewat tenggat keterlambatan), tetapi `aktif` masih
+        // terisi sehingga `mulai()` terus mengembalikan attempt mati yang sama.
+        if ($aktif !== null && $this->basi($aktif, $sekarang)) {
+            $this->tutupBasi($aktif);
+            $aktif = null;
+        }
+
         if ($aktif !== null) {
             return $this->muat($aktif);
         }
@@ -207,7 +216,65 @@ class AttemptService
      */
     public function kumpulkan(Attempt $attempt, string $idempotencyKey): Attempt
     {
-        return DB::transaction(function () use ($attempt, $idempotencyKey): Attempt {
+        return $this->tutup($attempt, $idempotencyKey, false);
+    }
+
+    /**
+     * Apakah attempt ini ditinggalkan jauh melewati tenggat keterlambatan?
+     */
+    public function basi(Attempt $attempt, ?Carbon $sekarang = null): bool
+    {
+        $sekarang ??= Carbon::now();
+
+        return $attempt->berjalan()
+            && $sekarang->greaterThan($attempt->deadline_at->copy()->addSeconds(self::TENGGAT_TERLAMBAT));
+    }
+
+    /**
+     * Tutup attempt yang ditinggalkan TANPA menolak karena keterlambatan.
+     *
+     * Jawaban yang sempat tersimpan tetap dinilai seperti pengumpulan biasa,
+     * jadi nilainya jujur — bukan dihapus, dan bukan pula dinilai 0 paksa.
+     */
+    public function tutupBasi(Attempt $attempt): Attempt
+    {
+        return $this->tutup($attempt, 'basi-'.$attempt->getKey(), true);
+    }
+
+    /**
+     * Tutup semua attempt berjalan yang sudah melewati tenggat keterlambatan.
+     * Dipanggil penjadwal (lihat `TutupAttemptBasi`) supaya layar guru tidak
+     * menampilkan murid "sedang mengerjakan" berjam-jam setelah waktunya habis.
+     *
+     * @return int jumlah attempt yang ditutup
+     */
+    public function tutupSemuaBasi(): int
+    {
+        $batas = Carbon::now()->subSeconds(self::TENGGAT_TERLAMBAT);
+        $jumlah = 0;
+
+        Attempt::query()
+            ->where('aktif', true)
+            ->where('status', StatusAttempt::Berjalan->value)
+            ->where('deadline_at', '<', $batas)
+            ->chunkById(200, function ($daftar) use (&$jumlah): void {
+                foreach ($daftar as $satu) {
+                    $this->tutupBasi($satu);
+                    $jumlah++;
+                }
+            });
+
+        return $jumlah;
+    }
+
+    /**
+     * Inti penutupan attempt (dipakai pengumpulan biasa maupun penutupan basi).
+     *
+     * @throws ValidationException
+     */
+    private function tutup(Attempt $attempt, string $idempotencyKey, bool $abaikanToleransi): Attempt
+    {
+        return DB::transaction(function () use ($attempt, $idempotencyKey, $abaikanToleransi): Attempt {
             $terkunci = Attempt::query()->whereKey($attempt->getKey())->lockForUpdate()->firstOrFail();
 
             // Sudah pernah dikumpulkan: kembalikan hasil lama (aman dobel klik/dua tab).
@@ -218,7 +285,7 @@ class AttemptService
             $sekarang = Carbon::now();
             $terlambat = $sekarang->greaterThan($terkunci->deadline_at);
 
-            if ($terlambat && $sekarang->greaterThan($terkunci->deadline_at->copy()->addSeconds(self::TENGGAT_TERLAMBAT))) {
+            if (! $abaikanToleransi && $terlambat && $sekarang->greaterThan($terkunci->deadline_at->copy()->addSeconds(self::TENGGAT_TERLAMBAT))) {
                 throw ValidationException::withMessages([
                     'attempt' => 'Waktu ulangan sudah habis jauh; jawaban tidak bisa dikumpulkan lagi.',
                 ]);

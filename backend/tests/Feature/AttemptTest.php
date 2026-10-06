@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
+use App\Sections\Attempt\Services\AttemptService;
 use App\Sections\Attempt\Services\Pengacakan;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
@@ -363,4 +364,60 @@ it('kuis kelas lain, belum dimulai, dan sudah berakhir tidak bisa dimulai', func
         ->assertStatus(422)->assertJsonValidationErrors(['kuis']);
     $this->postJson("/api/v1/kuis/{$kuisSudahLewat->id}/mulai")
         ->assertStatus(422)->assertJsonValidationErrors(['kuis']);
+});
+
+it('attempt yang ditinggalkan jauh lewat deadline ditutup lalu murid bisa mencoba lagi', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    // Jawaban sempat tersimpan sebelum murid menutup tab.
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+        'question_id' => (int) $hasil['soal'][0]['id'],
+        'jawaban' => 'a',
+    ])->assertOk();
+
+    // Murid kembali 10 menit setelah deadline (di luar toleransi 120 detik).
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
+
+    // Regresi: dulu `mulai()` selalu mengembalikan attempt mati itu, sehingga
+    // murid mentok — jawab ditolak (deadline lewat) dan kumpulkan ditolak (lewat
+    // toleransi) — dan tidak pernah bisa mengerjakan kuis itu lagi.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+    $kedua = $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated();
+
+    $lama = Attempt::query()->findOrFail($hasil['attempt']);
+
+    expect((int) $kedua->json('id'))->not->toBe($hasil['attempt'])
+        ->and((int) $kedua->json('attempt_no'))->toBe(2)
+        ->and($lama->status->value)->toBe('selesai')
+        ->and($lama->aktif)->toBeNull()
+        ->and($lama->terlambat)->toBeTrue()
+        ->and($lama->dikumpulkan_at)->not->toBeNull()
+        // Jawaban yang sempat tersimpan tetap dinilai, bukan dibuang.
+        ->and((int) $lama->jawaban()->count())->toBe(2);
+});
+
+it('sapuan berkala menutup attempt yang ditinggalkan tanpa menunggu murid kembali', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
+
+    $jumlah = app(AttemptService::class)->tutupSemuaBasi();
+
+    $lama = Attempt::query()->findOrFail($hasil['attempt']);
+
+    expect($jumlah)->toBe(1)
+        ->and($lama->status->value)->toBe('selesai')
+        ->and($lama->aktif)->toBeNull()
+        ->and($lama->terlambat)->toBeTrue();
+
+    // Attempt yang masih di dalam masa toleransi TIDAK disentuh: murid yang baru
+    // saja kehabisan waktu masih boleh mengumpulkan sendiri.
+    $kedua = mulaiUlangan($this, $kuis);
+    Attempt::query()->whereKey($kedua['attempt'])->update(['deadline_at' => Carbon::now()->subSeconds(30)]);
+
+    expect(app(AttemptService::class)->tutupSemuaBasi())->toBe(0)
+        ->and(Attempt::query()->findOrFail($kedua['attempt'])->status->value)->toBe('berjalan');
 });
