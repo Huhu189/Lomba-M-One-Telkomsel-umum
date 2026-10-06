@@ -10,8 +10,13 @@ use Illuminate\Auth\Events\Verified;
 
 class VerifyEmailService
 {
+    public function __construct(private readonly PengirimEmail $email) {}
+
     /**
      * Tandai email terverifikasi dan aktifkan akun (dipanggil dari tautan bertanda tangan).
+     *
+     * Idempoten: tautan yang diklik dua kali tidak mengubah apa pun lagi
+     * (tanda tangan sekali pakai secara efek — verifikasi hanya terjadi sekali).
      */
     public function verifikasi(User $user): void
     {
@@ -26,14 +31,16 @@ class VerifyEmailService
     }
 
     /**
-     * Kirim ulang tautan verifikasi (queue) — dipanggil dengan throttle 'verifikasi'.
+     * Kirim ulang tautan verifikasi (fail-open) — dipanggil dengan throttle 'verifikasi'.
+     *
+     * @return bool true bila email berhasil diserahkan ke mailer
      */
-    public function kirimUlang(User $user): void
+    public function kirimUlang(User $user): bool
     {
         if ($user->hasVerifiedEmail()) {
-            return;
+            return true;
         }
 
-        $user->sendEmailVerificationNotification();
+        return $this->email->kirimVerifikasi($user);
     }
 }

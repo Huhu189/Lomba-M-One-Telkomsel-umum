@@ -19,13 +19,21 @@ use Illuminate\Http\Request;
 class AuthController extends Controller
 {
     /**
-     * Daftar murid (role dari server = murid; guru/admin tidak bisa self-register).
+     * Daftar murid (role dari server = murid; guru/admin tidak bisa self-register) dan
+     * LANGSUNG masuk supaya murid tidak perlu mengetik ulang kata sandi. Akun masih
+     * pending, jadi hanya halaman verifikasi yang bisa dibuka sampai email diverifikasi.
      */
-    public function daftar(DaftarMuridRequest $request, RegisterService $register): JsonResponse
+    public function daftar(DaftarMuridRequest $request, RegisterService $register, LoginService $login): JsonResponse
     {
-        $register->daftarMurid($request->validated());
+        $hasil = $register->daftarMurid($request->validated());
+        $login->masukOtomatis($hasil['user']);
 
-        return response()->json(['message' => $register->pesanResponsDaftar()], 201);
+        return response()->json([
+            'message' => $register->pesanResponsDaftar(),
+            'user' => new UserResource($hasil['user']),
+            'perlu_verifikasi' => ! $hasil['user']->hasVerifiedEmail(),
+            'email_terkirim' => $hasil['email_terkirim'],
+        ], 201);
     }
 
     /**
@@ -73,9 +81,14 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $verifikasi->kirimUlang($user);
+        $terkirim = $verifikasi->kirimUlang($user);
 
-        return response()->json(['message' => 'Tautan verifikasi dikirim (jika email belum terverifikasi).']);
+        return response()->json([
+            'message' => $terkirim
+                ? 'Tautan verifikasi dikirim (jika email belum terverifikasi).'
+                : 'Tautan belum bisa dikirim sekarang. Coba lagi sebentar lagi.',
+            'email_terkirim' => $terkirim,
+        ]);
     }
 
     /**

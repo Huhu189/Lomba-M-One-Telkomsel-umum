@@ -23,6 +23,24 @@ export const skemaPesan = z.object({ message: z.string() })
 export const skemaSesi = z.object({ terautentikasi: z.boolean() })
 
 /**
+ * Skema respons pendaftaran: murid LANGSUNG masuk, tinggal verifikasi email.
+ * `email_terkirim` = false berarti layanan email sedang bermasalah (server tetap
+ * membuat akun), jadi antarmuka menyarankan tombol kirim ulang.
+ */
+export const skemaResponsDaftar = z.object({
+  message: z.string(),
+  user: skemaUser,
+  perlu_verifikasi: z.boolean(),
+  email_terkirim: z.boolean(),
+})
+
+/** Skema respons kirim ulang verifikasi untuk akun yang sudah masuk. */
+export const skemaResponsKirimUlang = z.object({
+  message: z.string(),
+  email_terkirim: z.boolean(),
+})
+
+/**
  * Ambil pesan galat yang aman ditampilkan dari respons API.
  * @param {unknown} galat
  * @returns {string}
@@ -52,8 +70,9 @@ export function teksGalat(galat) {
 
 /**
  * Daftar murid (role selalu dari server = murid).
+ * Backend langsung membuat sesi, jadi pemanggil bisa menyimpan `user` ke store.
  * @param {{ name: string, email: string, password: string }} data
- * @returns {Promise<string>} pesan netral backend
+ * @returns {Promise<z.infer<typeof skemaResponsDaftar>>}
  */
 export async function daftar(data) {
   await ambilCsrfCookie()
@@ -63,7 +82,7 @@ export async function daftar(data) {
     password: data.password,
     password_confirmation: data.password,
   })
-  return skemaPesan.parse(respons.data).message
+  return skemaResponsDaftar.parse(respons.data)
 }
 
 /**
@@ -119,6 +138,18 @@ export async function kirimUlangVerifikasi(email) {
     email: email.toLowerCase(),
   })
   return skemaPesan.parse(respons.data).message
+}
+
+/**
+ * Kirim ulang tautan verifikasi untuk akun yang SEDANG masuk (akun pending boleh
+ * membuka jalur ini). Berbeda dengan versi publik, server melaporkan status kirim
+ * email secara jujur karena penggunanya sudah diketahui.
+ * @returns {Promise<z.infer<typeof skemaResponsKirimUlang>>}
+ */
+export async function kirimUlangVerifikasiSesi() {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/kirim-ulang-verifikasi')
+  return skemaResponsKirimUlang.parse(respons.data)
 }
 
 /**

@@ -9,7 +9,6 @@ import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { ToastHost, tampilkanToast } from './shared/ui/toast.jsx'
 import KerangkaAuth from './shared/layout/KerangkaAuth.jsx'
 import KerangkaUmum from './shared/layout/KerangkaUmum.jsx'
-import { MaskotBuku } from './shared/ui/Maskot.jsx'
 import { RUTE } from './routes.js'
 import Beranda from './sections/home/Beranda.jsx'
 import HalamanTidakDitemukan from './sections/home/HalamanTidakDitemukan.jsx'
@@ -31,8 +30,8 @@ function LayarMemuat() {
   return (
     <div className="d-flex min-vh-100 align-items-center justify-content-center text-center" role="status">
       <div>
-        <MaskotBuku ukuran={110} melayang />
-        <p className="teks-lembut mt-2">Menyiapkan…</p>
+        <span className="spinner-border text-primary" aria-hidden="true" />
+        <p className="teks-lembut mt-3">Menyiapkan…</p>
       </div>
     </div>
   )
@@ -42,6 +41,21 @@ function LayarMemuat() {
 function HanyaTamu() {
   const user = useAuthStore((s) => s.user)
   return user ? <Navigate to={RUTE.beranda} replace /> : <Outlet />
+}
+
+/**
+ * Kerangka umum dengan gerbang verifikasi: akun yang sudah masuk tetapi belum
+ * memverifikasi email diarahkan ke halaman verifikasi (fitur lain memang ditolak
+ * server, jadi jangan biarkan murid menabrak dinding 403).
+ */
+function GerbangUmum() {
+  const user = useAuthStore((s) => s.user)
+
+  if (user && !user.emailTerverifikasi) {
+    return <Navigate to={RUTE.perluVerifikasi} replace />
+  }
+
+  return <KerangkaUmum />
 }
 
 /** Halaman data induk: hanya guru/admin (murid dialihkan ke beranda). */
@@ -76,7 +90,7 @@ export default function App() {
     <>
       <ToastHost />
       <Routes>
-        <Route element={<KerangkaUmum />}>
+        <Route element={<GerbangUmum />}>
           <Route path={RUTE.beranda} element={<Beranda />} />
 
           {/* Data induk (slice 02) — guru/admin. */}

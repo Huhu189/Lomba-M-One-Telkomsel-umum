@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { skemaKirimUlang } from './validasi.js'
-import { kirimUlangVerifikasi, pesanGalatApi, teksGalat } from './api.js'
+import { kirimUlangVerifikasi, kirimUlangVerifikasiSesi, pesanGalatApi, teksGalat } from './api.js'
 import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
 import Isian from '../../shared/ui/Isian.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
@@ -26,9 +26,11 @@ const JEDA = 60
  */
 export default function KirimUlangVerifikasi({ emailAwal = '', jedaAwal = 0 }) {
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
+  const emailSesi = useAuthStore((s) => s.user?.email ?? '')
   const jeda = useHitungMundur()
   const [terkirimKe, setTerkirimKe] = useState('')
   const [galatServer, setGalatServer] = useState('')
+  const [emailGagalTerkirim, setEmailGagalTerkirim] = useState(false)
 
   const { mulai } = jeda
   useEffect(() => {
@@ -47,10 +49,25 @@ export default function KirimUlangVerifikasi({ emailAwal = '', jedaAwal = 0 }) {
   /** @param {{ email: string }} data */
   async function proses(data) {
     setGalatServer('')
+    setEmailGagalTerkirim(false)
+    const emailKirim = data.email.toLowerCase()
+
     try {
-      await kirimUlangVerifikasi(data.email)
-      setTerkirimKe(data.email.toLowerCase())
-      mulai(JEDA)
+      // Bila yang mengirim adalah pemilik akun yang sedang masuk, pakai jalur sesi:
+      // server melaporkan jujur apakah email benar-benar terkirim.
+      if (emailSesi !== '' && emailKirim === emailSesi.toLowerCase()) {
+        const hasil = await kirimUlangVerifikasiSesi()
+        mulai(JEDA)
+        if (!hasil.email_terkirim) {
+          setEmailGagalTerkirim(true)
+          return
+        }
+      } else {
+        await kirimUlangVerifikasi(data.email)
+        mulai(JEDA)
+      }
+
+      setTerkirimKe(emailKirim)
     } catch (galat) {
       if (!sudahDitampilkanSebagaiTunggu(galat)) setGalatServer(pesanGalatApi(galat))
     }
@@ -68,6 +85,12 @@ export default function KirimUlangVerifikasi({ emailAwal = '', jedaAwal = 0 }) {
         <Banner jenis="sukses" judul="Tautan dikirim">
           Jika <strong className="text-break">{terkirimKe}</strong> belum terverifikasi, tautan baru
           sudah dikirim. Cek juga folder spam.
+        </Banner>
+      )}
+      {emailGagalTerkirim && (
+        <Banner jenis="peringatan" judul="Email belum terkirim">
+          Akunmu sudah aktif di perangkat ini, tetapi layanan email sekolah sedang sibuk. Coba lagi
+          beberapa saat, atau minta guru memverifikasi akunmu.
         </Banner>
       )}
       {galatServer && (

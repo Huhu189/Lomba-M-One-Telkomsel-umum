@@ -43,6 +43,16 @@ class LoginService
     }
 
     /**
+     * Masuk otomatis tanpa cek kata sandi — dipakai setelah pendaftaran murid
+     * (akun masih pending, jadi hanya halaman verifikasi yang bisa dibuka).
+     */
+    public function masukOtomatis(User $user, bool $ingat = false): void
+    {
+        Auth::guard('web')->login($user, $ingat);
+        session()->regenerate();
+    }
+
+    /**
      * Logout + hancurkan sesi.
      */
     public function keluar(): void

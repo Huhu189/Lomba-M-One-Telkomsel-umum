@@ -22,6 +22,7 @@ import PeringatanTunggu from './PeringatanTunggu.jsx'
  */
 export default function HalamanDaftar({ berhasil }) {
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
+  const aturUser = useAuthStore((s) => s.aturUser)
 
   const {
     register,
@@ -40,13 +41,25 @@ export default function HalamanDaftar({ berhasil }) {
   const kirim = handleSubmit(async (data) => {
     clearErrors('root')
     try {
-      const pesan = await daftar({
+      const hasil = await daftar({
         name: data.name,
         email: data.email,
         password: data.password,
       })
-      tampilkanToast('sukses', pesan)
-      berhasil?.(data.email.toLowerCase())
+
+      // Murid langsung masuk (server sudah membuat sesi): simpan user ke store,
+      // lalu arahkan ke halaman verifikasi. Kalau layanan email sedang bermasalah,
+      // akun tetap jadi dan murid diberi tahu untuk memakai tombol kirim ulang.
+      aturUser(hasil.user)
+      if (hasil.email_terkirim) {
+        tampilkanToast('sukses', hasil.message)
+      } else {
+        tampilkanToast(
+          'info',
+          'Akunmu sudah jadi, tetapi email aktivasi belum terkirim. Pakai tombol kirim ulang di halaman berikut.',
+        )
+      }
+      berhasil?.(hasil.user.email)
     } catch (galat) {
       if (!sudahDitampilkanSebagaiTunggu(galat)) {
         setError('root', { message: pesanGalatApi(galat) })
@@ -57,7 +70,7 @@ export default function HalamanDaftar({ berhasil }) {
   return (
     <KartuAuth
       judul="Buat akun murid"
-      sub="Isi data di bawah, lalu cek email untuk mengaktifkan akun."
+      sub="Isi data di bawah. Kamu langsung masuk, lalu tinggal mengaktifkan akun lewat email."
       ikon={IkonDaftar}
     >
       <form onSubmit={kirim} noValidate>

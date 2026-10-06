@@ -10,13 +10,18 @@ use Illuminate\Support\Facades\Hash;
 
 class RegisterService
 {
+    public function __construct(private readonly PengirimEmail $email) {}
+
     /**
-     * Daftarkan murid baru dan kirim tautan verifikasi (queue).
+     * Daftarkan murid baru dan kirim tautan verifikasi (fail-open: kegagalan
+     * email tidak membatalkan akun yang sudah dibuat).
+     *
      * Hanya murid yang boleh self-register; role selalu 'murid' dari server.
      *
      * @param  array{name: string, email: string, password: string}  $data
+     * @return array{user: User, email_terkirim: bool}
      */
-    public function daftarMurid(array $data): User
+    public function daftarMurid(array $data): array
     {
         $user = User::query()->create([
             'name' => $data['name'],
@@ -27,17 +32,18 @@ class RegisterService
         ]);
 
         $user->assignRole('murid');
-        $user->sendEmailVerificationNotification();
 
-        return $user;
+        return [
+            'user' => $user,
+            'email_terkirim' => $this->email->kirimVerifikasi($user),
+        ];
     }
 
     /**
-     * Respons pendaftaran yang identik tanpa membocorkan keberadaan email
-     * (anti user-enumeration).
+     * Pesan setelah pendaftaran berhasil (murid langsung masuk, tinggal verifikasi).
      */
     public function pesanResponsDaftar(): string
     {
-        return 'Jika email belum terdaftar, tautan verifikasi telah dikirim. Periksa kotak masuk Anda.';
+        return 'Akun dibuat. Kamu sudah masuk — tinggal verifikasi email untuk membuka semua fitur.';
     }
 }

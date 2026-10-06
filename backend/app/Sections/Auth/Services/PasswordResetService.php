@@ -10,22 +10,27 @@ use Illuminate\Support\Facades\Password;
 
 class PasswordResetService
 {
+    public function __construct(private readonly PengirimEmail $email) {}
+
     /**
-     * Kirim tautan reset (queue). Token disimpan sebagai hash dan sekali pakai
-     * (tabel password_reset_tokens, ditangani Laravel).
+     * Kirim tautan reset (fail-open: mailer mati tidak menggagalkan permintaan).
+     * Token disimpan sebagai hash dan SEKALI PAKAI (tabel password_reset_tokens;
+     * barisnya dihapus Laravel setelah dipakai).
+     *
+     * Pesan sengaja identik untuk email terdaftar maupun tidak — keberadaan akun
+     * tidak boleh bocor (anti user-enumeration), jadi status kirim tidak dilaporkan.
      */
     public function kirimTautan(string $email): string
     {
-        $status = Password::sendResetLink(['email' => $email]);
+        $this->email->kirimTautanReset($email);
 
-        // Selalu pesan netral: email tidak diperiksa keberadaannya (anti-enumerasi).
-        return $status === Password::RESET_LINK_SENT
-            ? 'Jika email terdaftar, tautan pengaturan ulang kata sandi telah dikirim.'
-            : 'Jika email terdaftar, tautan pengaturan ulang kata sandi telah dikirim.';
+        return 'Jika email terdaftar, tautan pengaturan ulang kata sandi telah dikirim.';
     }
 
     /**
      * Terapkan kata sandi baru dari token (sekali pakai).
+     *
+     * @param  array{token: string, email: string, password: string}  $data
      */
     public function terapkan(array $data): string
     {
