@@ -10,6 +10,10 @@ use App\Sections\Health\Http\Controllers\HealthController;
 use App\Sections\Question\Http\Controllers\SoalController;
 use App\Sections\Question\Http\Controllers\TagController;
 use App\Sections\Quiz\Http\Controllers\KuisController;
+use App\Sections\Report\Http\Controllers\BadgeController;
+use App\Sections\Report\Http\Controllers\LaporanController;
+use App\Sections\Report\Http\Controllers\ProgresController;
+use App\Sections\Report\Http\Controllers\RankingController;
 use App\Sections\School\Http\Controllers\KelasController;
 use App\Sections\School\Http\Controllers\MapelController;
 use App\Sections\School\Http\Controllers\MuridController;
@@ -105,6 +109,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/attempt/{attempt}/jawab', [AttemptController::class, 'jawab'])->name('attempt.jawab');
         Route::post('/attempt/{attempt}/kumpulkan', [AttemptController::class, 'kumpulkan'])->name('attempt.kumpulkan');
         Route::get('/attempt/{attempt}/hasil', [AttemptController::class, 'hasil'])->name('attempt.hasil');
+
+        // Skor asli, ranking, badge, remedial, dan laporan per tema (slice 05).
+        Route::get('/kuis/{kuis}/ranking', [RankingController::class, 'show'])->name('ranking.show');
+        Route::get('/kuis/{kuis}/laporan', [LaporanController::class, 'show'])->name('laporan.show');
+        Route::get('/badge/saya', [BadgeController::class, 'saya'])->name('badge.saya');
+        Route::get('/progres/saya', [ProgresController::class, 'saya'])->name('progres.saya');
     });
 });
 

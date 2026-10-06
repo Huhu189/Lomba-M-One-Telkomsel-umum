@@ -35,6 +35,8 @@ class AttemptHasilResource extends JsonResource
             'quiz_id' => $this->quiz_id,
             'jenis' => $this->jenis->value,
             'jenis_label' => $this->jenis->label(),
+            'attempt_no' => $this->attempt_no,
+            'asli' => $this->asli,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'judul_kuis' => $this->whenLoaded('kuis', fn () => $this->kuis->judul),

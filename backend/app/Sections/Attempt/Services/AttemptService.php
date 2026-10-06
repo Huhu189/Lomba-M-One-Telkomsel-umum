@@ -14,6 +14,8 @@ use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Scoring\Enums\StatusPenilaian;
 use App\Sections\Scoring\Services\PenilaianObjektif;
+use App\Sections\Settings\Enums\KunciPengaturan;
+use App\Sections\Settings\Services\PengaturanService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -31,7 +33,10 @@ class AttemptService
     /** Toleransi keterlambatan mengumpulkan (detik) sebelum ditolak. */
     public const TENGGAT_TERLAMBAT = 120;
 
-    public function __construct(private readonly PenilaianObjektif $penilaian) {}
+    public function __construct(
+        private readonly PenilaianObjektif $penilaian,
+        private readonly PengaturanService $pengaturan,
+    ) {}
 
     /**
      * Mulai (atau lanjutkan) attempt murid untuk sebuah kuis.
@@ -80,11 +85,40 @@ class AttemptService
             return $this->muat($aktif);
         }
 
+        // Retry terkontrol: percobaan pertama bebas, ulangan ulang mengikuti
+        // saklar `retry` + `batas_percobaan` dari pengaturan tiga lapis.
+        $sudahDikumpulkan = Attempt::query()
+            ->where('quiz_id', $kuis->getKey())
+            ->where('student_id', $profil->getKey())
+            ->where('jenis', $jenis->value)
+            ->whereNotNull('dikumpulkan_at')
+            ->count();
+
+        $nomorPercobaan = $sudahDikumpulkan + 1;
+
+        if ($sudahDikumpulkan > 0) {
+            $peta = $this->pengaturan->semua((int) $kuis->school_id, (int) $kuis->class_id, (int) $kuis->getKey())['pengaturan'];
+            $retryDiizinkan = (bool) ($peta[KunciPengaturan::Retry->value]['nilai'] ?? KunciPengaturan::Retry->bawaan());
+            // Bawaan 3 percobaan (sama dengan nilai bawaan kunci pengaturan).
+            $batasPercobaan = (int) ($peta[KunciPengaturan::BatasPercobaan->value]['nilai'] ?? KunciPengaturan::BatasPercobaan->bawaan());
+
+            if (! $retryDiizinkan) {
+                throw ValidationException::withMessages(['kuis' => 'Ulangan ulang tidak diizinkan untuk kuis ini.']);
+            }
+
+            if ($nomorPercobaan > $batasPercobaan) {
+                throw ValidationException::withMessages(['kuis' => 'Batas percobaan untuk kuis ini sudah habis.']);
+            }
+        }
+
         $attempt = Attempt::query()->create([
             'school_id' => $kuis->school_id,
             'quiz_id' => $kuis->getKey(),
             'student_id' => $profil->getKey(),
             'jenis' => $jenis,
+            'attempt_no' => $nomorPercobaan,
+            // Skor asli hanya milik percobaan pertama yang resmi (bukan latihan).
+            'asli' => $nomorPercobaan === 1 && $jenis->resmi(),
             'status' => StatusAttempt::Berjalan,
             'aktif' => true,
             'seed' => random_int(1, 2_147_483_647),

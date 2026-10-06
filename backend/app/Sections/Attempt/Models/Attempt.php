@@ -11,6 +11,7 @@ use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * ditentukan server.
  */
 #[Fillable([
-    'school_id', 'quiz_id', 'student_id', 'jenis', 'status', 'aktif', 'seed',
+    'school_id', 'quiz_id', 'student_id', 'jenis', 'attempt_no', 'asli', 'status', 'aktif', 'seed',
     'mulai_at', 'deadline_at', 'dikumpulkan_at', 'terlambat', 'jumlah_soal',
     'skor', 'skor_maksimal', 'jumlah_benar', 'idempotency_key',
 ])]
@@ -32,6 +33,8 @@ class Attempt extends Model
     protected $casts = [
         'jenis' => JenisAttempt::class,
         'status' => StatusAttempt::class,
+        'attempt_no' => 'integer',
+        'asli' => 'boolean',
         'aktif' => 'boolean',
         'seed' => 'integer',
         'mulai_at' => 'datetime',
@@ -71,6 +74,17 @@ class Attempt extends Model
     public function berjalan(): bool
     {
         return $this->status === StatusAttempt::Berjalan;
+    }
+
+    /**
+     * Hanya percobaan pertama yang dihitung sebagai skor asli.
+     *
+     * @param  Builder<Attempt>  $query
+     * @return Builder<Attempt>
+     */
+    public function scopeAsli($query)
+    {
+        return $query->where('asli', true);
     }
 
     /**

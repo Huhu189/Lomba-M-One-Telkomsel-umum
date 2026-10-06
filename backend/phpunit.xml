@@ -21,6 +21,9 @@
         </include>
     </source>
     <php>
+        <!-- Suite + uji impor 500 baris melewati batas PHP bawaan 128M; naikkan
+             agar seluruh suite berjalan dalam satu proses. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

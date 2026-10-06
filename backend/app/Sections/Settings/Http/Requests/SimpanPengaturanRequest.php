@@ -63,6 +63,9 @@ class SimpanPengaturanRequest extends FormRequest
                         $validator->errors()->add('nilai', 'Nilai harus berupa bilangan bulat.');
                     } elseif ($angka < 0) {
                         $validator->errors()->add('nilai', 'Nilai tidak boleh negatif.');
+                    } elseif ($angka > 100 && in_array($kunci, [KunciPengaturan::AmbangPaham, KunciPengaturan::AmbangMulaiPaham], true)) {
+                        // Ambang laporan adalah persentase.
+                        $validator->errors()->add('nilai', 'Ambang pemahaman harus 0–100.');
                     }
                 }
 

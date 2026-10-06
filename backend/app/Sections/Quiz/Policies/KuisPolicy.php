@@ -55,4 +55,13 @@ class KuisPolicy
     {
         return $user->isGuru();
     }
+
+    /**
+     * Laporan pemahaman per tema (slice 05) — hanya guru/admin; laporan memuat
+     * data seluruh murid kelas, jadi murid tidak pernah boleh membukanya.
+     */
+    public function laporan(User $user, Kuis $kuis): bool
+    {
+        return $user->isGuru();
+    }
 }
