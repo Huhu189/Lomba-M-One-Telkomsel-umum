@@ -118,6 +118,8 @@ export default function HalamanPengaturan() {
                       <input
                         type="number"
                         min={0}
+                        inputMode="numeric"
+                        aria-label={`Nilai ${info.label}`}
                         className="form-control form-control-sm"
                         style={{ width: '6rem' }}
                         value={angkaDraft[kunci] ?? String(info.nilai)}

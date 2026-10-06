@@ -544,6 +544,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  min-height: 44px;
   color: var(--teks);
   text-decoration: none;
   font-weight: 800;
@@ -1387,4 +1388,159 @@ a {
 
 .timer-ulangan.kritis {
   color: var(--status-salah);
+}
+
+/* ---------- Papan navigasi (palet guru) ---------- */
+
+/* Panel gelap berisi tautan bagian. Di HP papan ini menggeser mendatar
+   (satu baris, sasaran tetap besar) alih-alih membungkus jadi tiga baris. */
+.papan-nav {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  margin-bottom: 1.25rem;
+  background-color: var(--panel);
+  color: var(--teks-di-panel);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.papan-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.papan-nav-taut {
+  flex: 0 0 auto;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: var(--radius-kecil);
+  border: 2px solid transparent;
+  color: var(--teks-di-panel-lembut);
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.papan-nav-taut:hover {
+  background-color: color-mix(in srgb, var(--teks-di-panel) 16%, transparent);
+  color: var(--teks-di-panel);
+}
+
+.papan-nav-taut.active,
+.papan-nav-taut[aria-current='page'] {
+  background-color: var(--sorot-hangat);
+  color: var(--teks-di-aksen);
+  border-color: var(--teks-di-aksen);
+}
+
+/* Tautan teks biasa yang tetap ramah jari (min. 44 px). */
+.taut-sentuh {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 0.6rem;
+  border-radius: var(--radius-kecil);
+  font-weight: 600;
+}
+
+.taut-sentuh:hover {
+  background-color: var(--kartu-lembut);
+}
+
+/* ---------- Pemetaan tombol Bootstrap ke palet tema ---------- */
+
+/* Beberapa halaman guru masih memakai kelas tombol Bootstrap. Daripada
+   membiarkannya memakai warna bawaan Bootstrap (biru #0d6efd yang gagal
+   kontras AA di latar terang), kelas-kelas itu diarahkan ke variabel tema.
+   Bootstrap 5.3 memakai custom property, jadi cukup diisi ulang di sini. */
+.btn-outline-primary {
+  --bs-btn-border-width: 2px;
+  --bs-btn-color: var(--link);
+  --bs-btn-border-color: var(--link);
+  --bs-btn-hover-color: var(--kartu);
+  --bs-btn-hover-bg: var(--link);
+  --bs-btn-hover-border-color: var(--link);
+  --bs-btn-focus-shadow-rgb: 3, 105, 161;
+  --bs-btn-active-color: var(--kartu);
+  --bs-btn-active-bg: var(--link);
+  --bs-btn-active-border-color: var(--link);
+  --bs-btn-disabled-color: var(--teks-lembut);
+  --bs-btn-disabled-border-color: var(--garis-input);
+}
+
+.btn-outline-secondary {
+  --bs-btn-border-width: 2px;
+  --bs-btn-color: var(--teks);
+  --bs-btn-border-color: var(--garis-input);
+  --bs-btn-hover-color: var(--teks);
+  --bs-btn-hover-bg: var(--kartu-lembut);
+  --bs-btn-hover-border-color: var(--teks);
+  --bs-btn-active-color: var(--teks);
+  --bs-btn-active-bg: var(--kartu-lembut);
+  --bs-btn-active-border-color: var(--teks);
+  --bs-btn-disabled-color: var(--teks-lembut);
+  --bs-btn-disabled-border-color: var(--garis-input);
+}
+
+.btn-outline-danger {
+  --bs-btn-border-width: 2px;
+  --bs-btn-color: var(--status-salah);
+  --bs-btn-border-color: var(--status-salah);
+  --bs-btn-hover-color: var(--kartu);
+  --bs-btn-hover-bg: var(--status-salah);
+  --bs-btn-hover-border-color: var(--status-salah);
+  --bs-btn-active-color: var(--kartu);
+  --bs-btn-active-bg: var(--status-salah);
+  --bs-btn-active-border-color: var(--status-salah);
+  --bs-btn-disabled-color: var(--teks-lembut);
+  --bs-btn-disabled-border-color: var(--garis-input);
+}
+
+/* Tombol padat juga diperlakukan sama supaya warna dan kontrasnya konsisten. */
+.btn-primary {
+  --bs-btn-border-width: 2px;
+  --bs-btn-bg: var(--aksen);
+  --bs-btn-color: var(--teks-di-aksen);
+  --bs-btn-border-color: var(--teks-di-aksen);
+  --bs-btn-hover-bg: var(--aksen);
+  --bs-btn-hover-color: var(--teks-di-aksen);
+  --bs-btn-hover-border-color: var(--teks-di-aksen);
+  --bs-btn-active-bg: var(--aksen);
+  --bs-btn-active-color: var(--teks-di-aksen);
+  --bs-btn-active-border-color: var(--teks-di-aksen);
+}
+
+/* Tombol kecil tetap 44 px: sasaran jari anak SD, bukan tombol rapat desktop. */
+.btn-sm {
+  min-height: 44px;
+  font-size: 0.95rem;
+  padding-block: 0.35rem;
+}
+
+/* Saklar dan kotak centang pengaturan: dibesarkan agar mudah ditekan. */
+.form-check-input {
+  border: 2px solid var(--garis-input);
+}
+
+.form-check-input:checked {
+  background-color: var(--aksen);
+  border-color: var(--aksen);
+}
+
+.form-check-input:focus {
+  border-color: var(--aksen);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--aksen) 28%, transparent);
+}
+
+.form-switch .form-check-input {
+  width: 3.1em;
+  height: 1.6em;
+  cursor: pointer;
 }

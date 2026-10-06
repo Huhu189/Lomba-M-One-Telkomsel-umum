@@ -66,7 +66,7 @@ export default function HalamanMasuk({ berhasil }) {
             <Link
               to={RUTE.perluVerifikasi}
               state={{ email: getValues('email') }}
-              className="d-block mt-1"
+              className="taut-sentuh mt-1"
             >
               Belum verifikasi email? Kirim ulang tautan
             </Link>
@@ -94,7 +94,9 @@ export default function HalamanMasuk({ berhasil }) {
         />
 
         <div className="text-end mb-4">
-          <Link to={RUTE.lupaSandi}>Lupa kata sandi?</Link>
+          <Link className="taut-sentuh" to={RUTE.lupaSandi}>
+            Lupa kata sandi?
+          </Link>
         </div>
 
         <Tombol
