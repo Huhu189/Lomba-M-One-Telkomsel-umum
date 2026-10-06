@@ -78,6 +78,4 @@ enum KategoriKecurangan: string
             default => true,
         };
     }
-
 }
-
