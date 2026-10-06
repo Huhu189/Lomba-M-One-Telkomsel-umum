@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Sections\Attempt\Http\Controllers\AttemptController;
 use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
@@ -97,6 +98,13 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/kuis/{kuis}/soal', [KuisController::class, 'sinkronSoal'])->name('kuis.soal');
         Route::post('/kuis/{kuis}/publikasi', [KuisController::class, 'publikasi'])->name('kuis.publikasi');
         Route::post('/kuis/{kuis}/arsip', [KuisController::class, 'arsipkan'])->name('kuis.arsip');
+
+        // Pengerjaan kuis (slice 04): mulai, autosave jawaban, kumpulkan, hasil.
+        Route::post('/kuis/{kuis}/mulai', [AttemptController::class, 'mulai'])->name('attempt.mulai');
+        Route::get('/attempt/{attempt}', [AttemptController::class, 'show'])->name('attempt.show');
+        Route::post('/attempt/{attempt}/jawab', [AttemptController::class, 'jawab'])->name('attempt.jawab');
+        Route::post('/attempt/{attempt}/kumpulkan', [AttemptController::class, 'kumpulkan'])->name('attempt.kumpulkan');
+        Route::get('/attempt/{attempt}/hasil', [AttemptController::class, 'hasil'])->name('attempt.hasil');
     });
 });
 

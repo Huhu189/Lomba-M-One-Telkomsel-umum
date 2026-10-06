@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Sections\Attempt\Models\Attempt;
+use App\Sections\Attempt\Policies\AttemptPolicy;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
 use App\Sections\Question\Policies\SoalPolicy;
@@ -59,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Tag::class, TagPolicy::class);
         Gate::policy(Soal::class, SoalPolicy::class);
         Gate::policy(Kuis::class, KuisPolicy::class);
+        Gate::policy(Attempt::class, AttemptPolicy::class);
 
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
         RateLimiter::for('auth', function (Request $request) {

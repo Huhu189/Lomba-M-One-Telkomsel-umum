@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 /**
  * Soal bank soal. `konten` = isi soal (teks + MathML + media),
@@ -66,6 +67,19 @@ class Soal extends Model
         return $this->belongsToMany(Kuis::class, 'quiz_questions', 'question_id', 'quiz_id')
             ->withPivot('urutan')
             ->withTimestamps();
+    }
+
+    /**
+     * Tipe soal dengan aman — baris dengan nilai tipe tidak dikenal (data rusak)
+     * mengembalikan null, bukan melempar ValueError ke klien.
+     */
+    public function tipeAman(): ?TipeSoal
+    {
+        try {
+            return $this->tipe;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
