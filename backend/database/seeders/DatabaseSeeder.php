@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RolesAndAdminSeeder::class,
             SekolahSeeder::class,
             MasterDataSeeder::class,
+            BankSoalSeeder::class,
         ]);
     }
 }

@@ -6,6 +6,9 @@ use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
 use App\Sections\Health\Http\Controllers\HealthController;
+use App\Sections\Question\Http\Controllers\SoalController;
+use App\Sections\Question\Http\Controllers\TagController;
+use App\Sections\Quiz\Http\Controllers\KuisController;
 use App\Sections\School\Http\Controllers\KelasController;
 use App\Sections\School\Http\Controllers\MapelController;
 use App\Sections\School\Http\Controllers\MuridController;
@@ -71,6 +74,29 @@ Route::prefix('v1')->group(function (): void {
         // Pengaturan tiga lapis.
         Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
         Route::put('/pengaturan', [PengaturanController::class, 'perbarui'])->name('pengaturan.perbarui');
+
+        // Tag soal = tema pemahaman.
+        Route::get('/tag', [TagController::class, 'index'])->name('tag.index');
+        Route::post('/tag', [TagController::class, 'store'])->name('tag.store');
+        Route::put('/tag/{tag}', [TagController::class, 'update'])->name('tag.update');
+        Route::delete('/tag/{tag}', [TagController::class, 'destroy'])->name('tag.destroy');
+
+        // Bank soal (guru/admin; murid menerima soal lewat kuis tanpa kunci).
+        Route::get('/soal', [SoalController::class, 'index'])->name('soal.index');
+        Route::post('/soal', [SoalController::class, 'store'])->name('soal.store');
+        Route::get('/soal/{soal}', [SoalController::class, 'show'])->name('soal.show');
+        Route::put('/soal/{soal}', [SoalController::class, 'update'])->name('soal.update');
+        Route::delete('/soal/{soal}', [SoalController::class, 'destroy'])->name('soal.destroy');
+
+        // Kuis: guru mengelola; murid melihat kuis terbit kelasnya.
+        Route::get('/kuis', [KuisController::class, 'index'])->name('kuis.index');
+        Route::post('/kuis', [KuisController::class, 'store'])->name('kuis.store');
+        Route::get('/kuis/{kuis}', [KuisController::class, 'show'])->name('kuis.show');
+        Route::put('/kuis/{kuis}', [KuisController::class, 'update'])->name('kuis.update');
+        Route::delete('/kuis/{kuis}', [KuisController::class, 'destroy'])->name('kuis.destroy');
+        Route::put('/kuis/{kuis}/soal', [KuisController::class, 'sinkronSoal'])->name('kuis.soal');
+        Route::post('/kuis/{kuis}/publikasi', [KuisController::class, 'publikasi'])->name('kuis.publikasi');
+        Route::post('/kuis/{kuis}/arsip', [KuisController::class, 'arsipkan'])->name('kuis.arsip');
     });
 });
 

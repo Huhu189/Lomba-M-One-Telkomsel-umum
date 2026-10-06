@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Sections\Question\Models\Soal;
+use App\Sections\Question\Models\Tag;
+use App\Sections\Question\Policies\SoalPolicy;
+use App\Sections\Question\Policies\TagPolicy;
+use App\Sections\Quiz\Models\Kuis;
+use App\Sections\Quiz\Policies\KuisPolicy;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Mapel;
 use App\Sections\School\Models\Murid;
@@ -50,6 +56,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Mapel::class, MapelPolicy::class);
         Gate::policy(Murid::class, MuridPolicy::class);
         Gate::policy(Pengaturan::class, PengaturanPolicy::class);
+        Gate::policy(Tag::class, TagPolicy::class);
+        Gate::policy(Soal::class, SoalPolicy::class);
+        Gate::policy(Kuis::class, KuisPolicy::class);
 
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
         RateLimiter::for('auth', function (Request $request) {
