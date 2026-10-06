@@ -19,6 +19,10 @@ import HalamanAturUlangSandi from './sections/auth/HalamanAturUlangSandi.jsx'
 import HalamanVerifikasiEmail from './sections/auth/HalamanVerifikasiEmail.jsx'
 import HalamanPerluVerifikasi from './sections/auth/HalamanPerluVerifikasi.jsx'
 import HalamanKelas from './sections/school/HalamanKelas.jsx'
+import HalamanBankSoal from './sections/question/HalamanBankSoal.jsx'
+import HalamanTag from './sections/question/HalamanTag.jsx'
+import HalamanKuisDetail from './sections/quiz/HalamanKuisDetail.jsx'
+import PilihHalamanKuis from './sections/quiz/PilihHalamanKuis.jsx'
 import HalamanMapel from './sections/school/HalamanMapel.jsx'
 import HalamanMurid from './sections/school/HalamanMurid.jsx'
 import HalamanImporMurid from './sections/school/HalamanImporMurid.jsx'
@@ -56,6 +60,13 @@ function GerbangUmum() {
   }
 
   return <KerangkaUmum />
+}
+
+/** Halaman yang butuh sesi (beranda boleh dibuka tamu). */
+function HanyaMasuk() {
+  const user = useAuthStore((s) => s.user)
+
+  return user ? <Outlet /> : <Navigate to={RUTE.masuk} replace />
 }
 
 /** Halaman data induk: hanya guru/admin (murid dialihkan ke beranda). */
@@ -100,6 +111,14 @@ export default function App() {
             <Route path={RUTE.murid} element={<HalamanMurid />} />
             <Route path={RUTE.imporMurid} element={<HalamanImporMurid />} />
             <Route path={RUTE.pengaturan} element={<HalamanPengaturan />} />
+            <Route path={RUTE.bankSoal} element={<HalamanBankSoal />} />
+            <Route path={RUTE.tag} element={<HalamanTag />} />
+          </Route>
+
+          {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}
+          <Route element={<HanyaMasuk />}>
+            <Route path={RUTE.kuis} element={<PilihHalamanKuis />} />
+            <Route path={RUTE.kuisDetail} element={<HalamanKuisDetail />} />
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />

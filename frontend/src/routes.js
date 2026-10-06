@@ -15,4 +15,18 @@ export const RUTE = {
   murid: '/murid',
   imporMurid: '/murid/impor',
   pengaturan: '/pengaturan',
+  // Bank soal, tag, dan kuis (slice 03).
+  bankSoal: '/bank-soal',
+  tag: '/tag',
+  kuis: '/kuis',
+  kuisDetail: '/kuis/:id',
+}
+
+/**
+ * Tautan detail kuis dari id.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteKuisDetail(id) {
+  return `/kuis/${id}`
 }

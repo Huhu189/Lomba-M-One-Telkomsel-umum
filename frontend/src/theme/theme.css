@@ -1247,3 +1247,85 @@ a {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ---------- Bank soal & kuis (slice 03) ---------- */
+
+.kartu-soal {
+  background-color: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.badge-status {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid currentcolor;
+  background-color: color-mix(in srgb, currentcolor 12%, transparent);
+}
+
+.badge-status.sukses {
+  color: var(--status-benar);
+}
+
+.badge-status.info {
+  color: var(--status-info);
+}
+
+.badge-status.peringatan {
+  color: var(--status-peringatan);
+}
+
+.badge-status.lembut {
+  color: var(--teks-lembut);
+}
+
+.soal-render .soal-teks {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.soal-opsi .opsi-huruf,
+.urut-posisi + .urut-teks,
+.jodoh-kiri {
+  font-weight: 600;
+}
+
+.opsi-huruf {
+  color: var(--teks-lembut);
+}
+
+.badge-kunci {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--sorot-hangat);
+  color: var(--teks-di-aksen);
+  border: 1px solid var(--teks-di-aksen);
+}
+
+.media-soal {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 0.75rem;
+  border-radius: var(--radius-kecil);
+}
+
+.mathml-soal {
+  margin-bottom: 0.75rem;
+  font-size: 1.15rem;
+}
+
+.jodoh-pilih {
+  max-width: 16rem;
+}
+
+.urut-posisi {
+  width: 5rem;
+}

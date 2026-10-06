@@ -96,11 +96,20 @@ export default function KerangkaUmum() {
       <main id="konten" className="badan-app" tabIndex={-1}>
         <div className="container">
           {user && (user.role === 'guru' || user.role === 'admin') ? (
-            <nav className="d-flex flex-wrap gap-3 small mb-3" aria-label="Menu data">
+            <nav className="d-flex flex-wrap gap-3 small mb-3" aria-label="Menu guru">
               <NavLink className="menu-data" to={RUTE.kelas}>Kelas</NavLink>
               <NavLink className="menu-data" to={RUTE.mapel}>Mapel</NavLink>
               <NavLink className="menu-data" to={RUTE.murid}>Murid</NavLink>
+              <NavLink className="menu-data" to={RUTE.bankSoal}>Bank Soal</NavLink>
+              <NavLink className="menu-data" to={RUTE.tag}>Tag</NavLink>
+              <NavLink className="menu-data" to={RUTE.kuis}>Kuis</NavLink>
               <NavLink className="menu-data" to={RUTE.pengaturan}>Pengaturan</NavLink>
+            </nav>
+          ) : null}
+
+          {user && user.role === 'murid' ? (
+            <nav className="d-flex flex-wrap gap-3 small mb-3" aria-label="Menu murid">
+              <NavLink className="menu-data" to={RUTE.kuis}>Ulangan Saya</NavLink>
             </nav>
           ) : null}
           <Outlet />
