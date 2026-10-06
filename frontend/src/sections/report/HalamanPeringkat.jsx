@@ -1,0 +1,132 @@
+/**
+ * Halaman peringkat satu kuis (slice 05).
+ *
+ * Peringkat dihitung server HANYA dari skor asli (percobaan pertama), jadi
+ * mengulang kuis tidak mengubah urutan. Bila guru mematikan saklar ranking,
+ * murid melihat pesan kosong; guru tetap melihat data untuk laporan.
+ */
+import { useQuery } from '@tanstack/react-query'
+import { Link, useParams } from 'react-router-dom'
+import Banner from '../../shared/ui/Banner.jsx'
+import { RUTE } from '../../routes.js'
+import { useAuthStore } from '../auth/authStore.js'
+import { ambilPeringkat } from './api.js'
+
+export default function HalamanPeringkat() {
+  const { kuisId } = useParams()
+  const idKuis = Number(kuisId)
+  const user = useAuthStore((s) => s.user)
+  const sebagaiGuru = user?.role === 'guru' || user?.role === 'admin'
+
+  const peringkat = useQuery({
+    queryKey: ['peringkat', idKuis],
+    queryFn: () => ambilPeringkat(idKuis, 20),
+    enabled: Number.isInteger(idKuis) && idKuis > 0,
+  })
+
+  const data = peringkat.data
+
+  if (peringkat.isLoading) {
+    return <p className="text-body-secondary">Menyusun peringkat…</p>
+  }
+
+  if (peringkat.isError || data === undefined) {
+    return (
+      <Banner jenis="salah" judul="Peringkat belum bisa dibuka">
+        <p className="mb-3">Peringkat ini tidak tersedia untukmu.</p>
+        <Link className="btn btn-tepi" to={RUTE.kuis}>
+          Kembali ke daftar kuis
+        </Link>
+      </Banner>
+    )
+  }
+
+  return (
+    <div className="row justify-content-center">
+      <div className="col-lg-9">
+        <div className="kartu-soft p-4 p-md-5">
+          <h1 className="h5 fw-bold mb-1">Peringkat · {data.judul_kuis}</h1>
+          <p className="teks-lembut small mb-3">
+            Dihitung dari <strong>nilai asli</strong> (percobaan pertama). Bila nilainya sama, yang
+            lebih cepat mengumpulkan naik; bila masih sama, urut nama.
+          </p>
+
+          {!data.tampil && (
+            <Banner jenis="info" judul="Ranking sedang dimatikan guru">
+              <p className="mb-0">
+                {sebagaiGuru
+                  ? 'Murid tidak melihat peringkat sampai saklar ranking dinyalakan di pengaturan.'
+                  : 'Gurumu mematikan tampilan peringkat untuk kelas ini.'}
+              </p>
+            </Banner>
+          )}
+
+          {data.tampil && data.total === 0 && (
+            <p className="text-body-secondary">Belum ada murid yang mengumpulkan ulangan ini.</p>
+          )}
+
+          {data.peringkat.length > 0 && (
+            <div className="table-responsive">
+              <table className="table align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Nama</th>
+                    <th scope="col" className="text-end">
+                      Skor
+                    </th>
+                    <th scope="col" className="text-end">
+                      Benar
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.peringkat.map((baris) => {
+                    const milikku = data.peringkat_saya?.murid_id === baris.murid_id
+
+                    return (
+                      <tr key={baris.attempt_id} className={milikku ? 'sorot-hangat' : undefined}>
+                        <td className="fw-bold">{baris.peringkat}</td>
+                        <td>
+                          {baris.nama}
+                          {milikku && <span className="small ms-2">(kamu)</span>}
+                        </td>
+                        <td className="text-end">
+                          {baris.skor} / {baris.skor_maksimal} ({baris.persen}%)
+                        </td>
+                        <td className="text-end">
+                          {baris.jumlah_benar} / {baris.jumlah_soal}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {data.tampil && data.peringkat_saya === null && !sebagaiGuru && (
+            <p className="teks-lembut small">
+              Kamu belum mengumpulkan ulangan ini, jadi belum masuk peringkat.
+            </p>
+          )}
+
+          {data.total > data.peringkat.length && (
+            <p className="teks-lembut small mb-0">
+              Menampilkan {data.peringkat.length} peringkat teratas dari {data.total} peserta.
+            </p>
+          )}
+
+          <div className="d-flex flex-wrap gap-2 mt-4">
+            <Link className="btn btn-tepi" to={`${RUTE.kuis}/${idKuis}`}>
+              Lihat kuis
+            </Link>
+            <Link className="btn btn-teks" to={RUTE.kuis}>
+              Daftar kuis
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
-import { RUTE } from '../../routes.js'
+import { RUTE, rutePeringkat } from '../../routes.js'
 import { ambilHasil } from './api.js'
 
 /** @param {string} status */
@@ -124,8 +124,11 @@ export default function HalamanHasil() {
 
           <div className="d-flex flex-wrap gap-2">
             <TombolTaut to={RUTE.kuis}>Kembali ke daftar ulangan</TombolTaut>
-            <Link className="btn btn-tepi" to={RUTE.beranda}>
-              Beranda
+            <Link className="btn btn-tepi" to={rutePeringkat(hasil.quiz_id)}>
+              Peringkat
+            </Link>
+            <Link className="btn btn-teks" to={RUTE.progresTema}>
+              Progres tema
             </Link>
           </div>
         </div>

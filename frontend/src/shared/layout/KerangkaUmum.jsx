@@ -110,6 +110,8 @@ export default function KerangkaUmum() {
           {user && user.role === 'murid' ? (
             <nav className="d-flex flex-wrap gap-3 small mb-3" aria-label="Menu murid">
               <NavLink className="menu-data" to={RUTE.kuis}>Ulangan Saya</NavLink>
+              <NavLink className="menu-data" to={RUTE.progresTema}>Progres Tema</NavLink>
+              <NavLink className="menu-data" to={RUTE.badge}>Lencana</NavLink>
             </nav>
           ) : null}
           <Outlet />

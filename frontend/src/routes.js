@@ -23,6 +23,11 @@ export const RUTE = {
   // Pengerjaan & hasil ulangan (slice 04).
   kerjakanKuis: '/kerjakan/:kuisId',
   hasilAttempt: '/hasil/:attemptId',
+  // Peringkat, laporan tema, badge, dan progres (slice 05).
+  peringkatKuis: '/peringkat/:kuisId',
+  laporanKuis: '/kuis/:id/laporan',
+  badge: '/badge',
+  progresTema: '/progres-tema',
 }
 
 /**
@@ -50,4 +55,22 @@ export function ruteKerjakanKuis(id) {
  */
 export function ruteHasil(id) {
   return `/hasil/${id}`
+}
+
+/**
+ * Tautan halaman peringkat dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function rutePeringkat(id) {
+  return `/peringkat/${id}`
+}
+
+/**
+ * Tautan laporan per tema (guru) dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteLaporanKuis(id) {
+  return `/kuis/${id}/laporan`
 }

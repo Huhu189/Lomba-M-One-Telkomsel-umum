@@ -30,6 +30,10 @@ import HalamanMapel from './sections/school/HalamanMapel.jsx'
 import HalamanMurid from './sections/school/HalamanMurid.jsx'
 import HalamanImporMurid from './sections/school/HalamanImporMurid.jsx'
 import HalamanPengaturan from './sections/settings/HalamanPengaturan.jsx'
+import HalamanPeringkat from './sections/report/HalamanPeringkat.jsx'
+import HalamanLaporan from './sections/report/HalamanLaporan.jsx'
+import HalamanBadge from './sections/report/HalamanBadge.jsx'
+import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
@@ -116,6 +120,9 @@ export default function App() {
             <Route path={RUTE.pengaturan} element={<HalamanPengaturan />} />
             <Route path={RUTE.bankSoal} element={<HalamanBankSoal />} />
             <Route path={RUTE.tag} element={<HalamanTag />} />
+
+            {/* Laporan per tema memuat data seluruh kelas — guru saja (slice 05). */}
+            <Route path={RUTE.laporanKuis} element={<HalamanLaporan />} />
           </Route>
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}
@@ -133,6 +140,11 @@ export default function App() {
               }
             />
             <Route path={RUTE.hasilAttempt} element={<HalamanHasil />} />
+
+            {/* Peringkat, lencana, dan progres tema (slice 05). */}
+            <Route path={RUTE.peringkatKuis} element={<HalamanPeringkat />} />
+            <Route path={RUTE.badge} element={<HalamanBadge />} />
+            <Route path={RUTE.progresTema} element={<HalamanProgresTema />} />
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />

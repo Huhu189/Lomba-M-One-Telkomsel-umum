@@ -4,7 +4,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { RUTE, ruteKerjakanKuis } from '../../routes.js'
+import { RUTE, ruteKerjakanKuis, ruteLaporanKuis, rutePeringkat } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
@@ -70,6 +70,17 @@ export default function HalamanKuisDetail() {
                   <TombolTaut to={ruteKerjakanKuis(data.id)}>Kerjakan sekarang</TombolTaut>
                 </div>
               )}
+
+              <div className="d-flex flex-wrap gap-2 my-3">
+                <Link className="btn btn-sm btn-tepi" to={rutePeringkat(data.id)}>
+                  Peringkat
+                </Link>
+                {sebagaiGuru && (
+                  <Link className="btn btn-sm btn-tepi" to={ruteLaporanKuis(data.id)}>
+                    Laporan per tema
+                  </Link>
+                )}
+              </div>
 
               <div className="d-flex flex-column gap-3 mt-3">
                 {(data.soal ?? []).map((soal, index) => (

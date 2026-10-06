@@ -453,6 +453,40 @@ a {
   border: 2px solid var(--teks-di-aksen);
 }
 
+/* Lencana badge per mapel — memakai variabel tema, bukan warna baru */
+.lencana-emas {
+  background-color: var(--sorot-hangat);
+  color: var(--teks-di-aksen);
+  border: 2px solid var(--teks-di-aksen);
+}
+
+.lencana-perak {
+  background-color: var(--pendukung);
+  color: var(--teks-di-aksen);
+  border: 2px solid var(--teks-di-aksen);
+}
+
+.lencana-perunggu {
+  background-color: var(--kartu-lembut);
+  color: var(--teks-di-aksen);
+  border: 2px solid var(--garis-input);
+}
+
+/* Progres tema: bar sederhana tanpa pustaka grafik */
+.bar-tema {
+  height: 0.6rem;
+  border-radius: 999px;
+  background-color: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  overflow: hidden;
+}
+
+.bar-tema > span {
+  display: block;
+  height: 100%;
+  background-color: var(--aksen);
+}
+
 .swatch {
   border-radius: 10px;
   border: 2px solid var(--garis);
@@ -1280,6 +1314,10 @@ a {
 
 .badge-status.lembut {
   color: var(--teks-lembut);
+}
+
+.badge-status.salah {
+  color: var(--status-salah);
 }
 
 .soal-render .soal-teks {
