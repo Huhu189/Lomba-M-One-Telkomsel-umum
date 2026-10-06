@@ -6,6 +6,7 @@ namespace App\Sections\Quiz\Services;
 
 use App\Models\User;
 use App\Sections\Question\Models\Soal;
+use App\Sections\Question\Registry\RegistryTipeSoal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Sekolah;
@@ -121,8 +122,12 @@ class KuisService
     }
 
     /**
-     * Kuis siap terbit bila: ada soal objektif aktif, jadwal masuk akal,
-     * dan durasi wajar.
+     * Kuis siap terbit bila: ada soal aktif yang jenisnya dikenal mesin penilaian,
+     * jadwal masuk akal, dan durasi wajar.
+     *
+     * Sejak slice 06 kedelapan jenis soal punya penangan (termasuk isian singkat
+     * dan uraian yang dinilai berlapis), jadi penjaga di sini bukan lagi
+     * "objektif saja" melainkan "jenisnya dikenal penilaian".
      *
      * @return array<string, string>
      */
@@ -135,10 +140,16 @@ class KuisService
             $galat['soal'] = 'Kuis wajib punya minimal satu soal sebelum diterbitkan.';
         }
 
-        $tidakObjektif = $soal->reject(fn (Soal $satu): bool => $satu->tipe->objektif());
+        // `tipeAman()` (bukan `tipe`) supaya baris soal dengan nilai tipe rusak
+        // tidak melempar ValueError ke guru — cukup dilaporkan sebagai galat.
+        $tanpaPenangan = $soal->reject(function (Soal $satu): bool {
+            $tipe = $satu->tipeAman();
 
-        if ($tidakObjektif->isNotEmpty()) {
-            $galat['soal_tipe'] = 'Tahap ini baru mendukung soal objektif (pilihan ganda, benar/salah, menjodohkan, mengurutkan).';
+            return $tipe !== null && RegistryTipeSoal::dukung($tipe);
+        });
+
+        if ($tanpaPenangan->isNotEmpty()) {
+            $galat['soal_tipe'] = 'Ada soal dengan jenis yang belum didukung mesin penilaian. Keluarkan soal itu dulu.';
         }
 
         $tidakAktif = $soal->reject(fn (Soal $satu): bool => $satu->aktif);

@@ -392,3 +392,30 @@ it('koreksi manual menghitung ulang total attempt dan mencatat audit', function 
 
     expect($laporan->json('jumlah'))->toBe(0);
 });
+
+it('kuis berisi isian singkat dan uraian bisa diterbitkan', function (): void {
+    $isian = buatSoal06($this, 'isian_singkat', ['teks' => 'Ibu kota Indonesia?'], ['jawaban_baku' => ['Jakarta']]);
+    $uraian = buatSoal06($this, 'uraian', ['teks' => 'Jelaskan fotosintesis.'], [
+        'kata_kunci' => [['teks' => 'klorofil'], ['teks' => 'cahaya']],
+    ]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $kuisId = (int) $this->postJson('/api/v1/kuis', [
+        'judul' => 'Ulangan Campuran',
+        'subject_id' => $this->mapel->id,
+        'class_id' => $this->kelas->id,
+        'durasi_menit' => 30,
+        'mulai_at' => now()->addMinute()->toIso8601String(),
+        'selesai_at' => now()->addHour()->toIso8601String(),
+    ])->assertCreated()->json('id');
+
+    $this->putJson("/api/v1/kuis/{$kuisId}/soal", ['soal' => [$isian->id, $uraian->id]])->assertOk();
+
+    // Regresi: dulu publikasi menolak 422 `soal_tipe` untuk soal bertingkat,
+    // padahal penilaiannya (kata kunci + antrean koreksi) sudah ada sejak slice 06.
+    $this->postJson("/api/v1/kuis/{$kuisId}/publikasi")
+        ->assertOk()
+        ->assertJsonPath('status', 'publikasi');
+});
