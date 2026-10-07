@@ -933,3 +933,91 @@ disiarkan ke kanal `ulangan:kuis:{id}` yang sama dengan Live Monitor.
   pilihan host masih menunggu keputusan pengguna.
 - Lanjutan layar guru (di luar janji chunk): menyorot soal di dalam halaman materi, pembahasan
   langkah-demi-langkah, dan whiteboard — dicatat di bagian 15 `penjelasan-fitur.md` sebagai yang belum.
+
+## A.15 Perbaikan Akses Murid Baru, Alias POST, dan Tautan Reset Sekali Pakai (8 Oktober 2026)
+
+### A.15.1 Masalah yang dilaporkan
+Empat keluhan dari pemakaian nyata: (1) endpoint murid `/api/v1/avatar`, `/api/v1/progres/saya`, dan
+`/api/v1/badge/saya` menjawab **403**; (2) tombol ganti foto profil (PFP) menampilkan *"This action is
+unauthorized."*; (3) permintaan **POST** dari frontend ke `progres/saya` dan `badge/saya` (bukan GET)
+menabrak 405/403; (4) saat tautan reset kata sandi dibuka kembali, halaman menampilkan formulir yang pasti
+gagal, tanpa penjelasan.
+
+### A.15.2 Akar masalah (dibuktikan, bukan dugaan)
+- **Murid yang mendaftar sendiri tidak punya profil.** `POST /api/v1/auth/daftar` membuat baris `users`
+  tetapi **tidak** membuat baris `students`. Semua endpoint murid mengambil `$user->murid` sehingga
+  `null` → policy menolak → **403**. Inilah akar terbesar.
+- **Guru dipanggil endpoint milik murid.** `AvatarPolicy::viewAny` semula memeriksa `murid` sehingga guru
+  yang membuka `/avatar/saya` kena **403** *"This action is unauthorized."*
+- **Alias POST belum ada.** Frontend mengirim POST ke `progres/saya` & `badge/saya`; rute hanya punya GET.
+- **Tautan reset sekali pakai tanpa UI.** Token memang sudah ditandai terpakai, tetapi responsnya tidak
+  membawa penanda apa pun ke frontend.
+
+### A.15.3 Perbaikan
+- `RegisterService::daftarMurid()` dibungkus `DB::transaction` dan memanggil `hubungkanProfilMurid()`:
+  membuat kelas penampung `"Tanpa Kelas"` lewat `firstOrCreate` (satu per sekolah) lalu `Murid::create`.
+  Aman bila sekolah belum ada (pendaftaran tetap sukses).
+- `AvatarPolicy::viewAny` dilonggarkan menjadi `isMurid() || isGuru()`; unggah/hapus sendiri tetap khusus
+  murid lewat policy `unggah`/`hapusSendiri`.
+- `AvatarController::saya()` untuk non-murid mengembalikan `{'avatar': null, 'bawaan': true,
+  'tidak_tersedia': true}` — rapi, bukan 403.
+- `routes/api.php` menambah `POST /badge/saya` & `POST /progres/saya` sebagai alias baca-setara (dibaca,
+  bukan ditulis; hanya meneruskan ke `BadgeController::saya`/`ProgresController::saya`).
+- `PasswordResetService::terapkan()` menandai token dipakai lewat `Cache` (`reset-dipakai:{sha256(email)}`,
+  sehari) dan menyediakan `tautanSudahDipakai()`; `PasswordResetController::aturUlang()` menambahkan
+  `tautan_dipakai`. Frontend (`api.js` + `HalamanAturUlangSandi.jsx`) menampilkan kartu *"Tautan sudah
+  pernah dipakai"* dengan tombol Masuk & Minta tautan baru.
+- `App.jsx` menambah gerbang `HanyaMurid` untuk rute lencana & progres tema (guru diarahkan ke beranda,
+  bukan menabrak 403).
+
+### A.15.4 Pagar mutu — `./verify.sh` (dari root repo)
+```
+./verify.sh  →  SEMUA HIJAU  (/tmp/verify-aksesmurid2.log, exit 0)
+```
+- Backend Pest: **173 passed (1418 assertions)**; backend terbaru `Tests\Feature\AksesMuridBaruTest` PASS.
+- Backend Pint: **PASS (304 berkas)**.
+- Frontend `checkJs` (tsc): OK; ESLint: OK.
+- Frontend Vitest: **36 berkas, 279 test** passed.
+- Realtime `node --test`: **13 test** passed.
+
+### A.15.5 Test baru (bukti perilaku)
+- `backend/tests/Feature/AksesMuridBaruTest.php` — **4 test / 34 assertion**: (a) setelah
+  `POST /daftar`, profil murid + kelas `"Tanpa Kelas"` terbentuk dan `avatar`, `avatar/saya`,
+  `progres/saya` (GET+POST), `badge/saya` (GET+POST) semuanya **200**, sedangkan `POST /avatar` kosong
+  **422** (bukan 403); (b) kelas penampung dibuat **sekali**, murid kedua masuk kelas yang sama;
+  (c) guru mendapat respons rapi (`tidak_tersedia: true`) tetapi unggah & progres tetap **403**;
+  (d) tautan reset yang sudah dipakai → `tautan_dipakai: true`, token acak → `false`.
+- `frontend/src/__tests__/sections/auth/aturUlang.test.js` — **3 test**: skema menolak respons tanpa
+  `message`, `tautan_dipakai` bawaan `false`, dan menerima `tautan_dipakai: true`.
+
+### A.15.6 Smoke HTTP nyata (sesi cookie sungguhan, bukan test)
+Skrip `python3 /tmp/smoke_akses.py` meniru frontend: `GET /sanctum/csrf-cookie` lalu kirim header
+`X-XSRF-TOKEN`, memakai cookie jar manual. Hasil (semua **OK**):
+
+```
+= murid uji.mandiri@murid.test =
+GET  avatar/saya      200     POST progres/saya  200
+GET  avatar           200     GET  badge/saya    200
+GET  progres/saya     200     POST badge/saya    200
+POST avatar (kosong)  422  → 422 "Pilih gambar terlebih dahulu."
+
+= guru aadmin@sekolah.test =
+POST avatar (unggah)  403  (memang khusus murid)   GET avatar/saya   200
+GET  avatar           200                          GET progres/saya  403
+POST progres/saya     403                          GET badge/saya    403
+```
+
+### A.15.7 Temuan saat smoke (dan diperbaiki)
+- **Cookie `.localhost` tidak dikirim `http.cookiejar` Python** (bukan bug aplikasi): `curl` dengan jar yang
+  sama berhasil login 200. Skrip smoke diberi pengelola cookie manual; sejak itu alur penuh hijau.
+- **Akun guru seeder tidak punya role Spatie.** Perubahan seeder yang belum ter-commit membuat
+  `aadmin@sekolah.test` (kolom `role='guru'`) **tanpa** `assignRole('guru')`, sehingga `isGuru()` = `false`
+  dan guru tetap 403 di seluruh endpoint guru. Ditambahkan `$guru->assignRole('guru');` (idempoten) dan
+  role diberikan pada DB dev; setelah itu smoke guru hijau. Ini menegaskan pentingnya smoke nyata — test
+  Pest memakai `User::factory()->guru()` yang role-nya selalu benar, jadi tidak menangkap celah seeder ini.
+
+### A.15.8 Catatan jujur
+- Alias POST `progres/saya` & `badge/saya` sengaja tetap **dibatasi role murid** (guru tetap 403), sesuai
+  kontrak `Slice05Test` yang mengharapkan guru tidak punya badge/progres tema.
+- Smoke memakai data DB dev (murid `uji.mandiri@murid.test` id 13 dengan `students` id 8) — bukan data
+  produksi.

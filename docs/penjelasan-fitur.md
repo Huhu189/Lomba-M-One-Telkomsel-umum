@@ -170,7 +170,7 @@ memakai inisial nama, satu murid hanya bisa melapor sekali per avatar, dan setel
 avatar disembunyikan dari murid lain sementara pemiliknya tetap melihatnya. Keputusan guru
 (pulihkan / hapus) masuk audit. Satu hal yang kami pilih sengaja: avatar yang menunggu tinjauan
 **tidak bisa** dihapus pemiliknya sendiri, supaya gambarnya tidak hilang sebelum guru melihatnya
-(murid tetap boleh mengunggah gambar baru).
+(murid tetap boleh mengunggah gambar baru). Halaman foto profil **guru** juga tidak lagi menampilkan galat: guru melihat keadaan kosong yang rapi, sedangkan unggah/ganti dan hapus tetap khusus murid.
 
 ---
 
@@ -369,6 +369,38 @@ dimatikan per sekolah/kelas/kuis lewat pengaturan tiga lapis; begitu dimatikan, 
 murid tidak menerima apa pun. Yang jujur **belum**: menyorot satu soal **di dalam halaman materi** (layar
 kelas bekerja di layar pengerjaan ulangan, bukan di dalam materi berblok), pembahasan langkah-demi-langkah
 real-time, dan papan gambar/whiteboard.
+
+---
+
+## 16. Pendaftaran mandiri dan pemulihan kata sandi yang rapi
+
+### Apa ini
+Dua jalur yang paling sering ditempuh murid tanpa menunggu guru: mendaftar sendiri, dan meminta tautan
+pemulihan kata sandi lewat email.
+
+### Cara kerjanya
+Begitu murid mendaftar sendiri, server **langsung membuatkan profil murid dan kelas penampung** bernama
+"Tanpa Kelas"; guru tinggal memindahkannya ke kelas yang sebenarnya. Dengan begitu lencana, progres tema,
+dan foto profil anak langsung berfungsi sejak hari pertama, tidak lagi menampilkan galat di layar.
+Semua murid baru dari satu sekolah masuk ke kelas penampung yang **sama**, jadi guru tidak dibuatkan
+satu kelas kosong per murid.
+
+Tautan pemulihan kata sandi berlaku **sekali pakai**. Bila tautan yang sama dibuka lagi (atau tautan lama
+dari kotak masuk dibuka ulang), halaman tidak menyodorkan formulir yang pasti gagal, melainkan penjelasan
+jelas bahwa tautan itu **sudah pernah dipakai** — beserta tombol Masuk dan Minta tautan baru.
+
+### Mengapa aman
+Token pemulihan hanya disimpan dalam bentuk hash dan ditandai terpakai begitu berhasil dipakai, sehingga
+tautan yang bocor atau terbuka di perangkat lain tidak bisa dipakai dua kali. Kelas penampung dibuat
+sekali dan ditulis dalam satu transaksi bersama profil murid, jadi tidak ada murid yang setengah jadi;
+guru tetap satu-satunya yang menempatkan murid ke kelas asli.
+
+### Manfaat untuk anak SD dan guru
+Anak yang mendaftar sendiri di rumah tidak lagi "setengah jalan" — begitu masuk, semua halaman murid
+(ganti foto profil, lencana, progres tema) langsung jalan, walau gurunya belum sempat membuat kelas.
+Guru pun melihat antreannya rapi di satu kelas penampung, bukan belasan pekerjaan rumah tangga digital.
+
+Status: **perbaikan 8 Oktober 2026** — bawaannya menyala, tanpa pengaturan tambahan.
 
 ---
 

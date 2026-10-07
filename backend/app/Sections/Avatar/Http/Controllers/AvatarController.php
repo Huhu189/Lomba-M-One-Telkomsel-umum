@@ -32,7 +32,12 @@ class AvatarController extends Controller
     /** Relasi yang selalu dimuat supaya resource tidak memicu lazy load. */
     private const RELASI = ['murid.user', 'murid.kelas'];
 
-    /** Avatar sendiri; `bawaan: true` berarti belum pernah mengunggah. */
+    /**
+     * Avatar sendiri; `bawaan: true` berarti belum pernah mengunggah.
+     * Guru/admin tidak punya avatar: responsnya TETAP rapi (avatar null bawaan)
+     * alih-alih 403, supaya halaman yang sama tidak menampilkan galat kasar —
+     * unggah/hapus sendiri yang tetap dibatasi murid lewat policy `unggah`.
+     */
     public function saya(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Avatar::class);
@@ -40,7 +45,7 @@ class AvatarController extends Controller
         $profil = $request->user()?->murid;
 
         if ($profil === null) {
-            return response()->json(['avatar' => null, 'bawaan' => true]);
+            return response()->json(['avatar' => null, 'bawaan' => true, 'tidak_tersedia' => true]);
         }
 
         $avatar = Avatar::terkiniUntuk((int) $profil->getKey());

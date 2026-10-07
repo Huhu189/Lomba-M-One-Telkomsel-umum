@@ -82,6 +82,19 @@ function HanyaMasuk() {
   return user ? <Outlet /> : <Navigate to={RUTE.masuk} replace />
 }
 
+/**
+ * Halaman khusus murid (lencana & progres tema): guru/admin dialihkan ke
+ * beranda karena datanya tidak ada untuk mereka — tanpa pagar ini guru yang
+ * salah buka akan menabrak 403 dari API.
+ */
+function HanyaMurid() {
+  const user = useAuthStore((s) => s.user)
+
+  if (!user) return <Navigate to={RUTE.masuk} replace />
+
+  return user.role === 'murid' ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
+}
+
 /** Halaman data induk: hanya guru/admin (murid dialihkan ke beranda). */
 function HanyaGuru() {
   const user = useAuthStore((s) => s.user)
@@ -155,8 +168,12 @@ export default function App() {
 
             {/* Peringkat, lencana, dan progres tema (slice 05). */}
             <Route path={RUTE.peringkatKuis} element={<HalamanPeringkat />} />
-            <Route path={RUTE.badge} element={<HalamanBadge />} />
-            <Route path={RUTE.progresTema} element={<HalamanProgresTema />} />
+
+            {/* Lencana & progres tema datanya per murid — halaman khusus murid. */}
+            <Route element={<HanyaMurid />}>
+              <Route path={RUTE.badge} element={<HalamanBadge />} />
+              <Route path={RUTE.progresTema} element={<HalamanProgresTema />} />
+            </Route>
 
             {/* Materi berblok (slice 08) — guru menyusun, murid menempuh. */}
             <Route path={RUTE.materi} element={<PilihHalamanMateri />} />

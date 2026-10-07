@@ -27,6 +27,7 @@ export default function HalamanAturUlangSandi() {
   const emailDariTautan = parameter.get('email') ?? ''
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
   const [berhasil, setBerhasil] = useState(false)
+  const [tautanDipakai, setTautanDipakai] = useState(false)
 
   const {
     register,
@@ -45,19 +46,50 @@ export default function HalamanAturUlangSandi() {
   const kirim = handleSubmit(async (data) => {
     clearErrors('root')
     try {
-      const pesan = await aturUlangSandi({
+      const hasil = await aturUlangSandi({
         token: data.token,
         email: data.email,
         password: data.password,
       })
+
+      if (hasil.tautan_dipakai) {
+        // Token sekali pakai sudah habis: form ini tidak akan pernah berhasil
+        // lagi — tunjukkan halaman khusus, jangan biarkan anak menebak-nebak.
+        setTautanDipakai(true)
+        return
+      }
+
       setBerhasil(true)
-      tampilkanToast('sukses', pesan)
+      tampilkanToast('sukses', hasil.message)
     } catch (galat) {
       if (!sudahDitampilkanSebagaiTunggu(galat)) {
         setError('root', { message: pesanGalatApi(galat) })
       }
     }
   })
+
+  if (tautanDipakai) {
+    return (
+      <KartuAuth judul="Tautan sudah pernah dipakai" tengah>
+        <span className="fitur-ikon hangat mx-auto" aria-hidden="true">
+          <IkonSurat size={28} />
+        </span>
+        <p className="teks-lembut">
+          Setiap tautan pengaturan ulang hanya berlaku sekali. Kata sandi kemungkinan sudah
+          diganti oleh tautan ini. Kalau memang kamu yang memakainya, cukup masuk memakai kata
+          sandi terbaru. Kalau bukan kamu, minta tautan yang baru.
+        </p>
+        <div className="d-grid gap-2">
+          <TombolTaut to={RUTE.masuk} besar lebar>
+            Masuk
+          </TombolTaut>
+          <TombolTaut to={RUTE.lupaSandi} varian="tepi" lebar>
+            Minta tautan baru
+          </TombolTaut>
+        </div>
+      </KartuAuth>
+    )
+  }
 
   if (berhasil) {
     return (

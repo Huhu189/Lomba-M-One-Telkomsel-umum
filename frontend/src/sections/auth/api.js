@@ -19,6 +19,16 @@ export const skemaUser = z.object({
 /** Skema pesan generik backend. */
 export const skemaPesan = z.object({ message: z.string() })
 
+/**
+* Respon atur-ulang sandi: ditandai pula bila tautan yang dikirim sudah pernah
+* dipakai (token sekali pakai), supaya UI bisa menampilkan halaman khusus
+* "tautan sudah dipakai" alih-alih formulir yang pasti gagal lagi.
+*/
+export const skemaResponAturUlang = z.object({
+  message: z.string(),
+  tautan_dipakai: z.boolean().optional().default(false),
+})
+
 /** Skema diagnostik /v1/sesi. */
 export const skemaSesi = z.object({ terautentikasi: z.boolean() })
 
@@ -176,7 +186,7 @@ export async function lupaSandi(email) {
 /**
  * Atur ulang kata sandi dengan token sekali pakai.
  * @param {{ token: string, email: string, password: string }} data
- * @returns {Promise<string>} pesan backend
+ * @returns {Promise<z.infer<typeof skemaResponAturUlang>>} pesan + penanda tautan mati
  */
 export async function aturUlangSandi(data) {
   await ambilCsrfCookie()
@@ -186,5 +196,5 @@ export async function aturUlangSandi(data) {
     password: data.password,
     password_confirmation: data.password,
   })
-  return skemaPesan.parse(respons.data).message
+  return skemaResponAturUlang.parse(respons.data)
 }

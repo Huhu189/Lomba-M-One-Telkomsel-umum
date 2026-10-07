@@ -68,3 +68,19 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   sejak awal bersama tema (store + tombol + palet CSS), jadi tidak dibuat ulang di slice 10. Sisa:
   Octane Swoole (ekstensi `swoole` tidak ada di mesin dev — dicatat jujur) dan deploy yang masih menunggu
   keputusan host dari pengguna. Bagian ini ditutup di akhir slice 10.
+
+- **Perbaikan akhir (8 Oktober 2026)**: laporan pengguna tentang **403** pada `/avatar`, `/progres/saya`,
+  `/badge/saya` serta *"This action is unauthorized."* saat ganti foto profil, plus permintaan agar rute
+  progres-tema & lencana sinkron GET/POST dan tautan reset kata sandi sekali pakai diberi halaman khusus.
+  Akar masalah: murid yang **mendaftar sendiri** tidak dibuatkan baris `students` sehingga semua endpoint
+  murid menolak; `AvatarPolicy::viewAny` menolak guru; frontend mengirim **POST** sementara rute hanya GET;
+  respons reset belum membawa penanda tautan terpakai. Perbaikan: `RegisterService` membuat profil murid +
+  kelas penampung `"Tanpa Kelas"` dalam satu transaksi; policy dilonggarkan (guru dapat respons rapi, unggah
+  tetap khusus murid); alias `POST /progres/saya` & `/badge/saya` ditambahkan; dan kartu *"Tautan sudah
+  pernah dipakai"* di halaman atur ulang sandi. Diverifikasi `./verify.sh` **HIJAU** — Pest **173 passed
+  (1418 assertions)**, Pint **304 berkas**, Vitest **36 berkas/279 test**, realtime **13 test** — ditambah
+  **smoke HTTP nyata** (login cookie+CSRF sebagai murid dan guru) yang semuanya lulus. Dua temuan smoke:
+  `http.cookiejar` bawaan Python tidak mengirim cookie berdomain `.localhost` (keterbatasan alat, bukan bug
+  aplikasi — skrip dikelola cookie manual), dan seeder guru belum memanggil `assignRole('guru')` sehingga
+  `isGuru()` salah → diperbaiki. Detail lengkap di `laporan-pengujian.md` bagian A.15 dan
+  `penjelasan-fitur.md` bagian 16.

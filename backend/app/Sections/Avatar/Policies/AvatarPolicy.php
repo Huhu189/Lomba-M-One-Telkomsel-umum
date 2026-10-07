@@ -18,9 +18,13 @@ use App\Sections\School\Models\Murid;
  */
 class AvatarPolicy
 {
+    /**
+     * Daftar avatar hanya untuk murid dan guru: admin pemantau pun boleh, selama
+     * role-nya guru sejenis (isGuru mencakup admin). Tamu/akun asing ditolak.
+     */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isMurid() || $user->isGuru();
     }
 
     /** Lihat satu avatar: guru selalu, pemilik selalu, murid lain hanya bila aktif & sekelas. */

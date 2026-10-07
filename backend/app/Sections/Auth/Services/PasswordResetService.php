@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Sections\Auth\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
 class PasswordResetService
 {
+    /** Penanda tautan terakhir gagal karena tokennya sudah pernah dipakai. */
+    private bool $tautanTerpakai = false;
+
     public function __construct(private readonly PengirimEmail $email) {}
 
     /**
@@ -57,8 +61,35 @@ class PasswordResetService
             },
         );
 
-        return $status === Password::PASSWORD_RESET
-            ? 'Kata sandi berhasil diganti. Silakan masuk.'
-            : 'Tautan tidak valid atau sudah pernah dipakai.';
+        if ($status === Password::PASSWORD_RESET) {
+            // Ingat token yang BARU SAJA dipakai (cukup hash-nya — token mentah
+            // tidak pernah disimpan). Bila tautan yang sama dibuka lagi, kita bisa
+            // bilang dengan jujur "tautan ini sudah pernah dipakai" alih-alih
+            // "tidak valid".
+            Cache::forget($this->kunciTokenDipakai($email));
+            Cache::put($this->kunciTokenDipakai($email), hash('sha256', $token), now()->addDay());
+
+            return 'Kata sandi berhasil diganti. Silakan masuk.';
+        }
+
+        // Token salah, kedaluwarsa, ATAU sudah pernah dipakai. Bedakan supaya UI
+        // bisa menampilkan halaman "tautan sudah dipakai" alih-alih form yang
+        // pasti gagal lagi. Deteksinya hanya menyentuh token yang memang pernah
+        // dipakai untuk email ini — token orang lain tidak ikut terdeteksi.
+        $dipakai = Cache::get($this->kunciTokenDipakai($email));
+        $this->tautanTerpakai = is_string($dipakai) && $dipakai === hash('sha256', $token);
+
+        return 'Tautan tidak valid atau sudah pernah dipakai.';
+    }
+
+    /** Tautan terakhir gagal karena tokennya sudah pernah dipakai? */
+    public function tautanSudahDipakai(): bool
+    {
+        return $this->tautanTerpakai;
+    }
+
+    private function kunciTokenDipakai(string $email): string
+    {
+        return 'reset-dipakai:'.hash('sha256', mb_strtolower(trim($email)));
     }
 }
