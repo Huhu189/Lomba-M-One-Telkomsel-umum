@@ -90,3 +90,14 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   disembuhkan saat pertama mengakses, guru tetap 403. Diverifikasi `./verify.sh` **HIJAU** (Pest
   **174 passed (1424 assertions)**) plus smoke HTTP nyata dengan akun tanpa profil yang seluruh endpoint-nya
   200 dan profilnya terbentuk. Detail di `laporan-pengujian.md` bagian A.16.
+
+- **Penyempurnaan palet "Tinta & Kertas" (8 Oktober 2026)**: palet bawaan masih sangat generik
+  (slate-50, sky-500, dst.). Peran warna dari `chunk theme` **dipertahankan** — panel navy, aksen
+  biru, pendukung periwinkle, sorot hangat stabilo, mode gelap navy pekat — tetapi nilai dilembutkan
+  ke dunia buku tulis & stabilo yang lebih khas dan tetap ramah anak SD: kertas hangat `#F5F2EA`,
+  tinta navy `#1B2A5E`, aksen laguna `#0FA3B8`, pendukung `#92A5D6`, dan stabilo `#EEF385`
+  **dipertahankan** sebagai tanda tangan. Semua 18 pasangan kontras teruji ≥ AA (teks di aksen
+  5.32:1, teks-lembut di kertas 5.67:1, garis input 4.19:1). Perubahan hanya di blok variabel
+  `theme.css` (dijaga `tema.test.js`), dibuktikan visual lewat tangkapan Chrome headless
+  (`docs/log-mentah/palet-terang.png`, `palet-gelap.png`) dan `./verify.sh` HIJAU — Pest **175 passed
+  (1433 assertions)**, Vitest 36 berkas/279 test.

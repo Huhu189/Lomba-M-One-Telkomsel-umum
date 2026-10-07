@@ -3,34 +3,36 @@
  * Nilai hex HANYA boleh ada di blok :root dan [data-bs-theme='dark'] di bawah;
  * komponen dan SVG memakai var(--…) (dijaga oleh src/theme/tema.test.js).
  *
- * Palet (tidak diubah dari spesifikasi):
- *  Latar terang  #F8FAFC | Sidebar/panel #1A2F65 | Aksen #0EA5E9
- *  Pendukung     #95A7D5 | Sorot hangat #EEF385 (selalu + garis tepi)
- *  Teks          #0F172A (terang) / #F8FAFC (gelap)
- *  Mode gelap    latar #0B1530 | kartu #14214A | aktif #1A2F65
- *  Link          #0369A1 (terang) / #38BDF8 (gelap) | garis input #64748B
- *  Status        benar #15803D | salah #B91C1C | peringatan #B45309 | info #0369A1
- *  Teks di atas #0EA5E9 / #95A7D5 / #EEF385 selalu gelap.
+ * Palet "Tinta & Kertas" — evolusi dari spesifikasi chunk theme (peran warna
+ * dipertahankan, nilai dilembutkan agar tidak generik dan tetap ramah anak SD):
+ *  Kertas hangat #F5F2EA | Tinta navy  #1B2A5E (panel/aktif)
+ *  Aksen laguna  #0FA3B8 | Pendukung   #92A5D6
+ *  Sorot hangat  #EEF385 (stabilo, selalu + garis tepi) — dipertahankan
+ *  Teks          #16203C (terang) / #F5F2EA (gelap)
+ *  Mode gelap    latar #0F1631 | kartu #18234A | aktif #1B2A5E
+ *  Link          #0B6E8F (terang) / #4FC3DC (gelap) | garis input #6C7486
+ *  Status        benar #1A7A3C | salah #B42318 | peringatan #B45309 | info #0B6E8F
+ *  Teks di atas #0FA3B8 / #92A5D6 / #EEF385 selalu gelap (teruji kontras AA).
  */
 
 :root {
-  --latar: #f8fafc;
+  --latar: #f5f2ea;
   --kartu: #ffffff;
-  --kartu-lembut: #eef3fa;
-  --aktif: #1a2f65;
-  --teks: #0f172a;
-  --teks-lembut: #475569;
-  --panel: #1a2f65;
-  --teks-di-panel: #f8fafc;
-  --teks-di-panel-lembut: #cdd7ee;
-  --guru-sidebar: #1a2f65;
-  --aksen: #0ea5e9;
-  --pendukung: #95a7d5;
+  --kartu-lembut: #eceadf;
+  --aktif: #1b2a5e;
+  --teks: #16203c;
+  --teks-lembut: #565f79;
+  --panel: #1b2a5e;
+  --teks-di-panel: #f5f2ea;
+  --teks-di-panel-lembut: #c9d2ec;
+  --guru-sidebar: #1b2a5e;
+  --aksen: #0fa3b8;
+  --pendukung: #92a5d6;
   --sorot-hangat: #eef385;
-  --teks-di-aksen: #0f172a;
-  --link: #0369a1;
-  --garis-input: #64748b;
-  --garis: #dbe2ea;
+  --teks-di-aksen: #16203c;
+  --link: #0b6e8f;
+  --garis-input: #6c7486;
+  --garis: #e0dccd;
   --status-benar: #15803d;
   --status-salah: #b91c1c;
   --status-peringatan: #b45309;
@@ -39,8 +41,8 @@
 
   --radius: 16px;
   --radius-kecil: 12px;
-  --bayangan: 0 2px 12px rgba(15, 23, 42, 0.08);
-  --bayangan-besar: 0 18px 48px rgba(15, 23, 42, 0.14);
+  --bayangan: 0 2px 12px rgba(22, 32, 60, 0.08);
+  --bayangan-besar: 0 18px 48px rgba(22, 32, 60, 0.14);
   --font-judul: ui-rounded, 'SF Pro Rounded', 'Nunito', 'Quicksand', system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
 
@@ -49,36 +51,36 @@
   --bs-body-color: var(--teks);
   --bs-body-font-size: 1.0625rem;
   --bs-primary: var(--aksen);
-  --bs-primary-rgb: 14, 165, 233;
+  --bs-primary-rgb: 15, 163, 184;
   --bs-link-color: var(--link);
-  --bs-link-color-rgb: 3, 105, 161;
+  --bs-link-color-rgb: 11, 110, 143;
   --bs-border-color: var(--garis);
   --bs-border-radius: var(--radius);
   --bs-secondary-color: var(--teks-lembut);
 }
 
 [data-bs-theme='dark'] {
-  --latar: #0b1530;
-  --kartu: #14214a;
-  --kartu-lembut: #101b3e;
-  --aktif: #1a2f65;
-  --teks: #f8fafc;
-  --teks-lembut: #b7c3d6;
-  --panel: #14214a;
-  --link: #38bdf8;
-  --garis: #2a3a63;
-  --garis-input: #8798bd;
+  --latar: #0f1631;
+  --kartu: #18234a;
+  --kartu-lembut: #131c3d;
+  --aktif: #1b2a5e;
+  --teks: #f5f2ea;
+  --teks-lembut: #b4bdd3;
+  --panel: #18234a;
+  --link: #4fc3dc;
+  --garis: #2c3866;
+  --garis-input: #8791ad;
   --status-benar: #4ade80;
   --status-salah: #f87171;
   --status-peringatan: #fbbf24;
-  --status-info: #38bdf8;
+  --status-info: #4fc3dc;
   --bayangan: 0 2px 12px rgba(0, 0, 0, 0.35);
   --bayangan-besar: 0 18px 48px rgba(0, 0, 0, 0.45);
 
   --bs-body-bg: var(--latar);
   --bs-body-color: var(--teks);
   --bs-link-color: var(--link);
-  --bs-link-color-rgb: 56, 189, 248;
+  --bs-link-color-rgb: 79, 195, 220;
   --bs-border-color: var(--garis);
   --bs-secondary-color: var(--teks-lembut);
 }
@@ -1467,7 +1469,7 @@ a {
   --bs-btn-hover-color: var(--kartu);
   --bs-btn-hover-bg: var(--link);
   --bs-btn-hover-border-color: var(--link);
-  --bs-btn-focus-shadow-rgb: 3, 105, 161;
+  --bs-btn-focus-shadow-rgb: 11, 110, 143;
   --bs-btn-active-color: var(--kartu);
   --bs-btn-active-bg: var(--link);
   --bs-btn-active-border-color: var(--link);
