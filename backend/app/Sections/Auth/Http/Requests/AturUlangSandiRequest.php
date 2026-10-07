@@ -29,6 +29,9 @@ class AturUlangSandiRequest extends FormRequest
     {
         $this->merge([
             'email' => mb_strtolower(trim((string) $this->input('email'))),
+            // Sama dengan MasukRequest/DaftarMuridRequest: toleransi spasi tepi pada sandi.
+            'password' => trim((string) $this->input('password')),
+            'password_confirmation' => trim((string) $this->input('password_confirmation')),
         ]);
     }
 }

@@ -12,6 +12,7 @@ use App\Sections\School\Models\Sekolah;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -118,6 +119,55 @@ it('guru melihat avatar dengan respons rapi (bukan 403) tetapi tetap tidak bisa 
     $this->postJson('/api/v1/progres/saya')->assertStatus(403);
     $this->getJson('/api/v1/badge/saya')->assertStatus(403);
     $this->postJson('/api/v1/badge/saya')->assertStatus(403);
+});
+
+it('kata sandi toleran spasi di awal/akhir saat daftar, masuk, dan atur ulang', function (): void {
+    // Daftar dengan sandi ber-spasi tepi — disimpan TANPA spasinya.
+    $this->postJson('/api/v1/auth/daftar', [
+        'name' => 'Spasi Tepi',
+        'email' => 'spasi-tepi@murid.test',
+        'password' => '  sandi-aman-99  ',
+        'password_confirmation' => '  sandi-aman-99  ',
+    ])->assertCreated();
+
+    $murid = User::query()->where('email', 'spasi-tepi@murid.test')->firstOrFail();
+    $murid->forceFill(['status' => UserStatus::Aktif, 'email_verified_at' => now()])->save();
+
+    expect(Hash::check('sandi-aman-99', $murid->password))->toBeTrue()
+        ->and(Hash::check('  sandi-aman-99  ', $murid->password))->toBeFalse();
+
+    // Masuk: salah ketik spasi di tepi tetap bisa masuk; spasi di tengah tetap ditolak.
+    auth()->forgetGuards();
+    $this->postJson('/api/v1/auth/masuk', [
+        'email' => 'spasi-tepi@murid.test',
+        'password' => "\t sandi-aman-99 \n",
+    ])->assertOk();
+
+    auth()->forgetGuards();
+    $this->postJson('/api/v1/auth/masuk', [
+        'email' => 'spasi-tepi@murid.test',
+        'password' => 'sandi aman-99', // spasi di tengah = sandi lain, ditolak
+    ])->assertStatus(422);
+
+    // Atur ulang dengan sandi ber-spasi tepi → tersimpan bersih, lalu bisa dipakai masuk.
+    auth()->forgetGuards();
+    $broker = app('auth.password.broker');
+    $token = $broker->createToken($murid);
+
+    $this->postJson('/api/v1/auth/atur-ulang-sandi', [
+        'token' => $token,
+        'email' => 'spasi-tepi@murid.test',
+        'password' => '  sandi-baru-88  ',
+        'password_confirmation' => '  sandi-baru-88  ',
+    ])->assertOk()->assertJsonPath('tautan_dipakai', false);
+
+    expect(Hash::check('sandi-baru-88', $murid->refresh()->password))->toBeTrue();
+
+    auth()->forgetGuards();
+    $this->postJson('/api/v1/auth/masuk', [
+        'email' => 'spasi-tepi@murid.test',
+        'password' => ' sandi-baru-88 ',
+    ])->assertOk();
 });
 
 it('tautan reset yang sudah dipakai ditandai, token acak tidak', function (): void {

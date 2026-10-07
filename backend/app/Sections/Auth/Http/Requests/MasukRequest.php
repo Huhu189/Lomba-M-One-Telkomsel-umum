@@ -29,6 +29,10 @@ class MasukRequest extends FormRequest
     {
         $this->merge([
             'email' => mb_strtolower(trim((string) $this->input('email'))),
+            // Toleransi UX: spasi di awal/akhir kata sandi hampir selalu salah ketik
+            // (autofill ponsel, copy-paste), bukan bagian sandi. Di-trim agar sandi
+            // yang benar tetap bisa masuk. Spasi di dalam sandi tidak tersentuh.
+            'password' => trim((string) $this->input('password')),
         ]);
     }
 }

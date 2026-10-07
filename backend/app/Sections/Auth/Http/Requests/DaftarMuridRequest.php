@@ -29,12 +29,15 @@ class DaftarMuridRequest extends FormRequest
     }
 
     /**
-     * Email disimpan huruf kecil.
+     * Email disimpan huruf kecil; sandi dibersihkan spasi tepinya (satu siklus
+     * dengan MasukRequest, agar sandi yang didaftar selalu bisa dipakai masuk).
      */
     protected function prepareForValidation(): void
     {
         $this->merge([
             'email' => mb_strtolower(trim((string) $this->input('email'))),
+            'password' => trim((string) $this->input('password')),
+            'password_confirmation' => trim((string) $this->input('password_confirmation')),
         ]);
     }
 }
