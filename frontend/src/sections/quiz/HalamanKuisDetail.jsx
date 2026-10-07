@@ -8,6 +8,7 @@ import {
   RUTE,
   ruteKerjakanKuis,
   ruteKoreksiKuis,
+  ruteTimKuis,
   ruteLaporanKuis,
   ruteMonitorKuis,
   rutePeringkat,
@@ -95,6 +96,11 @@ export default function HalamanKuisDetail() {
                 {sebagaiGuru && (
                   <Link className="btn btn-sm btn-tepi" to={ruteMonitorKuis(data.id)}>
                     Live Monitor
+                  </Link>
+                )}
+                {sebagaiGuru && (
+                  <Link className="btn btn-sm btn-tepi" to={ruteTimKuis(data.id)}>
+                    Kelola tim
                   </Link>
                 )}
               </div>
