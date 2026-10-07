@@ -30,6 +30,8 @@ export const RUTE = {
   koreksiKuis: '/kuis/:id/koreksi',
   // Live Monitor guru (slice 07).
   monitorKuis: '/kuis/:id/monitor',
+  // Materi berblok (slice 08) — guru menyusun, murid menempuh.
+  materi: '/materi',
   badge: '/badge',
   progresTema: '/progres-tema',
 }

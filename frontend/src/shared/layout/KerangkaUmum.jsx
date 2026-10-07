@@ -103,12 +103,14 @@ export default function KerangkaUmum() {
               <NavLink className="papan-nav-taut" to={RUTE.bankSoal}>Bank Soal</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.tag}>Tag</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.kuis}>Kuis</NavLink>
+              <NavLink className="papan-nav-taut" to={RUTE.materi}>Materi</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.pengaturan}>Pengaturan</NavLink>
             </nav>
           ) : null}
 
           {user && user.role === 'murid' ? (
             <nav className="papan-nav" aria-label="Menu murid">
+              <NavLink className="papan-nav-taut" to={RUTE.materi}>Materi</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.kuis}>Ulangan Saya</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.progresTema}>Progres Tema</NavLink>
               <NavLink className="papan-nav-taut" to={RUTE.badge}>Lencana</NavLink>

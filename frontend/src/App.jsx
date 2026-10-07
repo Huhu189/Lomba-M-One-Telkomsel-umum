@@ -36,6 +36,7 @@ import HalamanBadge from './sections/report/HalamanBadge.jsx'
 import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
 import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
 import HalamanMonitor from './sections/cheat/HalamanMonitor.jsx'
+import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
@@ -151,6 +152,9 @@ export default function App() {
             <Route path={RUTE.peringkatKuis} element={<HalamanPeringkat />} />
             <Route path={RUTE.badge} element={<HalamanBadge />} />
             <Route path={RUTE.progresTema} element={<HalamanProgresTema />} />
+
+            {/* Materi berblok (slice 08) — guru menyusun, murid menempuh. */}
+            <Route path={RUTE.materi} element={<PilihHalamanMateri />} />
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />
