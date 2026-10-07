@@ -7,6 +7,9 @@ use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
+use App\Sections\Avatar\Http\Controllers\AvatarController;
+use App\Sections\Avatar\Http\Controllers\BerkasAvatarController;
+use App\Sections\Avatar\Http\Controllers\ModerasiAvatarController;
 use App\Sections\Cheat\Http\Controllers\KecuranganController;
 use App\Sections\Health\Http\Controllers\HealthController;
 use App\Sections\Material\Http\Controllers\BerkasController;
@@ -58,6 +61,11 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/berkas/{kode}', BerkasController::class)
         ->middleware(['signed:relative', 'throttle:berkas'])
         ->name('materi.berkas');
+
+    // Penyajian gambar avatar (slice 08) — sama: tanpa sesi, hanya URL bertanda tangan.
+    Route::get('/berkas/avatar/{kode}', BerkasAvatarController::class)
+        ->middleware(['signed:relative', 'throttle:berkas'])
+        ->name('avatar.berkas');
 
     // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').
     Route::middleware(['auth:sanctum', 'akun-aktif'])->group(function (): void {
@@ -131,6 +139,22 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/materi/{materi}/progres', [ProgresMateriController::class, 'ringkasan'])->name('materi.progres');
         Route::post('/materi/{materi}/blok/{blok}/buka', [ProgresMateriController::class, 'buka'])->name('materi.blok.buka');
         Route::post('/materi/{materi}/blok/{blok}/selesai', [ProgresMateriController::class, 'selesai'])->name('materi.blok.selesai');
+
+        // Avatar murid + moderasi (slice 08): murid mengurus avatarnya sendiri dan
+        // melaporkan avatar teman; guru memutuskan hasil tinjauan.
+        Route::get('/avatar', [AvatarController::class, 'daftar'])->name('avatar.index');
+        Route::get('/avatar/saya', [AvatarController::class, 'saya'])->name('avatar.saya');
+        Route::get('/avatar/moderasi', [ModerasiAvatarController::class, 'antrean'])->name('avatar.moderasi');
+        Route::post('/avatar', [AvatarController::class, 'unggah'])
+            ->middleware('throttle:avatar')->name('avatar.unggah');
+        Route::delete('/avatar', [AvatarController::class, 'hapus'])
+            ->middleware('throttle:avatar')->name('avatar.hapus');
+        Route::post('/avatar/{avatar}/lapor', [AvatarController::class, 'lapor'])
+            ->middleware('throttle:avatar')->name('avatar.lapor');
+        Route::post('/avatar/{avatar}/pulihkan', [ModerasiAvatarController::class, 'pulihkan'])
+            ->middleware('throttle:avatar')->name('avatar.pulihkan');
+        Route::post('/avatar/{avatar}/hapus', [ModerasiAvatarController::class, 'hapus'])
+            ->middleware('throttle:avatar')->name('avatar.moderasi.hapus');
 
         // Kuis: guru mengelola; murid melihat kuis terbit kelasnya.
         Route::get('/kuis', [KuisController::class, 'index'])->name('kuis.index');

@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Policies\AttemptPolicy;
+use App\Sections\Avatar\Models\Avatar;
+use App\Sections\Avatar\Policies\AvatarPolicy;
 use App\Sections\Cheat\Models\KejadianKecurangan;
 use App\Sections\Cheat\Policies\KejadianKecuranganPolicy;
 use App\Sections\Material\Models\Materi;
@@ -72,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Attempt::class, AttemptPolicy::class);
         Gate::policy(KejadianKecurangan::class, KejadianKecuranganPolicy::class);
         Gate::policy(Materi::class, MateriPolicy::class);
+        Gate::policy(Avatar::class, AvatarPolicy::class);
 
         // Tautan reset sandi harus menuju halaman frontend (SPA), bukan ke API.
         // Tanpa callback ini notifikasi bawaan Laravel memanggil route('password.reset')
@@ -132,6 +135,14 @@ class AppServiceProvider extends ServiceProvider
         // bersamaan dari satu IP sekolah tidak boleh kena 429.
         RateLimiter::for('berkas', function (Request $request) {
             return Limit::perMinute(300)->by((string) $request->ip());
+        });
+
+        // Avatar (slice 08): unggah/ganti gambar, kembalikan ke bawaan, dan lapor.
+        // Dibatasi per AKUN (bukan per IP) karena seluruh kelas bisa memakai satu
+        // koneksi sekolah yang sama; batas laporan per jam tetap ditegakkan di
+        // ModerasiAvatarService.
+        RateLimiter::for('avatar', function (Request $request) {
+            return Limit::perMinute(20)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
         });
     }
 }
