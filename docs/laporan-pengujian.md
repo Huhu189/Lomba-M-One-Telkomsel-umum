@@ -1021,3 +1021,41 @@ POST progres/saya     403                          GET badge/saya    403
   kontrak `Slice05Test` yang mengharapkan guru tidak punya badge/progres tema.
 - Smoke memakai data DB dev (murid `uji.mandiri@murid.test` id 13 dengan `students` id 8) — bukan data
   produksi.
+
+## A.16 Perbaikan Lanjutan — Murid Lama Tanpa Profil (8 Oktober 2026)
+
+### A.16.1 Masalah lanjutan yang dilaporkan pengguna
+Setelah A.15, akun murid yang **sudah ada sebelum** kelas penampung diperkenalkan tetap menampilkan
+`403 Forbidden` di `/api/v1/avatar`, `/api/v1/badge/saya`, dan `/api/v1/progres/saya` saat dipakai di
+browser. Akar masalah dibuktikan dari DB dev: akun yang sedang masuk (`dgcam22@gmail.com`, user id 7)
+punya role Spatie `murid` tetapi **tidak punya baris `students`**. A.15 hanya mengisi profil pada jalur
+`POST /daftar`; akun lama (atau yang dibuat di luar jalur itu) tetap kosong, sementara ketiga endpoint
+tadi menolak `abort(403)` begitu `$user->murid === null`.
+
+### A.16.2 Perbaikan
+- `MuridService::pastikanProfil(User $user): ?Murid` — mengembalikan profil yang ada atau membuatnya
+  (idempoten) di kelas penampung `"Tanpa Kelas"` lewat `firstOrCreate`; `null` hanya bila instalasi belum
+  punya data sekolah. Titik kebenaran kelas penampung pindah dari `RegisterService` ke `MuridService`
+  (`RegisterService::KELAS_PENAMPUNG` kini alias).
+- **Satu-satunya penulis** tetap `User::tetapkanPeran`; perbaikan ini hanya menambah baris `students`.
+- Dipakai ulang di `BadgeController::saya`, `ProgresController::saya`, dan `AvatarController::saya`/
+  `daftar`: bila pengguna `isMurid()` dan profilnya belum ada, profil dibuat lalu permintaan diteruskan —
+  bukan 403. Guru/admin **tetap** 403 pada badge/progres dan tetap dapat respons rapi di avatar.
+
+### A.16.3 Bukti perilaku
+- Test baru `AksesMuridBaruTest` → *"murid lama tanpa profil disambungkan otomatis saat mengakses fitur
+  murid (bukan 403)"*: user murid tanpa baris `students` membuka `/avatar`, `/avatar/saya`,
+  `/progres/saya`, `/badge/saya` semuanya **200**, dan profilnya terbentuk di kelas `"Tanpa Kelas"`.
+- `./verify.sh` → **SEMUA HIJAU** (`/tmp/verify-profilmurid.log`, exit 0): Pest **174 passed
+  (1424 assertions)**, Pint 304 berkas, checkJs & ESLint OK, Vitest **36 berkas/279 test**, realtime
+  **13 test**.
+- **Smoke HTTP nyata** dengan akun sengaja dibuat **tanpa profil** (`lama.tanpa.profil@murid.test`):
+  `masuk 200`, lalu `GET /avatar` 200, `GET /avatar/saya` 200, `GET /progres/saya` 200, `POST /progres/saya`
+  200, `GET /badge/saya` 200, `POST /badge/saya` 200 — dan baris `students` (class_id 4 = `"Tanpa Kelas"`)
+  terbentuk di DB setelah akses pertama.
+
+### A.16.4 Catatan jujur
+- Akun pengguna yang tadinya 403 (`dgcam22@gmail.com`, id 7) **sembuh otomatis** pada permintaan
+  berikutnya — tidak ada migrasi data manual. Murid lama itu muncul di kelas `"Tanpa Kelas"` sampai guru
+  memindahkannya lewat halaman Murid.
+- Perilaku 403 untuk guru pada `badge/saya` & `progres/saya` **dipertahankan** sesuai kontrak `Slice05Test`.

@@ -83,4 +83,10 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   `http.cookiejar` bawaan Python tidak mengirim cookie berdomain `.localhost` (keterbatasan alat, bukan bug
   aplikasi — skrip dikelola cookie manual), dan seeder guru belum memanggil `assignRole('guru')` sehingga
   `isGuru()` salah → diperbaiki. Detail lengkap di `laporan-pengujian.md` bagian A.15 dan
-  `penjelasan-fitur.md` bagian 16.
+  `penjelasan-fitur.md` bagian 16. **Lanjutan (bug 403 yang sama, akun lama):** akun murid yang sudah ada
+  sebelum kelas penampung (mis. `dgcam22@gmail.com`) tetap 403 karena baris `students`-nya memang belum
+  ada. Ditambahkan `MuridService::pastikanProfil()` yang idempoten dan kini dipakai `RegisterService`
+  (satu titik kebenaran) serta `BadgeController`/`ProgresController`/`AvatarController` — murid lama
+  disembuhkan saat pertama mengakses, guru tetap 403. Diverifikasi `./verify.sh` **HIJAU** (Pest
+  **174 passed (1424 assertions)**) plus smoke HTTP nyata dengan akun tanpa profil yang seluruh endpoint-nya
+  200 dan profilnya terbentuk. Detail di `laporan-pengujian.md` bagian A.16.

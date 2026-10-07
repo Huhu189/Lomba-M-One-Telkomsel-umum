@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Sections\Auth\Enums\UserStatus;
 use App\Sections\School\Models\Kelas;
+use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
@@ -77,6 +78,26 @@ it('kelas penampung dibuat satu kali dan murid kedua masuk kelas yang sama', fun
     expect($kelasPenampung)->toHaveCount(1)
         ->and((int) $satu->murid->class_id)->toBe((int) $kelasPenampung[0]->id)
         ->and((int) $dua->murid->class_id)->toBe((int) $kelasPenampung[0]->id);
+});
+
+it('murid lama tanpa profil disambungkan otomatis saat mengakses fitur murid (bukan 403)', function (): void {
+    // Factory user murid TIDAK membuat baris `students` — persis keadaan akun
+    // yang mendaftar sebelum kelas penampung ada (mis. dgcam22@gmail.com).
+    $murid = User::factory()->muridAktif()->create(['email' => 'lama-tanpa-profil@murid.test']);
+
+    expect(Murid::query()->where('user_id', $murid->getKey())->exists())->toBeFalse();
+
+    Sanctum::actingAs($murid->refresh());
+
+    $this->getJson('/api/v1/avatar')->assertOk();
+    $this->getJson('/api/v1/avatar/saya')->assertOk();
+    $this->getJson('/api/v1/progres/saya')->assertOk();
+    $this->getJson('/api/v1/badge/saya')->assertOk();
+
+    // Profil terbentuk di kelas penampung yang sama dengan murid self-register.
+    $profil = Murid::query()->where('user_id', $murid->getKey())->firstOrFail();
+
+    expect($profil->kelas?->nama)->toBe('Tanpa Kelas');
 });
 
 it('guru melihat avatar dengan respons rapi (bukan 403) tetapi tetap tidak bisa unggah/progres', function (): void {

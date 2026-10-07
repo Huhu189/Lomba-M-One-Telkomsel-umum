@@ -13,6 +13,7 @@ use App\Sections\Report\Http\Controllers\ProgresController;
 use App\Sections\Report\Services\BadgeService;
 use App\Sections\Report\Services\LaporanTagService;
 use App\Sections\Report\Services\RemedialService;
+use App\Sections\School\Services\MuridService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -61,15 +62,16 @@ class PasswordResetController extends Controller
         LaporanTagService $laporan,
         RemedialService $remedial,
         BadgeService $badge,
+        MuridService $muridService,
     ): JsonResponse {
-        return app(ProgresController::class)->saya($request, $laporan, $remedial, $badge);
+        return app(ProgresController::class)->saya($request, $laporan, $remedial, $badge, $muridService);
     }
 
     /**
      * Alias POST dari `/badge/saya` — setara GET, hanya membaca.
      */
-    public function badgeSayaPost(Request $request, BadgeService $service): JsonResponse
+    public function badgeSayaPost(Request $request, BadgeService $service, MuridService $muridService): JsonResponse
     {
-        return app(BadgeController::class)->saya($request, $service);
+        return app(BadgeController::class)->saya($request, $service, $muridService);
     }
 }

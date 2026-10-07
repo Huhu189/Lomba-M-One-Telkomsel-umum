@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Sections\Report\Services\BadgeService;
 use App\Sections\Report\Services\LaporanTagService;
 use App\Sections\Report\Services\RemedialService;
+use App\Sections\School\Services\MuridService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,6 +23,7 @@ class ProgresController extends Controller
         LaporanTagService $laporan,
         RemedialService $remedial,
         BadgeService $badge,
+        MuridService $muridService,
     ): JsonResponse {
         $pengguna = $request->user();
 
@@ -31,6 +33,12 @@ class ProgresController extends Controller
 
         $pengguna->loadMissing('murid');
         $murid = $pengguna->murid;
+
+        // Murid lama yang profilnya belum ada (di luar jalur /daftar) disambungkan
+        // di sini, bukan ditolak 403 — lihat MuridService::pastikanProfil.
+        if ($murid === null && $pengguna->isMurid()) {
+            $murid = $muridService->pastikanProfil($pengguna);
+        }
 
         if ($murid === null) {
             abort(403, 'Hanya akun murid yang punya progres tema.');

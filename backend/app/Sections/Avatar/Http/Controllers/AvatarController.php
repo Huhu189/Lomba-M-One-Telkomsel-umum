@@ -15,6 +15,7 @@ use App\Sections\Avatar\Models\Avatar;
 use App\Sections\Avatar\Services\ModerasiAvatarService;
 use App\Sections\Avatar\Services\PenyimpananAvatar;
 use App\Sections\School\Models\Murid;
+use App\Sections\School\Services\MuridService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -38,11 +39,19 @@ class AvatarController extends Controller
      * alih-alih 403, supaya halaman yang sama tidak menampilkan galat kasar —
      * unggah/hapus sendiri yang tetap dibatasi murid lewat policy `unggah`.
      */
-    public function saya(Request $request): JsonResponse
+    public function saya(Request $request, MuridService $muridService): JsonResponse
     {
         $this->authorize('viewAny', Avatar::class);
 
-        $profil = $request->user()?->murid;
+        $pengguna = $request->user();
+        $pengguna?->loadMissing('murid');
+        $profil = $pengguna?->murid;
+
+        // Murid lama yang profilnya belum ada disambungkan di sini supaya fotonya
+        // bisa diurus sejak hari pertama; guru tetap mendapat respons rapi di bawah.
+        if ($profil === null && $pengguna?->isMurid()) {
+            $profil = $muridService->pastikanProfil($pengguna);
+        }
 
         if ($profil === null) {
             return response()->json(['avatar' => null, 'bawaan' => true, 'tidak_tersedia' => true]);
@@ -68,7 +77,7 @@ class AvatarController extends Controller
      * Guru melihat seluruh sekolah (untuk moderasi); murid hanya kelasnya, dan
      * avatar yang disembunyikan **tidak ikut** — kecuali avatarnya sendiri.
      */
-    public function daftar(Request $request): JsonResponse
+    public function daftar(Request $request, MuridService $muridService): JsonResponse
     {
         $this->authorize('viewAny', Avatar::class);
 
@@ -82,7 +91,14 @@ class AvatarController extends Controller
             return response()->json(['avatar' => AvatarResource::collection($this->terbaruPerMurid(null))->resolve()]);
         }
 
+        $pengguna->loadMissing('murid');
         $profil = $pengguna->murid;
+
+        // Murid lama yang profilnya belum ada (di luar jalur /daftar) disambungkan
+        // di sini, bukan ditolak 403 — lihat MuridService::pastikanProfil.
+        if ($profil === null && $pengguna->isMurid()) {
+            $profil = $muridService->pastikanProfil($pengguna);
+        }
 
         if ($profil === null) {
             abort(403, 'Hanya murid dan guru yang punya daftar avatar.');

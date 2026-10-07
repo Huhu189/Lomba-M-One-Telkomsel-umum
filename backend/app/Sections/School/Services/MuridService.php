@@ -6,7 +6,9 @@ namespace App\Sections\School\Services;
 
 use App\Models\User;
 use App\Sections\Auth\Enums\UserStatus;
+use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Murid;
+use App\Sections\School\Models\Sekolah;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -16,6 +18,53 @@ use Illuminate\Support\Str;
  */
 class MuridService
 {
+    /**
+     * Nama kelas penampung untuk murid yang belum ditempatkan guru.
+     *
+     * Dipakai murid self-register dan murid lama yang profilnya belum ada,
+     * supaya keduanya mendarat di kelas yang sama (bukan satu kelas per murid).
+     */
+    public const KELAS_PENAMPUNG = 'Tanpa Kelas';
+
+    /**
+     * Profil murid milik user, dibuatkan bila belum ada (idempoten).
+     *
+     * Akun murid bisa saja dibuat di luar jalur resmi — impor lama, baris
+     * `users` langsung, atau sebelum kelas penampung ada. Tanpa baris di
+     * `students`, seluruh endpoint murid menolak dengan 403 padahal akunnya
+     * sah. Method ini menyembuhkan keadaan itu saat diakses: murid ditempatkan
+     * di kelas penampung yang sama dengan murid self-register, dan guru bisa
+     * memindahkannya lewat halaman Murid.
+     *
+     * Mengembalikan null hanya bila instalasi belum punya data sekolah — saat
+     * itu tidak ada kelas valid untuk ditempati.
+     */
+    public function pastikanProfil(User $user): ?Murid
+    {
+        $ada = Murid::query()->where('user_id', $user->getKey())->first();
+
+        if ($ada !== null) {
+            return $ada;
+        }
+
+        $sekolah = Sekolah::query()->first();
+
+        if ($sekolah === null) {
+            return null;
+        }
+
+        $kelas = Kelas::query()->firstOrCreate(
+            ['school_id' => $sekolah->getKey(), 'nama' => self::KELAS_PENAMPUNG],
+            ['tingkat' => 1, 'tahun_ajaran' => null],
+        );
+
+        return Murid::query()->create([
+            'school_id' => $sekolah->getKey(),
+            'class_id' => $kelas->getKey(),
+            'user_id' => $user->getKey(),
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

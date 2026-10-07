@@ -400,6 +400,11 @@ Anak yang mendaftar sendiri di rumah tidak lagi "setengah jalan" — begitu masu
 (ganti foto profil, lencana, progres tema) langsung jalan, walau gurunya belum sempat membuat kelas.
 Guru pun melihat antreannya rapi di satu kelas penampung, bukan belasan pekerjaan rumah tangga digital.
 
+Akun murid yang sudah ada lebih dulu (dibuat sebelum kelas penampung diperkenalkan) juga **tidak lagi
+menemui galat**: begitu ia membuka lencana, progres tema, atau halaman foto profil, profilnya dibuatkan
+otomatis di kelas penampung yang sama. Jadi tidak ada murid yang "terjebak 403" hanya karena akunnya lebih
+tua dari fiturnya.
+
 Status: **perbaikan 8 Oktober 2026** — bawaannya menyala, tanpa pengaturan tambahan.
 
 ---
