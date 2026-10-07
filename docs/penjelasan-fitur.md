@@ -302,6 +302,36 @@ mengikuti pengaturan perangkat bila belum pernah diubah di aplikasi.
 
 ---
 
+## 14. Cache berlapis saat ulangan serempak
+
+### Apa ini
+Ketika satu sekolah membuka ulangan pada jam yang sama, ratusan permintaan membaca data yang sama
+(pengaturan kuis, mis. apakah anti-cheat dinyalakan). Fitur ini menyimpan salinan sementara agar
+permintaan itu tidak membebani basis data.
+
+### Cara kerjanya
+Ada tiga lapis: salinan sementara di memori (berkas SQLite di tmpfs, hilang saat server di-restart), lalu
+penyimpanan cepat bersama (Redis), baru basis data sebagai sumber kebenaran. Salinan di memori **hanya
+menyala saat lalu lintas benar-benar ramai** (lebih dari 10 pembacaan per detik) dan otomatis dibuang lagi
+setelah reda (di bawah 2 per detik) — supaya RAM tidak dipakai untuk data yang tidak sedang dibutuhkan.
+Setiap salinan membawa penanda versi: begitu guru mengubah pengaturan, versi naik dan semua salinan lama
+ditolak, jadi tidak mungkin ada kelas yang memakai aturan basi.
+
+### Mengapa aman
+Salinan memori tidak pernah menjadi sumber kebenaran: guru menulis ke basis data lebih dulu, baru Redis dan
+salinan memori dibuang, dan proses lain diberi tahu lewat pesan singkat (pub/sub). Kalau berkas salinannya
+rusak atau tidak bisa dibuka, sistem jalan terus tanpa lapisan itu.
+
+### Manfaat untuk anak SD dan guru
+Ulangan tidak tersendat saat semua anak menekan "Mulai" di menit yang sama, dan guru tidak perlu mengatur
+apa pun — bawaannya mati dan menyala sendiri hanya bila memang ramai.
+
+Status: **kode dan pengujian selesai** (slice 10), bawaannya **mati** (`CACHE_L1_AKTIF`). Yang jujur belum:
+pengukuran beban nyata dengan alat uji beban di VPS (angka 10/2 req/s masih nilai bawaan yang wajar, bukan
+hasil kalibrasi lapangan), dan pemberitahuan pub/sub belum disambungkan ke service realtime (SSE).
+
+---
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**
@@ -311,7 +341,8 @@ mengikuti pengaturan perangkat bila belum pernah diubah di aplikasi.
 - Anti-cheat **tidak menjamin 100%** — semua deteksi di browser bisa diakali; catatannya adalah bahan tinjauan guru, bukan vonis.
 
 **Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru. Per 7 Oktober 2026 yang
-sudah selesai: mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi, dan **ekspor nilai (CSV,
-bukan xlsx — alasannya di bagian 12)**; yang belum: cache L1 dan layar guru di perangkat murid.
+sudah selesai: **cache L1 (bagian 14)**, mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi,
+dan **ekspor nilai (CSV, bukan xlsx — alasannya di bagian 12)**; yang belum: **layar guru di perangkat
+murid**.
 
 **Yang tidak boleh dipotong apa pun alasannya:** deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur bila gagal), keamanan inti (auth, pembatasan akses antar murid, kunci jawaban tidak bocor, deadline dari server), serta jurnal prompt dan log mentah yang jujur.

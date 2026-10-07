@@ -842,7 +842,7 @@ halaman hasil attempt tim. **Peringkat per tim**: kolomnya nama tim, `murid_id` 
 - **Mode tim belum diuji di browser sungguhan** dan **belum ada batas jumlah anggota per tim** selain minimal 2;
   yang diuji baru perilaku server (attempt bersama, versi, skor dibagi, peringkat tim).
 
-## A.14 Slice 10 — Ekspor Nilai (CSV) dan Status Fitur Sisa
+## A.14 Slice 10 — Ekspor Nilai (CSV), Cache Berlapis L1, dan Status Fitur Sisa
 
 Dikerjakan bertahap. Yang sudah masuk slice ini: **ekspor nilai kuis**. Cache L1, Octane Swoole, layar guru di
 perangkat murid, dan deploy masih terbuka.
@@ -851,6 +851,7 @@ perangkat murid, dan deploy masih terbuka.
 - `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice10a.log`, exit 0).
 - `php artisan test` → **158 passed (1291 assertions)**; tambahan `Slice10EksporTest` (4 test / 35 assertion).
 - `./vendor/bin/pint --test` → PASS (289 berkas); `npm run check` → lolos; `npx vitest run` → 33 berkas uji.
+  (Angka ini keadaan setelah ekspor nilai; setelah cache berlapis ditambahkan, hasil terbaru ada di A.14.4.)
 
 ### A.14.2 Yang diuji (bukti perilaku, bukan klaim)
 Berkas diunduh sebagai `text/csv` dengan `Content-Disposition` berisi `.csv`; **satu baris per murid** beserta
@@ -868,9 +869,28 @@ pada **mode tim** kedua anggota satu tim mendapat baris dengan nama tim serta sk
 - **Mode gelap sudah ada sejak slice awal** (store tema + tombol + palet variabel CSS + test-nya), jadi tidak
   dibangun ulang di slice 10 — hanya statusnya yang kini dicatat di `docs/penjelasan-fitur.md` bagian 13.
 
-### A.14.4 Yang jujur BELUM dikerjakan di slice 10
-- **Cache L1 SQLite di tmpfs** (beserta ambang traffic 10 req/s dan invalidasi DB → Redis → L1) belum dibuat;
-  folder `backend/app/Sections/Cache/` masih kosong.
+### A.14.4 Cache berlapis L1 (dikerjakan setelah ekspor)
+Ditambahkan pada putaran berikutnya: `app/Sections/Cache/` berisi `Contracts/LapisanCache`, `LapisanL1`
+(SQLite tmpfs, WAL), `LapisanL2` (cache store Laravel/Redis), `PintuTraffic` (gerbang lalu lintas), dan
+`CacheBerlapis` (orkestrator). Lapisan ini dipakai `PengaturanService` — data yang paling sering dibaca saat
+ulangan berjalan.
+
+- `./verify.sh` → **SEMUA HIJAU** (`/tmp/verify-slice10b.log`); `php artisan test` → **163 passed
+  (1314 assertions)**; tambahan `Slice10CacheTest` (5 test / 23 assertion); Pint PASS (296 berkas).
+- Yang diuji (bukti perilaku, bukan klaim): **urutan invalidasi** versi naik → Redis dilupakan → L1 dilupakan
+  (dan salinan L1 satu ruang dibuang sekaligus) lewat lapisan palsu yang mencatat jejak pemanggilan;
+  **validation check**: salinan L1 dengan versi lama **ditolak** dan dibuang, bukan dipakai;
+  **L1 hanya menyala saat padat** (di bawah 2 req/s tidak diisi) dan **dibuang saat reda** (nilai tetap
+  dilayani L2, bukan dibaca ulang dari database); **histeresis** di antara dua ambang (4 req/s tidak
+  mematikan L1 yang sudah menyala); dan **integrasi nyata**: guru mengubah pengaturan saat L1 menyala →
+  pembacaan berikutnya sudah memakai nilai baru (DB ditulis dulu, salinan L1 lama dibuang).
+- Keputusan teknis (jujur): (a) objek yang di-cache saat ini **peta pengaturan per lingkup** — kandidat
+  terpanas pada hari ulangan dan sudah punya titik invalidasi eksplisit; (b) gerbang trafik dihitung
+  **per ruang** dan saat ini hanya ada satu ruang (`pengaturan`), jadi frasa "satu state aktif per kuis"
+  pada chunk belum diterapkan per kuis; (c) pub/sub disiarkan lewat `Redis::publish` dan **belum** disambung
+  ke service realtime; (d) angka ambang 10/2 req/s masih nilai bawaan, belum dikalibrasi dengan uji beban.
+
+### A.14.5 Yang jujur BELUM dikerjakan di slice 10
 - **Octane Swoole belum dipasang.** Ekstensi `swoole` tidak tersedia di mesin pengembangan ini
   (`php -m` hanya menampilkan `pdo_sqlite`, `redis`, `sqlite3`, `zip`), jadi Octane belum bisa dijalankan
   maupun diuji kebocoran state-nya. Dicatat apa adanya, bukan diklaim jalan.

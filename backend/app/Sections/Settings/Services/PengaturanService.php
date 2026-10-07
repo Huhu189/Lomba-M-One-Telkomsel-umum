@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Sections\Settings\Services;
 
+use App\Sections\Cache\Services\CacheBerlapis;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Enums\LingkupPengaturan;
 use App\Sections\Settings\Models\Pengaturan;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Pengaturan tiga lapis: kuis > kelas > sekolah, kecuali sekolah menandai
  * sebuah kunci `terkunci` (maka nilai sekolah menang). Peta tiap lingkup
- * di-cache dan diinvalidasi setiap kali pengaturan berubah (chunk slice-02).
+ * di-cache berlapis dan diinvalidasi setiap kali pengaturan berubah
+ * (chunk slice-02; cache berlapis ditambahkan slice 10).
  */
 class PengaturanService
 {
     private const AWALAN_CACHE = 'pengaturan';
+
+    public function __construct(private readonly CacheBerlapis $cache) {}
 
     /**
      * Resolusi pengaturan untuk konteks sekolah/kelas/kuis.
@@ -111,7 +114,9 @@ class PengaturanService
      */
     public function lupakan(LingkupPengaturan $lingkup, int $lingkupId): void
     {
-        Cache::forget($this->kunciCache($lingkup->value, $lingkupId));
+        // Database sudah ditulis pemanggil; invalidasi berjalan Redis → L1
+        // dengan penanda versi supaya salinan L1 di proses lain ditolak.
+        $this->cache->lupakan($this->kunciCache($lingkup->value, $lingkupId), CacheBerlapis::RUANG_PENGATURAN);
     }
 
     /**
@@ -119,7 +124,7 @@ class PengaturanService
      */
     private function peta(string $lingkup, int $lingkupId): array
     {
-        return Cache::rememberForever(
+        return $this->cache->ingat(
             $this->kunciCache($lingkup, $lingkupId),
             function () use ($lingkup, $lingkupId): array {
                 $nilai = [];
@@ -137,6 +142,7 @@ class PengaturanService
 
                 return ['nilai' => $nilai, 'terkunci' => $terkunci];
             },
+            CacheBerlapis::RUANG_PENGATURAN,
         );
     }
 

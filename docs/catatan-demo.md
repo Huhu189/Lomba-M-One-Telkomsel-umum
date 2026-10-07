@@ -41,9 +41,9 @@ Pemeriksaan kesehatan:
 - **Slice 09**: upload jawaban (gambar/rekam/file), saran penilaian AI, mode tim.
 - **Slice 10**: ekspor nilai CSV; cache L1, Octane Swoole, dan demo dari link deploy VPS masih terbuka.
 
-**Catatan status (7 Oktober 2026):** mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi, dan
-ekspor nilai sudah bisa dipakai. Yang belum: cache L1, layar guru ke perangkat murid (SSE), Octane Swoole, dan
-deploy (menunggu keputusan host).
+**Catatan status (7 Oktober 2026):** mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi, ekspor
+nilai, dan cache berlapis L1 sudah bisa dipakai. Yang belum: layar guru ke perangkat murid (SSE), Octane
+Swoole, dan deploy (menunggu keputusan host).
 
 ---
 
@@ -424,3 +424,11 @@ mentah AI, dan satu nilai tim dibagi rata ke anggotanya. Rincian di `docs/lapora
 ### Mode gelap
 Tombol bulan/matahari di bilah atas mengganti terang ↔ gelap untuk seluruh halaman. Tunjukkan bahwa pilihan
 bertahan setelah halaman dimuat ulang, dan bahwa penanda benar/salah tetap punya ikon di mode gelap.
+
+### Cache berlapis (bagian teknis, tidak ada tombol di layar)
+Bawaannya mati. Untuk mendemokannya dengan jujur: nyalakan `CACHE_L1_AKTIF=true` di `.env`, buka ulangan
+bersamaan dari beberapa tab/perangkat sampai pengaturan kuis dibaca lebih dari 10 kali per detik, lalu
+sebutkan tiga hal: berkas salinan muncul di `/dev/shm/ulangan-l1.sqlite`, salinan itu **dibuang lagi** setelah
+lalu lintas reda, dan saat guru mengubah pengaturan di tengah ulangan, kelas langsung memakai aturan baru
+(versi naik, salinan lama ditolak). Kalau tidak ada waktu mendemokan beban, cukup tunjukkan test-nya:
+`php artisan test --filter=Slice10CacheTest`.

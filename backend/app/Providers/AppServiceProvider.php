@@ -8,6 +8,10 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Policies\AttemptPolicy;
 use App\Sections\Avatar\Models\Avatar;
 use App\Sections\Avatar\Policies\AvatarPolicy;
+use App\Sections\Cache\Services\CacheBerlapis;
+use App\Sections\Cache\Services\LapisanL1;
+use App\Sections\Cache\Services\LapisanL2;
+use App\Sections\Cache\Services\PintuTraffic;
 use App\Sections\Cheat\Models\KejadianKecurangan;
 use App\Sections\Cheat\Policies\KejadianKecuranganPolicy;
 use App\Sections\Material\Models\Materi;
@@ -75,6 +79,28 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(KejadianKecurangan::class, KejadianKecuranganPolicy::class);
         Gate::policy(Materi::class, MateriPolicy::class);
         Gate::policy(Avatar::class, AvatarPolicy::class);
+
+        // Cache berlapis L1 (SQLite tmpfs) → L2 (Redis) → L3 (database) untuk
+        // state yang dibaca berulang saat ulangan berjalan (slice 10).
+        $this->app->singleton(CacheBerlapis::class, function (): CacheBerlapis {
+            $konfig = config('cache_l1');
+
+            return new CacheBerlapis(
+                new PintuTraffic(
+                    (int) $konfig['jendela_detik'],
+                    (float) $konfig['ambang_aktif_per_detik'],
+                    (float) $konfig['ambang_mati_per_detik'],
+                ),
+                [
+                    new LapisanL2,
+                    new LapisanL1(
+                        LapisanL1::jalurBawaan($konfig['jalur']),
+                        (int) $konfig['ttl_detik'],
+                        (bool) $konfig['aktif'],
+                    ),
+                ],
+            );
+        });
 
         // Tautan reset sandi harus menuju halaman frontend (SPA), bukan ke API.
         // Tanpa callback ini notifikasi bawaan Laravel memanggil route('password.reset')
