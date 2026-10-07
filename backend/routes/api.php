@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Sections\Attempt\Http\Controllers\AttemptController;
+use App\Sections\Attempt\Http\Controllers\BerkasJawabanController;
+use App\Sections\Attempt\Http\Controllers\UnggahanJawabanController;
 use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
@@ -66,6 +68,12 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/berkas/avatar/{kode}', BerkasAvatarController::class)
         ->middleware(['signed:relative', 'throttle:berkas'])
         ->name('avatar.berkas');
+
+    // Penyajian lampiran jawaban murid (slice 09) — URL bertanda tangan berumur
+    // pendek, hanya diberikan ke pemilik attempt dan guru.
+    Route::get('/berkas/jawaban/{kode}', BerkasJawabanController::class)
+        ->middleware(['signed:relative', 'throttle:berkas'])
+        ->name('jawaban.berkas');
 
     // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').
     Route::middleware(['auth:sanctum', 'akun-aktif'])->group(function (): void {
@@ -172,6 +180,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/attempt/{attempt}/jawab', [AttemptController::class, 'jawab'])->name('attempt.jawab');
         Route::post('/attempt/{attempt}/kumpulkan', [AttemptController::class, 'kumpulkan'])->name('attempt.kumpulkan');
         Route::get('/attempt/{attempt}/hasil', [AttemptController::class, 'hasil'])->name('attempt.hasil');
+
+        // Lampiran jawaban murid (slice 09): gambar kanvas, rekaman diri, berkas.
+        Route::get('/attempt/{attempt}/lampiran', [UnggahanJawabanController::class, 'daftar'])->name('jawaban.daftar');
+        Route::post('/attempt/{attempt}/lampiran', [UnggahanJawabanController::class, 'mulai'])->name('jawaban.mulai');
+        Route::put('/lampiran/{unggahan}/potongan/{indeks}', [UnggahanJawabanController::class, 'potongan'])
+            ->whereNumber('indeks')->name('jawaban.potongan');
+        Route::post('/lampiran/{unggahan}/selesai', [UnggahanJawabanController::class, 'selesai'])->name('jawaban.selesai');
+        Route::delete('/lampiran/{unggahan}', [UnggahanJawabanController::class, 'hapus'])->name('jawaban.hapus');
 
         // Skor asli, ranking, badge, remedial, dan laporan per tema (slice 05).
         Route::get('/kuis/{kuis}/ranking', [RankingController::class, 'show'])->name('ranking.show');

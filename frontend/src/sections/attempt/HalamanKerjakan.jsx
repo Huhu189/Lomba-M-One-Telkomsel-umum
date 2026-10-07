@@ -21,6 +21,7 @@ import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
+import UnggahLampiran from './UnggahLampiran.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
@@ -396,6 +397,13 @@ export default function HalamanKerjakan() {
                 onUbah={(nilai) => ubahJawaban(soal.id, nilai)}
                 dinonaktifkan={waktuHabis}
                 nama={`attempt-${attempt.id}-soal-${soal.id}`}
+              />
+
+              <UnggahLampiran
+                attemptId={attempt.id}
+                soalId={soal.id}
+                nonaktif={waktuHabis}
+                sisaDetik={detik}
               />
             </section>
           ))}

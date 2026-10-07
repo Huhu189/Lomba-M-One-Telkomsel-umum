@@ -37,6 +37,16 @@ class AttemptPolicy
     }
 
     /**
+     * Mengunggah/menghapus lampiran jawaban (slice 09): pemilik attempt yang
+     * masih berjalan. Waktu deadline-nya sendiri ditegakkan di service, karena
+     * policy tidak boleh membaca jam bisnis.
+     */
+    public function unggahJawaban(User $user, Attempt $attempt): bool
+    {
+        return $this->milikMurid($user, $attempt) && $attempt->berjalan();
+    }
+
+    /**
      * Mengumpulkan: pemilik saja. Attempt yang sudah dikumpulkan tetap boleh
      * memanggil ini supaya dobel klik/dua tab menerima hasil yang sama
      * (idempoten), bukan 403.

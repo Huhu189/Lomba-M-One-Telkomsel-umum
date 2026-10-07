@@ -37,6 +37,9 @@ enum KunciPengaturan: string
     case AmbangPaham = 'ambang_paham';
     case AmbangMulaiPaham = 'ambang_mulai_paham';
     case MinimalDataTag = 'data_minimum_tag';
+    // Saklar izin rekam diri (slice 09). Default MATI: murid tidak boleh diminta
+    // merekam dirinya sebelum sekolah/guru menyalakannya (izin sekolah/orang tua).
+    case RekamDiri = 'rekam_diri';
 
     /** Tipe nilai yang diterima ('boolean' | 'integer'). */
     public function tipe(): string
@@ -79,6 +82,7 @@ enum KunciPengaturan: string
             self::AmbangPaham => 80,
             self::AmbangMulaiPaham => 60,
             self::MinimalDataTag => 3,
+            self::RekamDiri => false,
             default => true,
         };
     }
@@ -121,6 +125,7 @@ enum KunciPengaturan: string
             self::AmbangPaham => 'Ambang paham (%)',
             self::AmbangMulaiPaham => 'Ambang mulai paham (%)',
             self::MinimalDataTag => 'Data minimum per tema (jumlah soal)',
+            self::RekamDiri => 'Izinkan rekam diri jawaban (izin sekolah/orang tua)',
         };
     }
 }

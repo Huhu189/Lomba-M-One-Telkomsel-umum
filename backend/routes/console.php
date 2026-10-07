@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Sections\Attempt\Jobs\SapuUnggahanJawabanYatim;
 use App\Sections\Attempt\Jobs\TutupAttemptBasi;
 use App\Sections\Material\Jobs\SapuUnggahanYatim;
 use App\Sections\Presence\Jobs\SapuPresence;
@@ -29,3 +30,7 @@ Schedule::job(new TutupAttemptBasi)->everyMinute()->withoutOverlapping()->name('
 // berkas besar menumpuk di storage tanpa pernah muncul di layar guru, memakan
 // kuota sekolah diam-diam. Tidak perlu tiap menit; cukup tiap seperempat jam.
 Schedule::job(new SapuUnggahanYatim)->everyFifteenMinutes()->withoutOverlapping()->name('sapu-unggahan-yatim');
+
+// Sama untuk lampiran jawaban (slice 09): foto kanvas berukuran megabyte yang
+// ditinggalkan di tengah jalan harus ikut dibuang, bukan menumpuk diam-diam.
+Schedule::job(new SapuUnggahanJawabanYatim)->everyFifteenMinutes()->withoutOverlapping()->name('sapu-unggahan-jawaban-yatim');
