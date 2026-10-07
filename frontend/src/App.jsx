@@ -37,6 +37,7 @@ import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
 import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
 import HalamanTim from './sections/attempt/HalamanTim.jsx'
 import HalamanMonitor from './sections/cheat/HalamanMonitor.jsx'
+import HalamanLayar from './sections/presence/HalamanLayar.jsx'
 import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
 import PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
@@ -133,6 +134,7 @@ export default function App() {
             <Route path={RUTE.koreksiKuis} element={<HalamanKoreksi />} />
             <Route path={RUTE.monitorKuis} element={<HalamanMonitor />} />
             <Route path={RUTE.timKuis} element={<HalamanTim />} />
+            <Route path={RUTE.layarKuis} element={<HalamanLayar />} />
           </Route>
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}

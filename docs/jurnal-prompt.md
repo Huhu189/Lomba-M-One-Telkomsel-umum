@@ -62,8 +62,9 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
 ## Entri 5 — Cache, Swoole, deploy, dan perbaikan akhir (slice 10)
 
 - **Status**: sebagian terisi — slice 08, slice 09 lengkap (lampiran jawaban, saran AI lewat queue, mode tim),
-  dan **ekspor nilai kuis (CSV)** sudah selesai dan hijau. Mode gelap ternyata sudah dibangun sejak awal
-  bersama tema (store + tombol + palet CSS), jadi tidak dibuat ulang di slice 10. **Cache L1 SQLite di tmpfs**
-  beserta gerbang lalu lintas dan invalidasi berlapis juga sudah selesai (dipakai pengaturan tiga lapis). Sisa:
-  layar guru → perangkat murid (SSE), Octane Swoole (ekstensi `swoole` tidak ada di mesin dev — dicatat jujur),
-  dan deploy yang masih menunggu keputusan host dari pengguna. Bagian ini ditutup di akhir slice 10.
+  **ekspor nilai kuis (CSV)**, **cache L1 SQLite di tmpfs** beserta gerbang lalu lintas dan invalidasi
+  berlapis (dipakai pengaturan tiga lapis), dan **layar guru → perangkat murid (SSE)** sudah selesai dan
+  hijau — artinya seluruh daftar potong dari chunk_map.json kini selesai. Mode gelap ternyata sudah dibangun
+  sejak awal bersama tema (store + tombol + palet CSS), jadi tidak dibuat ulang di slice 10. Sisa:
+  Octane Swoole (ekstensi `swoole` tidak ada di mesin dev — dicatat jujur) dan deploy yang masih menunggu
+  keputusan host dari pengguna. Bagian ini ditutup di akhir slice 10.

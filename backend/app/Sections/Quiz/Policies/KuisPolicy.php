@@ -72,4 +72,14 @@ class KuisPolicy
     {
         return $user->isGuru();
     }
+
+    /**
+     * Layar guru (slice 10) — dibaca dua arah: guru mengendalikan, murid kelas
+     * itu mengikuti. Karena itu syarat murid sama dengan `view`: kuisnya harus
+     * sudah terbit dan memang kelas murid ini.
+     */
+    public function layar(User $user, Kuis $kuis): bool
+    {
+        return $this->view($user, $kuis);
+    }
 }

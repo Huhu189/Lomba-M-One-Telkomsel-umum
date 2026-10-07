@@ -22,6 +22,7 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import UnggahLampiran from './UnggahLampiran.jsx'
+import PanelLayarMurid from '../presence/PanelLayarMurid.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
@@ -395,6 +396,9 @@ export default function HalamanKerjakan() {
             <p className="mb-0">Jawabanmu sedang dikumpulkan otomatis.</p>
           </Banner>
         )}
+
+        {/* Layar kelas (slice 10): mengikuti guru tanpa memuat ulang halaman. */}
+        <PanelLayarMurid kuisId={attempt.quiz_id} />
 
         <div className="d-flex flex-column gap-3 mb-4">
           {attempt.soal.map((soal) => (

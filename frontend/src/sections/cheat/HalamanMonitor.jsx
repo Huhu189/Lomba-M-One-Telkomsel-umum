@@ -18,15 +18,13 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
+import { urlSse } from '../../shared/api/realtime.js'
 import { ambilKejadian, ambilMonitor, terbitkanTiketSse, tinjauKejadian } from './api.js'
 
 /** Selang polling saat SSE tidak tersedia (ms). */
 const POLLING_CEPAT = 5000
 /** Selang polling saat SSE hidup — cukup sebagai jaring pengaman (ms). */
 const POLLING_LAMBAT = 20000
-
-/** Nama dasar service realtime (bisa ditimpa lewat env Vite). */
-const DASAR_REALTIME = import.meta.env.VITE_REALTIME_URL ?? 'http://localhost:4000'
 
 /**
  * Tingkat risiko → badge, supaya guru bisa memilah tanpa membaca angka.
@@ -76,7 +74,7 @@ export default function HalamanMonitor() {
         const tiket = await terbitkanTiketSse(idKuis)
         if (batal) return
 
-        sumber = new EventSource(`${DASAR_REALTIME}/sse/monitor?tiket=${encodeURIComponent(tiket.tiket)}`)
+        sumber = new EventSource(urlSse('monitor', tiket.tiket))
         sumberRef.current = sumber
 
         sumber.onopen = () => setStatusSse('hidup')

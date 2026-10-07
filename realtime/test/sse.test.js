@@ -305,6 +305,43 @@ describe('SSE Live Monitor', () => {
 
     await app.close()
   })
+
+  it('jalur /sse/kuis melayani layar guru dengan aturan tiket yang sama', async () => {
+    // Tiket murid (slice 10) membawa `peran`, tetapi aliran dan kanalnya sama:
+    // perangkat murid hanya perlu mengikuti kanal kuis kelasnya.
+    const tiket = '2'.repeat(64)
+    const isi = {
+      [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 12, quiz_id: 3, peran: 'murid' }),
+    }
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama })
+
+    const respons = await ambilAliran(app, `/sse/kuis?tiket=${tiket}`)
+
+    assert.equal(respons.status, 200)
+    assert.match(respons.headers.get('content-type'), /text\/event-stream/)
+    assert.match(respons.teks, /"quiz_id":3/)
+    assert.deepEqual(tiruan.pelanggan[0].kanal, ['ulangan:kuis:3'])
+
+    // Sekali pakai tetap berlaku di jalur ini.
+    assert.equal(isi[`sse:tiket:${hashTiket(tiket)}`], undefined)
+
+    const ulang = await app.inject({ method: 'GET', url: `/sse/kuis?tiket=${tiket}` })
+    assert.equal(ulang.statusCode, 401)
+
+    await app.close()
+  })
+
+  it('tanpa tiket, jalur /sse/kuis menolak seperti /sse/monitor', async () => {
+    const { utama } = redisTiruan({ isi: {} })
+    const app = buildApp({ logger: false, redis: utama })
+
+    const respons = await app.inject({ method: 'GET', url: '/sse/kuis' })
+    assert.equal(respons.statusCode, 400)
+    assert.equal(JSON.parse(respons.body).alasan, 'tiket-tidak-ada')
+
+    await app.close()
+  })
 })
 
 after(() => {

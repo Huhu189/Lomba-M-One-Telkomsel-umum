@@ -432,3 +432,49 @@ sebutkan tiga hal: berkas salinan muncul di `/dev/shm/ulangan-l1.sqlite`, salina
 lalu lintas reda, dan saat guru mengubah pengaturan di tengah ulangan, kelas langsung memakai aturan baru
 (versi naik, salinan lama ditolak). Kalau tidak ada waktu mendemokan beban, cukup tunjukkan test-nya:
 `php artisan test --filter=Slice10CacheTest`.
+
+## Demo Slice 10 — Layar Kelas (guru → perangkat murid)
+
+Fitur: guru menampilkan satu keadaan konten di seluruh perangkat murid kelas — pengumuman, satu soal yang
+disorot, atau instruksi setelah ulangan — tanpa salinan layar, tanpa kunci jawaban, dan tanpa memuat ulang
+halaman di perangkat murid.
+
+### Langkah demo (guru) — mengendalikan layar kelas
+
+1. Masuk sebagai guru, buka detail kuis yang sedang berjalan, tekan tombol **Layar kelas**.
+2. Pilih mode **Sorot satu soal**, pilih salah satu soal dari daftar (ada cuplikan teksnya), tekan
+   **Tampilkan di perangkat murid**. Lencana "Keadaan sekarang" bertambah `versi`-nya.
+3. Ganti ke **Pengumuman singkat**, tulis "Sisa waktu 10 menit" (boleh dua baris), simpan lagi — murid melihat
+   banner pengumuman tanpa kehilangan jawaban yang sedang ditulis.
+4. Tekan **Kosongkan layar** — semua perangkat kembali ke tampilan ulangan biasa.
+
+### Langkah demo (murid) — mengikuti guru
+
+1. Masuk sebagai murid kelas yang sama di tab/perangkat lain, buka kuis yang sama lewat **Kerjakan sekarang**.
+2. Saat guru menekan tombol, panel "Guru menyorot soal nomor N" muncul di atas daftar soal dalam hitungan
+   detik (SSE). Matikan service realtime untuk menunjukkan jalur cadangan: panel tetap menyusul lewat
+   pembaruan berkala 5 detik — ulangan tidak pernah berhenti karena layar kelas.
+3. Tunjukkan bahwa soal yang disorot **tidak membawa kunci jawaban** dan jawaban murid tidak berubah oleh
+   panel (panel hanya menampilkan, bukan menimpa lembar jawaban).
+
+### Bukti lewat API (curl)
+
+```bash
+# Guru mengubah layar; respons membawa versi + keadaan terbaru
+curl -b cookie-guru.txt -X PUT http://localhost:8000/api/v1/kuis/1/layar \
+  -H 'Accept: application/json' -d '{"mode":"pengumuman","judul":"Sisa waktu 10 menit"}'
+
+# Murid kelas itu membaca keadaan yang sama (tanpa daftar soal/bahan pengendali)
+curl -b cookie-murid.txt http://localhost:8000/api/v1/kuis/1/layar
+
+# Murid kelas lain ditolak 403; begitu pula saat saklar layar_guru dimatikan
+curl -b cookie-murid-lain.txt http://localhost:8000/api/v1/kuis/1/layar   # 403
+```
+
+### Bukti otomatis
+
+`php artisan test --filter=Slice10LayarTest` (6 test / 70 assertion) dan
+`npx vitest run src/__tests__/sections/presence/layar.test.js src/__tests__/shared/api/realtime.test.js`
+(11 test). Yang diuji lewat test, bukan hanya dijelaskan: kunci jawaban tidak pernah ikut terkirim, murid
+kelas lain 403, saklar `layar_guru` mematikan jalur guru dan menyembunyikan layar dari murid, tiket SSE murid
+sekali pakai, dan setiap perubahan naik versi + disiarkan ke kanal kuis.

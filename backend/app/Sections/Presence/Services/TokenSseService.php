@@ -31,18 +31,23 @@ class TokenSseService
     public function __construct(private readonly PenyiarRealtime $penyiar) {}
 
     /**
-     * Terbitkan ticket untuk guru pada satu kuis.
+     * Terbitkan ticket pada satu kuis.
+     *
+     * Dipakai guru (Live Monitor) maupun murid (mengikuti layar guru, slice 10):
+     * Node hanya perlu tahu kanal kuis mana yang dilanggan, sedangkan izin siapa
+     * yang boleh meminta ticket ditegakkan di controller masing-masing. `peran`
+     * ikut dikirim supaya jejak di Redis bisa dibaca saat menelusuri masalah.
      *
      * @return array{tiket: string, expires_at: string}
      */
-    public function terbitkan(User $guru, Kuis $kuis): array
+    public function terbitkan(User $pengguna, Kuis $kuis): array
     {
         $tiket = Str::random(64);
         $hash = hash('sha256', $tiket);
         $kedaluwarsa = Carbon::now()->addSeconds(self::TTL_DETIK);
 
         TiketSse::query()->create([
-            'user_id' => $guru->getKey(),
+            'user_id' => $pengguna->getKey(),
             'quiz_id' => $kuis->getKey(),
             'token_hash' => $hash,
             'expires_at' => $kedaluwarsa,
@@ -51,9 +56,10 @@ class TokenSseService
         $this->penyiar->armTicket(
             $hash,
             [
-                'user_id' => (int) $guru->getKey(),
+                'user_id' => (int) $pengguna->getKey(),
                 'quiz_id' => (int) $kuis->getKey(),
-                'nama' => (string) $guru->name,
+                'nama' => (string) $pengguna->name,
+                'peran' => $pengguna->isGuru() ? 'guru' : 'murid',
             ],
             self::TTL_DETIK,
         );

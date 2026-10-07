@@ -115,19 +115,20 @@ yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik.
 Materi pelajaran disusun seperti perjalanan: blok teks, blok gambar/video, dan blok kuis kecil di tengahnya. Ditambah fitur layar guru: tampilan yang guru buka bisa muncul di perangkat murid — yang disinkronkan **kontennya**, bukan layar penuh seperti aplikasi rapat.
 
 ### Cara kerjanya
-Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar pizza terbagi → kuis latihan 3 soal → video → kuis latihan lagi. Kuis sisipannya memakai soal dari bank soal yang sudah ada (tidak ada jenis soal baru) dan bertipe **latihan**: skornya masuk laporan tema, tidak masuk ranking, bukan nilai asli ulangan. Guru menandai blok wajib atau opsional; server yang memastikan urutannya ditempuh — murid tidak bisa melompat ke blok akhir. Saat layar guru menyala, murid di kelas otomatis berpindah mengikuti halaman yang guru buka (termasuk nomor blok), dipandu lewat jalur data ringan (SSE).
+Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar pizza terbagi → kuis latihan 3 soal → video → kuis latihan lagi. Kuis sisipannya memakai soal dari bank soal yang sudah ada (tidak ada jenis soal baru) dan bertipe **latihan**: skornya masuk laporan tema, tidak masuk ranking, bukan nilai asli ulangan. Guru menandai blok wajib atau opsional; server yang memastikan urutannya ditempuh — murid tidak bisa melompat ke blok akhir. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
 
 ### Mengapa aman
 Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewat tautan bertanda tangan yang kedaluwarsa, bukan folder terbuka. Layar guru hanya mengirim instruksi konten — murid tidak bisa mengirim layar palsu ke guru.
 
 ### Manfaat untuk anak SD dan guru
-Materi jadi hidup: anak membaca sebentar, mencoba kuis kecil, lalu lanjut — cocok untuk rentang perhatian anak SD, dan anak yang salah di tengah materi langsung berlatih sebelum lanjut. Guru tidak perlu berteriak "buka halaman 23": semua perangkat murid ikut berpindah sendiri, hemat waktu kelas.
+Materi jadi hidup: anak membaca sebentar, mencoba kuis kecil, lalu lanjut — cocok untuk rentang perhatian anak SD, dan anak yang salah di tengah materi langsung berlatih sebelum lanjut. Guru tidak perlu berteriak "lihat soal nomor 4": semua perangkat murid bisa diminta menampilkan hal yang sama sekaligus (bagian 15), hemat waktu kelas.
 
-Status: **sebagian sudah bisa dipakai** (slice 08). Materi berblok dengan kuis sisipan latihan,
+Status: **sudah bisa dipakai** (slice 08 + 10). Materi berblok dengan kuis sisipan latihan,
 penerbitan materi, berkas aman (kategori ditentukan dari isi berkas, disajikan lewat tautan
-bertanda tangan), dan laporan tema per murid sudah jalan serta diuji. Yang **belum** dikerjakan
-dan kami sebutkan apa adanya: **layar guru ke perangkat murid** (sinkron konten lewat SSE) — kunci
-pengaturannya sudah ada, tetapi penyiaran kontennya belum dibuat.
+bertanda tangan), laporan tema per murid, dan **layar guru ke perangkat murid (bagian 15)** sudah
+jalan serta diuji. Yang **belum** dikerjakan dan kami sebutkan apa adanya: mengikuti halaman/blok
+materi yang sedang dibuka guru secara otomatis — yang ada adalah guru memilih apa yang tampil di
+perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
 
 ---
 
@@ -332,6 +333,45 @@ hasil kalibrasi lapangan), dan pemberitahuan pub/sub belum disambungkan ke servi
 
 ---
 
+## 15. Layar guru yang benar-benar sampai ke perangkat murid
+
+### Apa ini
+Guru memegang satu tombol di kelas: apa pun yang ia pilih muncul di perangkat murid kelas itu dalam
+hitungan detik. Bukan berbagi layar (bukan salinan penuh layar guru) — yang dikirim adalah **keadaan
+konten**: pengumuman singkat, satu soal yang sedang dibahas, atau instruksi setelah ulangan selesai.
+
+### Cara kerjanya
+Layar kelas punya empat keadaan: **kosong** (perangkat murid kembali ke tampilan ulangan biasa),
+**pengumuman** (mis. "sisa waktu 10 menit"), **sorot satu soal** (soal itu tampil utuh di perangkat
+murid), dan **instruksi setelah ulangan**. Guru memilih keadaan lewat halaman `Layar kelas` di detail
+kuis, dan setiap perubahan disiarkan lewat kanal kuis yang sama dengan Live Monitor (Nginx/Redis/pub-sub
+→ service Node → SSE ke browser). Perangkat murid menyambung dengan **tiket sekali pakai** yang hanya
+berlaku untuk kuis kelasnya; kalau sambungan langsung gagal (service realtime mati, kantor/sekolah
+memblokir), perangkat murid **tetap** menyusul lewat pembaruan berkala 5 detik. Setiap perubahan menaikkan
+`versi`, jadi perangkat tahu salinan yang dipegangnya sudah basi.
+
+### Mengapa aman
+Dua hal dijaga di server, bukan di tampilan: (1) **kunci jawaban tidak pernah ikut** — payload soal
+ditulis kolom per kolom (id, nomor, tipe, konten, skor) tanpa `kunci`/`pembahasan`, sehingga menyorot soal
+tidak pernah membocorkan jawaban ke perangkat mana pun; (2) **murid kelas lain tidak bisa menyambung** —
+izin membaca layar sama persis dengan izin membaca kuisnya (harus terbit dan kelasnya cocok), dan jalur
+tiket murid dipisah dari jalur guru. Layar juga bukan modal yang mengunci pekerjaan anak: pengumuman
+bersifat informasi, jadi ulangan tetap berjalan walau guru sedang berbicara.
+
+### Manfaat untuk anak SD dan guru
+Inilah pengganti "semua lihat soal nomor 4" yang paling sering memakan waktu di kelas: guru menekan satu
+tombol, dan seluruh perangkat menampilkan soal yang sama tanpa murid perlu scroll atau bertanya. Anak yang
+sedang fokus di perangkatnya tidak kehilangan jawaban yang sudah ditulis — jawaban tetap tersimpan di
+server.
+
+Status: **kode, test, dan pengujian API selesai** (slice 10). Bawaannya **menyala** (`layar_guru`), dan bisa
+dimatikan per sekolah/kelas/kuis lewat pengaturan tiga lapis; begitu dimatikan, perubahan ditolak server dan
+murid tidak menerima apa pun. Yang jujur **belum**: menyorot satu soal **di dalam halaman materi** (layar
+kelas bekerja di layar pengerjaan ulangan, bukan di dalam materi berblok), pembahasan langkah-demi-langkah
+real-time, dan papan gambar/whiteboard.
+
+---
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**
@@ -340,9 +380,12 @@ hasil kalibrasi lapangan), dan pemberitahuan pub/sub belum disambungkan ke servi
 - Tanpa multi-tenant — satu instalasi untuk satu sekolah.
 - Anti-cheat **tidak menjamin 100%** — semua deteksi di browser bisa diakali; catatannya adalah bahan tinjauan guru, bukan vonis.
 
-**Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru. Per 7 Oktober 2026 yang
-sudah selesai: **cache L1 (bagian 14)**, mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi,
-dan **ekspor nilai (CSV, bukan xlsx — alasannya di bagian 12)**; yang belum: **layar guru di perangkat
-murid**.
+**Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx,
+mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru. Per 7 Oktober 2026
+**semuanya sudah selesai dan hijau**: cache L1 (bagian 14), mode gelap (bagian 13), mode tim (bagian 11),
+penilaian AI (bagian 10), rekam diri (bagian 9), avatar + moderasi (bagian 8), layar guru di perangkat
+murid (bagian 15), dan ekspor nilai (CSV, bukan xlsx — alasannya di bagian 12). Yang tersisa dari rencana
+awal adalah **Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan, jadi belum bisa dijalankan
+maupun diuji — dicatat jujur) dan **deploy**.
 
 **Yang tidak boleh dipotong apa pun alasannya:** deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur bila gagal), keamanan inti (auth, pembatasan akses antar murid, kunci jawaban tidak bocor, deadline dari server), serta jurnal prompt dan log mentah yang jujur.

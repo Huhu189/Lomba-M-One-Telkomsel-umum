@@ -21,6 +21,7 @@ use App\Sections\Material\Http\Controllers\MateriController;
 use App\Sections\Material\Http\Controllers\ProgresMateriController;
 use App\Sections\Material\Http\Controllers\UnggahanController;
 use App\Sections\Presence\Http\Controllers\KehadiranController;
+use App\Sections\Presence\Http\Controllers\LayarController;
 use App\Sections\Presence\Http\Controllers\MonitorController;
 use App\Sections\Presence\Http\Controllers\TiketSseController;
 use App\Sections\Question\Http\Controllers\SoalController;
@@ -222,6 +223,12 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/kejadian/{kejadian}', [KecuranganController::class, 'tinjau'])->name('kecurangan.tinjau');
         Route::get('/kuis/{kuis}/monitor', [MonitorController::class, 'show'])->name('monitor.show');
         Route::post('/kuis/{kuis}/sse-tiket', [TiketSseController::class, 'terbitkan'])->name('sse.tiket');
+
+        // Layar guru → perangkat murid (slice 10). Satu endpoint dibaca dua arah:
+        // guru mengendalikan (PUT), murid kelas itu mengikuti (GET + tiket SSE).
+        Route::get('/kuis/{kuis}/layar', [LayarController::class, 'show'])->name('layar.show');
+        Route::put('/kuis/{kuis}/layar', [LayarController::class, 'simpan'])->name('layar.simpan');
+        Route::post('/kuis/{kuis}/sse-tiket-murid', [TiketSseController::class, 'terbitkanMurid'])->name('sse.tiket_murid');
     });
 });
 

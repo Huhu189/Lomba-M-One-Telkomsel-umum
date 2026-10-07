@@ -763,6 +763,8 @@ avatar yang menunggu tinjauan tidak bisa dihapus pemiliknya (bukti tidak hilang 
 ### A.12.3 Yang jujur BELUM dikerjakan di slice 08
 - **Layar guru ke perangkat murid** (sinkron konten/nomor blok lewat SSE) belum dibuat; baru kunci
   pengaturannya yang ada. Disebut apa adanya di `docs/penjelasan-fitur.md` bagian 6.
+  (Pembaruannya: kini sudah dibuat sebagai penyiaran **keadaan konten yang dipilih guru** — lihat A.14.5;
+  ikut berpindah mengikuti halaman/blok materi yang dibuka guru tetap belum ada.)
 - **Smoke UI Chrome (CDP) slice 08 belum dijalankan.** Berbeda dari slice 02–07 yang masing-masing punya
   `docs/smoke-ui-sliceNN.mjs`, pembuktian slice 08 masih pada tingkat test otomatis (Pest + Vitest).
 - **Kuota penyimpanan sekolah belum diuji dengan berkas nyata berukuran besar**; yang diuji baru perhitungan
@@ -839,13 +841,14 @@ halaman hasil attempt tim. **Peringkat per tim**: kolomnya nama tim, `murid_id` 
 - **Smoke UI Chrome (CDP) slice 09 belum dijalankan**, dan **unggahan besar lewat jaringan lambat belum
   diuji nyata**; yang diuji adalah potongan, hash, dan penolakan deadline pada tingkat test.
 - **Layar guru → perangkat murid (SSE) belum dibuat** (sama seperti catatan A.12.3).
+  (Pembaruannya: sekarang sudah dibuat — lihat A.14.5.)
 - **Mode tim belum diuji di browser sungguhan** dan **belum ada batas jumlah anggota per tim** selain minimal 2;
   yang diuji baru perilaku server (attempt bersama, versi, skor dibagi, peringkat tim).
 
-## A.14 Slice 10 — Ekspor Nilai (CSV), Cache Berlapis L1, dan Status Fitur Sisa
+## A.14 Slice 10 — Ekspor Nilai (CSV), Cache Berlapis L1, Layar Guru, dan Status Fitur Sisa
 
-Dikerjakan bertahap. Yang sudah masuk slice ini: **ekspor nilai kuis**. Cache L1, Octane Swoole, layar guru di
-perangkat murid, dan deploy masih terbuka.
+Dikerjakan bertahap. Yang sudah masuk slice ini: **ekspor nilai kuis**, **cache berlapis L1**, dan
+**layar guru → perangkat murid (SSE)**. Octane Swoole dan deploy masih terbuka (lihat A.14.6).
 
 ### A.14.1 Perintah dan hasil
 - `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice10a.log`, exit 0).
@@ -890,10 +893,43 @@ ulangan berjalan.
   pada chunk belum diterapkan per kuis; (c) pub/sub disiarkan lewat `Redis::publish` dan **belum** disambung
   ke service realtime; (d) angka ambang 10/2 req/s masih nilai bawaan, belum dikalibrasi dengan uji beban.
 
-### A.14.5 Yang jujur BELUM dikerjakan di slice 10
+### A.14.5 Layar guru → perangkat murid (SSE) — dikerjakan setelah cache berlapis
+Fitur terakhir dari daftar potong kini jalan. Guru mengendalikan **satu keadaan layar per kuis**
+(`quiz_screens`, satu baris per kuis dengan kolom `versi` yang naik setiap perubahan) dari halaman baru
+`/kuis/:id/layar`: empat mode (`kosong`, `pengumuman`, `soal` yang disorot, `hasil`), dan setiap perubahan
+disiarkan ke kanal `ulangan:kuis:{id}` yang sama dengan Live Monitor.
+
+- Berkas baru: migrasi `2026_10_07_000021_create_quiz_screens`, enum `ModeLayar`, model `LayarKuis`,
+  `LayarService` (baca/ubah + siaran + pemeriksaan saklar `layar_guru`), `SimpanLayarRequest`,
+  `LayarController`, policy `KuisPolicy::layar`, rute `GET/PUT /kuis/{kuis}/layar` +
+  `POST /kuis/{kuis}/sse-tiket-murid`; service Node mendapat alias `GET /sse/kuis` dengan aturan tiket
+  yang sama; frontend memakai modul bersama `shared/api/realtime.js` (satu sumber URL SSE + encode tiket),
+  hook `useLayar` (SSE + polling), `HalamanLayar` (guru), dan `PanelLayarMurid` yang ditempel di layar
+  pengerjaan ulangan.
+- `./verify.sh` → **SEMUA HIJAU** (`/tmp/verify-slice10c.log`); `php artisan test` → **169 passed
+  (1384 assertions)**; tambahan `Slice10LayarTest` (6 test / 70 assertion) dan dua test Node baru
+  (jalur `/sse/kuis` memakai tiket dan kanal yang sama, tetap sekali pakai); Vitest 35 berkas (tambahan
+  `layar.test.js` 9 test + `realtime.test.js` 2 test); Pint PASS (303 berkas).
+- Yang diuji (bukti perilaku, bukan klaim): murid kelas itu **ikut mengikuti** sorotan soal dan
+  pengumuman, sedangkan **kunci jawaban dan pembahasan tidak pernah ada** di payload (kolom soal ditulis
+  eksplisit; schema Zod di frontend juga tidak memiliki kolom kunci sehingga bocoran sekecil apa pun
+  membuat parse gagal); **murid kelas lain 403** untuk membaca layar maupun meminta tiket; **saklar
+  `layar_guru` dimatikan** → guru ditolak 403 dan murid melihat `aktif: false`; mode tak dikenal, sorotan
+  soal di luar kuis, dan pengumuman tanpa tulisan **ditolak 422**; setiap perubahan **menaikkan versi dan
+  disiarkan** ke `ulangan:kuis:{id}` (penyiar tiruan mencatat jejak — test tidak butuh Redis); tiket murid
+  **sekali pakai** dan guru tetap memakai jalur tiket Live Monitor.
+- Keputusan teknis (jujur): (a) yang disinkronkan adalah **keadaan konten yang dipilih guru**, bukan salinan
+  layar atau posisi bacaan materi — sesuai batasan "tanpa WebRTC" di `penjelasan-fitur.md`; (b) payload
+  siaran hanya berisi pemberitahuan (`jenis`, `mode`, `versi`), perangkat murid **membaca ulang keadaan**
+  dari server — bentuk pesan tidak dipercaya sebagai sumber kebenaran; (c) guru tidak memakai SSE di
+  halaman kendalinya (ia sumber perubahan; polling cukup dan menghindari tiket baru terus-menerus);
+  (d) frontend dibaca dua peran lewat hook yang sama supaya pola fail-open polling tidak ditulis dua kali.
+
+### A.14.6 Yang jujur BELUM dikerjakan di slice 10
 - **Octane Swoole belum dipasang.** Ekstensi `swoole` tidak tersedia di mesin pengembangan ini
   (`php -m` hanya menampilkan `pdo_sqlite`, `redis`, `sqlite3`, `zip`), jadi Octane belum bisa dijalankan
   maupun diuji kebocoran state-nya. Dicatat apa adanya, bukan diklaim jalan.
-- **Layar guru → perangkat murid (SSE)** belum dibuat (masih sama seperti A.12.3/A.13.7).
 - **Deploy belum dilakukan**; atas permintaan pengguna pekerjaan diarahkan ke penyelesaian fitur dulu, dan
   pilihan host masih menunggu keputusan pengguna.
+- Lanjutan layar guru (di luar janji chunk): menyorot soal di dalam halaman materi, pembahasan
+  langkah-demi-langkah, dan whiteboard — dicatat di bagian 15 `penjelasan-fitur.md` sebagai yang belum.

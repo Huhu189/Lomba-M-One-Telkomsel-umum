@@ -100,12 +100,17 @@ export function buildApp(options = {}) {
   })
 
   /**
-   * Handshake + aliran SSE Live Monitor.
+   * Handshake + aliran SSE satu kuis.
    *
    * Alur: ambil tiket dari Redis (GETDEL) → langganan kanal kuis → teruskan
    * setiap pesan → keepalive berkala. Koneksi ditutup begitu klien pergi.
+   *
+   * Satu penangan dipakai dua jalur: guru (`/sse/monitor`, slice 07) dan murid
+   * yang mengikuti layar guru (`/sse/kuis`, slice 10). Keduanya memakai kanal
+   * `ulangan:kuis:{id}` yang sama; yang membedakan hanya siapa yang boleh
+   * meminta tiket di sisi Laravel.
    */
-  app.get('/sse/monitor', async (request, reply) => {
+  const aliranKuis = async (request, reply) => {
     const tiket = /** @type {string|undefined} */ (request.query?.tiket)
 
     if (typeof tiket !== 'string' || tiket.length < 20) {
@@ -238,7 +243,10 @@ export function buildApp(options = {}) {
 
     // Fastify tidak boleh mengirim respons sendiri setelah writeHead manual.
     return reply
-  })
+  }
+
+  app.get('/sse/monitor', aliranKuis)
+  app.get('/sse/kuis', aliranKuis)
 
   return app
 }
