@@ -32,6 +32,18 @@ class RolesAndAdminSeeder extends Seeder
                 'role' => 'admin',
             ],
         );
+
+        $guru = User::query()->firstOrCreate(
+            ['email' => 'aadmin@sekolah.test'],
+            [
+                'name' => 'Guru Sekolah',
+                'password' => 'qawsedrftg',
+                'status' => UserStatus::Aktif->value,
+                'email_verified_at' => now(),
+                'role' => 'guru',
+            ],
+        );
         $admin->assignRole('admin');
+        $guru->assignRole('guru');
     }
 }
