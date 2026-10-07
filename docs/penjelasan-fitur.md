@@ -173,7 +173,68 @@ avatar disembunyikan dari murid lain sementara pemiliknya tetap melihatnya. Kepu
 
 ---
 
-## 9. Mode tim
+## 9. Lampiran jawaban: gambar papan tulis, rekam diri, dan berkas
+
+### Apa ini
+Selain mengetik, murid bisa melampirkan jawaban: gambar yang digambar **langsung di layar** (mis. menulis
+caranya di papan tulis digital), **rekaman diri** saat anak menjelaskan dengan suara (bisa dinyalakan atau
+dimatikan sekolah), dan **berkas** (foto hasil kerja di buku, PDF, dsb.).
+
+### Cara kerjanya
+Berkas dikirim **terpotong-potong** (potongan kecil 1 MiB) sambil kuis berjalan, jadi koneksi sekolah yang
+lambat tidak membuat unggahan gagal total dan bisa dilanjutkan. Unggahan baru dianggap sah setelah potongan
+terakhir tiba dengan sidik jari (hash) yang cocok. Gambar diolah ulang di server menjadi PNG bersih, dan
+berkas yang formatnya berisiko dipaksa terunduh sebagai `.upload` alih-alih ditampilkan. Semua lampiran
+terikat pada attempt dan soal, serta ditolak setelah waktu ulangan habis. Sisa unggahan yang tidak pernah
+selesai dibersihkan otomatis supaya disk tidak penuh.
+
+### Mengapa aman
+Nama berkas diacak dan disimpan di luar folder publik; hanya pemilik attempt, guru kelas, dan wali kelas
+yang bisa membukanya, dan URL gambarnya bertanda tangan serta kedaluwarsa. Rekaman diri butuh izin yang
+dinyalakan sekolah lebih dulu, dengan batas durasi untuk melindungi anak.
+
+### Manfaat untuk anak SD dan guru
+Anak SD belum lancar mengetik, dan banyak soal (menulis tegak bersambung, menggambar bangun, membaca
+nyaring) lebih jujur dinilai lewat gambar atau suara daripada lewat teks. Guru juga jadi punya bukti
+pekerjaan anak yang bisa ditunjukkan ke orang tua.
+
+Status: **sudah bisa dipakai** (slice 09-A). Rekaman diri mengikuti saklar sekolah dan bawaannya **mati**.
+Yang belum ada dan kami sebutkan apa adanya: pemutaran ulang rekaman di layar guru masih memakai pemutar
+browser biasa, dan belum ada batas kuota penyimpanan per sekolah.
+
+---
+
+## 10. Penilaian AI untuk jawaban uraian (saran, bukan hakim)
+
+### Apa ini
+Untuk soal uraian, guru bisa meminta bantuan AI membaca jawaban anak dan memberi usulan nilai beserta
+catatan singkat. Angkanya **cuma saran** — nilai resmi tetap keluar dari tangan guru.
+
+### Cara kerjanya
+Permintaan ke AI hanya dijalankan **dari server lewat antrean** (satu permintaan per ulangan, dipecah bila
+soalnya banyak), sehingga menekan "kumpulkan" tidak ikut menunggu layanan pihak ketiga. Jawaban murid
+dikirim sebagai **data di dalam pembatas** dan model diinstruksikan mengabaikan perintah apa pun di
+dalamnya. Balasannya wajib JSON sesuai skema; skornya selalu **dipotong ke rentang soal**, jadi model tidak
+bisa memberi nilai 100 atau nilai negatif. Hasilnya disimpan di kolom terpisah (`skor_ai`, `alasan_ai`),
+**tidak pernah** menyentuh nilai final. Kalau AI gagal, timeout, atau menjawab di luar skema, jawaban tetap
+"perlu ditinjau" — tidak ada nilai yang lolos tanpa dilihat manusia.
+
+### Mengapa aman
+Kunci API AI hanya hidup di server (variabel lingkungan), tidak pernah ikut ke halaman web, ke respons API,
+atau ke log. Alasan mentah dari AI hanya tampil di antrean koreksi guru dan **tidak pernah** muncul di hasil
+murid. Bawaannya mati: instalasi tanpa kunci API tetap berjalan normal, dan penilaian manual tetap jalan.
+
+### Manfaat untuk anak SD dan guru
+Guru kelas 3 yang mengoreksi 30 jawaban uraian bisa mulai dari angka usulan, bukan dari nol — tetapi
+tetap memegang keputusan akhir dan wajib menuliskan alasan koreksinya di audit.
+
+Status: **sudah bisa dipakai** (slice 09-B), bawaan **mati** sampai sekolah mengisi kunci API sendiri.
+Yang belum ada dan kami sebutkan apa adanya: penilaian AI belum membaca lampiran gambar/rekaman (baru teks
+uraian), dan belum ada pemantauan biaya pemakaian API per sekolah.
+
+---
+
+## 11. Mode tim
 
 ### Apa ini
 Opsi kuis dikerjakan **berkelompok**: satu tim satu jawaban bersama, satu nilai untuk semua anggota.

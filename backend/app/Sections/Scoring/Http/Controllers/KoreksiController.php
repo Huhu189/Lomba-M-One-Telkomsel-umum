@@ -11,6 +11,7 @@ use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Scoring\Http\Requests\KoreksiRequest;
 use App\Sections\Scoring\Http\Requests\MintaTokenKoreksiRequest;
 use App\Sections\Scoring\Services\KoreksiService;
+use App\Sections\Scoring\Services\PenilaiAiService;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -52,6 +53,36 @@ class KoreksiController extends Controller
             (string) $request->input('alasan'),
             $request->ip(),
         ));
+    }
+
+    /**
+     * Minta saran penilaian AI untuk satu attempt (slice 09-B).
+     *
+     * Hasilnya tetap saran: mengisi `skor_ai` + `alasan_ai` pada jawaban yang
+     * perlu ditinjau, tanpa menyentuh nilai final. Kalau sekolah belum
+     * menyalakan AI, endpoint ini hanya menjawab apa adanya.
+     */
+    public function nilaiAi(Attempt $attempt, PenilaiAiService $service): JsonResponse
+    {
+        $this->authorize('koreksi', $attempt);
+
+        if (! $service->aktif()) {
+            return response()->json([
+                'aktif' => false,
+                'terantre' => 0,
+                'message' => 'Penilaian AI belum dinyalakan di server ini.',
+            ]);
+        }
+
+        $terantre = $service->antre($attempt);
+
+        return response()->json([
+            'aktif' => true,
+            'terantre' => $terantre,
+            'message' => $terantre > 0
+                ? "Saran AI diminta untuk {$terantre} jawaban."
+                : 'Tidak ada jawaban yang perlu disarankan AI saat ini.',
+        ]);
     }
 
     /**

@@ -26,6 +26,13 @@ export const skemaItemKoreksi = z.object({
   skor_maksimal: z.number(),
   skor_sekarang: z.number(),
   dinilai_manual: z.boolean(),
+  // Saran AI (slice 09-B): bahan pertimbangan guru, bukan nilai. Alasan mentah
+  // hanya ada di respons guru ini dan tidak pernah ikut ke hasil murid.
+  saran_ai: z.number().nullable(),
+  alasan_ai: z.string().nullable(),
+  ai_status: z.string().nullable(),
+  ai_label: z.string().nullable(),
+  ai_dinilai_at: z.string().nullable(),
 })
 
 /** Antrean koreksi satu kuis. */
@@ -35,8 +42,16 @@ export const skemaAntreanKoreksi = z.object({
   mapel_nama: z.string().nullable(),
   kelas_nama: z.string().nullable(),
   alasan_min: z.number(),
+  ai_aktif: z.boolean(),
   jumlah: z.number(),
   item: z.array(skemaItemKoreksi),
+})
+
+/** Jawaban saat guru meminta saran AI untuk satu attempt. */
+export const skemaHasilSaranAi = z.object({
+  aktif: z.boolean(),
+  terantre: z.number(),
+  message: z.string(),
 })
 
 /** Token konfirmasi sekali pakai. */
@@ -64,6 +79,7 @@ export const skemaHasilKoreksi = z.object({
  * @typedef {z.infer<typeof skemaItemKoreksi>} DataItemKoreksi
  * @typedef {z.infer<typeof skemaTokenKoreksi>} DataTokenKoreksi
  * @typedef {z.infer<typeof skemaHasilKoreksi>} DataHasilKoreksi
+ * @typedef {z.infer<typeof skemaHasilSaranAi>} DataHasilSaranAi
  */
 
 /**
@@ -99,4 +115,19 @@ export async function simpanKoreksi(attemptId, data) {
   await ambilCsrfCookie()
   const respons = await client.post(`/v1/attempt/${attemptId}/koreksi`, data)
   return skemaHasilKoreksi.parse(respons.data)
+}
+
+/**
+ * Minta saran penilaian AI untuk satu attempt (slice 09-B).
+ *
+ * Hasilnya cuma saran: server menaruhnya di baris antrean, nilai final tetap
+ * harus dikoreksi guru lewat token konfirmasi.
+ *
+ * @param {number} attemptId
+ * @returns {Promise<DataHasilSaranAi>}
+ */
+export async function mintaSaranAi(attemptId) {
+  await ambilCsrfCookie()
+  const respons = await client.post(`/v1/attempt/${attemptId}/nilai-ai`)
+  return skemaHasilSaranAi.parse(respons.data)
 }

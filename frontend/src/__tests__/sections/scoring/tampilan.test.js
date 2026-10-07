@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { jawabanTeks, kelasStatus, ringkasKunci } from '../../../sections/scoring/tampilan.js'
+import { jawabanTeks, kelasStatus, ringkasKunci, saranAiTeks } from '../../../sections/scoring/tampilan.js'
 
 describe('jawabanTeks', () => {
   it('menandai jawaban yang belum dijawab atau hanya berisi spasi', () => {
@@ -33,6 +33,27 @@ describe('ringkasKunci', () => {
     expect(ringkasKunci({})).toBe('—')
     expect(ringkasKunci(null)).toBe('—')
     expect(ringkasKunci(['a'])).toBe('—')
+  })
+})
+
+describe('saranAiTeks', () => {
+  it('menampilkan angka saran AI beserta maksimal soalnya', () => {
+    expect(saranAiTeks({ saran_ai: 2.5, skor_maksimal: 4, ai_status: 'saran' })).toBe(
+      'Saran AI: 2.5 dari maksimal 4 (silakan dicek dulu)',
+    )
+
+    // Skor 0 dari AI tetap saran yang sah, bukan "tidak ada saran".
+    expect(saranAiTeks({ saran_ai: 0, skor_maksimal: 4, ai_status: 'saran' })).toBe(
+      'Saran AI: 0 dari maksimal 4 (silakan dicek dulu)',
+    )
+  })
+
+  it('menjelaskan kegagalan AI dan mengaku belum ada saran', () => {
+    expect(saranAiTeks({ saran_ai: null, skor_maksimal: 4, ai_status: 'gagal' })).toBe(
+      'AI gagal menilai soal ini — nilai manual dari guru.',
+    )
+
+    expect(saranAiTeks({ saran_ai: null, skor_maksimal: 4, ai_status: null })).toBeNull()
   })
 })
 

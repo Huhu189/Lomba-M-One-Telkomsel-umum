@@ -15,6 +15,7 @@ use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Scoring\Enums\StatusPenilaian;
+use App\Sections\Scoring\Services\PenilaiAiService;
 use App\Sections\Scoring\Services\PenilaiSoal;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Services\PengaturanService;
@@ -39,6 +40,7 @@ class AttemptService
         private readonly PenilaiSoal $penilaian,
         private readonly PengaturanService $pengaturan,
         private readonly KecuranganService $kecurangan,
+        private readonly PenilaiAiService $ai,
     ) {}
 
     /**
@@ -323,6 +325,10 @@ class AttemptService
                     'lewat_detik' => (string) $terkunci->deadline_at->diffInSeconds($sekarang),
                 ]);
             }
+
+            // Saran AI menyusul lewat queue: mengumpulkan tidak ikut menunggu
+            // layanan pihak ketiga, dan nilainya tidak pernah menimpa skor mesin.
+            $this->ai->antre($terkunci);
 
             return $this->muatHasil($terkunci->refresh());
         });

@@ -767,3 +767,53 @@ avatar yang menunggu tinjauan tidak bisa dihapus pemiliknya (bukti tidak hilang 
   `docs/smoke-ui-sliceNN.mjs`, pembuktian slice 08 masih pada tingkat test otomatis (Pest + Vitest).
 - **Kuota penyimpanan sekolah belum diuji dengan berkas nyata berukuran besar**; yang diuji baru perhitungan
   dan penolakannya pada tingkat unit/feature.
+
+## A.13 Slice 09 — Lampiran Jawaban dan Saran AI
+
+Dikerjakan dalam dua bagian: 09-A (unggah lampiran jawaban) dan 09-B (saran penilaian AI lewat queue).
+Mode tim (09-C) belum dikerjakan saat catatan ini ditulis.
+
+### A.13.1 Perintah dan hasil
+- `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice09b.log`, exit 0).
+- `php artisan test` → **148 passed (1164 assertions)**; tambahan `Slice09UploadTest` (10 test / 98 assertion)
+  dan `Slice09AiTest` (8 test / 83 assertion).
+- `./vendor/bin/pint --test` → PASS (277 berkas).
+- `npm run check` (tsc `checkJs` strict) → lolos; `npx eslint` pada berkas scoring/attempt → 0 error.
+- `npx vitest run` → tambahan `src/__tests__/sections/attempt/lampiran.test.js` (14 test) dan
+  penambahan pada uji scoring (`api.test.js` 8 test, `tampilan.test.js` 8 test).
+- `node --test` (realtime) → 11 test lulus.
+
+### A.13.2 Yang diuji pada 09-A (bukti perilaku, bukan klaim)
+**Gambar kanvas di-encode ulang jadi PNG di server** dengan nama berkas acak dan hash SHA-256 yang cocok;
+**unggahan setelah deadline ditolak**, begitu pula potongan yang dikirim setelah deadline; **rekam diri**
+hanya terbuka bila saklar sekolah menyala dan durasinya dibatasi 60 detik; batas 10 MiB dan maksimal 3
+lampiran per soal ditegakkan; berkas dengan magic bytes `PK` (arsip) diunduh sebagai `.upload`, bukan
+ditampilkan; potongan dengan hash tidak cocok ditolak (bukti unggahan bisa dilanjutkan tanpa korup);
+sapuan unggahan yatim menghapus baris + berkasnya; **murid lain 403, guru bukan pemilik 403** tetapi guru
+pemilik tetap bisa melihat daftar lampiran; URL lampiran yang kedaluwarsa → 403.
+
+### A.13.3 Yang diuji pada 09-B (bukti perilaku, bukan klaim)
+**Skor AI dipotong ke rentang soal** — model diuji mengembalikan 999 dan −5, tersimpan 4.0 dan 0.0 sesuai
+skor maksimal soal; **skor final tidak pernah berubah karena AI** (`skor` tetap 0, status tetap
+`perlu_tinjau`, `dinilai_manual` tetap false); **satu permintaan per ulangan**, dan otomatis dipecah dua saat
+batas soal per permintaan diturunkan ke 2; **gagal/timeout/kontrak rusak = `ai_status = gagal`**, bukan nilai
+nol diam-diam; **murid tidak bisa memicu AI** (403) dan respons `/hasil` milik murid tidak memuat `skor_ai`
+maupun alasan mentah AI; **kunci API hanya di header** `Authorization` (diuji tidak pernah muncul di body
+permintaan); **koreksi guru tidak ditimpa** — saran baru yang datang setelah koreksi dibuang, nilai tetap 4.0;
+**bawaannya mati** — mengumpulkan ulangan tidak memanggil API sama sekali (`Http::assertNothingSent`).
+
+### A.13.4 Keputusan teknis slice 09 (jujur)
+- **AI tidak pernah menulis ke kolom `skor`.** Saran disimpan di kolom terpisah, sehingga tidak mungkin ada
+  nilai murid yang berubah tanpa koreksi guru bertoken. Ini juga yang membuat `ActivityLog` saran AI
+  (`log_name` `penilaian_ai`) terpisah dari audit koreksi manual.
+- **Antrean queue `sync` dipakai apa adanya di test**, jadi jalur "kumpulkan → minta saran AI" ikut teruji
+  tanpa worker terpisah. Di produksi jalur itu berjalan di `database` queue (bawaan).
+- **Jawaban yang hanya berisi lampiran dilewati AI** (tidak ada teks untuk dinilai) dan tetap menunggu
+tinjauan guru — disebutkan di bagian 10 `penjelasan-fitur.md`.
+
+### A.13.5 Yang jujur BELUM dikerjakan di slice 09
+- **Mode tim (09-C) belum ada**: kuis masih individu, belum ada jawaban bersama per tim maupun pembagian skor.
+- **AI belum membaca lampiran** (gambar/rekaman) — baru soal uraian berbasis teks.
+- **Smoke UI Chrome (CDP) slice 09 belum dijalankan**, dan **unggahan besar lewat jaringan lambat belum
+  diuji nyata**; yang diuji adalah potongan, hash, dan penolakan deadline pada tingkat test.
+- **Layar guru → perangkat murid (SSE) belum dibuat** (sama seperti catatan A.12.3).

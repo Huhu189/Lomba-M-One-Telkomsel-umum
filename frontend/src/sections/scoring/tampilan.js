@@ -36,6 +36,27 @@ export function ringkasKunci(kunci) {
 }
 
 /**
+ * Ringkasan saran AI untuk satu baris antrean koreksi (slice 09-B).
+ *
+ * Saran AI tidak pernah menggantikan nilai: yang ditampilkan cuma angka usulan,
+ * dan guru tetap harus menyimpan koreksinya sendiri.
+ *
+ * @param {{ saran_ai: number|null, skor_maksimal: number, ai_status: string|null }} item
+ * @returns {string|null} teks saran, atau null bila belum ada saran
+ */
+export function saranAiTeks(item) {
+  if (typeof item.saran_ai === 'number') {
+    return `Saran AI: ${item.saran_ai} dari maksimal ${item.skor_maksimal} (silakan dicek dulu)`
+  }
+
+  if (item.ai_status === 'gagal') {
+    return 'AI gagal menilai soal ini — nilai manual dari guru.'
+  }
+
+  return null
+}
+
+/**
  * Kelas lencana status penilaian (perlu ditinjau vs gagal).
  * @param {string} status
  * @returns {string}

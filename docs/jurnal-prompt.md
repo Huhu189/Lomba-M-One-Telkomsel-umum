@@ -61,6 +61,7 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
 
 ## Entri 5 — Cache, Swoole, deploy, dan perbaikan akhir (slice 10)
 
-- **Status**: sebagian terisi — slice 08 (materi berblok + berkas aman + kuis sisipan) sudah selesai dan
-  hijau; sisa avatar & moderasi, upload jawaban, AI, mode tim, cache, Octane, dan deploy belum dikerjakan.
-  Bagian ini ditutup di akhir slice 10.
+- **Status**: sebagian terisi — slice 08 (materi, berkas aman, avatar) dan slice 09-A/B (lampiran jawaban +
+  saran AI lewat queue) sudah selesai dan hijau; sisa mode tim (09-C), layar guru → perangkat murid (SSE),
+  cache L1, ekspor xlsx, mode gelap, Octane Swoole, dan deploy belum dikerjakan. Bagian ini ditutup di
+  akhir slice 10.

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   skemaAntreanKoreksi,
   skemaHasilKoreksi,
+  skemaHasilSaranAi,
   skemaItemKoreksi,
   skemaTokenKoreksi,
 } from '../../../sections/scoring/api.js'
@@ -28,6 +29,11 @@ function itemKoreksi(ubah) {
     skor_maksimal: 10,
     skor_sekarang: 4,
     dinilai_manual: false,
+    saran_ai: null,
+    alasan_ai: null,
+    ai_status: null,
+    ai_label: null,
+    ai_dinilai_at: null,
     ...ubah,
   }
 }
@@ -40,13 +46,16 @@ describe('skema antrean koreksi', () => {
       mapel_nama: 'Matematika',
       kelas_nama: '3A',
       alasan_min: 10,
+      ai_aktif: true,
       jumlah: 1,
       item: [itemKoreksi({})],
     })
 
     expect(data.alasan_min).toBe(10)
+    expect(data.ai_aktif).toBe(true)
     expect(data.item[0].dinilai_manual).toBe(false)
     expect(data.item[0].skor_maksimal).toBe(10)
+    expect(data.item[0].saran_ai).toBeNull()
   })
 
   it('menerima mapel/kelas kosong dan murid tanpa nama', () => {
@@ -56,12 +65,33 @@ describe('skema antrean koreksi', () => {
       mapel_nama: null,
       kelas_nama: null,
       alasan_min: 10,
+      ai_aktif: false,
       jumlah: 1,
       item: [itemKoreksi({ murid_id: null, murid_nama: null, no_attempt: null })],
     })
 
     expect(data.mapel_nama).toBeNull()
     expect(data.item[0].murid_nama).toBeNull()
+  })
+
+  it('membaca saran AI pada baris antrean', () => {
+    const data = skemaItemKoreksi.parse(
+      itemKoreksi({
+        saran_ai: 2.5,
+        alasan_ai: 'Jawaban menyebut kata kunci utama.',
+        ai_status: 'saran',
+        ai_label: 'Saran AI tersedia',
+        ai_dinilai_at: '2026-10-07T09:00:00.000Z',
+      }),
+    )
+
+    expect(data.saran_ai).toBe(2.5)
+    expect(data.alasan_ai).toBe('Jawaban menyebut kata kunci utama.')
+    expect(data.ai_status).toBe('saran')
+  })
+
+  it('menolak saran AI yang bukan angka', () => {
+    expect(() => skemaItemKoreksi.parse(itemKoreksi({ saran_ai: '2,5' }))).toThrow()
   })
 
   it('menolak item yang kehilangan bidang wajib', () => {
@@ -96,5 +126,18 @@ describe('skema token & hasil koreksi', () => {
 
     expect(data.skor_soal).toBe(8)
     expect(data.total_skor).toBe(24)
+  })
+
+  it('membaca jawaban permintaan saran AI', () => {
+    const data = skemaHasilSaranAi.parse({
+      aktif: true,
+      terantre: 3,
+      message: 'Saran AI diminta untuk 3 jawaban.',
+    })
+
+    expect(data.aktif).toBe(true)
+    expect(data.terantre).toBe(3)
+
+    expect(() => skemaHasilSaranAi.parse({ aktif: false, message: 'mati' })).toThrow()
   })
 })

@@ -14,18 +14,24 @@ import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
-import { ambilAntreanKoreksi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
-import { jawabanTeks, kelasStatus, ringkasKunci } from './tampilan.js'
+import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
+import { jawabanTeks, kelasStatus, ringkasKunci, saranAiTeks } from './tampilan.js'
 
 /**
  * Form koreksi satu baris: skor, alasan, lalu token konfirmasi.
+ *
+ * Saran AI (slice 09-B) hanya ditawarkan di sini: angkanya bisa dipakai dengan
+ * satu klik, tetapi tetap wajib disimpan lewat token konfirmasi supaya nilainya
+ * bisa dipertanggungjawabkan guru.
+ *
  * @param {{
  *   item: import('./api.js').DataItemKoreksi,
  *   alasanMin: number,
+ *   aiAktif: boolean,
  *   onSelesai: () => void,
  * }} props
  */
-function FormKoreksi({ item, alasanMin, onSelesai }) {
+function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
   const [skor, setSkor] = useState(String(item.skor_sekarang))
   const [alasan, setAlasan] = useState('')
   const [token, setToken] = useState('')
@@ -56,6 +62,17 @@ function FormKoreksi({ item, alasanMin, onSelesai }) {
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
 
+  const mintaAi = useMutation({
+    mutationFn: () => mintaSaranAi(item.attempt_id),
+    onSuccess: (hasil) => {
+      tampilkanToast(hasil.aktif ? 'sukses' : 'info', hasil.message)
+      onSelesai()
+    },
+    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+  })
+
+  const saranAi = saranAiTeks(item)
+  const adaSaranAi = typeof item.saran_ai === 'number'
   const angkaSkor = Number(skor)
   const skorWajar = Number.isFinite(angkaSkor) && angkaSkor >= 0 && angkaSkor <= item.skor_maksimal
   const alasanCukup = alasan.trim().length >= alasanMin
@@ -63,6 +80,47 @@ function FormKoreksi({ item, alasanMin, onSelesai }) {
 
   return (
     <div className="kartu-lembut p-3">
+      {saranAi !== null && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <span className="badge-status info">AI</span>
+          <span className="small mb-0">{saranAi}</span>
+          {adaSaranAi && (
+            <button type="button" className="btn btn-sm btn-tepi" onClick={() => setSkor(String(item.saran_ai))}>
+              Pakai saran AI
+            </button>
+          )}
+          {aiAktif && (
+            <button
+              type="button"
+              className="btn btn-sm btn-tepi ms-auto"
+              disabled={mintaAi.isPending}
+              onClick={() => mintaAi.mutate()}
+            >
+              {mintaAi.isPending ? 'Meminta saran…' : 'Minta saran AI'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {saranAi !== null && item.alasan_ai !== null && (
+        <p className="teks-lembut small mb-2">
+          <strong>Catatan AI:</strong> {item.alasan_ai}
+        </p>
+      )}
+
+      {saranAi === null && aiAktif && (
+        <div className="d-flex justify-content-end mb-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-tepi"
+            disabled={mintaAi.isPending}
+            onClick={() => mintaAi.mutate()}
+          >
+            {mintaAi.isPending ? 'Meminta saran…' : 'Minta saran AI'}
+          </button>
+        </div>
+      )}
+
       <div className="row g-2 align-items-end mb-2">
         <div className="col-sm-4 col-lg-3">
           <label className="form-label fw-semibold" htmlFor={`skor-${item.attempt_id}-${item.question_id}`}>
@@ -169,6 +227,12 @@ export default function HalamanKoreksi() {
             Setiap koreksi memakai token sekali pakai dan tercatat di audit.
           </p>
 
+          <p className="teks-lembut small mb-3">
+            {data.ai_aktif
+              ? 'Saran AI tersedia sebagai bahan pertimbangan. Angkanya tidak pernah menggantikan nilai Anda — simpan koreksi dulu agar tercatat.'
+              : 'Penilaian AI tidak dinyalakan di server ini, jadi semua jawaban diperiksa manual.'}
+          </p>
+
           {data.jumlah === 0 && (
             <p className="text-body-secondary">
               Tidak ada yang perlu dikoreksi. Semua jawaban sudah dinilai mesin.
@@ -204,6 +268,7 @@ export default function HalamanKoreksi() {
                 <FormKoreksi
                   item={item}
                   alasanMin={data.alasan_min}
+                  aiAktif={data.ai_aktif}
                   onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', nomor] })}
                 />
               </section>

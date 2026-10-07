@@ -70,6 +70,14 @@ class KoreksiService
                 'skor_maksimal' => (float) ($soal?->skor ?? 0),
                 'skor_sekarang' => (float) $satu->skor,
                 'dinilai_manual' => (bool) $satu->dinilai_manual,
+                // Saran AI (slice 09-B) — bahan pertimbangan guru, bukan nilai.
+                // Alasan mentah ikut ke sini karena endpoint ini khusus guru;
+                // hasil murid tidak pernah memuatnya.
+                'saran_ai' => $satu->skor_ai !== null ? (float) $satu->skor_ai : null,
+                'alasan_ai' => $satu->alasan_ai,
+                'ai_status' => $satu->ai_status?->value,
+                'ai_label' => $satu->ai_status?->label(),
+                'ai_dinilai_at' => $satu->ai_dinilai_at?->toIso8601String(),
             ];
         }
 
@@ -79,9 +87,16 @@ class KoreksiService
             'mapel_nama' => $kuis->mapel?->nama,
             'kelas_nama' => $kuis->kelas?->nama,
             'alasan_min' => self::ALASAN_MIN,
+            'ai_aktif' => $this->aiAktif(),
             'jumlah' => count($item),
             'item' => $item,
         ];
+    }
+
+    /** Apakah sekolah ini menyalakan penilaian AI (dipakai antrean & tombol guru). */
+    public function aiAktif(): bool
+    {
+        return app(PenilaiAiService::class)->aktif();
     }
 
     /**

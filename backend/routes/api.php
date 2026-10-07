@@ -199,6 +199,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kuis/{kuis}/koreksi', [KoreksiController::class, 'antrean'])->name('koreksi.antrean');
         Route::post('/attempt/{attempt}/koreksi/token', [KoreksiController::class, 'token'])->name('koreksi.token');
         Route::post('/attempt/{attempt}/koreksi', [KoreksiController::class, 'simpan'])->name('koreksi.simpan');
+        // Minta ulang saran AI untuk satu attempt (slice 09-B); tetap saran saja.
+        Route::post('/attempt/{attempt}/nilai-ai', [KoreksiController::class, 'nilaiAi'])->name('koreksi.nilai_ai');
 
         // Anti-cheat + presence + Live Monitor (slice 07).
         // Murid: kirim kejadian berkelompok + ping kehadiran.

@@ -347,3 +347,45 @@ curl -s -X POST http://localhost:8000/api/v1/avatar \
 penolakan SVG, ambang 3 laporan unik, dan jejak audit pulihkan/hapus. **Catatan jujur:** smoke UI Chrome
 (CDP) untuk slice 08 **belum** dijalankan, jadi bukti slice ini masih sebatas test otomatis — rinciannya di
 `docs/laporan-pengujian.md` bagian A.12.
+
+## Demo Slice 09 — Lampiran Jawaban dan Saran AI
+
+Siapkan dulu satu kuis berisi satu soal **uraian** dengan kata kunci, sudah diterbitkan untuk kelas 3A.
+
+### Langkah demo (murid) — menjawab tanpa banyak mengetik
+1. Masuk sebagai murid, buka kuis, buka soal uraiannya. Di bawah soal muncul panel **Lampiran jawaban**.
+2. **Gambar kanvas**: menulis atau menggambar sesuatu dengan mouse/jari, lalu simpan. Sebutkan bahwa server
+   menerima potongan 1 MiB per kiriman, jadi jaringan lambat pun tidak menggagalkan jawaban.
+3. **Rekam diri**: tunjukkan bahwa bagian ini muncul hanya bila sekolah menyalakan `rekam_diri`
+   (bawaan **mati**), lalu rekam beberapa detik dengan centang izin. Lewat dari 60 detik → ditolak.
+4. Unggah satu **berkas** (mis. foto pekerjaan di buku) → muncul di daftar lampiran, bisa dibuang lagi.
+5. Kumpulkan ulangan **sebelum** waktunya habis; setelah waktu habis, server menolak lampiran baru.
+
+### Langkah demo (guru) — saran AI lalu keputusan guru
+1. Nyalakan AI di server (sekali saja, di `.env`): `AI_PENILAIAN_AKTIF=true` dan `AI_PENILAIAN_KUNCI=...`.
+2. Buka **Koreksi** untuk kuis tadi. Tunjukkan catatan "Saran AI tersedia sebagai bahan pertimbangan" dan
+   tombol **Minta saran AI** pada baris jawaban.
+3. Tekan **Minta saran AI** → muncul usulan angka + **Catatan AI** (alasan singkat). Tekankan: nilai
+   `skor_sekarang` **tidak** ikut berubah walau ada saran.
+4. Tekan **Pakai saran AI** (mengisi kolom skor), lalu tetap isi **alasan koreksi**, minta **token
+   konfirmasi**, dan simpan. Barulah nilai resmi berubah, dan jejaknya masuk audit.
+5. Tunjukkan tombol **Minta saran AI** sekali lagi setelah dikoreksi: nilainya tidak lagi tertimpa saran baru.
+
+### Bukti lewat API (curl)
+
+```
+# Guru meminta saran AI untuk satu attempt (di server, lewat queue)
+curl -s -X POST http://localhost:8000/api/v1/attempt/<attempt_id>/nilai-ai \
+  -H 'Accept: application/json' -H 'X-XSRF-TOKEN: ...' -b cookie.txt \
+  | jq    # { aktif: true, terantre: 1, message: "Saran AI diminta untuk 1 jawaban." }
+
+# Kunci API tidak pernah muncul di respons murid maupun di log server
+grep -R "AI_PENILAIAN_KUNCI" backend/storage/logs 2>/dev/null || echo 'aman: kunci tidak ada di log'
+```
+
+### Bukti otomatis
+
+`Slice09UploadTest` (10 test / 98 assertion) dan `Slice09AiTest` (8 test / 83 assertion) lulus, termasuk:
+skor AI dipotong ke rentang soal, gagal/timeout AI tetap "perlu ditinjau", satu permintaan per ulangan,
+murid tidak bisa memicu AI, dan hasil murid tidak pernah memuat alasan mentah AI. Rincian di
+`docs/laporan-pengujian.md` bagian A.13.
