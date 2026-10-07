@@ -61,7 +61,8 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
 
 ## Entri 5 — Cache, Swoole, deploy, dan perbaikan akhir (slice 10)
 
-- **Status**: sebagian terisi — slice 08 (materi, berkas aman, avatar) dan slice 09 lengkap (lampiran jawaban,
-  saran AI lewat queue, mode tim dengan jawaban bersama berversi + skor dibagi + peringkat per tim) sudah
-  selesai dan hijau; sisa layar guru → perangkat murid (SSE), cache L1, ekspor xlsx, mode gelap, Octane Swoole,
-  dan deploy belum dikerjakan. Bagian ini ditutup di akhir slice 10.
+- **Status**: sebagian terisi — slice 08, slice 09 lengkap (lampiran jawaban, saran AI lewat queue, mode tim),
+  dan **ekspor nilai kuis (CSV)** sudah selesai dan hijau. Mode gelap ternyata sudah dibangun sejak awal
+  bersama tema (store + tombol + palet CSS), jadi tidak dibuat ulang di slice 10. Sisa: layar guru → perangkat
+  murid (SSE), cache L1 SQLite, Octane Swoole (ekstensi `swoole` tidak ada di mesin dev — dicatat jujur), dan
+  deploy yang masih menunggu keputusan host dari pengguna. Bagian ini ditutup di akhir slice 10.

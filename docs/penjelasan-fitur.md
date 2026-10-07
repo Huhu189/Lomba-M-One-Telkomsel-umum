@@ -249,8 +249,56 @@ Identifikasi tim dan penerimaan jawaban tetap di server; versi jawaban mencegah 
 Belajar gotong royong: anak yang pintar matematika mengajari yang belum, dan nilainya dinikmati bersama — sesuai Profil Pelajar Pancasila. Guru bisa memakainya untuk kuis kompetisi seru tanpa anak yang lemah merasa hancur.
 
 Status: **sudah bisa dipakai** (slice 09-C), bawaan **mati** dan baru berlaku kalau guru menyalakan kunci
-`mode_tim` untuk kuis itu. Yang belum ada dan kami sebutkan apa adanya: penilaian AI belum membaca lampiran
-tim, dan mode tim belum masuk laporan ekspor (xlsx) karena ekspor itu sendiri belum dibuat.
+`mode_tim` untuk kuis itu. Nilai tim ikut terunduh di **Ekspor nilai** (bagian 12): setiap anggota dapat satu
+baris dengan skor tim yang sama. Yang belum ada dan kami sebutkan apa adanya: penilaian AI belum membaca
+lampiran tim.
+
+---
+
+## 12. Ekspor nilai untuk buku nilai guru
+
+### Apa ini
+Guru mengunduh nilai satu kuis sebagai berkas yang bisa dibuka di Excel atau Google Sheets — satu baris per
+murid, lengkap dengan nilai tiap soal.
+
+### Cara kerjanya
+Berkasnya dihasilkan **mengalir (streaming)** dari basis data, jadi kuis dengan banyak murid tidak perlu
+menahan seluruh isi di memori. Isinya hanya skor **asli** (percobaan pertama), sama seperti peringkat, supaya
+nilai ulangan ulang tidak menyamarkan hasil. Pada kuis mode tim, semua anggota mendapat baris dengan skor tim
+yang sama. Sel yang mirip rumus spreadsheet (`=`, `+`, `-`, `@`) diberi pengaman lebih dulu supaya berkasnya
+tidak berbahaya saat dibuka.
+
+### Mengapa aman
+Hanya guru pemilik kuis yang boleh mengunduh, dan tautannya memakai sesi cookie — tidak ada token rahasia di
+URL yang bisa diteruskan ke orang lain.
+
+### Manfaat untuk anak SD dan guru
+Guru tidak perlu menyalin angka satu per satu ke buku nilai. Format CSV juga bisa dibuka oleh aplikasi apa pun
+yang biasa dipakai sekolah.
+
+Status: **sudah bisa dipakai** (slice 10). Bentuknya **CSV, bukan xlsx**: chunk slice-10 mengizinkan CSV, dan
+proyek ini sudah memakai `league/csv` untuk impor/ekspor murid, jadi tidak perlu menambah satu dependensi
+penulis berkas biner. Yang belum ada: kolom per soal belum diberi label tag/tema, dan belum ada ekspor
+nilai satu kelas lintas kuis.
+
+---
+
+## 13. Mode gelap
+
+### Apa ini
+Tombol terang/gelap untuk kenyamanan mata, terutama saat belajar malam atau ruang kelas bercahaya rendah.
+
+### Cara kerjanya
+Pilihan disimpan di perangkat murid/guru dan diterapkan **sebelum** halaman tampil, sehingga tidak ada
+kedipan putih saat dibuka. Warnanya mengikuti satu palet variabel CSS, jadi seluruh halaman ikut berubah
+sekaligus.
+
+### Manfaat untuk anak SD dan guru
+Anak yang mengerjakan ulangan di malam hari tidak silau. Yang penting bagi kami: penanda status (benar,
+salah, peringatan) tetap punya ikon dan kontras yang cukup di kedua mode.
+
+Status: **sudah bisa dipakai** (dibuat bersama tema sejak slice awal, dipakai di seluruh halaman). Pilihan
+mengikuti pengaturan perangkat bila belum pernah diubah di aplikasi.
 
 ---
 
@@ -262,6 +310,8 @@ tim, dan mode tim belum masuk laporan ekspor (xlsx) karena ekspor itu sendiri be
 - Tanpa multi-tenant — satu instalasi untuk satu sekolah.
 - Anti-cheat **tidak menjamin 100%** — semua deteksi di browser bisa diakali; catatannya adalah bahan tinjauan guru, bukan vonis.
 
-**Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru.
+**Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx, mode gelap, mode tim, penilaian AI, rekam diri, avatar dan moderasi, layar guru. Per 7 Oktober 2026 yang
+sudah selesai: mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi, dan **ekspor nilai (CSV,
+bukan xlsx — alasannya di bagian 12)**; yang belum: cache L1 dan layar guru di perangkat murid.
 
 **Yang tidak boleh dipotong apa pun alasannya:** deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur bila gagal), keamanan inti (auth, pembatasan akses antar murid, kunci jawaban tidak bocor, deadline dari server), serta jurnal prompt dan log mentah yang jujur.

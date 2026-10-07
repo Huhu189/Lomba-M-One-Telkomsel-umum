@@ -841,3 +841,39 @@ halaman hasil attempt tim. **Peringkat per tim**: kolomnya nama tim, `murid_id` 
 - **Layar guru → perangkat murid (SSE) belum dibuat** (sama seperti catatan A.12.3).
 - **Mode tim belum diuji di browser sungguhan** dan **belum ada batas jumlah anggota per tim** selain minimal 2;
   yang diuji baru perilaku server (attempt bersama, versi, skor dibagi, peringkat tim).
+
+## A.14 Slice 10 — Ekspor Nilai (CSV) dan Status Fitur Sisa
+
+Dikerjakan bertahap. Yang sudah masuk slice ini: **ekspor nilai kuis**. Cache L1, Octane Swoole, layar guru di
+perangkat murid, dan deploy masih terbuka.
+
+### A.14.1 Perintah dan hasil
+- `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice10a.log`, exit 0).
+- `php artisan test` → **158 passed (1291 assertions)**; tambahan `Slice10EksporTest` (4 test / 35 assertion).
+- `./vendor/bin/pint --test` → PASS (289 berkas); `npm run check` → lolos; `npx vitest run` → 33 berkas uji.
+
+### A.14.2 Yang diuji (bukti perilaku, bukan klaim)
+Berkas diunduh sebagai `text/csv` dengan `Content-Disposition` berisi `.csv`; **satu baris per murid** beserta
+judul kolom sampai `soal_1`; skor **asli** yang dipakai (10 dan 0 pada contoh), termasuk persennya; **nama yang
+mirip rumus** (`=SUM(1+1)`) diberi awalan kutip tunggal sehingga tidak dieksekusi spreadsheet; **kuis yang
+belum dikerjakan** hanya menghasilkan baris judul; **murid 403** saat mencoba mengunduh nilai kelasnya; dan
+pada **mode tim** kedua anggota satu tim mendapat baris dengan nama tim serta skor tim yang sama (2 baris).
+
+### A.14.3 Keputusan teknis (jujur)
+- **CSV, bukan xlsx.** Chunk slice-10 mengizinkan CSV secara eksplisit, dan proyek sudah memakai `league/csv`.
+  Menambah penulis xlsx berarti dependensi baru plus penulis format biner yang harus dirawat di tengah lomba;
+  CSV tetap bisa dibuka Excel/Google Sheets. Keputusan ini dicatat di `docs/penjelasan-fitur.md` bagian 12.
+- **Pengaman CSV injection dipakai bersama** dengan ekspor murid lewat `EksporMuridService::amankanSel`,
+  supaya tidak ada dua aturan berbeda untuk masalah yang sama.
+- **Mode gelap sudah ada sejak slice awal** (store tema + tombol + palet variabel CSS + test-nya), jadi tidak
+  dibangun ulang di slice 10 — hanya statusnya yang kini dicatat di `docs/penjelasan-fitur.md` bagian 13.
+
+### A.14.4 Yang jujur BELUM dikerjakan di slice 10
+- **Cache L1 SQLite di tmpfs** (beserta ambang traffic 10 req/s dan invalidasi DB → Redis → L1) belum dibuat;
+  folder `backend/app/Sections/Cache/` masih kosong.
+- **Octane Swoole belum dipasang.** Ekstensi `swoole` tidak tersedia di mesin pengembangan ini
+  (`php -m` hanya menampilkan `pdo_sqlite`, `redis`, `sqlite3`, `zip`), jadi Octane belum bisa dijalankan
+  maupun diuji kebocoran state-nya. Dicatat apa adanya, bukan diklaim jalan.
+- **Layar guru → perangkat murid (SSE)** belum dibuat (masih sama seperti A.12.3/A.13.7).
+- **Deploy belum dilakukan**; atas permintaan pengguna pekerjaan diarahkan ke penyelesaian fitur dulu, dan
+  pilihan host masih menunggu keputusan pengguna.

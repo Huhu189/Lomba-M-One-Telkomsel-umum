@@ -6,6 +6,17 @@ import { z } from 'zod'
 import { client } from '../../shared/api/client.js'
 
 /**
+ * URL unduh nilai kuis sebagai CSV (slice 10). Sesi cookie, jadi cukup dipakai
+ * sebagai tautan biasa — tidak ada token di URL.
+ *
+ * @param {number} kuisId
+ * @returns {string}
+ */
+export function urlEksporNilai(kuisId) {
+  return `/api/v1/kuis/${kuisId}/ekspor-nilai`
+}
+
+/**
  * Satu baris peringkat (hanya dari skor asli).
  *
  * Pada mode tim (slice 09-C) yang diurutkan adalah tim: `murid_id` null dan

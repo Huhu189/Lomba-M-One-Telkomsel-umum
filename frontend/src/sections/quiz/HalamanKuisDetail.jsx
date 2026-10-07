@@ -17,6 +17,7 @@ import { useAuthStore } from '../auth/authStore.js'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import { ambilKuisDetail } from './api.js'
+import { urlEksporNilai } from '../report/api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
 
 export default function HalamanKuisDetail() {
@@ -87,6 +88,11 @@ export default function HalamanKuisDetail() {
                   <Link className="btn btn-sm btn-tepi" to={ruteLaporanKuis(data.id)}>
                     Laporan per tema
                   </Link>
+                )}
+                {sebagaiGuru && (
+                  <a className="btn btn-sm btn-tepi" href={urlEksporNilai(data.id)}>
+                    Unduh nilai (CSV)
+                  </a>
                 )}
                 {sebagaiGuru && (
                   <Link className="btn btn-sm btn-tepi" to={ruteKoreksiKuis(data.id)}>

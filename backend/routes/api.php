@@ -192,6 +192,8 @@ Route::prefix('v1')->group(function (): void {
 
         // Skor asli, ranking, badge, remedial, dan laporan per tema (slice 05).
         Route::get('/kuis/{kuis}/ranking', [RankingController::class, 'show'])->name('ranking.show');
+        // Ekspor nilai kuis ke CSV (slice 10) — buku nilai guru, sesi cookie.
+        Route::get('/kuis/{kuis}/ekspor-nilai', [LaporanController::class, 'eksporNilai'])->name('kuis.ekspor_nilai');
         Route::get('/kuis/{kuis}/laporan', [LaporanController::class, 'show'])->name('laporan.show');
         Route::get('/badge/saya', [BadgeController::class, 'saya'])->name('badge.saya');
         Route::get('/progres/saya', [ProgresController::class, 'saya'])->name('progres.saya');

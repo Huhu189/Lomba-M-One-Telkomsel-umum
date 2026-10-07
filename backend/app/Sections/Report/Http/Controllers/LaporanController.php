@@ -6,8 +6,10 @@ namespace App\Sections\Report\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Sections\Quiz\Models\Kuis;
+use App\Sections\Report\Services\EksporNilaiService;
 use App\Sections\Report\Services\LaporanTagService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Laporan pemahaman per tema untuk guru (satu kuis, seluruh murid kelas).
@@ -19,5 +21,18 @@ class LaporanController extends Controller
         $this->authorize('laporan', $kuis);
 
         return response()->json($service->untukKuis($kuis));
+    }
+
+    /**
+     * Unduh nilai satu kuis sebagai CSV untuk buku nilai guru (slice 10).
+     *
+     * Pada mode tim semua anggota mendapat baris dengan skor tim yang sama,
+     * jadi ekspor ini konsisten dengan aturan "skor dibagi sama".
+     */
+    public function eksporNilai(Kuis $kuis, EksporNilaiService $service): StreamedResponse
+    {
+        $this->authorize('laporan', $kuis);
+
+        return $service->ekspor($kuis);
     }
 }

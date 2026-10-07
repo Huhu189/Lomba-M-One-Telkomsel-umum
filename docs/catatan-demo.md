@@ -37,9 +37,13 @@ Pemeriksaan kesehatan:
 - **Slice 05**: retry, ranking, badge, remedial, laporan per tag.
 - **Slice 06**: koreksi manual isian/uraian dengan token konfirmasi.
 - **Slice 07**: Live Monitor SSE + presence + proteksi anti-cheat aktif.
-- **Slice 08**: unggah materi, layar guru ke murid, avatar + laporan.
+- **Slice 08**: unggah materi, avatar + laporan (layar guru ke murid belum).
 - **Slice 09**: upload jawaban (gambar/rekam/file), saran penilaian AI, mode tim.
-- **Slice 10**: cache L1, mode gelap, Octane Swoole, demo dari link deploy VPS.
+- **Slice 10**: ekspor nilai CSV; cache L1, Octane Swoole, dan demo dari link deploy VPS masih terbuka.
+
+**Catatan status (7 Oktober 2026):** mode gelap, mode tim, penilaian AI, rekam diri, avatar + moderasi, dan
+ekspor nilai sudah bisa dipakai. Yang belum: cache L1, layar guru ke perangkat murid (SSE), Octane Swoole, dan
+deploy (menunggu keputusan host).
 
 ---
 
@@ -409,3 +413,14 @@ mentah AI, dan satu nilai tim dibagi rata ke anggotanya. Rincian di `docs/lapora
 5. Buka **Peringkat**: kolomnya bernama **Tim**, satu baris per tim, beserta daftar anggotanya.
 6. Kembali ke **Kelola tim** sebagai guru → tombol ubah/hapus sekarang **nonaktif** dengan penjelasan bahwa
    susunan tim dibekukan setelah kuis dikerjakan.
+
+### Langkah demo (guru) — mengunduh nilai untuk buku nilai
+1. Dari detail kuis, tekan **Unduh nilai (CSV)**: berkasnya langsung terunduh.
+2. Buka di Excel/Google Sheets. Sebutkan tiga hal: hanya skor **asli** yang masuk, ada kolom nilai **per soal**,
+   dan pada kuis mode tim semua anggota dapat baris dengan skor tim yang sama.
+3. Untuk menunjukkan pengaman: ganti nama seorang murid menjadi `=SUM(1+1)` lewat menu **Data Murid**, unduh
+   ulang, dan tunjukkan selnya diawali kutip tunggal (tidak dieksekusi sebagai rumus).
+
+### Mode gelap
+Tombol bulan/matahari di bilah atas mengganti terang ↔ gelap untuk seluruh halaman. Tunjukkan bahwa pilihan
+bertahan setelah halaman dimuat ulang, dan bahwa penanda benar/salah tetap punya ikon di mode gelap.
