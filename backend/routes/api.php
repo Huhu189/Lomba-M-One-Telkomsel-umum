@@ -9,6 +9,11 @@ use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
 use App\Sections\Cheat\Http\Controllers\KecuranganController;
 use App\Sections\Health\Http\Controllers\HealthController;
+use App\Sections\Material\Http\Controllers\BerkasController;
+use App\Sections\Material\Http\Controllers\LaporanMateriController;
+use App\Sections\Material\Http\Controllers\MateriController;
+use App\Sections\Material\Http\Controllers\ProgresMateriController;
+use App\Sections\Material\Http\Controllers\UnggahanController;
 use App\Sections\Presence\Http\Controllers\KehadiranController;
 use App\Sections\Presence\Http\Controllers\MonitorController;
 use App\Sections\Presence\Http\Controllers\TiketSseController;
@@ -47,6 +52,12 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/auth/verifikasi-email/{id}/{hash}', VerifyEmailController::class)
         ->middleware(['signed:relative', 'throttle:verifikasi-klik'])
         ->name('verification.verify');
+
+    // Penyajian berkas materi (slice 08) — TANPA sesi, cukup URL bertanda tangan
+    // berumur pendek. Berkas fisik ada di storage privat, jadi ini satu-satunya jalan.
+    Route::get('/berkas/{kode}', BerkasController::class)
+        ->middleware(['signed:relative', 'throttle:berkas'])
+        ->name('materi.berkas');
 
     // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').
     Route::middleware(['auth:sanctum', 'akun-aktif'])->group(function (): void {
@@ -96,6 +107,30 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/soal/{soal}', [SoalController::class, 'show'])->name('soal.show');
         Route::put('/soal/{soal}', [SoalController::class, 'update'])->name('soal.update');
         Route::delete('/soal/{soal}', [SoalController::class, 'destroy'])->name('soal.destroy');
+
+        // Materi berblok (slice 08): guru mengelola, murid menempuh.
+        Route::get('/materi', [MateriController::class, 'index'])->name('materi.index');
+        Route::post('/materi', [MateriController::class, 'store'])->name('materi.store');
+        Route::get('/materi-saya', [ProgresMateriController::class, 'daftar'])->name('materi.saya');
+        Route::get('/materi/{materi}', [MateriController::class, 'show'])->name('materi.show');
+        Route::put('/materi/{materi}', [MateriController::class, 'update'])->name('materi.update');
+        Route::delete('/materi/{materi}', [MateriController::class, 'destroy'])->name('materi.destroy');
+        Route::put('/materi/{materi}/blok', [MateriController::class, 'sinkronBlok'])->name('materi.blok');
+        Route::post('/materi/{materi}/publikasi', [MateriController::class, 'publikasi'])->name('materi.publikasi');
+        Route::post('/materi/{materi}/arsip', [MateriController::class, 'arsipkan'])->name('materi.arsip');
+        Route::get('/materi/{materi}/laporan', [LaporanMateriController::class, 'show'])->name('materi.laporan');
+
+        // Unggah berkas materi secara berpotongan (hash per potongan).
+        Route::post('/materi/{materi}/unggahan', [UnggahanController::class, 'mulai'])->name('materi.unggahan.mulai');
+        Route::put('/unggahan/{unggahan}/potongan/{indeks}', [UnggahanController::class, 'potongan'])
+            ->whereNumber('indeks')->name('materi.unggahan.potongan');
+        Route::post('/unggahan/{unggahan}/selesai', [UnggahanController::class, 'selesai'])->name('materi.unggahan.selesai');
+        Route::delete('/unggahan/{unggahan}', [UnggahanController::class, 'destroy'])->name('materi.unggahan.hapus');
+
+        // Murid menempuh blok: progres + blok kuis sisipan (latihan).
+        Route::get('/materi/{materi}/progres', [ProgresMateriController::class, 'ringkasan'])->name('materi.progres');
+        Route::post('/materi/{materi}/blok/{blok}/buka', [ProgresMateriController::class, 'buka'])->name('materi.blok.buka');
+        Route::post('/materi/{materi}/blok/{blok}/selesai', [ProgresMateriController::class, 'selesai'])->name('materi.blok.selesai');
 
         // Kuis: guru mengelola; murid melihat kuis terbit kelasnya.
         Route::get('/kuis', [KuisController::class, 'index'])->name('kuis.index');

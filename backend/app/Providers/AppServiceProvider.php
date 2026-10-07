@@ -8,6 +8,8 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Policies\AttemptPolicy;
 use App\Sections\Cheat\Models\KejadianKecurangan;
 use App\Sections\Cheat\Policies\KejadianKecuranganPolicy;
+use App\Sections\Material\Models\Materi;
+use App\Sections\Material\Policies\MateriPolicy;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
 use App\Sections\Question\Policies\SoalPolicy;
@@ -69,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Kuis::class, KuisPolicy::class);
         Gate::policy(Attempt::class, AttemptPolicy::class);
         Gate::policy(KejadianKecurangan::class, KejadianKecuranganPolicy::class);
+        Gate::policy(Materi::class, MateriPolicy::class);
 
         // Tautan reset sandi harus menuju halaman frontend (SPA), bukan ke API.
         // Tanpa callback ini notifikasi bawaan Laravel memanggil route('password.reset')
@@ -122,6 +125,13 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('verifikasi', function (Request $request) {
             return Limit::perMinute(3)->by((string) $request->ip());
+        });
+
+        // Penyajian berkas materi (slice 08): URL sudah bertanda tangan dan
+        // berumur pendek, jadi batasnya longgar — satu kelas yang membuka materi
+        // bersamaan dari satu IP sekolah tidak boleh kena 429.
+        RateLimiter::for('berkas', function (Request $request) {
+            return Limit::perMinute(300)->by((string) $request->ip());
         });
     }
 }

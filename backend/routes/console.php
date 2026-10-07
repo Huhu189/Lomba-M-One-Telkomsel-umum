@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Sections\Attempt\Jobs\TutupAttemptBasi;
+use App\Sections\Material\Jobs\SapuUnggahanYatim;
 use App\Sections\Presence\Jobs\SapuPresence;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -23,3 +24,8 @@ Schedule::job(new SapuPresence)->everyMinute()->withoutOverlapping()->name('sapu
 // ditolak (lewat toleransi), dan percobaan baru tidak bisa dimulai karena kolom
 // `aktif` attempt lama masih terisi.
 Schedule::job(new TutupAttemptBasi)->everyMinute()->withoutOverlapping()->name('tutup-attempt-basi');
+
+// Buang sesi unggah materi yang ditinggalkan (slice 08). Tanpa ini potongan
+// berkas besar menumpuk di storage tanpa pernah muncul di layar guru, memakan
+// kuota sekolah diam-diam. Tidak perlu tiap menit; cukup tiap seperempat jam.
+Schedule::job(new SapuUnggahanYatim)->everyFifteenMinutes()->withoutOverlapping()->name('sapu-unggahan-yatim');
