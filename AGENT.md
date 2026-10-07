@@ -50,16 +50,19 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
 
 ## Format Dokumentasi (revisi)
 - Dokumen internal/agent tetap **Markdown (.md)**: `AGENT.md`, `chunks/*.json`, dan berkas `docs/*.md`.
-- **Dokumentasi untuk AI** ada di `docs/word/` dalam dua format dengan isi identik:
-  `AGENT.docx` dan `AGENT.md` (prompt mentah v1 + v2 + prompt ke AI lain untuk rombak UI/UX).
-- **Ringkasan prompt dan log mentah utuh** berbentuk Word ditaruh di `docs/log-mentah/`:
-  `ringkasan-prompt.docx` (ringkasan prompt/jurnal) dan `log-mentah.docx` (log mentah
-  **UTUH** dari berkas sesi asli — tanpa potong/ringkas).
-- `docs/log-mentah/` memuat **seluruh** berkas log `*.md` apa adanya, termasuk log pekerjaan yang dilakukan
-  di luar repository lalu disalin masuk (`2026-10-06-log-claude-ui-baru.md` + promptnya). Pekerjaan luar repo
-  wajib dicatat tempatnya di log dan tidak boleh dijadikan bukti tanpa diverifikasi ulang di repo ini.
-- `docs/export-word.sh` mengekspor ulang dokumen Word; jalankan setiap akhir slice.
-- **Log mentah diperbarui pada setiap commit** (append-only; tidak boleh disunting).
+- **`docs/word/`** = dokumen untuk dikumpulkan, berbentuk `.docx`: `AGENT.docx` (RINGKASAN prompt;
+  `AGENT.md` isinya identik), `jurnal-prompt.docx`, `log-mentah.docx`, `penjelasan-fitur.docx`,
+  `catatan-demo.docx`, dan `laporan-pengujian.docx`. Teks prompt **asli** tidak lagi ditaruh di sini,
+  melainkan di log mentah.
+- **`docs/log-mentah/`** = log mentah apa adanya: `sesi-2026-10-05-chat-messages.json.gz` (salinan
+  **byte-exact** dari berkas chat sesi asli — tidak disunting) + `sesi-2026-10-05-transkrip.md`
+  (bantuan baca), plus prompt/log pekerjaan AI lain di luar repo (`prompt-claude-eksternal.md`,
+  `log-claude-eksternal.md`). Pekerjaan luar repo wajib dicatat tempatnya di log dan tidak boleh
+  dijadikan bukti tanpa diverifikasi ulang di repo ini.
+- `docs/export-log-sesi.py` menyegarkan log mentah (gzip byte-exact + transkrip);
+  `docs/export-word.sh` memanggilnya lalu mengekspor dokumen Word. Jalankan keduanya setiap akhir slice
+  supaya log mentah selalu mutakhir, lalu komit hasilnya.
+- **Log mentah tidak boleh disunting** (isi berkas `.gz` apa adanya, tanpa potong/ringkas).
 
 ## Format Laporan (tiap akhir slice)
 (a) daftar file dibuat/diubah (lengkap, bukan potongan); (b) migration + test (Pest/Vitest) yang dijalankan beserta perintah dan hasilnya; (c) hasil `verify.sh` (wajib hijau); (d) commit kecil per langkah dengan tanggal asli. Bedakan jujur "sudah dijalankan" vs "ditulis tapi belum dijalankan".

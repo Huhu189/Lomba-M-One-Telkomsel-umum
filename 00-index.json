@@ -8,12 +8,11 @@
     { "path": "AGENT.md", "role": "Dokumen acuan utama: peran, aturan lomba, stack, keamanan, pagar mutu, cara kerja, larangan." },
     { "path": "chunk_map.json", "role": "Urutan slice, dependensi, anggaran prompt, urutan pemotongan, hal yang tidak boleh dipotong." },
     { "path": "docs/jurnal-prompt.md", "role": "Jurnal prompt (maksimal 5 entri) yang dikumpulkan ke panitia." },
-    { "path": "docs/log-mentah/", "role": "Log mentah seluruh prompt dan jawaban per entri, tanpa penyuntingan. Juga menampung dokumen Word log: ringkasan-prompt.docx (ringkasan prompt/jurnal) dan log-mentah.docx (log mentah UTUH dari berkas sesi asli, tanpa potong/ringkas)." },
+    { "path": "docs/log-mentah/", "role": "Log mentah seluruh prompt dan jawaban, tanpa penyuntingan: sesi-2026-10-05-chat-messages.json.gz (salinan byte-exact berkas chat sesi asli) + sesi-2026-10-05-transkrip.md (bantuan baca), plus prompt/log pekerjaan AI lain di luar repo. Diserap ulang tiap akhir slice lewat docs/export-log-sesi.py." },
     { "path": "docs/penjelasan-fitur.md", "role": "Penjelasan fitur utama untuk juri dan guru (bukan untuk agent)." },
     { "path": "docs/laporan-pengujian.md", "role": "Laporan apa yang dijalankan dan hasilnya, dipisah jujur dari yang belum dijalankan." },
     { "path": "docs/catatan-demo.md", "role": "Cara mendemokan aplikasi pada tiap akhir slice." },
-    { "path": "docs/word/", "role": "Dokumentasi untuk AI dalam dua format: AGENT.docx dan AGENT.md (isi identik = prompt mentah v1+v2). Dokumen internal lain tetap .md." },
-    { "path": "docs/word-arsip/", "role": "Arsip bukti revisi: prompt mentah, log kerja, dan dokumen lama, berawalan (ARSIP)." }
+    { "path": "docs/word/", "role": "Dokumen untuk dikumpulkan dalam bentuk .docx: AGENT.docx (RINGKASAN prompt; AGENT.md isinya identik), jurnal-prompt.docx, log-mentah.docx, penjelasan-fitur.docx, catatan-demo.docx, laporan-pengujian.docx." }
   ],
   "chunks": [
     { "id": "rules-lomba", "path": "chunks/rules-lomba.json" },
@@ -44,5 +43,5 @@
     "theme",
     "anticheat"
   ],
-  "note": "Chunk topik selalu dimuat; chunk slice dimuat sesuai slice yang dikerjakan. Revisi dokumen acuan (prompt 2): batas maks 5 = entri jurnal; fitur F2 materi berblok di slice-08/slice-04; penjelasan-fitur.md terdaftar. Revisi dokumentasi: dokumen internal tetap .md; docs/word/ = dokumentasi untuk AI dalam .docx dan .md (AGENT); ringkasan prompt dan log mentah utuh berbentuk Word ditaruh di docs/log-mentah/; log mentah diperbarui setiap commit."
+  "note": "Chunk topik selalu dimuat; chunk slice dimuat sesuai slice yang dikerjakan. Revisi dokumen acuan (prompt 2): batas maks 5 = entri jurnal; fitur F2 materi berblok di slice-08/slice-04; penjelasan-fitur.md terdaftar. Revisi dokumentasi: dokumen internal tetap .md; docs/word/ = dokumen untuk dikumpulkan (.docx), termasuk AGENT.docx yang kini berisi RINGKASAN prompt; teks prompt asli dan log mentah apa adanya ada di docs/log-mentah/ (chat sesi byte-exact .json.gz + transkrip .md) dan disegarkan tiap akhir slice."
 }

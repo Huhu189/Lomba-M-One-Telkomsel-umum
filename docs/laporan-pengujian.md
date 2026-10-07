@@ -2,6 +2,13 @@
 
 Diperbarui: 5 Oktober 2026 (sesi prompt 2 — revisi dokumen acuan).
 
+> **Catatan revisi dokumentasi (7 Oktober 2026):** tata letak dokumen dirapikan atas permintaan
+> pengguna. Ringkasan prompt kini ada di `docs/word/AGENT.md` + `AGENT.docx` (bukan lagi dump prompt
+> verbatim), `docs/word/` memuat seluruh dokumen `.docx` yang dikumpulkan, arsip `docs/word-arsip/`
+> beserta berkas log bertanggal di `docs/log-mentah/` dihapus, dan log mentah sesi diganti oleh
+> `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz` (byte-exact) + transkrip bacanya.
+> Penyebutan nama berkas lama di bawah ini adalah catatan apa adanya dari sesi saat itu.
+
 ## A. Sudah dijalankan (dengan perintah dan hasil)
 
 ### A.1 Pagar mutu slice 00 — `./verify.sh`
