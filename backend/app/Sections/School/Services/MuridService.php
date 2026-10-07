@@ -58,11 +58,13 @@ class MuridService
             ['tingkat' => 1, 'tahun_ajaran' => null],
         );
 
-        return Murid::query()->create([
-            'school_id' => $sekolah->getKey(),
-            'class_id' => $kelas->getKey(),
-            'user_id' => $user->getKey(),
-        ]);
+        // `user_id` unik: dua permintaan yang tiba hampir bersamaan bisa sama-sama
+        // lolos pemeriksaan di atas. `createOrFirst` menyelamatkan yang kalah dari
+        // pelanggaran unik dengan mengembalikan baris yang sudah dibuat.
+        return Murid::query()->createOrFirst(
+            ['user_id' => $user->getKey()],
+            ['school_id' => $sekolah->getKey(), 'class_id' => $kelas->getKey()],
+        );
     }
 
     /**
