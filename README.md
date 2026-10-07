@@ -1,38 +1,26 @@
-# Ulangan Sekolah — Monorepo Slice 00
+# Note: md ini Di buat manual
+<h1>Quizfy</h1>
+<p>Platform ujian yang aman, kelas dan penyebaran materi dan pembelajaran yang efektif dan fleksibel dengan standar enterprise-grade application.</p>
+<br>
+<h1>Fitur</h1>
 
-Platform ulangan/form online untuk sekolah (M-ONE Telkomsel Coding Competition).
-Struktur monorepo: `backend/` (Laravel), `frontend/` (React + Vite), `realtime/` (Fastify + SSE).
+<strong><p style="font-size:20px">Sistem Ujian</p></strong>
+<ul>
+  <li><strong>Sistem tahan kecurangan</strong> Pengawasan ketat dengan deteksi upaya keluar tab,copy paste,print,memecah layar,dll. Secara aman dan tahan banyak extension</li>
+  <li><strong>Bank Soal Dinamis:</strong> Mendukung pengacakan soal dan opsi jawaban secara otomatis serta manajemen kategori soal yang fleksibel.</li>
+  <li><strong>Ragam Tipe Soal:</strong> Sangat banyak pilihan tipe soal, terdiri dari 22 soal berfariatif yang memudahkan guru membuat soal ulangan/ujian.</li>
+</ul>
 
-## Menjalankan (dev)
+<strong><p style="font-size:20px">Manajemen Kelas & Materi</p></strong>
+<ul>
+  <li><strong>Ruang Kelas Virtual:</strong> Pengelompokan siswa berdasarkan kelas, jurusan, atau organisasi untuk distribusi ujian yang tepat sasaran.</li>
+  <li><strong>Penyebaran Materi Efektif:</strong> Unggah dan bagikan modul pembelajaran, video interaktif, dan dokumen pendukung dalam satu dashboard.</li>
+  <li><strong>Pelacakan Progres:</strong> Pantau sejauh mana peserta didik telah membaca materi atau menyelesaikan tugas yang diberikan.</li>
+</ul>
 
-```bash
-# 1. Backend — http://localhost:8000
-cd backend && php artisan serve
-
-# 2. Frontend — http://localhost:5173 (proxy /api & /sanctum ke backend, /sse ke realtime)
-cd frontend && npm run dev
-
-# 3. Realtime — http://localhost:4000
-cd realtime && npm run dev
-```
-
-Cek kesehatan:
-- Backend: `curl http://localhost:8000/api/v1/health`
-- Frontend: buka http://localhost:5173 (halaman demo tema/toast/ikon)
-- Realtime: `curl http://localhost:4000/health` dan `/ready`
-
-## Pagar mutu
-
-```bash
-./verify.sh
-```
-
-Menjalankan: Pest (backend), Pint `--test`, `tsc` checkJs strict, ESLint, Vitest, `node --test` (realtime). Wajib hijau di akhir setiap slice.
-
-## Catatan
-
-- Database dev/test: SQLite in-memory (`phpunit.xml`); produksi: MySQL di VPS (slice 10).
-- Auth mode SPA: cookie sesi Sanctum; tanpa token di localStorage. `SANCTUUM_STATEFUL_DOMAINS=localhost:5173`.
-- Password hashing: Argon2id (`HASH_DRIVER=argon2id`).
-- Realtime tanpa akses database; Redis lazy + fail-open.
-- Dokumen acuan AI agent: `AGENT.md`, `chunk_map.json`, `chunks/`, `docs/`.
+<strong><p style="font-size:20px">source Enterprise-Grade</p></strong>
+<ul>
+  <li><strong>Skalabilitas Tinggi dna kode optimal: </strong> Sanggup menampung ribuan peserta ujian secara bersamaan tanpa kendala latensi atau server down.</li>
+  <li><strong>Keamanan Data Maksimal:</strong> Enkripsi data end-to-end untuk melindungi privasi pengguna dan kerahasiaan dokumen ujian.</li>
+  <li><strong>Memiliki akses data ketak</strong> Memiliki akses data role yang sanagt ketat di lakukan</li>
+</ul>

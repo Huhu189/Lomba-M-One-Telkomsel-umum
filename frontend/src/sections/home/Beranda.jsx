@@ -51,9 +51,7 @@ function BerandaTamu() {
       <section className="hero mb-4">
         <HiasanLatar className="auth-panel-hias" />
         <div className="position-relative">
-          <span className="lencana lencana-pendukung mb-3">
-            <IkonBintang size={16} /> Gratis untuk murid
-          </span>
+         
           <h1>Belajar seru, ulangan jadi lebih tenang.</h1>
           <p className="mb-4">
             Kerjakan ulangan online dari sekolah dengan tampilan yang jelas, waktu yang adil, dan
