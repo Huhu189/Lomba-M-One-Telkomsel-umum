@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Sections\Attempt\Http\Controllers\AttemptController;
 use App\Sections\Attempt\Http\Controllers\BerkasJawabanController;
+use App\Sections\Attempt\Http\Controllers\TimController;
 use App\Sections\Attempt\Http\Controllers\UnggahanJawabanController;
 use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
@@ -194,6 +195,13 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kuis/{kuis}/laporan', [LaporanController::class, 'show'])->name('laporan.show');
         Route::get('/badge/saya', [BadgeController::class, 'saya'])->name('badge.saya');
         Route::get('/progres/saya', [ProgresController::class, 'saya'])->name('progres.saya');
+
+        // Tim kuis mode kelompok (slice 09-C): guru menyusun, murid melihat timnya.
+        Route::get('/kuis/{kuis}/tim', [TimController::class, 'daftar'])->name('tim.daftar');
+        Route::post('/kuis/{kuis}/tim', [TimController::class, 'simpan'])->name('tim.simpan');
+        Route::post('/kuis/{kuis}/tim/bagi', [TimController::class, 'bagi'])->name('tim.bagi');
+        Route::delete('/kuis/{kuis}/tim/{tim}', [TimController::class, 'hapus'])->name('tim.hapus');
+        Route::get('/kuis/{kuis}/tim-saya', [TimController::class, 'milikSaya'])->name('tim.milik_saya');
 
         // Koreksi manual guru (slice 06): antrean → token konfirmasi → simpan.
         Route::get('/kuis/{kuis}/koreksi', [KoreksiController::class, 'antrean'])->name('koreksi.antrean');

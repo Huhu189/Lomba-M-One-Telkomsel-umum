@@ -5,11 +5,19 @@
 import { z } from 'zod'
 import { client } from '../../shared/api/client.js'
 
-/** Satu baris peringkat (hanya dari skor asli). */
+/**
+ * Satu baris peringkat (hanya dari skor asli).
+ *
+ * Pada mode tim (slice 09-C) yang diurutkan adalah tim: `murid_id` null dan
+ * `tim_nama` + `anggota` terisi. Pada mode individu kebalikannya.
+ */
 export const skemaPeringkat = z.object({
   peringkat: z.number(),
   attempt_id: z.number(),
-  murid_id: z.number(),
+  murid_id: z.number().nullable(),
+  tim_id: z.number().nullable(),
+  tim_nama: z.string().nullable(),
+  anggota: z.array(z.string()),
   nama: z.string(),
   skor: z.number(),
   skor_maksimal: z.number(),
@@ -23,6 +31,7 @@ export const skemaPeringkat = z.object({
 export const skemaResponPeringkat = z.object({
   kuis_id: z.number(),
   judul_kuis: z.string(),
+  mode_tim: z.boolean(),
   tampil: z.boolean(),
   total: z.number(),
   top: z.number(),

@@ -46,6 +46,15 @@ class AttemptResource extends JsonResource
     public array $proteksi = [];
 
     /**
+     * Ringkasan tim bila attempt ini milik tim (slice 09-C); null untuk ulangan
+     * individu. Isinya nama tim + anggota, supaya murid tahu sedang mengerjakan
+     * lembar siapa.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $tim = null;
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -75,6 +84,7 @@ class AttemptResource extends JsonResource
             'dikumpulkan_at' => $this->dikumpulkan_at?->toIso8601String(),
             'soal' => $this->soal,
             'jawaban' => $this->jawaban,
+            'tim' => $this->tim,
             // Dipaksa jadi objek JSON: peta kosong di PHP akan menjadi `[]`,
             // sedangkan klien mengharapkan pasangan nama-saklar.
             'proteksi' => (object) $this->proteksi,

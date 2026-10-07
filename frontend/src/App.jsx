@@ -35,6 +35,7 @@ import HalamanLaporan from './sections/report/HalamanLaporan.jsx'
 import HalamanBadge from './sections/report/HalamanBadge.jsx'
 import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
 import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
+import HalamanTim from './sections/attempt/HalamanTim.jsx'
 import HalamanMonitor from './sections/cheat/HalamanMonitor.jsx'
 import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
 import PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'
@@ -131,6 +132,7 @@ export default function App() {
             {/* Antrean koreksi manual memuat kunci jawaban — guru saja (slice 06). */}
             <Route path={RUTE.koreksiKuis} element={<HalamanKoreksi />} />
             <Route path={RUTE.monitorKuis} element={<HalamanMonitor />} />
+            <Route path={RUTE.timKuis} element={<HalamanTim />} />
           </Route>
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}

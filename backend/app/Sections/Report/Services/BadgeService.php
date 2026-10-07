@@ -47,7 +47,9 @@ class BadgeService
         $murid->loadMissing('user');
 
         $attempts = Attempt::query()
-            ->where('student_id', $murid->getKey())
+            // Attempt tim ikut dihitung untuk seluruh anggotanya (slice 09-C),
+            // jadi lencana tidak menghukum anak yang mengerjakan berkelompok.
+            ->milikMurid((int) $murid->getKey())
             ->where('jenis', JenisAttempt::Ulangan->value)
             ->where('asli', true)
             ->whereNotNull('dikumpulkan_at')

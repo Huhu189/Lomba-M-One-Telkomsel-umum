@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Sections\Report\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Sections\Attempt\Models\Tim;
+use App\Sections\Attempt\Services\TimService;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Report\Services\RankingService;
 use Illuminate\Http\JsonResponse;
@@ -16,8 +18,12 @@ use Illuminate\Http\Request;
  */
 class RankingController extends Controller
 {
-    public function show(Request $request, Kuis $kuis, RankingService $service): JsonResponse
-    {
+    public function show(
+        Request $request,
+        Kuis $kuis,
+        RankingService $service,
+        TimService $timService,
+    ): JsonResponse {
         $this->authorize('view', $kuis);
 
         $pengguna = $request->user();
@@ -28,12 +34,17 @@ class RankingController extends Controller
 
         $pengguna->loadMissing('murid');
         $top = $request->integer('top');
+        $murid = $pengguna->murid;
+
+        // Mode tim: yang dicari di peringkat adalah tim murid ini (slice 09-C).
+        $tim = $murid !== null ? $timService->timUntukMurid($kuis, (int) $murid->getKey()) : null;
 
         return response()->json($service->untukKuis(
             $kuis,
             $top > 0 ? $top : RankingService::BAWAAN_TOP,
-            $pengguna->murid !== null ? (int) $pengguna->murid->getKey() : null,
+            $murid !== null ? (int) $murid->getKey() : null,
             $pengguna->isGuru(),
+            $tim instanceof Tim ? (int) $tim->getKey() : null,
         ));
     }
 }

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Sections\School\Models;
 
 use App\Models\User;
+use App\Sections\Attempt\Models\AnggotaTim;
 use Database\Factories\MuridFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Murid — profil murid; FK sekolah, kelas, dan user semuanya NOT NULL.
@@ -43,5 +45,15 @@ class Murid extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Keanggotaan tim pada kuis mode kelompok (slice 09-C).
+     *
+     * @return HasMany<AnggotaTim, $this>
+     */
+    public function keanggotaanTim(): HasMany
+    {
+        return $this->hasMany(AnggotaTim::class, 'student_id');
     }
 }

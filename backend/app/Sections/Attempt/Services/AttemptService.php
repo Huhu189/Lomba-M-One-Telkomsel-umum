@@ -9,6 +9,7 @@ use App\Sections\Attempt\Enums\JenisAttempt;
 use App\Sections\Attempt\Enums\StatusAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
+use App\Sections\Attempt\Models\RevisiJawaban;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Services\KecuranganService;
 use App\Sections\Question\Models\Soal;
@@ -41,6 +42,7 @@ class AttemptService
         private readonly PengaturanService $pengaturan,
         private readonly KecuranganService $kecurangan,
         private readonly PenilaiAiService $ai,
+        private readonly TimService $tim,
     ) {}
 
     /**
@@ -78,12 +80,31 @@ class AttemptService
             throw ValidationException::withMessages(['kuis' => 'Waktu kuis sudah berakhir.']);
         }
 
-        // Satu attempt aktif per murid per kuis per jenis: mulai ulang = lanjutkan.
+        // Mode tim (slice 09-C): attempt dimiliki TIM, bukan murid. Satu anggota
+        // membuka kuis = semua anggota mengerjakan lembar yang sama.
+        $tim = null;
+
+        if ($this->tim->modeTim($kuis)) {
+            $tim = $this->tim->timUntukMurid($kuis, (int) $profil->getKey());
+
+            if ($tim === null) {
+                throw ValidationException::withMessages([
+                    'kuis' => 'Kuis ini mode tim, tetapi kamu belum masuk tim mana pun. Minta gurumu menyusun tim dulu.',
+                ]);
+            }
+        }
+
+        // Satu attempt aktif per murid (atau per tim) per kuis per jenis:
+        // mulai ulang = lanjutkan.
         $aktif = Attempt::query()
             ->where('quiz_id', $kuis->getKey())
-            ->where('student_id', $profil->getKey())
             ->where('jenis', $jenis->value)
             ->where('aktif', true)
+            ->when(
+                $tim !== null,
+                static fn ($query) => $query->where('team_id', $tim?->getKey()),
+                static fn ($query) => $query->where('student_id', $profil->getKey()),
+            )
             ->first();
 
         // Attempt yang ditinggalkan (tab ditutup sebelum waktu habis) ditutup dulu.
@@ -103,9 +124,13 @@ class AttemptService
         // saklar `retry` + `batas_percobaan` dari pengaturan tiga lapis.
         $sudahDikumpulkan = Attempt::query()
             ->where('quiz_id', $kuis->getKey())
-            ->where('student_id', $profil->getKey())
             ->where('jenis', $jenis->value)
             ->whereNotNull('dikumpulkan_at')
+            ->when(
+                $tim !== null,
+                static fn ($query) => $query->where('team_id', $tim?->getKey()),
+                static fn ($query) => $query->where('student_id', $profil->getKey()),
+            )
             ->count();
 
         $nomorPercobaan = $sudahDikumpulkan + 1;
@@ -128,7 +153,10 @@ class AttemptService
         $attempt = Attempt::query()->create([
             'school_id' => $kuis->school_id,
             'quiz_id' => $kuis->getKey(),
+            // Pencatat attempt: murid pertama yang membuka. Pada mode tim yang
+            // menentukan nilai adalah `team_id`, bukan murid ini.
             'student_id' => $profil->getKey(),
+            'team_id' => $tim?->getKey(),
             'jenis' => $jenis,
             'attempt_no' => $nomorPercobaan,
             // Skor asli hanya milik percobaan pertama yang resmi (bukan latihan).
@@ -150,7 +178,7 @@ class AttemptService
     /** Muat relasi yang dibutuhkan resource attempt. */
     public function muat(Attempt $attempt): Attempt
     {
-        return $attempt->load(['kuis.mapel', 'kuis.kelas', 'kuis.soal', 'jawaban']);
+        return $attempt->load(['kuis.mapel', 'kuis.kelas', 'kuis.soal', 'jawaban', 'tim.murid.user']);
     }
 
     /**
@@ -188,9 +216,12 @@ class AttemptService
     /**
      * Simpan/ubah jawaban satu soal selama attempt masih berjalan dan belum lewat deadline.
      *
+     * `$penjawabId` hanya relevan pada mode tim: jawaban bersama bisa diubah
+     * beberapa murid, jadi tiap perubahan dicatat sebagai versi baru (slice 09-C).
+     *
      * @throws ValidationException
      */
-    public function simpanJawaban(Attempt $attempt, Soal $soal, mixed $jawaban): Jawaban
+    public function simpanJawaban(Attempt $attempt, Soal $soal, mixed $jawaban, ?int $penjawabId = null): Jawaban
     {
         if (! $attempt->berjalan()) {
             throw ValidationException::withMessages(['attempt' => 'Ulangan ini sudah dikumpulkan.']);
@@ -204,10 +235,47 @@ class AttemptService
             throw ValidationException::withMessages(['question_id' => 'Soal itu bukan bagian dari kuis ini.']);
         }
 
-        return Jawaban::query()->updateOrCreate(
-            ['attempt_id' => $attempt->getKey(), 'question_id' => $soal->getKey()],
-            ['jawaban' => $jawaban, 'status' => StatusPenilaian::Menunggu, 'benar' => null, 'skor' => 0, 'dinilai_at' => null],
-        );
+        return DB::transaction(function () use ($attempt, $soal, $jawaban, $penjawabId): Jawaban {
+            $baris = Jawaban::query()
+                ->where('attempt_id', $attempt->getKey())
+                ->where('question_id', $soal->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            $berubah = $baris === null || json_encode($baris->jawaban) !== json_encode($jawaban);
+            $baris ??= new Jawaban(['attempt_id' => $attempt->getKey(), 'question_id' => $soal->getKey()]);
+
+            // Versi hanya bertambah di mode tim dan hanya saat isinya berubah:
+            // autosave berulang dengan jawaban sama tidak membanjiri riwayat.
+            $versi = (int) ($baris->versi ?? 0);
+            $bersama = $attempt->team_id !== null;
+
+            if ($bersama && $berubah) {
+                $versi++;
+            }
+
+            $baris->forceFill([
+                'jawaban' => $jawaban,
+                'status' => StatusPenilaian::Menunggu,
+                'benar' => null,
+                'skor' => 0,
+                'dinilai_at' => null,
+                'penjawab_id' => $penjawabId ?? $baris->penjawab_id,
+                'versi' => $versi,
+            ])->save();
+
+            if ($bersama && $berubah) {
+                RevisiJawaban::query()->create([
+                    'attempt_id' => $attempt->getKey(),
+                    'question_id' => $soal->getKey(),
+                    'student_id' => $penjawabId,
+                    'versi' => $versi,
+                    'jawaban' => $jawaban,
+                ]);
+            }
+
+            return $baris;
+        });
     }
 
     /**

@@ -30,6 +30,8 @@ export const RUTE = {
   koreksiKuis: '/kuis/:id/koreksi',
   // Live Monitor guru (slice 07).
   monitorKuis: '/kuis/:id/monitor',
+  // Tim kuis mode kelompok (slice 09-C) — guru menyusun, murid melihat timnya.
+  timKuis: '/kuis/:id/tim',
   // Materi berblok (slice 08) — guru menyusun, murid menempuh.
   materi: '/materi',
   // Avatar murid + moderasi (slice 08) — murid memasang, guru meninjau laporan.
@@ -99,4 +101,13 @@ export function ruteKoreksiKuis(id) {
  */
 export function ruteMonitorKuis(id) {
   return `/kuis/${id}/monitor`
+}
+
+/**
+ * Tautan kelola tim (guru) dari id kuis.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteTimKuis(id) {
+  return `/kuis/${id}/tim`
 }

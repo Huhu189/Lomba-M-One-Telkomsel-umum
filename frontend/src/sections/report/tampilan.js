@@ -89,9 +89,31 @@ export function urutkanPeringkat(daftar) {
 
 /**
  * Peringkat pertama milik seorang murid (atau null).
- * @param {Array<{ murid_id: number }>} daftar
+ * @param {Array<{ murid_id: number|null }>} daftar
  * @param {number} muridId
+ * @returns {{ murid_id: number|null }|null}
  */
 export function milikMurid(daftar, muridId) {
   return (daftar ?? []).find((baris) => baris.murid_id === muridId) ?? null
+}
+
+/**
+ * Apakah satu baris peringkat milik pemohon?
+ *
+ * Pada mode tim yang dibandingkan adalah tim, bukan murid — jadi murid yang
+ * bergantian memakai satu akun tetap melihat barisnya tersorot (slice 09-C).
+ *
+ * @param {import('./api.js').DataBarisPeringkat} baris
+ * @param {import('./api.js').DataBarisPeringkat|null|undefined} saya
+ * @param {boolean} modeTim
+ * @returns {boolean}
+ */
+export function barisMilikSaya(baris, saya, modeTim) {
+  if (saya === null || saya === undefined) return false
+
+  if (modeTim) {
+    return baris.tim_id !== null && saya.tim_id !== null && baris.tim_id === saya.tim_id
+  }
+
+  return baris.murid_id !== null && baris.murid_id === saya.murid_id
 }

@@ -22,7 +22,7 @@ use Illuminate\Support\Carbon;
  * ditentukan server.
  */
 #[Fillable([
-    'school_id', 'quiz_id', 'student_id', 'jenis', 'attempt_no', 'asli', 'status', 'aktif', 'seed',
+    'school_id', 'quiz_id', 'student_id', 'team_id', 'jenis', 'attempt_no', 'asli', 'status', 'aktif', 'seed',
     'mulai_at', 'deadline_at', 'dikumpulkan_at', 'terlambat', 'jumlah_soal',
     'skor', 'skor_maksimal', 'jumlah_benar', 'idempotency_key',
 ])]
@@ -69,6 +69,40 @@ class Attempt extends Model
     public function jawaban(): HasMany
     {
         return $this->hasMany(Jawaban::class, 'attempt_id');
+    }
+
+    /** Tim pemilik attempt ini (slice 09-C); null untuk ulangan individu.
+     *
+     * @return BelongsTo<Tim, $this>
+     */
+    public function tim(): BelongsTo
+    {
+        return $this->belongsTo(Tim::class, 'team_id');
+    }
+
+    /** @return HasMany<RevisiJawaban, $this> */
+    public function revisiJawaban(): HasMany
+    {
+        return $this->hasMany(RevisiJawaban::class, 'attempt_id');
+    }
+
+    /**
+     * Skor mencakup attempt milik sendiri DAN attempt tim yang diikuti murid ini.
+     *
+     * Dipakai laporan/badge/lencana supaya satu nilai tim benar-benar dibagi rata
+     * ke semua anggotanya (slice 09-C), tanpa menggandakan baris attempt.
+     *
+     * @param  Builder<Attempt>  $query
+     * @return Builder<Attempt>
+     */
+    public function scopeMilikMurid($query, int $muridId)
+    {
+        return $query->where(function (Builder $dalam) use ($muridId): void {
+            $dalam->where('student_id', $muridId)
+                ->orWhereIn('team_id', function ($sub) use ($muridId): void {
+                    $sub->select('team_id')->from('team_members')->where('student_id', $muridId);
+                });
+        });
     }
 
     public function berjalan(): bool

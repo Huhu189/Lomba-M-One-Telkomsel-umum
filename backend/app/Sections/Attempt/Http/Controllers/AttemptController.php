@@ -11,6 +11,7 @@ use App\Sections\Attempt\Http\Resources\AttemptHasilResource;
 use App\Sections\Attempt\Http\Resources\AttemptResource;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Services\AttemptService;
+use App\Sections\Attempt\Services\TimService;
 use App\Sections\Presence\Services\PresenceService;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
@@ -47,7 +48,7 @@ class AttemptController extends Controller
         // ping tambahan saat murid aktif.
         $presence->tandaiHadir($attempt, $this->sesi($request));
 
-        return $this->bungkusAttempt($attempt, $service, true)->response()->setStatusCode(201);
+        return $this->bungkusAttempt($request, $attempt, $service, true)->response()->setStatusCode(201);
     }
 
     /**
@@ -65,7 +66,7 @@ class AttemptController extends Controller
 
         // Saklar ikut dikirim saat halaman dimuat ulang; kalau tidak, proteksi
         // yang dinyalakan guru akan hilang hanya karena murid menyegarkan layar.
-        return $this->bungkusAttempt($attempt, $service, true);
+        return $this->bungkusAttempt($request, $attempt, $service, true);
     }
 
     /**
@@ -81,7 +82,13 @@ class AttemptController extends Controller
 
         /** @var Soal $soal */
         $soal = Soal::query()->findOrFail((int) $request->input('question_id'));
-        $jawaban = $service->simpanJawaban($attempt, $soal, $request->input('jawaban'));
+
+        // Pencatat jawaban (mode tim: siapa anggota yang mengubah, slice 09-C).
+        $pengguna = $request->user();
+        $pengguna?->loadMissing('murid');
+        $penjawabId = $pengguna?->murid !== null ? (int) $pengguna->murid->getKey() : null;
+
+        $jawaban = $service->simpanJawaban($attempt, $soal, $request->input('jawaban'), $penjawabId);
 
         $presence->tandaiHadir($attempt, $this->sesi($request));
 
@@ -124,17 +131,43 @@ class AttemptController extends Controller
      * semua proteksi mati, klien tidak memasang sensor apa pun (dan tidak
      * mengirim apa pun). Saklar tetap ditentukan server.
      */
-    private function bungkusAttempt(Attempt $attempt, AttemptService $service, bool $denganProteksi = false): AttemptResource
-    {
+    private function bungkusAttempt(
+        Request $request,
+        Attempt $attempt,
+        AttemptService $service,
+        bool $denganProteksi = false,
+    ): AttemptResource {
         $resource = new AttemptResource($attempt);
         $resource->soal = $service->payloadSoal($attempt);
         $resource->jawaban = $service->payloadJawaban($attempt);
+        $resource->tim = $this->timMurid($attempt, $request);
 
         if ($denganProteksi) {
             $resource->proteksi = $service->saklarAntiCheat($attempt->kuis);
         }
 
         return $resource;
+    }
+
+    /**
+     * Ringkasan tim untuk layar murid (mode tim, slice 09-C).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function timMurid(Attempt $attempt, Request $request): ?array
+    {
+        if ($attempt->team_id === null) {
+            return null;
+        }
+
+        $pengguna = $request->user();
+        $pengguna?->loadMissing('murid');
+
+        if ($pengguna?->murid === null) {
+            return null;
+        }
+
+        return app(TimService::class)->ringkasUntukMurid($attempt->kuis, $pengguna->murid);
     }
 
     /**

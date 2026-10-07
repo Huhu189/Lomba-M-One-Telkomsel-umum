@@ -89,7 +89,9 @@ class LaporanTagService
     public function untukMurid(Murid $murid, array $ambang): array
     {
         $attempts = Attempt::query()
-            ->where('student_id', $murid->getKey())
+            // Termasuk attempt tim yang diikuti murid ini: satu nilai tim dibagi
+            // rata ke semua anggotanya (slice 09-C).
+            ->milikMurid((int) $murid->getKey())
             ->where('jenis', JenisAttempt::Ulangan->value)
             ->where('asli', true)
             ->whereNotNull('dikumpulkan_at')

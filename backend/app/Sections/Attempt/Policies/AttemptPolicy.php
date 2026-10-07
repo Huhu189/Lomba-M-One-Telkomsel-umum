@@ -6,6 +6,7 @@ namespace App\Sections\Attempt\Policies;
 
 use App\Models\User;
 use App\Sections\Attempt\Models\Attempt;
+use App\Sections\Attempt\Models\Tim;
 
 /**
  * Attempt: murid hanya boleh menyentuh attempt miliknya; guru boleh melihat
@@ -79,6 +80,23 @@ class AttemptPolicy
     {
         $profil = $user->murid;
 
-        return $profil !== null && (int) $profil->getKey() === (int) $attempt->student_id;
+        if ($profil === null) {
+            return false;
+        }
+
+        if ((int) $profil->getKey() === (int) $attempt->student_id) {
+            return true;
+        }
+
+        // Mode tim (slice 09-C): lembar jawaban milik tim, jadi seluruh anggotanya
+        // boleh membuka, menjawab, melampirkan, dan mengumpulkan.
+        if ($attempt->team_id !== null) {
+            return Tim::query()
+                ->whereKey($attempt->team_id)
+                ->whereHas('keanggotaan', static fn ($query) => $query->where('student_id', $profil->getKey()))
+                ->exists();
+        }
+
+        return false;
     }
 }

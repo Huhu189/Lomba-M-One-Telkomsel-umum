@@ -375,6 +375,21 @@ export default function HalamanKerjakan() {
           </div>
         </div>
 
+        {(attempt.tim ?? null) !== null && (
+          <Banner jenis="info" judul={`Mengerjakan sebagai ${attempt.tim?.nama ?? 'tim'}`}>
+            <p className="mb-0">
+              Jawaban di layar ini dipakai bersama tim: apa pun yang kamu simpan langsung menjadi jawaban tim, dan
+              nilainya nanti juga dibagi ke semua anggota.
+              {(attempt.tim?.rekan?.length ?? 0) > 0 && (
+                <>
+                  {' '}
+                  Rekan setimmu: {attempt.tim?.rekan?.join(', ')}.
+                </>
+              )}
+            </p>
+          </Banner>
+        )}
+
         {waktuHabis && (
           <Banner jenis="peringatan" judul="Waktu habis">
             <p className="mb-0">Jawabanmu sedang dikumpulkan otomatis.</p>

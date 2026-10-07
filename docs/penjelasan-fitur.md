@@ -248,7 +248,9 @@ Identifikasi tim dan penerimaan jawaban tetap di server; versi jawaban mencegah 
 ### Manfaat untuk anak SD dan guru
 Belajar gotong royong: anak yang pintar matematika mengajari yang belum, dan nilainya dinikmati bersama — sesuai Profil Pelajar Pancasila. Guru bisa memakainya untuk kuis kompetisi seru tanpa anak yang lemah merasa hancur.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 09-C), bawaan **mati** dan baru berlaku kalau guru menyalakan kunci
+`mode_tim` untuk kuis itu. Yang belum ada dan kami sebutkan apa adanya: penilaian AI belum membaca lampiran
+tim, dan mode tim belum masuk laporan ekspor (xlsx) karena ekspor itu sendiri belum dibuat.
 
 ---
 

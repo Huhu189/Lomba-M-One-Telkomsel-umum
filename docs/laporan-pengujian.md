@@ -768,19 +768,20 @@ avatar yang menunggu tinjauan tidak bisa dihapus pemiliknya (bukti tidak hilang 
 - **Kuota penyimpanan sekolah belum diuji dengan berkas nyata berukuran besar**; yang diuji baru perhitungan
   dan penolakannya pada tingkat unit/feature.
 
-## A.13 Slice 09 — Lampiran Jawaban dan Saran AI
+## A.13 Slice 09 — Lampiran Jawaban, Saran AI, dan Mode Tim
 
-Dikerjakan dalam dua bagian: 09-A (unggah lampiran jawaban) dan 09-B (saran penilaian AI lewat queue).
-Mode tim (09-C) belum dikerjakan saat catatan ini ditulis.
+Dikerjakan dalam tiga bagian: 09-A (unggah lampiran jawaban), 09-B (saran penilaian AI lewat queue), dan
+09-C (mode tim).
 
 ### A.13.1 Perintah dan hasil
-- `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice09b.log`, exit 0).
-- `php artisan test` → **148 passed (1164 assertions)**; tambahan `Slice09UploadTest` (10 test / 98 assertion)
-  dan `Slice09AiTest` (8 test / 83 assertion).
-- `./vendor/bin/pint --test` → PASS (277 berkas).
-- `npm run check` (tsc `checkJs` strict) → lolos; `npx eslint` pada berkas scoring/attempt → 0 error.
-- `npx vitest run` → tambahan `src/__tests__/sections/attempt/lampiran.test.js` (14 test) dan
-  penambahan pada uji scoring (`api.test.js` 8 test, `tampilan.test.js` 8 test).
+- `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-slice09c.log`, exit 0).
+- `php artisan test` → **154 passed (1256 assertions)**; tambahan `Slice09UploadTest` (10 test / 98 assertion),
+  `Slice09AiTest` (8 test / 83 assertion), dan `Slice09TimTest` (6 test / 92 assertion).
+- `./vendor/bin/pint --test` → PASS (287 berkas).
+- `npm run check` (tsc `checkJs` strict) → lolos; `npx eslint` pada berkas attempt/report/scoring → 0 error.
+- `npx vitest run` → 33 berkas uji; tambahan `src/__tests__/sections/attempt/lampiran.test.js` (14 test) dan
+  `src/__tests__/sections/attempt/tim.test.js` (8 test), plus penambahan pada uji scoring (8+8 test) dan
+  peringkat (`tampilan.test.js` 13 test).
 - `node --test` (realtime) → 11 test lulus.
 
 ### A.13.2 Yang diuji pada 09-A (bukti perilaku, bukan klaim)
@@ -802,18 +803,41 @@ maupun alasan mentah AI; **kunci API hanya di header** `Authorization` (diuji ti
 permintaan); **koreksi guru tidak ditimpa** — saran baru yang datang setelah koreksi dibuang, nilai tetap 4.0;
 **bawaannya mati** — mengumpulkan ulangan tidak memanggil API sama sekali (`Http::assertNothingSent`).
 
-### A.13.4 Keputusan teknis slice 09 (jujur)
+### A.13.4 Yang diuji pada 09-C (bukti perilaku, bukan klaim)
+**Pembagian otomatis** menghasilkan tim berisi semua murid kelas, dan **setiap murid hanya ada di satu tim**
+(penyusup dari tim lain ditolak 422; murid kelas lain juga ditolak); **murid tidak bisa menyentuh endpoint tim**
+(403). **Satu jawaban bersama**: dua anggota tim membuka kuis → **id attempt yang sama**, dan jawaban salah satu
+anggota langsung terbaca anggota lain. **Versi jawaban**: menyimpan isi yang sama berulang tidak menambah versi,
+mengubah isi menaikkan versi dan mencatat pelakunya di `answer_revisions` (urutannya `[1, 2]` dengan penjawab
+berbeda). **Skor dibagi sama**: setelah satu anggota mengumpulkan, badge/ulangan kedua anggota memuat skor yang
+sama (100%), sedangkan anggota tim lain yang belum mengerjakan masih kosong; anggota lain juga bisa membuka
+halaman hasil attempt tim. **Peringkat per tim**: kolomnya nama tim, `murid_id` null, disertai daftar anggota,
+`peringkat_saya` cocok lewat `tim_id`. **Susunan dibekukan** setelah ada attempt tim (ubah/hapus → 422), dan
+**mode individu tidak berubah** saat mode tim mati (`tim` null di payload, tanpa baris `answer_revisions`).
+
+### A.13.5 Keputusan teknis slice 09-C (jujur)
+- **Satu attempt per tim, bukan satu attempt per anak.** Ini yang membuat "skor dibagi rata" tidak perlu
+  menggandakan baris jawaban: skor tim tinggal dibaca oleh seluruh anggotanya lewat scope `milikMurid` di
+  laporan tema dan badge. Efek sampingnya sengaja diterima: pada mode tim, `attempts.student_id` hanya mencatat
+  anggota yang membuka kuis lebih dulu, bukan pemilik nilai.
+- **Riwayat versi hanya dicatat pada mode tim.** Pada ulangan individu tidak ada sengketa "siapa yang mengganti
+  jawaban kami", jadi tabel `answer_revisions` dibiarkan kosong dan tidak menambah beban tulis.
+- **Nilai tim tidak masuk ranking per murid.** Saat mode tim menyala yang diperingkat adalah tim; peringkat murid
+  dan tim tidak dicampur dalam satu daftar, supaya tidak ada nama anak yang muncul dua kali dengan angka berbeda.
+
+### A.13.6 Keputusan teknis 09-A/09-B (jujur)
 - **AI tidak pernah menulis ke kolom `skor`.** Saran disimpan di kolom terpisah, sehingga tidak mungkin ada
   nilai murid yang berubah tanpa koreksi guru bertoken. Ini juga yang membuat `ActivityLog` saran AI
   (`log_name` `penilaian_ai`) terpisah dari audit koreksi manual.
 - **Antrean queue `sync` dipakai apa adanya di test**, jadi jalur "kumpulkan → minta saran AI" ikut teruji
   tanpa worker terpisah. Di produksi jalur itu berjalan di `database` queue (bawaan).
 - **Jawaban yang hanya berisi lampiran dilewati AI** (tidak ada teks untuk dinilai) dan tetap menunggu
-tinjauan guru — disebutkan di bagian 10 `penjelasan-fitur.md`.
+  tinjauan guru — disebutkan di bagian 10 `penjelasan-fitur.md`.
 
-### A.13.5 Yang jujur BELUM dikerjakan di slice 09
-- **Mode tim (09-C) belum ada**: kuis masih individu, belum ada jawaban bersama per tim maupun pembagian skor.
-- **AI belum membaca lampiran** (gambar/rekaman) — baru soal uraian berbasis teks.
+### A.13.7 Yang jujur BELUM dikerjakan di slice 09
+- **AI belum membaca lampiran** (gambar/rekaman) — baru soal uraian berbasis teks, termasuk pada mode tim.
 - **Smoke UI Chrome (CDP) slice 09 belum dijalankan**, dan **unggahan besar lewat jaringan lambat belum
   diuji nyata**; yang diuji adalah potongan, hash, dan penolakan deadline pada tingkat test.
 - **Layar guru → perangkat murid (SSE) belum dibuat** (sama seperti catatan A.12.3).
+- **Mode tim belum diuji di browser sungguhan** dan **belum ada batas jumlah anggota per tim** selain minimal 2;
+  yang diuji baru perilaku server (attempt bersama, versi, skor dibagi, peringkat tim).

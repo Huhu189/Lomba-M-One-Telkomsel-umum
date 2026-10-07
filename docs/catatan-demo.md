@@ -385,7 +385,27 @@ grep -R "AI_PENILAIAN_KUNCI" backend/storage/logs 2>/dev/null || echo 'aman: kun
 
 ### Bukti otomatis
 
-`Slice09UploadTest` (10 test / 98 assertion) dan `Slice09AiTest` (8 test / 83 assertion) lulus, termasuk:
-skor AI dipotong ke rentang soal, gagal/timeout AI tetap "perlu ditinjau", satu permintaan per ulangan,
-murid tidak bisa memicu AI, dan hasil murid tidak pernah memuat alasan mentah AI. Rincian di
-`docs/laporan-pengujian.md` bagian A.13.
+`Slice09UploadTest` (10 test / 98 assertion), `Slice09AiTest` (8 test / 83 assertion), dan `Slice09TimTest`
+(6 test / 92 assertion) lulus, termasuk: skor AI dipotong ke rentang soal, gagal/timeout AI tetap "perlu
+ditinjau", satu permintaan per ulangan, murid tidak bisa memicu AI, hasil murid tidak pernah memuat alasan
+mentah AI, dan satu nilai tim dibagi rata ke anggotanya. Rincian di `docs/laporan-pengujian.md` bagian A.13.
+
+### Langkah demo (guru) — menyusun tim
+1. Pada detail kuis, buka **Kelola tim**. Tunjukkan bahwa mode tim masih **mati** (ada peringatan di halaman).
+2. Isi jumlah tim (mis. 3) lalu tekan **Bagi otomatis** → murid kelas dibagi bergiliran, jadi anak yang
+   berdekatan di daftar tidak menumpuk di satu tim. Tunjukkan juga bisa **Buat tim baru** dan memilih anggota
+   sendiri, serta bahwa murid yang sudah masuk tim lain tidak bisa dipilih dua kali.
+3. Nyalakan kunci **mode tim** untuk kuis ini di **Pengaturan** (lingkup: kuis).
+
+### Langkah demo (murid) — satu lembar untuk satu tim
+1. Dua murid dari tim yang sama membuka kuis. Sebutkan: keduanya masuk ke **lembar yang sama** (bukan dua
+   ulangan), dan panel biru di atas menyebutkan nama tim + rekan setimnya.
+2. Murid A menjawab soal, lalu murid B membuka layar yang sama → jawabannya sudah terisi, lalu B mengubahnya.
+   Jelaskan: setiap perubahan tersimpan sebagai **versi baru**, jadi kalau ada sengketa "siapa yang mengganti
+   jawaban kami", guru bisa melihat riwayatnya.
+3. Salah satu anggota menekan **Kumpulkan**; anggota lain membuka **Hasil** dan melihat nilai yang sama.
+4. Tunjukkan **Badge** keduanya sudah memuat nilai itu (nilai tim dibagi rata), sedangkan anggota tim lain
+   yang belum mengerjakan masih kosong.
+5. Buka **Peringkat**: kolomnya bernama **Tim**, satu baris per tim, beserta daftar anggotanya.
+6. Kembali ke **Kelola tim** sebagai guru → tombol ubah/hapus sekarang **nonaktif** dengan penjelasan bahwa
+   susunan tim dibekukan setelah kuis dikerjakan.

@@ -46,6 +46,17 @@ export const skemaAttempt = z.object({
   dikumpulkan_at: z.string().nullable(),
   soal: z.array(skemaSoalKerjakan),
   jawaban: z.array(skemaJawabanTersimpan),
+  // Ringkasan tim untuk mode kelompok (slice 09-C); null pada ulangan individu.
+  tim: z
+    .object({
+      id: z.number(),
+      nama: z.string(),
+      jumlah_anggota: z.number(),
+      anggota: z.array(z.object({ murid_id: z.number(), nama: z.string() })),
+      rekan: z.array(z.string()).optional(),
+    })
+    .nullable()
+    .optional(),
   // Saklar anti-cheat dari server (slice 07). Diterima sebagai peta; bentuk
   // lain (mis. peta kosong yang terkirim sebagai daftar) diperlakukan "mati"
   // oleh `proteksiEfektif`, bukan membuat layar murid gagal dibuka.

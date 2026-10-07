@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { skemaProgres, skemaResponPeringkat } from '../../../sections/report/api.js'
-import { kelasLencana, milikMurid, ringkasTingkat, tingkatTampilan, urutkanPeringkat } from '../../../sections/report/tampilan.js'
+import {
+  barisMilikSaya,
+  kelasLencana,
+  milikMurid,
+  ringkasTingkat,
+  tingkatTampilan,
+  urutkanPeringkat,
+} from '../../../sections/report/tampilan.js'
 
 /**
  * Satu baris peringkat lengkap sesuai kontrak server.
@@ -11,6 +18,9 @@ function barisPeringkat(ubah) {
     peringkat: 1,
     attempt_id: 1,
     murid_id: 1,
+    tim_id: null,
+    tim_nama: null,
+    anggota: [],
     nama: 'Ani',
     skor: 5,
     skor_maksimal: 10,
@@ -99,11 +109,34 @@ describe('milikMurid', () => {
   })
 })
 
+describe('barisMilikSaya', () => {
+  it('mencocokkan murid pada mode individu', () => {
+    const baris = barisPeringkat({ murid_id: 7 })
+
+    expect(barisMilikSaya(baris, barisPeringkat({ murid_id: 7 }), false)).toBe(true)
+    expect(barisMilikSaya(baris, barisPeringkat({ murid_id: 8 }), false)).toBe(false)
+    expect(barisMilikSaya(baris, null, false)).toBe(false)
+  })
+
+  it('mencocokkan tim pada mode tim, bukan muridnya', () => {
+    const baris = barisPeringkat({ murid_id: null, tim_id: 3, tim_nama: 'Tim 2', nama: 'Tim 2' })
+    const saya = barisPeringkat({ murid_id: 99, tim_id: 3, tim_nama: 'Tim 2', nama: 'Tim 2' })
+
+    expect(barisMilikSaya(baris, saya, true)).toBe(true)
+    expect(barisMilikSaya(baris, barisPeringkat({ murid_id: null, tim_id: 4 }), true)).toBe(false)
+    // Baris murid (tim_id null) tidak pernah dianggap milik tim mana pun.
+    expect(barisMilikSaya(barisPeringkat({ murid_id: 7 }), barisPeringkat({ murid_id: 7, tim_id: null }), true)).toBe(
+      false,
+    )
+  })
+})
+
 describe('skema laporan', () => {
   it('menerima payload peringkat dari server', () => {
     const data = skemaResponPeringkat.parse({
       kuis_id: 1,
       judul_kuis: 'Ulangan Operasi Hitung',
+      mode_tim: false,
       tampil: false,
       total: 1,
       top: 20,
@@ -113,6 +146,24 @@ describe('skema laporan', () => {
 
     expect(data.tampil).toBe(false)
     expect(data.peringkat).toHaveLength(1)
+  })
+
+  it('menerima baris peringkat mode tim', () => {
+    const data = skemaResponPeringkat.parse({
+      kuis_id: 1,
+      judul_kuis: 'Ulangan Kelompok',
+      mode_tim: true,
+      tampil: true,
+      total: 1,
+      top: 20,
+      peringkat: [
+        barisPeringkat({ murid_id: null, tim_id: 9, tim_nama: 'Tim 1', nama: 'Tim 1', anggota: ['Ayu', 'Bima'] }),
+      ],
+      peringkat_saya: null,
+    })
+
+    expect(data.mode_tim).toBe(true)
+    expect(data.peringkat[0].anggota).toEqual(['Ayu', 'Bima'])
   })
 
   it('menerima payload progres dengan remedial kosong', () => {
