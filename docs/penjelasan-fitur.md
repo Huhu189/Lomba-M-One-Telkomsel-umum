@@ -123,7 +123,11 @@ Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewa
 ### Manfaat untuk anak SD dan guru
 Materi jadi hidup: anak membaca sebentar, mencoba kuis kecil, lalu lanjut — cocok untuk rentang perhatian anak SD, dan anak yang salah di tengah materi langsung berlatih sebelum lanjut. Guru tidak perlu berteriak "buka halaman 23": semua perangkat murid ikut berpindah sendiri, hemat waktu kelas.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sebagian sudah bisa dipakai** (slice 08). Materi berblok dengan kuis sisipan latihan,
+penerbitan materi, berkas aman (kategori ditentukan dari isi berkas, disajikan lewat tautan
+bertanda tangan), dan laporan tema per murid sudah jalan serta diuji. Yang **belum** dikerjakan
+dan kami sebutkan apa adanya: **layar guru ke perangkat murid** (sinkron konten lewat SSE) — kunci
+pengaturannya sudah ada, tetapi penyiaran kontennya belum dibuat.
 
 ---
 
@@ -159,7 +163,13 @@ File avatar diproses ulang di server (bukan dipercaya begitu saja), nama berkas 
 ### Manfaat untuk anak SD dan guru
 Anak SD suka bermain avatar, tapi kadang memasang gambar yang bikin risih. Guru tidak harus memeriksa 30 avatar satu per satu setiap hari — yang bermasalah muncul sendiri ke antrean, dan yang laporan pun terlindungi dari drama antarteman.
 
-Status: belum dikerjakan (diisi ulang di tiap akhir slice).
+Status: **sudah bisa dipakai** (slice 08). Foto diencode ulang server ke 256×256 (JPEG), jadi berkas
+kiriman tidak pernah disajikan apa adanya dan metadata di dalamnya ikut hilang. Avatar bawaan
+memakai inisial nama, satu murid hanya bisa melapor sekali per avatar, dan setelah 3 laporan unik
+avatar disembunyikan dari murid lain sementara pemiliknya tetap melihatnya. Keputusan guru
+(pulihkan / hapus) masuk audit. Satu hal yang kami pilih sengaja: avatar yang menunggu tinjauan
+**tidak bisa** dihapus pemiliknya sendiri, supaya gambarnya tidak hilang sebelum guru melihatnya
+(murid tetap boleh mengunggah gambar baru).
 
 ---
 

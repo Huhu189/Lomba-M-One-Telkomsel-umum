@@ -1,7 +1,7 @@
 # Log Mentah — Transkrip Sesi
 
 Bantuan baca. Seluruh isi di bawah diambil apa adanya dari berkas sesi asli
-(`chat-messages.json`, 76351830 byte, md5 `259e4826288bc03c38333d346baa35b9`).
+(`chat-messages.json`, 76838005 byte, md5 `fd4254e781fd7cb010dd273cff7d50c0`).
 
 Salinan **byte-exact** dari berkas aslinya ada di berkas `*.json.gz` di folder yang sama.
 Panggilan alat di sini diringkas jadi satu baris agar tetap terbaca; isi lengkapnya ada
@@ -11,7 +11,7 @@ sehingga tidak disalin.
 **chat-meta.json:**
 
 ```json
-{"messageCount":131,"firstPrompt":"baut folde ritu jaid anma lomba_m dan juga isntla instlain yang di perlukan dna juga ndoe js nya ...","messagesSize":76351830,"messagesMtimeMs":1791365448611.2834}
+{"messageCount":131,"firstPrompt":"baut folde ritu jaid anma lomba_m dan juga isntla instlain yang di perlukan dna juga ndoe js nya ...","messagesSize":76838005,"messagesMtimeMs":1791366094631.9954}
 ```
 
 Jumlah pesan: 131
@@ -54068,6 +54068,2301 @@ Let me do 1 & 2 and then run export.
 
 - 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/docs/laporan-pengujian.md", "replacements": [{"oldString": "Diperbarui: 5 Oktober 2026 (sesi prompt 2 — revisi dokumen acuan).", "newString": "Diperbarui: 5 Oktober 2026 (sesi prompt 2 — revisi dokumen acuan).\n\n> **Catatan revisi dokumentasi (7 Oktober 2026):** tata letak dokumen dirapikan atas permintaan\n> pengguna. Ringkasan prompt kini ada di `docs/word …
 - 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/docs/jurnal-prompt.md", "replacements": [{"oldString": "ekspor Word dua folder (word/ = AGENT + log-mentah; word-arsip/ = bukti revisi berawalan (ARSIP)).", "newString": "ekspor Word dua folder (word/ = AGENT + log-mentah; word-arsip/ = bukti revisi berawalan (ARSIP) — sejak 7 Okt 2026 word-arsip/ dihapus dan ringkasan prompt dipindah ke `docs/word/AGENT.md`) …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now run export-word.sh to regenerate docx (AGENT.docx, jurnal-prompt.docx, log-mentah.docx, penjelasan-fitur.docx, catatan-demo.docx, laporan-pengujian.docx). But wait: log-mentah.docx from the 4MB transcript via python-docx — export_docx.py uses python-docx which creates one paragraph per line. The transcript has ~? lines. 4MB / ~60 chars per line ≈ 70k lines → 70k paragraphs. python-docx can handle but slow (~minutes). Hmm. It also converts code-fenced blocks line-by-line. 14 chunks.
+
+Risk: python-docx with 70k paragraphs might take a long time and produce a big docx. Let me consider using export_word_sesi.py-like lightweight writer for the log docx instead — it groups 4000 lines per paragraph.
+
+Hmm, but export_docx.py is the existing tool. Let me just try with a timeout and see. Actually 70k add_paragraph calls in python-docx ≈ maybe 30-60s. Acceptable.
+
+But the transcript includes huge single lines (the prompt attachment line ~21k chars, tool lines). Fine.
+
+Hmm, one concern: the transcript's code-fence handling in export_docx.py: it toggles `dalam_kode` on lines starting with ``` — the transcript uses ``` fences for attachments and chat-meta. Code inside gets monospace 9pt. Fine.
+
+Actually there's a problem: the transcript has lines inside code fences that begin with "# " (e.g., the attached prompt has no markdown, but chat-meta json starts with "{"). OK.
+
+But some tool one-liners contain markdown-ish chars. Fine.
+
+Let me run it. Also note export_docx.py needs python-docx (available).
+
+Let me run with a generous timeout.
+
+Also I should double check the transcript's `**Lampiran prompt (utuh, ...):**` then blank then ``` then content. export_docx handles.
+
+Let me run.
+
+**Balasan:**
+
+Sekarang regenerasi dokumen Word:
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && time ./docs/export-word.sh 2>&1 | tail -30", "process_type": "SYNC", "timeout_seconds": 600}
+**Thinking (mentah):**
+
+log-mentah.docx is 1.4MB — good (much lighter than the old 11.8MB).
+
+Now verify the docx open properly and check JSON validity. Then run verify.sh.
+
+Let me validate:
+- 00-index.json valid JSON
+- docx open with python-docx
+- transcript readable
+
+Then verify.sh.
+
+Let me run a validation command + verify.sh.
+
+Actually verify.sh might take a while. Let me first validate docs then run verify.sh.
+
+Note: docs/word/AGENT.docx at 39186 — fine.
+
+Let me validate.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && python3 - <<'PY'\nimport json, glob, os\nfor p in ['00-index.json','chunk_map.json'] + sorted(glob.glob('chunks/*.json')):\n json.load(open(p))\nprint('JSON: semua valid')\nfrom docx import Document\nfor p in sorted(glob.glob('docs/word/*.docx')):\n d = Document(p)\n print(f'{p}: {len(d.paragraphs)} paragraf, {os.path.getsize(p)} byte')\nPY", "pr …
+**Thinking (mentah):**
+
+All good. Now let's run verify.sh to make sure nothing broke. Docs changes shouldn't affect it, but let me confirm (and it's the project's gate).
+
+Note: the 13MB .gz and 4MB .md are in docs — not part of any test.
+
+Let me run verify.sh (timeout generous). It ran before in reasonable time.
+
+Also I should check that Git won't complain about the large .gz. GitHub blocks >100MB; 13MB fine.
+
+Let me run verify.sh and meanwhile update todos.
+
+Then commit.
+
+Let me run verify.sh with pipefail-preserving: run `./verify.sh > /tmp/verify-docs.log 2>&1; echo exit=$?` then tail.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && ./verify.sh > /tmp/verify-docs.log 2>&1; echo \"exit=$?\"; tail -20 /tmp/verify-docs.log", "process_type": "SYNC", "timeout_seconds": 600}
+**Thinking (mentah):**
+
+verify.sh green (exit 0). Now commit.
+
+Files to stage:
+- Deleted: word-arsip, dated logs, arsip-prompt, log-mentah.docx, ringkasan-prompt.docx (already staged via git rm)
+- Renamed: claude logs (staged)
+- Modified: docs/word/AGENT.md, docs/word/AGENT.docx, docs/export-word.sh, AGENT.md, 00-index.json, docs/jurnal-prompt.md, docs/laporan-pengujian.md
+- New: docs/export-log-sesi.py, docs/log-mentah/sesi-*.json.gz, docs/log-mentah/sesi-*-transkrip.md, docs/word/{jurnal-prompt,log-mentah,penjelasan-fitur,catatan-demo,laporan-pengujian}.docx
+
+Do NOT stage: backend/database/seeders/RolesAndAdminSeeder.php (pending decision), *.zip, *.patch.
+
+Let me check git status and stage carefully.
+
+The `docs/word/AGENT.docx` is modified — with the new summary content. Good.
+
+Note: `docs/word/*.docx` new files weren't tracked before, so they're untracked.
+
+Let me stage explicitly.
+
+Then commit with Indonesian message + footer.
+
+Let me do the commit. Per instructions: run `git diff` and `git log` first. I already have git log. Let me do git status/diff --stat.
+
+I'll stage:
+git add AGENT.md 00-index.json docs/export-word.sh docs/export-log-sesi.py docs/word docs/log-mentah docs/jurnal-prompt.md docs/laporan-pengujian.md
+
+But git rm already staged deletions; `git add docs/word` will also add AGENT.docx/AGENT.md modifications + new docx. `git add docs/log-mentah` adds new .gz/.md and staged deletions/renames remain.
+
+Careful: `git add docs/log-mentah` — the dir now has no deleted files on disk, and git will record deletions (already staged). Fine.
+
+Let me also double check nothing unintended in docs (e.g., .DS_Store is gitignored).
+
+Let me stage then show status --short.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && git add AGENT.md 00-index.json docs/export-word.sh docs/export-log-sesi.py docs/word docs/log-mentah docs/jurnal-prompt.md docs/laporan-pengujian.md && git status -s | grep -v '^??' && echo \"--- untracked (tidak di-commit) ---\" && git status -s | grep '^??'", "process_type": "SYNC", "timeout_seconds": 60}
+**Thinking (mentah):**
+
+Git detected renames: log-mentah.docx -> sesi-...json.gz (wrong pairing, but harmless — it's just rename detection). Fine.
+
+Staged set looks right: docs + config docs. `backend/database/seeders/RolesAndAdminSeeder.php` NOT staged (good).
+
+Now commit. Message in Indonesian explaining why, with footer.
+
+Message: 
+"Rapikan dokumentasi: ringkas prompt dan pakai log sesi sungguhan
+
+Teks prompt verbatim dipadatkan menjadi ringkasan agar dokumen acuan mudah dibaca, dan log mentah diganti transkrip sesi sungguhan (byte-exact + bantuan baca) supaya prosesnya bisa diverifikasi apa adanya. Arsip revisi bertanggal dan dump log lama dihapus karena isinya sudah tercakup, sementara docs/word/ kini memuat seluruh dokumen .docx yang dikumpulkan."
+
+Footer:
+🤖 Generated with Codebuff
+Co-Authored-By: Codebuff <noreply@codebuff.com>
+
+Let me commit using heredoc.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && git commit -q -m \"$(cat <<'EOF'\nRapikan dokumentasi: ringkas prompt dan pakai log sesi apa adanya\n\nPrompt verbatim yang panjang dipadatkan menjadi ringkasan supaya dokumen acuan\nmudah dibaca, sementara log mentah kini memakai transkrip sesi sungguhan\n(salinan byte-exact .json.gz + transkrip bacanya) agar prosesnya bisa\ndiverifikasi apa ada …
+**Thinking (mentah):**
+
+Committed `46430f2`. Now push (user authorized push previously). Let me push.
+
+Then update todos and move to slice 08-D.
+
+Let me push.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && git push origin main; echo \"push_exit=$?\"; git ls-remote origin refs/heads/main; git rev-parse HEAD", "process_type": "SYNC", "timeout_seconds": 300}
+**Thinking (mentah):**
+
+Pushed successfully: remote main = 46430f2 = HEAD.
+
+Now part 4: continue with slice 08-D avatar + moderasi.
+
+Let me update todos first, then start slice 08-D.
+
+Let me first read the spec chunks: slice-08.json (avatar part? the summary says avatar is slice 08-D), slice-10.json (cut order), and the structure/security chunks for avatar requirements. Also check existing patterns: MateriPolicy, AppServiceProvider, Slice08Test helpers.
+
+Let me plan slice 08-D:
+Backend `app/Sections/Avatar/`:
+- Enums: maybe `StatusAvatar`? 
+- Models: `Avatar`, `LaporanAvatar` (report), `BerkasLaporan`? 
+- Migration: `avatars`, `avatar_reports` (+ audit via activitylog)
+- Services: `AvatarService` (unggah/re-encode), `ModerasiAvatarService` (lapor N=3, sembunyikan, pulihkan/hapus + audit)
+- Policies: `AvatarPolicy`
+- Http: Controllers, Requests, Resources
+- Routes + config `config/avatar.php`
+- Scheduled job? maybe not.
+- Tests: `Slice08AvatarTest.php` (Pest)
+
+Frontend `src/sections/avatar/`:
+- api.js with Zod schemas
+- components/pages: `HalamanAvatar.jsx` (murid: upload, lihat, lapor), guru: antrean tinjau moderasi
+- route + nav links
+- Vitest tests
+
+Requirements from prompt (feature G):
+- JPEG/PNG/WebP only (SVG rejected), size limit, re-encode to fixed size on server, random name, default avatar.
+- Report: one report per murid per avatar, rate limit; after N unique reports (default 3) avatar hidden from others (owner still sees) and enters guru review queue; restore/delete recorded in audit.
+
+Also blocks in slice-08? The summary said "Slice 08-D (avatar & moderasi)". Let me read chunks/slice-08.json to see the exact scope/tests/done_when for avatar.
+
+Let me read slice-08.json, and also look at existing Material section files for patterns (MateriPolicy, AppServiceProvider, routes/api.php, Slice08Test.php helpers), and slices' config style.
+
+Let me read several files. slice-08.json may be long. Let me search for "avatar" in chunks.
+
+Let me do a batch.
+
+**Balasan:**
+
+Log mentah & dokumentasi beres, sudah di-push. Sekarang lanjut slice 08-D (avatar & moderasi). Saya baca spesifikasi & pola yang ada:
+
+- 🔧 `write_todos` — {"todos": [{"task": "Pelajari skrip ekspor & struktur log lama yang akan dihapus", "completed": true}, {"task": "Buat skrip re-runnable: gzip byte-exact + transkrip .md dari chat-messages.json", "completed": true}, {"task": "Hapus arsip tak berguna (word-arsip, log bertanggal, arsip-prompt, log-mentah.docx)", "completed": true}, {"task": "Ringkas dokumentasi prompt (docs/word/AGENT.md) jadi hanya  …
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && python3 -c \"\nimport json\nd=json.load(open('chunks/slice-08.json'))\nprint(json.dumps(d, ensure_ascii=False, indent=1)[:6000])\n\"", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+Now let me look at existing patterns. Let me read:
+- `backend/app/Sections/Material/Policies/MateriPolicy.php`
+- `backend/app/Providers/AppServiceProvider.php`
+- `backend/routes/api.php` (staged part)
+- `backend/tests/Feature/Slice08Test.php` (helpers) — maybe large, read head
+- `backend/app/Sections/Material/Services/PenyimpananMateri.php` (re-encode/file patterns) — for avatar image handling
+- `backend/config/material.php` for config style
+- existing enum example
+- `backend/app/Sections/Material/Http/Controllers/MateriController.php`
+
+Let me list the Material section tree first, then read key files.
+
+Let me also check the frontend structure for material to mirror.
+
+Let me batch: list dirs + read AppServiceProvider + routes/api.php.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && find backend/app/Sections/Material -type f | sort && echo \"--- frontend material ---\" && find frontend/src/sections/material frontend/src/__tests__/sections/material -type f | sort && echo \"--- avatar dirs ---\" && find backend/app/Sections/Avatar frontend/src/sections/avatar -type f 2>/dev/null", "process_type": "SYNC", "timeout_seconds": 30}
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Providers/AppServiceProvider.php", "folder tanpa judul 2/lomba_m/backend/config/material.php"]}
+**Thinking (mentah):**
+
+Now let me look at the Material section key files to mirror conventions: MateriPolicy, PenyimpananMateri (file handling), Materi model, an enum, a controller, requests, resource, and the Slice08Test helpers. Also the School Murid model (avatar belongs to murid/user?).
+
+Let me read a batch (careful about size).
+
+Files:
+- backend/app/Sections/Material/Policies/MateriPolicy.php
+- backend/app/Sections/Material/Enums/KategoriBerkas.php
+- backend/app/Sections/Material/Services/KlasifikasiBerkas.php
+- backend/app/Sections/Material/Services/PenyimpananMateri.php
+- backend/app/Sections/Material/Models/Materi.php
+
+Also Murid model + User model to know relationships.
+
+Let me read these.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Policies/MateriPolicy.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Enums/KategoriBerkas.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Services/KlasifikasiBerkas.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Models/Materi.php"]}
+**Thinking (mentah):**
+
+Good patterns. Now let me look at the PenyimpananMateri service (file storage patterns), the Murid model (to link avatar), the User model, and routes/api.php + a controller + a request + resource. Also Slice08Test for testing patterns.
+
+Let me read:
+- backend/app/Sections/Material/Services/PenyimpananMateri.php
+- backend/app/Sections/School/Models/Murid.php
+- backend/app/Models/User.php
+- backend/routes/api.php (material routes part)
+
+Let me search routes for materi to read the relevant section.
+
+Batch read.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Services/PenyimpananMateri.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/School/Models/Murid.php", "folder tanpa judul 2/lomba_m/backend/app/Models/User.php"]}
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && grep -n \"materi\\|unggahan\\|berkas\\|Materi\\|Unggahan\\|Berkas\" backend/routes/api.php | head -60 && echo \"=== total lines ===\" && wc -l backend/routes/api.php", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+Let me read routes/api.php fully to know the structure (it's 178 lines), plus a migration example (slice 07 for audit pattern) and the Slice08Test helpers.
+
+Let me read routes/api.php (full) and the migration for cheat_events + activity_log usage, and Slice08Test head.
+
+Let me batch.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/routes/api.php", "folder tanpa judul 2/lomba_m/backend/database/migrations/2026_10_06_000014_create_cheat_events_and_sse_tickets.php"]}
+**Thinking (mentah):**
+
+Now let me look at the Slice08Test helpers and one controller + request + resource for style, and how activitylog is used (Slice06Test). Also need to know settings keys for avatar N (default 3) — the three-layer settings system (`Pengaturan`). Feature G says "setelah N laporan unik (default 3)". Should N come from settings? The prompt doesn't explicitly require it configurable; "default 3" suggests config. I'll use config('avatar.ambang_laporan') with env default 3, and possibly the settings three-layer. Hmm, keeping it simpler: config value. The slice spec doesn't mention settings for it. I'll use config (simpler, testable).
+
+Let me read:
+- backend/tests/Feature/Slice08Test.php (head ~120 lines for helpers)
+- backend/app/Sections/Material/Http/Controllers/MateriController.php
+- backend/app/Sections/Material/Http/Requests/SimpanMateriRequest.php
+- backend/app/Sections/Material/Http/Resources/MateriResource.php
+- backend/app/Sections/Cheat/Services/... for activitylog usage? Let me grep activity_log usage.
+
+Let me batch: read Slice08Test head, MateriController, and grep activity.
+
+Actually Slice08Test may be long; read first 130 lines.
+
+Let me also check the Settings service to see if I can read settings (for potential N). And the Cheat controller for guru-queue pattern (tinjau).
+
+Batch.
+
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/backend/tests/Feature/Slice08Test.php", "limit": 140}, {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Http/Controllers/MateriController.php", "limit": 120}, {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Http/Requests/SimpanMateriRequest.php"}, {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/M …
+**Thinking (mentah):**
+
+Now I have a solid grasp of conventions. Let me check how activitylog is used and the settings service (for potential N and for guru queue), and look at a "tinjau" controller + service pattern from Cheat.
+
+Let me grep for activity() usage and read the CheatService (tinjau + audit).
+
+Also I need to know: does the project have an existing pattern for image re-encode (GD/Imagick)? Probably not — slice 09 handles canvas upload re-encode. Let me check if GD is available in PHP and if `intervention/image` is installed (probably not; stack forbids extra deps without justification). The prompt says "di-encode ulang ke ukuran tetap di server". Laravel has no built-in image manipulation; GD extension is standard in PHP.
+
+I'll implement re-encode with GD (imagecreatefromstring + imagecopyresampled + imagejpeg/png/webp). Must check GD is available in this environment (php -m | grep gd). If not available, tests would fail. Let me check.
+
+Let me also verify PHP version and extensions.
+
+Let me run: php -m | grep -i -E 'gd|imagick|fileinfo' and php -v.
+
+Also grep activity().
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && php -v | head -2 && echo \"--- ekstensi ---\" && php -m | grep -i -E '^(gd|imagick|fileinfo|exif)$' ; echo \"--- activity() pakai ---\" && grep -rn \"activity()\" app/ | head -12 && echo \"--- KunciPengaturan ---\" && sed -n '1,80p' app/Sections/Settings/Enums/KunciPengaturan.php", "process_type": "SYNC", "timeout_seconds": 60}
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Cheat/Services/CheatService.php"]}
+**Thinking (mentah):**
+
+GD is available. Good — I can re-encode images with GD.
+
+No `activity()` usage in app/ — but Slice06Test checks activity_log. Let me find how activity log is written. Search for "activity_log" or "LogsActivity" or "Activitylog".
+
+Let me grep.
+
+Also find the Cheat service file name.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && echo \"--- activitylog ---\" && grep -rn \"activity_log\\|LogsActivity\\|Activitylog\\|activity(\" app/ config/ | head -20 && echo \"--- Cheat files ---\" && find app/Sections/Cheat -type f | sort && echo \"--- audit service? ---\" && grep -rln \"audit\" app/ | head", "process_type": "SYNC", "timeout_seconds": 60}
+**Thinking (mentah):**
+
+Let me read KecuranganService (audit usage + tinjau pattern) and KejadianKecuranganPolicy (policy pattern for tinjau) — and the KecuranganController.
+
+Then I'll write the Avatar section.
+
+Let me read KecuranganService (around line 150-220 for audit) and the policy + controller.
+
+Actually let me read the whole KecuranganService (probably ~250 lines) and the policy.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Cheat/Services/KecuranganService.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Cheat/Policies/KejadianKecuranganPolicy.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Cheat/Http/Controllers/KecuranganController.php"]}
+**Thinking (mentah):**
+
+Now I have all patterns. Let me design the Avatar slice.
+
+### Backend
+
+**Migration** `2026_10_07_000016_create_avatars_and_reports.php`:
+- `avatars`: id, school_id FK, student_id FK (unique — one avatar per student), path (nullable: null = pakai avatar bawaan), mime, ukuran (bytes), lebar, tinggi, hash, disimpan_at/updated, timestamps. Hmm — should one student have multiple avatars? The report rule: "satu laporan per murid per avatar" implies avatar has an id; reports point to avatar_id. Simplest: one avatar row per student (unique student_id), replaced on re-upload. But then reports on the old avatar become moot... Hmm.
+
+Better: `avatars` table with multiple rows per student (history), with `aktif` boolean. Hmm, complexity.
+
+Let me reconsider: "Lapor: satu laporan per murid per avatar, rate limit; setelah N laporan unik (default 3) avatar disembunyikan dari orang lain (pemilik tetap melihat) dan masuk antrean tinjau guru". 
+
+A unit for "avatar" that can be reported and hidden. If a student re-uploads, the new avatar should be visible again (fresh). So representing each upload as a row (with `disembunyikan_at`) is the cleanest: the report targets a specific avatar version. A student's current avatar = the latest row.
+
+So:
+- `avatars`: id, school_id, student_id, path, mime, ukuran, lebar, tinggi, hash, status (aktif/disembunyikan/dihapus?), disembunyikan_at, jumlah_laporan (counter cache), timestamps. Index student_id+created_at.
+- `avatar_reports`: id, avatar_id FK, pelapor_id (student_id) FK, alasan (enum?), keterangan, status tinjauan (menunggu/valid/tidak_valid), reviewed_by, reviewed_at, timestamps, unique(avatar_id, pelapor_id).
+
+Moderation flow:
+- Report by murid (must be murid, cannot report own avatar).
+- Rate limit: e.g., 10 reports per hour per murid (route throttle + per-murid check).
+- Count unique reports (unique avatar_id+pelapor_id guaranteed by DB unique).
+- If unique reports >= N (config('avatar.ambang_laporan', 3)) → set avatar.disembunyikan_at = now, status = Disembunyikan; add to guru queue (implicitly: avatars with status disembunyikan && belum ditinjau).
+- Guru queue: list avatars with laporan pending (or hidden). Guru can: pulihkan (restore → visible, status Aktif, keep reports as tidak_valid) or hapus (delete file + mark) — both audited via activity('avatar').
+
+Owner still sees own avatar (even hidden).
+
+Enums:
+- `StatusAvatar`: Aktif, Disembunyikan, Dihapus. Hmm maybe enough: Aktif ('aktif'), Disembunyikan ('disembunyikan'). Let me add `Dihapus` for moderation delete. Since we physically delete the file, keeping the row with status Dihapus retains audit; reports reference it. Good.
+
+Actually simpler: keep `StatusAvatar` with Aktif, Disembunyikan, Dihapus.
+- `AlasanLaporan` enum? Let me add `AlasanLaporan`: TidakPantas, Bullying, Spam, Lainnya. Validate via enum.
+
+**Services**:
+- `PenyimpananAvatar`: 
+  - `simpan(Murid $murid, string $isi, string $namaAsli): Avatar` — classify magic bytes (JPEG/PNG/WebP only; SVG/others rejected), size limit, re-encode via GD to fixed size (e.g., 256x256 cover crop) into standardized format (JPEG? keep transparency? Let's output PNG if source has alpha else JPEG... simpler: always output JPEG at quality 82? But PNG with transparency would get black bg. Let's do: output WebP? Hmm browsers support WebP widely. But simplest deterministic: re-encode to PNG when source is PNG/WebP-with-alpha, else JPEG. Hmm complexity.
+  
+  Decision: re-encode to a fixed 256×256 square and always save as JPEG with white background composited (flatten) — deterministic, simple, robust, and strips any embedded payload/metadata. Actually PNG avatars are common; flattening to white is acceptable and safe. Hmm, but a PNG logo on transparent → white bg is fine for avatars.
+
+  Simpler and safer: always re-encode → JPEG. Store `mime = image/jpeg`, ext `jpg`, random name. That satisfies "di-encode ulang ke ukuran tetap di server, nama acak". Transparency lost but acceptable & documented.
+  
+  Hmm, but for kids' avatars, PNG transparency loss is fine (avatars are photos/drawings).
+  
+  I'll go with: fixed 256×256, JPEG quality 85, white background. Deterministic & tested.
+
+  Wait — is JPEG-only a problem for the requirement "JPEG/PNG/WebP saja (SVG ditolak)"? That's about *accepting* input formats. Output can be any. Fine.
+
+  - `url(Avatar $avatar)`: signed temporary route `avatar.berkas` (like materi.berkas) with TTL.
+  - `path` under `avatar/<school_id>/<kode>.jpg`.
+  - `hapus(Avatar)` delete file.
+- `ModerasiAvatarService`:
+  - `lapor(Avatar $avatar, User $pelapor, AlasanLaporan $alasan, ?string $keterangan): LaporanAvatar` — reject self-report, reject duplicate (unique), rate limit check, count unique reports, hide when >= N, audit.
+  - `antrean()`: list avatars with status Disembunyikan (or with pending reports) for guru.
+  - `pulihkan(Avatar $avatar, User $guru, ?string $catatan)`: status Aktif, disembunyikan_at null, mark open reports as tidak_valid, audit.
+  - `hapus(Avatar $avatar, User $guru, ?string $catatan)`: status Dihapus, delete file, mark reports valid, audit.
+
+**Policy** `AvatarPolicy`:
+- viewAny (guru), lihat (murid melihat avatar murid lain di kelasnya; pemilik selalu), unggah (murid, self only), lapor (murid, not own), moderasi/tinjau (guru), hapus (guru).
+
+Actually avatars are tied to Murid. For "lihat", a murid can see avatars of students in same class. Hmm, do we even need an endpoint to view others' avatars? Where are avatars displayed? Report feature: murid reports others' avatars → needs to see them. Let me provide `GET /avatar` (murid: daftar avatar kelasnya; guru: semua) and `GET /avatar/saya`.
+
+**Controllers**:
+- `AvatarController`: 
+  - `show` (GET /avatar/saya) — own avatar info
+  - `unggah` (POST /avatar) — multipart file OR base64 (like material potongan). Use `isi_base64` + `nama` for testability; also accept `berkas` upload.
+  - `hapus` (DELETE /avatar) — reset to default (own)
+  - `daftar` (GET /avatar) — list (kelas for murid, all for guru), hidden avatars excluded for others
+  - `lapor` (POST /avatar/{avatar}/lapor) — murid reports
+- `ModerasiAvatarController` (guru):
+  - `antrean` (GET /avatar/moderasi)
+  - `pulihkan` (POST /avatar/{avatar}/pulihkan)
+  - `hapus` (POST /avatar/{avatar}/hapus)
+- `BerkasAvatarController` (invokable, no session, signed + throttle) — serve file.
+
+**Requests**: `UnggahAvatarRequest`, `LaporAvatarRequest`, `ModerasiAvatarRequest`.
+
+**Resource**: `AvatarResource` (id, murid/user nama, url, status, disembunyikan, jumlah_laporan, boleh_dilihat), `LaporanAvatarResource`.
+
+**Config** `config/avatar.php`: ukuran_maks byte (2 MiB), sisi (256), kualitas (85), ambang_laporan (3), ttl_url_menit (30), maks_laporan_per_jam (10).
+
+**Routes**: new group.
+- `GET /avatar` → daftar
+- `GET /avatar/saya` → show
+- `POST /avatar` → unggah (throttle:avatar? )
+- `DELETE /avatar` → hapus milik sendiri
+- `POST /avatar/{avatar}/lapor` → lapor (throttle:lapor-avatar)
+- `GET /avatar/moderasi` → antrean (guru)
+- `POST /avatar/{avatar}/pulihkan`, `POST /avatar/{avatar}/hapus` (guru)
+- `GET /berkas/avatar/{kode}` → BerkasAvatarController (signed:relative, throttle:berkas) — name 'avatar.berkas'
+
+Route ordering: `/avatar/moderasi` and `/avatar/saya` must come before `/avatar/{avatar}`... but we don't have `/avatar/{avatar}` GET, so fine. But POST `/avatar/{avatar}/lapor` vs `/avatar/moderasi` (GET) differ by method. OK.
+
+Models: `Avatar` (table 'avatars'), `LaporanAvatar` (table 'avatar_reports'). Factories: `AvatarFactory`, `LaporanAvatarFactory`.
+
+Also `avatar` route key: use `kode` for the signed file URL (random name), and `id` for reports. For signed URL I'll use a random `kode` like materials did. Actually simpler: the file path contains a random name; the signed URL can use the avatar id + signature. Signed URLs already prevent guessing. For materi they used `kode`. I'll use `kode` (random 32 chars) to avoid exposing sequential ids in URLs. Model `getRouteKeyName` — careful! For `/avatar/{avatar}/lapor` we want id (or kode). Materi used kode as route key (which caused a 404 bug noted). To keep it simple and avoid confusion: add a `kode` column, and for the report routes bind by id (default), while the signed file route uses `kode` as an explicit parameter (like materi.berkas uses ['kode' => ...]) — that's not route-model-binding but a plain parameter. In BerkasController they probably look up by kode manually. Let me check BerkasController quickly to mirror.
+
+Let me read BerkasController + UnggahanController + UnggahanResource to mirror the file-serving approach exactly.
+
+Also need: storage disk 'local' (private). Reuse config('material.ttl_url_menit')? I'll add avatar config.
+
+Let me read BerkasController and UnggahanController.
+
+Now frontend:
+- `frontend/src/sections/avatar/api.js` — zod schemas + functions: avatarSaya, unggahAvatar (file → base64), daftarAvatar, laporAvatar, antreanModerasi, pulihkanAvatar, hapusAvatar.
+- `HalamanAvatar.jsx` (murid) — upload, preview, list kelas + report button.
+- `HalamanModerasiAvatar.jsx` (guru) — queue + restore/delete.
+- routes.js add `avatar: '/avatar'`, `moderasiAvatar: '/avatar/moderasi'`
+- App.jsx routes
+- KerangkaUmum.jsx nav: murid → "Avatar", guru → "Moderasi Avatar"
+- `frontend/src/__tests__/sections/avatar/api.test.js` — Vitest tests
+
+Backend test: `backend/tests/Feature/Slice08AvatarTest.php` — tests:
+1. SVG ditolak (magic bytes) + PNG/JPEG/WebP diterima & di-encode ulang ke 256×256 JPEG.
+2. Ukuran melebihi batas ditolak.
+3. Nama acak (path tidak memakai nama asli).
+4. Laporan ganda oleh murid sama tidak dihitung (unique).
+5. Setelah N=3 laporan unik avatar disembunyikan dari orang lain, pemilik tetap melihat.
+6. Pulihkan tercatat di audit (activity_log log_name avatar, event pulihkan).
+7. Hapus tercatat di audit + file hilang + status dihapus.
+8. Murid tidak bisa lapor avatar sendiri; guru tidak bisa lapor? (lapor = murid only)
+9. URL bertanda tangan untuk berkas avatar.
+
+Let me check: does the project use `Storage::fake('local')` in tests? For material test they used Storage facade; let me check the material test usage around line 141+ for how they assert files. Let me read the rest of Slice08Test (141-401) — useful to mirror assertions.
+
+Let me read that plus BerkasController + UnggahanController.
+
+Let me batch.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Http/Controllers/BerkasController.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Http/Controllers/UnggahanController.php", "folder tanpa judul 2/lomba_m/backend/tests/Feature/Slice08Test.php", {"path": "folder tanpa judul 2/lomba_m/backend/tests/Feature/Slice08Test.php", "offset": 141, "limit": 130}]}
+**Thinking (mentah):**
+
+Now I have everything to write the Avatar slice. Let me check a couple of remaining details:
+- `RoleSeeder`/`RolesAndAdminSeeder` for role names (guru, murid, admin).
+- `MuridFactory` behavior (creates user automatically?). In tests, `Murid::factory()->create([...])` then `$this->murid->user` exists → factory creates user.
+- `SekolahService::tunggal()`.
+- Enrollment/kelas.
+
+Also for frontend, I need to see the material api.js + one page + routes.js/App.jsx/KerangkaUmum nav for conventions.
+
+Let me read those frontend files: sections/material/api.js, routes.js, App.jsx, KerangkaUmum.jsx (nav part), and the material test.
+
+Batch read. These could be big. Let me read api.js fully, and grep nav in KerangkaUmum.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/frontend/src/sections/material/api.js", "folder tanpa judul 2/lomba_m/frontend/src/routes.js"]}
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && git log --oneline -1 && grep -n \"materi\\|Materi\\|navMurid\\|navGuru\\|tautan\" src/shared/ui/KerangkaUmum.jsx | head -40 ; echo \"--- App.jsx routes ---\" && grep -n \"materi\\|Materi\\|Route\" src/App.jsx | head -50 ; echo \"--- files ---\" && ls src src/shared/ui src/sections", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+KerangkaUmum.jsx is elsewhere. Let me find it. Also need to see nav structure (guru/murid menus).
+
+Let me find KerangkaUmum.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && find src -name \"Kerangka*\" -o -name \"*Kerangka*\" | sort && echo \"--- nav grep ---\" && grep -rn \"materi\" src --include=*.jsx | grep -i \"nav\\|menu\\|tautan\\|RUTE.materi\" | head -20", "process_type": "SYNC", "timeout_seconds": 30}
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/frontend/src/shared/layout/KerangkaUmum.jsx", "offset": 85, "limit": 45}, {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/material/PilihHalamanMateri.jsx"}]}
+**Thinking (mentah):**
+
+I now have all the conventions. Let me write the backend for slice 08-D.
+
+Files to create (backend):
+1. `database/migrations/2026_10_07_000016_create_avatars_and_reports.php`
+2. `config/avatar.php`
+3. `app/Sections/Avatar/Enums/StatusAvatar.php`
+4. `app/Sections/Avatar/Enums/AlasanLaporan.php`
+5. `app/Sections/Avatar/Models/Avatar.php`
+6. `app/Sections/Avatar/Models/LaporanAvatar.php`
+7. `database/factories/AvatarFactory.php`
+8. `database/factories/LaporanAvatarFactory.php`
+9. `app/Sections/Avatar/Services/PenyimpananAvatar.php`
+10. `app/Sections/Avatar/Services/ModerasiAvatarService.php`
+11. `app/Sections/Avatar/Policies/AvatarPolicy.php`
+12. `app/Sections/Avatar/Http/Requests/UnggahAvatarRequest.php`
+13. `app/Sections/Avatar/Http/Requests/LaporAvatarRequest.php`
+14. `app/Sections/Avatar/Http/Requests/ModerasiAvatarRequest.php`
+15. `app/Sections/Avatar/Http/Resources/AvatarResource.php`
+16. `app/Sections/Avatar/Http/Resources/LaporanAvatarResource.php`
+17. `app/Sections/Avatar/Http/Controllers/AvatarController.php`
+18. `app/Sections/Avatar/Http/Controllers/ModerasiAvatarController.php`
+19. `app/Sections/Avatar/Http/Controllers/BerkasAvatarController.php`
+20. Update `app/Providers/AppServiceProvider.php` (policy + rate limiter)
+21. Update `routes/api.php`
+22. `tests/Feature/Slice08AvatarTest.php`
+
+Also remove `.gitkeep` files in Avatar dirs (they're tracked). Since dirs will now have files, remove .gitkeep. The summary said "tidak dihapus: .gitkeep slice Avatar/Cache yang belum dibangun". Now Avatar is built → remove its .gitkeep files. Keep Cache's (not mine).
+
+Let me design the migration:
+
+```php
+Schema::create('avatars', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('school_id')->constrained('schools')->cascadeOnDelete();
+    $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
+    $table->string('kode', 32)->unique();
+    $table->string('path');
+    $table->string('mime', 100)->default('image/jpeg');
+    $table->unsignedInteger('ukuran');
+    $table->unsignedSmallInteger('lebar');
+    $table->unsignedSmallInteger('tinggi');
+    $table->string('hash', 64);
+    $table->string('status', 20)->default('aktif');
+    $table->unsignedInteger('jumlah_laporan')->default(0);  // laporan unik yang dihitung
+    $table->timestamp('disembunyikan_at')->nullable();
+    $table->timestamps();
+    $table->index(['student_id', 'created_at']);
+    $table->index(['school_id', 'status']);
+});
+
+Schema::create('avatar_reports', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('avatar_id')->constrained('avatars')->cascadeOnDelete();
+    $table->foreignId('reporter_id')->constrained('students')->cascadeOnDelete();
+    $table->foreignId('school_id')->constrained('schools')->cascadeOnDelete();
+    $table->string('alasan', 40);
+    $table->string('keterangan', 300)->nullable();
+    $table->string('review_status', 20)->default('menunggu');
+    $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamp('reviewed_at')->nullable();
+    $table->timestamps();
+    $table->unique(['avatar_id', 'reporter_id']);  // satu laporan per murid per avatar
+    $table->index(['review_status', 'created_at']);
+});
+```
+
+Note: `status` for reports reuses `StatusTinjauan` from Cheat section? That's `App\Sections\Cheat\Enums\StatusTinjauan` (menunggu/valid/tidak_valid). Reusing a cross-section enum creates coupling; but it's the same concept. Hmm, cross-section dependency — the chunk structure allows depends_on. I'd rather reuse to avoid duplication... but "Sections" are meant to be self-contained. The project already reuses across sections? e.g. Material uses Tag/Soal from Question. So cross-section is normal. But StatusTinjauan is Cheat-specific naming. Let me just reuse `StatusTinjauan` — it's generic enough (Menunggu/Valid/TidakValid). Hmm, but Policy/UI labels... Let me create `AlasanLaporan` and reuse `StatusTinjauan`.
+
+Hmm, to be safe and explicit, let me reuse StatusTinjauan (fewer enums, consistent review semantics). Check its values.
+
+Let me check StatusTinjauan enum quickly.
+
+Actually, I'll create my own `StatusTinjauanLaporan`? That duplicates. Let me check StatusTinjauan content first.
+
+Let me read it.
+
+Also need AvatarFactory + LaporanAvatarFactory, and MuridFactory signature.
+
+Let me read StatusTinjauan + MuridFactory + SekolahService (tunggal).
+
+Let me batch read.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Cheat/Enums/StatusTinjauan.php", "folder tanpa judul 2/lomba_m/backend/database/factories/MuridFactory.php", "folder tanpa judul 2/lomba_m/backend/database/factories/MateriFactory.php"]}
+**Thinking (mentah):**
+
+Now let me write the backend files. I'll create them all.
+
+Note on GD re-encode: need to test it works. In tests, I'll generate a small real PNG via GD (imagecreatetruecolor + imagepng to string) so the decode succeeds.
+
+Important: my classification must reject SVG. `imagecreatefromstring` on an SVG string returns false (GD doesn't support SVG), so that's a natural second layer. But the primary check must be magic bytes: JPEG (\xFF\xD8\xFF), PNG (\x89PNG), WebP (RIFF....WEBP). SVG starts with `<?xml` or `<svg` → rejected.
+
+Let me write `PenyimpananAvatar`:
+
+```php
+class PenyimpananAvatar
+{
+    public const DISK = 'local';
+    public const LEBAR = 256; // from config
+
+    public function simpan(Murid $murid, string $isi, ?string $namaAsli = null): Avatar
+    {
+        // 1. batas ukuran
+        // 2. magic bytes -> format
+        // 3. GD decode + re-encode (cover crop ke persegi) -> JPEG
+        // 4. simpan dengan nama acak
+        // 5. baris Avatar baru (status Aktif); avatar lama tetap tersimpan sebagai riwayat? 
+    }
+```
+
+Hmm: "Avatar bawaan" (default avatar) — when a student has no avatar, we return a default (e.g., null url + initial letter). So `Avatar` rows only exist after upload. Default handled by client/API when no row.
+
+Should re-upload replace (delete old) or create new row? If we keep old rows, reports on old avatars persist. Requirement: after moderation deletes/hides, owner can upload a new one and be visible again. If we create a new row each time, the "current" avatar = latest non-deleted. Old hidden one stays as history for audit. That's clean and keeps audit trail. And "satu laporan per murid per avatar" works naturally.
+
+But then "one avatar per student" uniqueness isn't enforced. Query for current: latest where status != Dihapus. I'll add a scope `terkini()`.
+
+Hmm, but simpler for the API: `avatarSaya` returns the latest avatar with status Aktif or Disembunyikan (owner sees own even hidden). If none → default.
+
+Also: should we delete the old file when a new avatar is uploaded? Yes, to save space: mark old as Dihapus + delete file. Hmm, but that destroys moderation evidence. Hmm. Let me keep old rows but delete old *files* only if old status is Aktif? Hmm.
+
+Simplify: On new upload, previous avatars of that student are marked `Dihapus` (status) but their files are kept? That leaks storage. 
+
+Let me decide: on new upload, keep it simple — previous avatar rows are marked `Dihapus` and their files DELETED (avatar is user-owned content they replaced; the audit row remains with hash/status so history is provable). Hmm, but if it was hidden pending review and the murid replaces it, the review evidence (the image) is gone. That could be a moderation loophole: kid uploads bad image, gets 3 reports, then uploads a new one — image gone before teacher reviews. Hmm!
+
+So better: if the current avatar is `Disembunyikan` (pending review), DON'T allow replacing until reviewed? Or allow, but keep the hidden file until reviewed.
+
+Decision: allow new upload, but only delete the old file if the old avatar status is `Aktif`. If old is `Disembunyikan` (pending review), keep the file (evidence) and mark the row as... hmm, status stays Disembunyikan so guru can still review it; the new avatar becomes the current one (status Aktif). That's coherent: guru's queue still shows the hidden one; the kid's new avatar is live.
+
+Hmm, but then a kid could keep uploading new avatars after being reported. That's fine — the reported image is preserved for the teacher.
+
+Wait, but "setelah N laporan unik avatar disembunyikan dari orang lain" — if a new avatar is uploaded, it's a *new* avatar, unaffected. OK.
+
+Deletion rule: delete file only for Aktif ones being replaced. Simpler: don't auto-delete files at all on replacement; mark old Aktif rows as Dihapus and delete their files (evidence not needed since they were never reported). Let me implement: 
+```php
+$lama = current avatar (latest non-deleted)
+if ($lama && $lama->status === StatusAvatar::Aktif) { hapusFile($lama); $lama->status = Dihapus; save; }
+// if Disembunyikan: leave untouched (evidence)
+```
+
+Good.
+
+Now `urlBertandaTangan(Avatar)` → signed route `avatar.berkas` with kode, TTL config.
+
+Now the resource must hide url for hidden avatars when viewer isn't owner. Let me implement `AvatarResource` with a `bolehLihat` computed by controller/service? Resources can read `$request->user()`. Let me compute inside resource:
+- owner = request user's murid id === avatar->student_id
+- visible = status === Aktif || owner || guru
+- url: null unless visible
+- nama murid, kelas
+
+I'll pass via `additional()`? Simpler: compute in the resource using `$request->user()`.
+
+Now policy:
+```php
+class AvatarPolicy {
+  viewAny(User): true
+  lihat(User, Avatar): guru || same class as murid || owner
+  unggah(User, Murid): owner (murid) — for POST /avatar we authorize on the user's own murid profile (a model instance). Alternatively a plain `create` ability on Avatar::class.
+  lapor(User, Avatar): user is murid && different student && avatar visible
+  moderasi(User): guru
+  hapus(User, Avatar): guru (moderation delete)
+}
+```
+For `unggah`, I'll use `authorize('unggah', [Avatar::class, $murid])`? Hmm, cleaner: `unggah(User $user)` on Avatar::class with the check that the user has a murid profile: 
+```php
+public function unggah(User $user): bool { return $user->murid !== null; }
+```
+and `this->authorize('unggah', Avatar::class)`.
+
+For `hapus` we need both: murid deletes own avatar (reset to default) and guru moderation delete. Let me use:
+- `hapusSendiri(User)` → murid
+- `moderasi(User, Avatar)` → guru for pulihkan/hapus.
+
+Controller for murid delete: `DELETE /avatar` (no id) → deletes own current avatar. Authorize 'hapusSendiri'.
+
+For guru queue: `antrean` authorize 'moderasi' on Avatar::class.
+
+Now `AlasanLaporan` enum: TidakPantas ('tidak_pantas'), Bullying ('bullying'), Spam ('spam'), Lainnya ('lainnya'). With label().
+
+Let me now write. I'll write files one by one with write_file. Let me be efficient but careful with PHP syntax (strict types, attributes Fillable).
+
+Note: project uses `#[Fillable([...])]` attribute (Laravel 12+/13 style). And `#[Hidden]`. Good.
+
+Let me write the migration first.
+
+Then config.
+
+Then enums.
+
+Then models.
+
+Then factories.
+
+Then services.
+
+Then policy.
+
+Then requests/resources/controllers.
+
+Then provider + routes.
+
+Then test.
+
+Let me start writing. I'll do several write_file calls in parallel where independent.
+
+Actually, let me be careful: parallel write_file calls are fine (different paths).
+
+Let me write batch 1: migration, config, enums.
+
+For the migration filename: `2026_10_07_000016_create_avatars_and_reports.php`. Earlier migration was `2026_10_07_000015_create_materials_blocks_uploads_and_progress.php`. So 000016 is right.
+
+Let me write.
+
+Wait — I should double check current date usage: today is 2026-10-07. Good.
+
+Let me write files.
+
+One more: for the "avatar bawaan" (default avatar), I'll add a config/env for a default? Simplest: API returns `avatar: null` + `bawaan: true` and the frontend shows initials. I'll implement `AvatarController::show` returning `{avatar: null, bawaan: true}` when none. Document it.
+
+Hmm, "avatar bawaan" could also mean a default image file. Initials-based default is reasonable and requires no asset. I'll document that choice.
+
+Let me write code now.
+
+Migration content:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Avatar murid + laporan moderasi (slice 08).
+ *
+ * `avatars` menyimpan TIAP unggahan sebagai baris sendiri, bukan satu baris yang
+ * ditimpa. Alasannya moderasi: laporan menunjuk versi gambar tertentu, dan guru
+ * masih perlu melihat gambar yang dilaporkan walau muridnya sudah menggantinya.
+ * Gambar "terkini" milik seorang murid = baris terbaru yang statusnya bukan
+ * `dihapus`.
+ *
+ * `avatar_reports` menyimpan laporan murid. Unique (avatar_id, reporter_id)
+ * adalah penegakan "satu laporan per murid per avatar" di level database —
+ * laporan berulang dari anak yang sama tidak menambah hitungan.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('avatars', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('school_id')->constrained('schools')->cascadeOnDelete();
+            $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
+            // Nama acak untuk URL bertanda tangan; id berurutan tidak dipakai di URL.
+            $table->string('kode', 32)->unique();
+            $table->string('path');
+            // Selalu hasil encode ulang server (JPEG), bukan berkas kiriman.
+            $table->string('mime', 100)->default('image/jpeg');
+            $table->unsignedInteger('ukuran');
+            $table->unsignedSmallInteger('lebar');
+            $table->unsignedSmallInteger('tinggi');
+            $table->string('hash', 64);
+            $table->string('status', 20)->default('aktif');
+            // Jumlah laporan UNIK yang sudah masuk (diisi dari hitungan baris laporan).
+            $table->unsignedInteger('jumlah_laporan')->default(0);
+            $table->timestamp('disembunyikan_at')->nullable();
+            $table->timestamps();
+
+            $table->index(['student_id', 'created_at']);
+            $table->index(['school_id', 'status']);
+        });
+
+        Schema::create('avatar_reports', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('avatar_id')->constrained('avatars')->cascadeOnDelete();
+            $table->foreignId('reporter_id')->constrained('students')->cascadeOnDelete();
+            $table->foreignId('school_id')->constrained('schools')->cascadeOnDelete();
+            $table->string('alasan', 40);
+            $table->string('keterangan', 300)->nullable();
+            $table->string('review_status', 20)->default('menunggu');
+            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['avatar_id', 'reporter_id']);
+            $table->index(['review_status', 'created_at']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('avatar_reports');
+        Schema::dropIfExists('avatars');
+    }
+};
+```
+
+config/avatar.php:
+```php
+return [
+    'ukuran_maks' => (int) env('AVATAR_UKURAN_MAKS', 2 * 1024 * 1024),
+    'sisi' => (int) env('AVATAR_SISI', 256),
+    'kualitas' => (int) env('AVATAR_KUALITAS', 85),
+    'ambang_laporan' => (int) env('AVATAR_AMBANG_LAPORAN', 3),
+    'maks_laporan_per_jam' => (int) env('AVATAR_MAKS_LAPORAN_PER_JAM', 20),
+    'ttl_url_menit' => (int) env('AVATAR_TTL_MENIT', 30),
+];
+```
+
+Now write. Let me go.
+
+**Balasan:**
+
+Sekarang saya bangun backend slice 08-D. Mulai dari migrasi, config, dan enum:
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/database/migrations/2026_10_07_000016_create_avatars_and_reports.php", "instructions": "Buat migrasi tabel avatars + avatar_reports untuk slice 08 avatar.", "content": "<?php\n\ndeclare(strict_types=1);\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\n/**\n  …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/config/avatar.php", "instructions": "Buat config avatar (batas ukuran, sisi encode ulang, ambang laporan, TTL URL).", "content": "<?php\n\ndeclare(strict_types=1);\n\n/*\n|--------------------------------------------------------------------------\n| Avatar & moderasi (slice 08)\n|------------------------------------------------------------------------ …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Enums/StatusAvatar.php", "instructions": "Buat enum status avatar.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Enums;\n\n/**\n * Status satu berkas avatar murid.\n *\n * `Disembunyikan` bukan tindakan disiplin: ia hanya berarti \"jangan tampilkan\n * ke murid lain sampai guru meninjau\". Pemi …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Enums/AlasanLaporan.php", "instructions": "Buat enum alasan laporan avatar.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Enums;\n\n/**\n * Alasan laporan avatar.\n *\n * Daftarnya sengaja pendek dan berbahasa anak: pelapor adalah murid SD, sering\n * tanpa teks penjelasan. Alasan yang dipilih  …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now models + factories.
+
+Avatar model:
+```php
+#[Fillable(['school_id','student_id','kode','path','mime','ukuran','lebar','tinggi','hash','status','jumlah_laporan','disembunyikan_at'])]
+class Avatar extends Model {
+  table 'avatars'
+  casts: status => StatusAvatar::class, disembunyikan_at => datetime, ukuran/lebar/tinggi/jumlah_laporan integer
+  relations: sekolah, murid, laporan (hasMany LaporanAvatar)
+  scope terkini? -> newerThan... Let me add static method `terkiniUntuk(int $studentId): ?Avatar`.
+}
+```
+
+LaporanAvatar model: table 'avatar_reports', casts review_status => StatusTinjauan (Cheat enum), relations avatar, pelapor (Murid), peninjau (User).
+
+Factories.
+
+Let me write.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Models/Avatar.php", "instructions": "Buat model Avatar.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Models;\n\nuse App\\Sections\\Avatar\\Enums\\StatusAvatar;\nuse App\\Sections\\School\\Models\\Murid;\nuse App\\Sections\\School\\Models\\Sekolah;\nuse Database\\Factories\\AvatarFactory;\nuse  …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Models/LaporanAvatar.php", "instructions": "Buat model LaporanAvatar.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Models;\n\nuse App\\Models\\User;\nuse App\\Sections\\Cheat\\Enums\\StatusTinjauan;\nuse App\\Sections\\School\\Models\\Murid;\nuse App\\Sections\\School\\Models\\Sekolah;\nuse Da …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Oops: `pemilik()` in LaporanAvatar is wrong (returns pelapor). Let me remove that redundant method. I'll fix it with a str_replace later or now. Let me fix now.
+
+Then factories.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Models/LaporanAvatar.php", "replacements": [{"oldString": " /** @return BelongsTo<Murid, $this> */\n public function pemilik(): BelongsTo\n {\n return $this->belongsTo(Murid::class, 'reporter_id');\n }\n\n", "newString": "", "allowMultiple": false}]}
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/database/factories/AvatarFactory.php", "instructions": "Buat AvatarFactory.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace Database\\Factories;\n\nuse App\\Sections\\Avatar\\Enums\\StatusAvatar;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\School\\Models\\Murid;\nuse App\\Sections\\School\\Models\\Sekolah;\nuse Illumin …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/database/factories/LaporanAvatarFactory.php", "instructions": "Buat LaporanAvatarFactory.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace Database\\Factories;\n\nuse App\\Sections\\Avatar\\Enums\\AlasanLaporan;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\Avatar\\Models\\LaporanAvatar;\nuse App\\Sections\\Cheat\\Enums\\ …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Oops — I invented `SekolahFactoryHelper` which doesn't exist. Let me fix LaporanAvatarFactory: `school_id` should derive from the avatar's school. Best: don't set school_id in definition (but it's NOT NULL). Use a state: `'school_id' => Sekolah::factory()`. Then tests override. Let me just use `Sekolah::factory()`.
+
+Let me rewrite that file properly.
+
+Also add a `untuk(Avatar, Murid)` helper maybe. Keep simple.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/database/factories/LaporanAvatarFactory.php", "instructions": "Perbaiki LaporanAvatarFactory agar school_id memakai Sekolah factory.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace Database\\Factories;\n\nuse App\\Sections\\Avatar\\Enums\\AlasanLaporan;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\Avatar\\Models\\Lapora …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now the services. `PenyimpananAvatar` with GD re-encode.
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace App\Sections\Avatar\Services;
+
+use App\Sections\Avatar\Enums\StatusAvatar;
+use App\Sections\Avatar\Models\Avatar;
+use App\Sections\School\Models\Murid;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class PenyimpananAvatar
+{
+    public const DISK = 'local';
+
+    public function disk(): Filesystem { return Storage::disk(self::DISK); }
+
+    public function simpan(Murid $murid, string $isi): Avatar
+    {
+        $batas = (int) config('avatar.ukuran_maks');
+        if ($isi === '') throw ValidationException::withMessages(['avatar' => 'Berkas kosong.']);
+        if (strlen($isi) > $batas) throw ValidationException::withMessages(['avatar' => 'Gambar terlalu besar. Batas '.$this->ukuranManusia($batas).'.']);
+
+        $jenis = $this->jenisGambar($isi); // png|jpeg|webp|null
+        if ($jenis === null) throw ValidationException::withMessages(['avatar' => 'Hanya gambar JPEG, PNG, atau WebP. SVG dan berkas lain ditolak.']);
+
+        $gambar = @imagecreatefromstring($isi);
+        if ($gambar === false) throw ValidationException::withMessages(['avatar' => 'Gambar tidak bisa dibaca. Coba gambar lain.']);
+        ...
+    }
+```
+
+Wait: careful — `imagecreatefromstring` on a PNG with truncated content emits warnings. Use `@`. Also PHP 8 throws for some? Use try/catch Throwable.
+
+Re-encode:
+```php
+$sisi = max(32, (int) config('avatar.sisi'));
+$lebarAsli = imagesx($gambar); $tinggiAsli = imagesy($gambar);
+// cover crop: potong tengah ke persegi
+$sisiKecil = min($lebarAsli, $tinggiAsli);
+$sumberX = (int) (($lebarAsli - $sisiKecil) / 2);
+$sumberY = (int) (($tinggiAsli - $sisiKecil) / 2);
+$kanvas = imagecreatetruecolor($sisi, $sisi);
+$putih = imagecolorallocate($kanvas, 255, 255, 255);
+imagefilledrectangle($kanvas, 0, 0, $sisi, $sisi, $putih);
+imagecopyresampled($kanvas, $gambar, 0, 0, $sumberX, $sumberY, $sisi, $sisi, $sisiKecil, $sisiKecil);
+ob_start(); imagejpeg($kanvas, null, $kualitas); $keluaran = (string) ob_get_clean();
+imagedestroy($gambar); imagedestroy($kanvas);
+```
+Then compute hash, name, store.
+
+Also for transparency: PNG alpha flattened onto white via the filled canvas — imagecopyresampled will blend? For truecolor PNG with alpha, copying onto white... imagecopyresampled does blend alpha in GD for truecolor. Actually GD's resampling handles alpha blending for truecolor images. Should be OK-ish.
+
+Then row creation + replacing previous.
+
+Let me also handle `kode` random, path `avatar/<school_id>/<kode>.jpg`.
+
+`urlBertandaTangan(Avatar)` signed route 'avatar.berkas'.
+
+`hapusBerkas(Avatar)`.
+
+Now `ModerasiAvatarService`:
+```php
+public function lapor(Avatar $avatar, User $pelapor, AlasanLaporan $alasan, ?string $keterangan): array
+```
+Returns [laporan, disembunyikan(bool)].
+
+Checks:
+- pelapor must have murid profile
+- cannot report own avatar
+- avatar must be hidup
+- rate limit: count laporan by reporter in last hour < config
+- duplicate → ValidationException? Or idempotent? "laporan ganda tidak dihitung" → returning existing is idempotent, no error. Test expects "laporan ganda tidak dihitung". I'll make it idempotent: if exists, return existing without incrementing.
+- else create; recount unique; if >= ambang → hide.
+
+Hide:
+```php
+$jumlah = LaporanAvatar::where('avatar_id',...)->count();
+$avatar->forceFill(['jumlah_laporan' => $jumlah]);
+if ($jumlah >= $ambang && $avatar->status === Aktif) { status = Disembunyikan; disembunyikan_at = now(); }
+$avatar->save();
+```
+audit: activity('avatar')->event('lapor')? The spec requires audit on pulihkan/hapus. I'll also log the hide event.
+
+`antrean()`: avatars where status = Disembunyikan, with counts, plus laporan; also maybe avatars with >= ambang? Just hidden ones. Order by disembunyikan_at.
+
+`pulihkan(Avatar, User $guru, ?string $catatan)`: status → Aktif, disembunyikan_at null, jumlah_laporan → 0? Hmm: if we reset jumlah_laporan to 0 but keep laporan rows, then future new reports recount from existing rows → immediately hidden again. Better: mark open laporan as TidakValid (with reviewed_by/at), then set jumlah_laporan = 0 (since counted reports are now dismissed). Hmm but count() of rows would be non-zero. So `jumlah_laporan` should be "jumlah laporan yang masih dihitung" — reset to 0 on restore. And recount on new report should count only laporan with review_status = Menunggu. Let's define: `jumlah_laporan` = number of pending (menunggu) reports. On restore, all pending → tidak_valid, jumlah_laporan = 0. On new report, count pending ones.
+
+That's coherent. Let me implement recount as: `LaporanAvatar::where('avatar_id')->where('review_status', Menunggu)->count()`.
+
+And hide condition uses that count >= ambang.
+
+`hapus(Avatar, User $guru, ?string $catatan)`: status → Dihapus, delete file, mark pending laporan Valid, audit.
+
+Both audited via activity('avatar')->event('pulihkan'|'hapus').
+
+Let me write these services.
+
+Also need `ukuranManusia` helper — duplicate of material's. I'll add a small private method (avoid cross-section coupling).
+
+Let me write PenyimpananAvatar.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Services/PenyimpananAvatar.php", "instructions": "Buat service penyimpanan avatar dengan validasi magic bytes dan encode ulang GD.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Services;\n\nuse App\\Sections\\Avatar\\Enums\\StatusAvatar;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sec …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+There's a bug in my `simpan()`: I compute `lebar` using `imagesx($kanvas === false ? $gambar : $kanvas)` AFTER `imagedestroy($gambar)` and `imagedestroy($kanvas)` — destroying then using is invalid. Let me restructure: capture lebar/tinggi before destroying.
+
+Let me fix: after building canvas, `$sisiAkhir = imagesx($kanvas); $tinggiAkhir = imagesy($kanvas);` before destroy. Then use those in create().
+
+Also `kuadratkan` throws ValidationException inside — fine.
+
+Also `$kanvas === false` nonsense. Fix.
+
+Let me rewrite the relevant block.
+
+Also: `imagedestroy($gambar); imagedestroy($kanvas);` then using — fix ordering.
+
+Let me apply a str_replace.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Services/PenyimpananAvatar.php", "replacements": [{"oldString": " $gambar = $this->bukaGambar($isi);\n $kanvas = $this->kuadratkan($gambar);\n $keluaran = $this->encodeJpeg($kanvas);\n\n imagedestroy($gambar);\n imagedestroy($kanvas);\n", "newString": " $gambar = $this->bukaGambar($isi);\n $kanvas = $this->kuadratkan($gambar);\n\n  …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now ModerasiAvatarService.
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace App\Sections\Avatar\Services;
+
+use App\Models\User;
+use App\Sections\Avatar\Enums\AlasanLaporan;
+use App\Sections\Avatar\Enums\StatusAvatar;
+use App\Sections\Avatar\Models\Avatar;
+use App\Sections\Avatar\Models\LaporanAvatar;
+use App\Sections\Cheat\Enums\StatusTinjauan;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+
+class ModerasiAvatarService
+{
+    public function __construct(private readonly PenyimpananAvatar $penyimpanan) {}
+
+    /**
+     * @return array{laporan: LaporanAvatar, disembunyikan: bool, jumlah: int}
+     */
+    public function lapor(Avatar $avatar, User $pelapor, AlasanLaporan $alasan, ?string $keterangan = null): array
+    {
+        $murid = $pelapor->murid;
+        if ($murid === null) throw ValidationException::withMessages(['avatar' => 'Hanya murid yang bisa melaporkan.']);
+        if ((int) $avatar->student_id === (int) $murid->getKey()) throw ValidationException::withMessages(['avatar' => 'Kamu tidak bisa melaporkan avatarmu sendiri.']);
+        if (! $avatar->hidup()) throw ValidationException::withMessages(['avatar' => 'Avatar ini sudah tidak ada.']);
+
+        // rate limit per murid
+        $batas = (int) config('avatar.maks_laporan_per_jam');
+        $sejamTerakhir = LaporanAvatar::query()->where('reporter_id', $murid->getKey())->where('created_at', '>=', Carbon::now()->subHour())->count();
+        if ($sejamTerakhir >= $batas) throw ValidationException::withMessages(['avatar' => 'Terlalu banyak laporan dalam satu jam. Coba lagi nanti.']);
+
+        // idempoten: satu laporan per murid per avatar
+        $sudah = LaporanAvatar::query()->where('avatar_id', $avatar->getKey())->where('reporter_id', $murid->getKey())->first();
+        if ($sudah !== null) {
+            return ['laporan' => $sudah, 'disembunyikan' => ! $avatar->terlihatSemua(), 'jumlah' => (int) $avatar->jumlah_laporan];
+        }
+
+        $laporan = LaporanAvatar::query()->create([...]);
+        $jumlah = $this->hitungLaporanMenunggu($avatar);
+        $disembunyikan = $this->terapkanAmbang($avatar, $jumlah);
+        ...
+    }
+```
+
+`terapkanAmbang(Avatar, int $jumlah): bool`:
+```php
+$ambang = max(1, (int) config('avatar.ambang_laporan'));
+$avatar->forceFill(['jumlah_laporan' => $jumlah]);
+$baruDisembunyikan = false;
+if ($jumlah >= $ambang && $avatar->status === StatusAvatar::Aktif) {
+    $avatar->forceFill(['status' => StatusAvatar::Disembunyikan, 'disembunyikan_at' => Carbon::now()]);
+    $baruDisembunyikan = true;
+}
+$avatar->save();
+if ($baruDisembunyikan) { activity('avatar')->event('disembunyikan')->performedOn($avatar)->withProperties([...])->log('Avatar disembunyikan setelah laporan'); }
+```
+
+`antrean(): Collection` → avatars status Disembunyikan with murid.user + laporan.
+
+`pulihkan(Avatar, User $guru, ?string $catatan): Avatar`:
+- status Aktif, disembunyikan_at null, jumlah_laporan 0
+- pending laporan → TidakValid, reviewed_by, reviewed_at
+- audit event 'pulihkan'
+
+`hapus(Avatar, User $guru, ?string $catatan): Avatar`:
+- status Dihapus, hapus berkas
+- pending laporan → Valid
+- audit event 'hapus'
+
+Let me write it.
+
+For audit, `activity('avatar')` needs the `causer`. For the hide triggered by reports, causer = null (server). Fine.
+
+Let me write the file.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Services/ModerasiAvatarService.php", "instructions": "Buat service moderasi avatar: lapor, ambang N, antrean, pulihkan, hapus dengan audit.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Services;\n\nuse App\\Models\\User;\nuse App\\Sections\\Avatar\\Enums\\AlasanLaporan;\nuse App\\Sections\\Ava …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Note: in `hapus()` I call `catatAudit` after setting status Dihapus — the property `status` will be 'dihapus'. In `pulihkan()` after setting Aktif → 'aktif'. Fine.
+
+Now policy + requests + resources + controllers.
+
+AvatarPolicy:
+```php
+namespace App\Sections\Avatar\Policies;
+
+class AvatarPolicy
+{
+    public function viewAny(User $user): bool { return true; }
+
+    /** Lihat satu avatar: guru selalu; pemilik selalu; murid lain hanya bila aktif & sekelas. */
+    public function lihat(User $user, Avatar $avatar): bool
+    {
+        if ($user->isGuru()) return true;
+        $profil = $user->murid;
+        if ($profil === null) return false;
+        if ((int) $profil->getKey() === (int) $avatar->student_id) return true;
+        return $avatar->terlihatSemua() && (int) $profil->class_id === (int) ($avatar->murid?->class_id);
+    }
+
+    /** Murid mengunggah/menghapus avatarnya sendiri (punya profil murid). */
+    public function unggah(User $user): bool { return $user->isMurid() && $user->murid !== null; }
+
+    public function hapusSendiri(User $user): bool { return $user->isMurid() && $user->murid !== null; }
+
+    /** Melaporkan avatar teman. */
+    public function lapor(User $user, Avatar $avatar): bool
+    {
+        if (! $user->isMurid()) return false;
+        $profil = $user->murid;
+        if ($profil === null) return false;
+        if ((int) $profil->getKey() === (int) $avatar->student_id) return false;
+        return $avatar->terlihatSemua() && $this->lihat($user, $avatar);
+    }
+
+    /** Antrean moderasi + pulihkan/hapus: guru saja. */
+    public function moderasi(User $user): bool { return $user->isGuru(); }
+
+    public function delete(User $user, Avatar $avatar): bool { return $user->isGuru(); }
+}
+```
+
+Careful: accessing `$avatar->murid` triggers a query; with `preventLazyLoading` in non-production, lazy loading a relation outside of a loaded context throws! Tests run in non-production → `Model::preventLazyLoading(true)`. So I must not lazily load. In the policy, I should avoid `$avatar->murid` unless loaded.
+
+Safer: use `$avatar->student_id` and query the Murid directly? That's also a query but not a lazy-load violation. But better: for the "same class" check, compare `$profil->class_id` with the avatar owner's class. I can fetch via a direct query on Murid (allowed, no lazy loading). But that's an N+1 in list contexts.
+
+Alternative: in `lihat`, only check visibility rules that don't need the owner's class... but "murid lain hanya bila aktif & sekelas" requires class. Hmm — do we need the class restriction? Feature G doesn't require it. Simpler & safer: murid can see avatars of students in the same school. Hmm, but showing avatars of the whole school to a murid... The report UI shows classmates. Let me keep the class restriction but implement it via a scoped query in the service/controller, and in the policy just check `terlihatSemua()` for other murid.
+
+Hmm, but a policy must be authoritative. Let me do: in the policy, load the owner's class via a direct query (no lazy load):
+```php
+$kelasPemilik = Murid::query()->whereKey($avatar->student_id)->value('class_id');
+```
+That's an extra query per check but only on show/report (single item), not lists. Acceptable.
+
+Hmm, but `preventLazyLoading` also affects `$avatar->murid` in resources. I'll use `whenLoaded` in resources.
+
+Let me write the policy with the direct query approach and document why.
+
+Now requests:
+
+`UnggahAvatarRequest`:
+```php
+public function authorize(): bool { return $this->user() !== null; }
+public function rules(): array {
+  return [
+    'berkas' => ['required_without:isi_base64', 'file', 'max:'.(int) ceil(config('avatar.ukuran_maks')/1024)],
+    'isi_base64' => ['required_without:berkas', 'string'],
+  ];
+}
+public function isi(): string  // decode
+```
+Hmm, Laravel `file` rule with `max` in KB. Also `mimes:jpg,jpeg,png,webp` — but we validate magic bytes ourselves; still add `mimes` as a first gate? For base64 there's no file. Let me keep it simple: require either `berkas` (uploaded file) or `isi_base64`. If base64, decode with `base64_decode($v, true)` and error if false.
+
+Let me model after SimpanPotonganRequest — let me check how it handles `potongan` file vs `isi_base64`. Let me read it to mirror.
+
+Let me read SimpanPotonganRequest.
+
+- 🔧 `read_files` — {"paths": ["folder tanpa judul 2/lomba_m/backend/app/Sections/Material/Http/Requests/SimpanPotonganRequest.php", "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Controllers/.gitkeep"]}
+**Thinking (mentah):**
+
+Good — I'll mirror that pattern.
+
+Let me write policy, requests, resources, controllers.
+
+Requests:
+- UnggahAvatarRequest: `berkas` (file, max KB), `isi_base64` (string), with `isi()` method mirroring.
+- LaporAvatarRequest: `alasan` (required, in enum values), `keterangan` (nullable string max 300).
+- ModerasiAvatarRequest: `catatan` (nullable string max 300).
+
+Resources:
+- AvatarResource: id, student_id, nama_murid, kelas_nama, status, status_label, url, lebar, tinggi, ukuran, ukuran_manusia, jumlah_laporan, disembunyikan, boleh_lapor, dibuat_at.
+- LaporanAvatarResource: id, alasan, alasan_label, keterangan, status, status_label, pelapor_nama, dibuat_at.
+
+Controllers:
+- AvatarController:
+  - `saya(Request)` → own avatar (or null + bawaan true)
+  - `daftar(Request)` → list (guru all; murid: kelas sendiri, only visible except own)
+  - `unggah(UnggahAvatarRequest)` → store
+  - `hapus(Request)` → delete own (mark Dihapus + remove file)
+  - `lapor(LaporAvatarRequest, Avatar)` → report
+- ModerasiAvatarController:
+  - `antrean()` → queue
+  - `pulihkan(ModerasiAvatarRequest, Avatar)`
+  - `hapus(ModerasiAvatarRequest, Avatar)`
+- BerkasAvatarController (invokable string $kode)
+
+Note: murid "hapus sendiri" — deleting own avatar = set current avatar Dihapus + delete file. No audit needed (it's their own). Actually maybe audit is nice but not required. Keep simple: no audit for self-delete (documented).
+
+Let me write the policy first.
+
+For `lihat`, need owner's class. I'll query Murid.
+
+Let me write files.
+
+For `saya` response shape: `{avatar: AvatarResource|null, bawaan: bool}`. For a murid without avatar → bawaan true. For guru → maybe null. Let me define: guru → avatar null, bawaan true (they don't have avatars).
+
+Hmm, clarity: `/avatar/saya` for murid returns own. Let me return `{avatar, bawaan}`.
+
+`daftar` → `{avatar: [...]}`? For consistency with materi-saya which returns `{materi: [...]}`. Let me return `{avatar: [...]}`.
+
+Now writing.
+
+For the resource `boleh_lapor`: computed as `$user->isMurid() && different student && terlihatSemua()`. I'll compute inside resource using request user + a direct check (no policy call inside resource to keep it simple). Let me add a helper computed from `$this->student_id` and `$request->user()?->murid?->getKey()`. Careful: `$request->user()?->murid` lazy loads — in a resource within an authenticated request that's fine? `preventLazyLoading` throws on lazy loading ANY relation. `$user->murid` on User is HasOne → lazy load → would throw in non-production! Hmm, that's a real risk. In Slice08Test, `MateriPolicy::view` does `$user->murid?->class_id` and tests pass... so either lazy loading is allowed there or the relation is loaded. Hmm, `Model::preventLazyLoading(! isProduction)` — in tests APP_ENV=testing → non-production → preventLazyLoading(true). Yet `$user->murid?->class_id` in MateriPolicy works in tests?
+
+Maybe Laravel's `preventLazyLoading` only throws when `Model::shouldBeStrict()` violations are enabled... Actually `preventLazyLoading` throws LazyLoadingViolationException unless a handler is set. But `User::murid` accessed on an authenticated user... In tests they call `Sanctum::actingAs($this->murid->user)` — the User instance there has `murid` relation possibly already loaded? No.
+
+Hmm, maybe AuthTest... Let me check: is there a `Model::handleLazyLoadingViolationUsing` somewhere? Let me grep. Or maybe `AuthServiceProvider`... Let me grep for handleLazyLoadingViolation.
+
+Actually simpler: the tests pass, so it must be fine. Possibly because `preventLazyLoading` only throws if the model `exists` and not `wasRecentlyCreated`... no, it throws when loading a relation not already loaded.
+
+Hmm wait, maybe `User` model has `$with` or the auth user... Let me just grep to be safe.
+
+Let me check quickly.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && grep -rn \"preventLazyLoading\\|handleLazyLoadingViolation\\|shouldBeStrict\" app/ config/ tests/ | head -10 && echo \"--- phpunit env ---\" && grep -n \"APP_ENV\\|env name\" phpunit.xml | head", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+APP_ENV=testing, so `$this->app->isProduction()` is false → preventLazyLoading(true). And MateriPolicy uses `$user->murid?->class_id` and tests pass. So lazy loading apparently doesn't throw here. 
+
+Why? Because `Model::preventLazyLoading(true)` sets the violation to throw... Actually in Laravel, `preventLazyLoading` *does* throw `LazyLoadingViolationException`. Unless the model was retrieved via auth and the relation is loaded... 
+
+Hmm, wait: maybe `$user->murid` IS loaded because `Sanctum::actingAs` sets a user that... no.
+
+Let me just test empirically later (run the tests I write). Actually the existing Slice08Test passes with `MateriPolicy::view` calling `$user->murid?->class_id`. So it must be fine. Maybe Laravel's lazy-loading prevention only applies when the model was loaded from the DB through a query builder (it checks `$model->exists`), and for User from session... Hmm no.
+
+Actually! I recall: `preventLazyLoading` violation is only reported when the model's `wasRecentlyCreated` is false AND the relation isn't loaded... For auth user it should throw.
+
+Hmm, unless `Model::shouldBeStrict()` sets preventLazyLoading but the *default* violation handler... In Laravel 11+, `Model::preventLazyLoading()` sets `static::$modelsShouldPreventLazyLoading = true`, and violation triggers `static::$lazyLoadingViolationCallback` else throws. So it should throw.
+
+Unless... tests that exercise it are the ones failing! But we know verify.sh is green including Slice08Test which hits `/api/v1/materi-saya` as murid → ProgresMateriController → policy `kerjakan` → `view` → `$user->murid?->class_id`. So lazy loading IS happening and not throwing.
+
+Possible reason: `auth()->forgetGuards(); Sanctum::actingAs($this->murid->user);` — `$this->murid->user` is already loaded via the `user` relation on Murid, and `User::murid` back-relation... not loaded.
+
+Hmm. Let me just rely on empirical behavior: I'll write my code avoiding lazy loads where easy (use `whenLoaded` in resources), and run tests to confirm.
+
+Actually — to be safe in the policy, I'll avoid `$avatar->murid` and use a direct DB query. And in resources use `whenLoaded`. And in controllers, `->load(...)` explicitly.
+
+For `$user->murid` in the policy — existing code does it, so it's proven OK. I'll use it too.
+
+OK let me write the remaining backend files.
+
+Let me write: policy, 3 requests, 2 resources, 3 controllers.
+
+AvatarResource needs `nama_murid`, `kelas_nama` → from `murid.user.name` and `murid.kelas.nama`. Use whenLoaded.
+
+Let me write.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Policies/AvatarPolicy.php", "instructions": "Buat AvatarPolicy.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Policies;\n\nuse App\\Models\\User;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\School\\Models\\Murid;\n\n/**\n * Avatar: murid hanya mengurus avatarnya sendiri dan  …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Requests/UnggahAvatarRequest.php", "instructions": "Buat UnggahAvatarRequest.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Requests;\n\nuse Illuminate\\Foundation\\Http\\FormRequest;\n\n/**\n * Unggah satu gambar avatar. Isinya boleh dikirim dua cara: sebagai `berkas`\n * (unggahan  …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Requests/LaporAvatarRequest.php", "instructions": "Buat LaporAvatarRequest.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Requests;\n\nuse App\\Sections\\Avatar\\Enums\\AlasanLaporan;\nuse Illuminate\\Foundation\\Http\\FormRequest;\nuse Illuminate\\Validation\\Rule;\n\nclass LaporAva …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Requests/ModerasiAvatarRequest.php", "instructions": "Buat ModerasiAvatarRequest.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Requests;\n\nuse Illuminate\\Foundation\\Http\\FormRequest;\n\n/**\n * Keputusan guru atas avatar yang dilaporkan (pulihkan / hapus). Alasan\n * singkat ber …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now resources + controllers.
+
+AvatarResource:
+```php
+class AvatarResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $pengguna = $request->user();
+        $muridPengguna = $pengguna?->murid;
+        $pemilik = $muridPengguna !== null && (int) $muridPengguna->getKey() === (int) $this->student_id;
+        $guru = $pengguna?->isGuru() ?? false;
+
+        return [
+            'id' => $this->id,
+            'student_id' => $this->student_id,
+            'nama_murid' => $this->whenLoaded('murid', fn () => $this->murid->user?->name),
+            'kelas_nama' => $this->whenLoaded('murid', fn () => $this->murid->kelas?->nama),
+            'status' => $this->status->value,
+            'status_label' => $this->status->label(),
+            'url' => $this->when(...),
+            ...
+        ];
+    }
+}
+```
+Hmm, `$this->status->label()` fine.
+
+url: need signed URL. Resource can call `app(PenyimpananAvatar::class)->urlBertandaTangan($this->resource)`. Let me do that but only when visible to viewer:
+- visible = $guru || $pemilik || $this->status->terlihatSemua()
+- if not visible → url null.
+
+Also expose `laporan` (collection) when loaded (guru review).
+
+Let me include: id, student_id, nama_murid, kelas_nama, status, status_label, terlihat, url, lebar, tinggi, ukuran, ukuran_manusia, jumlah_laporan, disembunyikan_at, dibuat_at, boleh_lapor, laporan.
+
+`boleh_lapor` = $pengguna is murid && !pemilik && status Aktif.
+
+Let me write it.
+
+Careful with `$request->user()?->murid` — lazy load concern. Policy uses it already, fine.
+
+But careful: `$this->murid->user?->name` inside whenLoaded — nested lazy load (`user`). With `preventLazyLoading`, accessing `$this->murid->user` when only `murid` is loaded → lazy load → could throw. Safer: `with('murid.user')` when loading. Then nested access is eager-loaded. I'll always `->load(['murid.user','murid.kelas', ...])` in controllers. To be safe in the resource, use `whenLoaded('murid', ...)` and inside, use `$this->murid->relationLoaded('user') ? ... : null`. Hmm, complex.
+
+Let me instead load both `murid.user` and `murid.kelas`, and access them directly inside whenLoaded('murid'). If not loaded, wrap in `relationLoaded`.
+
+Actually simplest and safest: add accessor methods on the Avatar model: `namaPemilik()` and `kelasPemilik()` that use `relationLoaded` checks. Hmm, keep in resource:
+
+```php
+'nama_murid' => $this->whenLoaded('murid', fn () => $this->murid->relationLoaded('user') ? $this->murid->user?->name : null),
+'kelas_nama' => $this->whenLoaded('murid', fn () => $this->murid->relationLoaded('kelas') ? $this->murid->kelas?->nama : null),
+```
+That's verbose but safe. Let me do that.
+
+LaporanAvatarResource: id, alasan, alasan_label, keterangan, status, status_label, pelapor_nama (whenLoaded pelapor.user), dibuat_at.
+
+Need AlasanLaporan cast on LaporanAvatar model — currently no cast for `alasan`. Let me add cast `'alasan' => AlasanLaporan::class` to the model. Then resource uses `$this->alasan->value`. Let me update the model.
+
+Let me do that with str_replace on LaporanAvatar.
+
+Then controllers.
+
+Let me write resource + update model.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Models/LaporanAvatar.php", "replacements": [{"oldString": " protected $casts = [\n 'review_status' => StatusTinjauan::class,\n 'reviewed_at' => 'datetime',\n ];", "newString": " protected $casts = [\n 'alasan' => AlasanLaporan::class,\n 'review_status' => StatusTinjauan::class,\n 'reviewed_at' => 'datetime',\n ];", "allowMultiple": …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Resources/AvatarResource.php", "instructions": "Buat AvatarResource.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Resources;\n\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\Avatar\\Services\\PenyimpananAvatar;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Http\\ …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Resources/LaporanAvatarResource.php", "instructions": "Buat LaporanAvatarResource.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Resources;\n\nuse App\\Sections\\Avatar\\Models\\LaporanAvatar;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Http\\Resources\\Json\\JsonResource;\n\n/* …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now controllers. 
+
+AvatarController:
+```php
+class AvatarController extends Controller
+{
+    /** Avatar sendiri (atau penanda "pakai avatar bawaan"). */
+    public function saya(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Avatar::class);
+        $profil = $request->user()?->murid;
+        if ($profil === null) return response()->json(['avatar' => null, 'bawaan' => true]);
+        $avatar = Avatar::terkiniUntuk((int) $profil->getKey());
+        if ($avatar === null) return response()->json(['avatar' => null, 'bawaan' => true]);
+        $avatar->load(['murid.user', 'murid.kelas', 'laporan.pelapor.user']);
+        return response()->json(['avatar' => new AvatarResource($avatar), 'bawaan' => false]);
+    }
+```
+Hmm, `new AvatarResource($avatar)` in json → resource resolves. Ok.
+
+But careful: `attach` of resource inside response()->json works? Laravel resolves JsonResource when serializing? Yes, `response()->json(['avatar' => $resource])` — the resource implements JsonSerializable? `JsonResource` implements `JsonSerializable`, so yes it converts via `->jsonSerialize()` which uses the *current* request. Actually `JsonResource::JsonSerialize()` returns the array using `Request::capture()`? It uses `$this->resolve(request())`. Should be fine (other sections do similar? They return resources directly). To be safe, use `AvatarResource::make($avatar)->resolve()`.
+
+Let me use `(new AvatarResource($avatar))->resolve()`.
+
+Hmm, but resolve() may trigger `whenLoaded` with loaded relations — good.
+
+- `daftar`: 
+```php
+public function daftar(Request $request): JsonResponse
+{
+    $this->authorize('viewAny', Avatar::class);
+    $pengguna = $request->user();
+    if ($pengguna === null) abort(401);
+
+    if ($pengguna->isGuru()) {
+        $avatar = Avatar::query()->where('status','!=',Dihapus)->with([...])->orderByDesc('id')->get();
+    } else {
+        $profil = $pengguna->murid;
+        if ($profil === null) abort(403);
+        $ids = Murid::query()->where('class_id', $profil->class_id)->pluck('id');
+        $avatar = Avatar::query()->whereIn('student_id', $ids)
+            ->where(function ($q) use ($profil) {
+                $q->where('status', Aktif)->orWhere('student_id', $profil->getKey());
+            })
+            ->with([...])->orderByDesc('id')->get();
+    }
+    return response()->json(['avatar' => AvatarResource::collection($avatar)->resolve()]);
+}
+```
+Hmm: murid sees own hidden avatar too (orWhere student_id). Good.
+
+But should we show only the latest avatar per student? Multiple rows per student (history) — for the list we want the latest per student. Let me filter: get latest per student. Implement with a subquery: `whereIn('id', Avatar::selectRaw('MAX(id) as id')->whereIn('student_id',$ids)->groupBy('student_id'))`. Hmm, but for own hidden-not-latest... complicated.
+
+Simplify: since `rapikanAvatarLama` marks previous Aktif ones as Dihapus, and Disembunyikan ones stay, in the class list we might see both a hidden old one and the new active one. That's acceptable for guru's view, but for murid listing it'd be odd.
+
+Let me restrict the murid list to `status != Dihapus` and take the latest per student. Simplest robust approach in PHP: fetch all candidates then pick latest per student_id. Class sizes are small (SD: ~30). Do it in PHP.
+
+```php
+$semua = Avatar::query()->whereIn('student_id', $ids)->where('status','!=',Dihapus)->with(...)->orderBy('id')->get();
+// ambil terbaru per murid, sisipkan avatar sendiri walau disembunyikan (sudah termasuk)
+$urut = [];
+foreach ($semua as $satu) { 
+   // jika disembunyikan & bukan milik sendiri → jangan tampilkan sama sekali? atau tampilkan tanpa url?
+}
+```
+Hmm. Requirement: "setelah N laporan unik avatar disembunyikan dari orang lain" → for other students, it should not be shown. So for murid list: include only Aktif ones + own.
+
+So:
+```php
+$terpilih = [];
+foreach ($semua as $satu) {
+    $milikSendiri = (int) $satu->student_id === (int) $profil->getKey();
+    if (! $milikSendiri && ! $satu->terlihatSemua()) continue;
+    $terpilih[$satu->student_id] = $satu; // id menaik → terbaru menang
+}
+```
+And exclude Dihapus.
+
+Then values.
+
+For guru list: include all non-Dihapus, but also latest per student? Guru moderation queue is separate. For guru's `/avatar` list, let me show the latest per student (non-deleted). Use same dedupe.
+
+OK.
+
+- `unggah`:
+```php
+public function unggah(UnggahAvatarRequest $request, PenyimpananAvatar $penyimpanan): JsonResponse
+{
+    $this->authorize('unggah', Avatar::class);
+    $pengguna = $request->user(); if null abort 401;
+    $profil = $pengguna->murid; if null abort 403;
+    $isi = $request->isi();
+    if ($isi === '') throw ValidationException::withMessages(['berkas' => 'Pilih gambar dulu.']);
+    $avatar = $penyimpanan->simpan($profil, $isi);
+    return (new AvatarResource($avatar->load(['murid.user','murid.kelas'])))->response()->setStatusCode(201);
+}
+```
+
+- `hapus` (own):
+```php
+public function hapus(Request $request, PenyimpananAvatar $penyimpanan): JsonResponse
+{
+    $this->authorize('hapusSendiri', Avatar::class);
+    $profil = $request->user()?->murid; if null abort 403;
+    $avatar = Avatar::terkiniUntuk((int) $profil->getKey());
+    if ($avatar !== null) {
+        $penyimpanan->hapusBerkas($avatar);
+        $avatar->forceFill(['status' => StatusAvatar::Dihapus])->save();
+    }
+    return response()->json(['message' => 'Avatar dikembalikan ke bawaan.', 'bawaan' => true]);
+}
+```
+Note: self-delete of a Disembunyikan avatar would remove evidence. Hmm! A kid reported → hidden → deletes own avatar → evidence gone. Let me prevent: if status === Disembunyikan, refuse with a message ("tunggu tinjauan guru"). Good — that closes the loophole. Actually, allow it but keep the file? Simpler: refuse. Let me refuse with 422.
+
+Hmm, but that's a bit user-hostile: kid can't change their avatar while one is under review. But they *can* upload a new one (unggah allows). So refusing delete-of-hidden is fine and consistent with "evidence preserved".
+
+- `lapor`:
+```php
+public function lapor(LaporAvatarRequest $request, Avatar $avatar, ModerasiAvatarService $moderasi): JsonResponse
+{
+    $this->authorize('lapor', $avatar);
+    $pengguna = $request->user(); if null abort 401;
+    $alasan = AlasanLaporan::from((string) $request->validated('alasan'));
+    $keterangan = $request->validated('keterangan');
+    $hasil = $moderasi->lapor($avatar, $pengguna, $alasan, is_string($keterangan) ? $keterangan : null);
+    return response()->json([
+        'message' => $hasil['disembunyikan'] ? 'Laporan diterima. Avatar disembunyikan sampai ditinjau guru.' : 'Laporan diterima. Guru akan meninjau.',
+        'laporan' => (new LaporanAvatarResource($hasil['laporan']))->resolve(),
+        'jumlah_laporan' => $hasil['jumlah'],
+        'disembunyikan' => $hasil['disembunyikan'],
+    ], 201);
+}
+```
+
+ModerasiAvatarController:
+- antrean → `$this->authorize('moderasi', Avatar::class);` → `AvatarResource::collection($service->antrean())`.
+- pulihkan → authorize('moderasi') + `$this->authorize('delete', $avatar)`? For pulihkan, `moderasi` is enough. Let me use 'moderasi'.
+- hapus → authorize('delete', $avatar) (guru) — or 'moderasi'. I'll use 'delete' for the destructive one.
+
+BerkasAvatarController:
+```php
+class BerkasAvatarController extends Controller
+{
+    public function __invoke(string $kode, PenyimpananAvatar $penyimpanan): Response
+    {
+        $avatar = Avatar::query()->where('kode', $kode)->where('status','!=',Dihapus)->firstOrFail();
+        $headers = [
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Type' => (string) $avatar->mime,
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
+            'Content-Disposition' => 'inline; filename="avatar-'.$avatar->kode.'.jpg"',
+            // Gambar tidak pernah dieksekusi; CSP ketat sebagai lapis tambahan.
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+        ];
+        $prefix = (string) config('avatar.x_accel_prefix','');
+        if ($prefix !== '') { $headers['X-Accel-Redirect'] = $penyimpanan->pathInternal($avatar); return response('',200,$headers); }
+        $path = (string) $avatar->path;
+        if ($path === '' || ! $penyimpanan->disk()->exists($path)) abort(404, 'Gambar tidak ditemukan.');
+        return response()->file($penyimpanan->disk()->path($path), $headers);
+    }
+}
+```
+
+Hmm — `sandbox` CSP on an image response is harmless.
+
+Note: `signed:relative` middleware requires the URL to be signed relative. Our urlBertandaTangan uses `URL::temporarySignedRoute(..., false)` → relative signature, then prefixed with app.url. Good, matches material pattern.
+
+Wait: in tests, calling `$this->get($url)` where $url = config('app.url') + relative. That's what material test does. Good.
+
+Now routes. Add to api.php:
+```php
+use App\Sections\Avatar\Http\Controllers\AvatarController;
+use App\Sections\Avatar\Http\Controllers\BerkasAvatarController;
+use App\Sections\Avatar\Http\Controllers\ModerasiAvatarController;
+...
+// Penyajian gambar avatar (slice 08) — TANPA sesi, cukup URL bertanda tangan.
+Route::get('/berkas/avatar/{kode}', BerkasAvatarController::class)
+    ->middleware(['signed:relative', 'throttle:berkas'])
+    ->name('avatar.berkas');
+```
+Careful: existing `/berkas/{kode}` route is registered BEFORE this. `/berkas/avatar/{kode}` has 3 segments while `/berkas/{kode}` has 2 → no conflict. But order: put the avatar route before `/berkas/{kode}`? No conflict since different segment counts. Fine either way. I'll put it right after.
+
+In the auth group:
+```php
+// Avatar murid + moderasi (slice 08).
+Route::get('/avatar', [AvatarController::class, 'daftar'])->name('avatar.index');
+Route::get('/avatar/saya', [AvatarController::class, 'saya'])->name('avatar.saya');
+Route::post('/avatar', [AvatarController::class, 'unggah'])->name('avatar.unggah');
+Route::delete('/avatar', [AvatarController::class, 'hapus'])->name('avatar.hapus');
+Route::get('/avatar/moderasi', [ModerasiAvatarController::class, 'antrean'])->name('avatar.moderasi');
+Route::post('/avatar/{avatar}/lapor', [AvatarController::class, 'lapor'])->name('avatar.lapor');
+Route::post('/avatar/{avatar}/pulihkan', [ModerasiAvatarController::class, 'pulihkan'])->name('avatar.pulihkan');
+Route::post('/avatar/{avatar}/hapus', [ModerasiAvatarController::class, 'hapus'])->name('avatar.hapus.moderasi');
+```
+Route order matters: `/avatar/moderasi` must be declared before `/avatar/{avatar}/...`? Different segment count (`/avatar/moderasi` = 2 segments vs `/avatar/{avatar}/lapor` = 3). No conflict. But `/avatar/saya` vs... no POST conflict.
+
+Hmm: `GET /avatar/saya` and `GET /avatar/moderasi` and `GET /avatar` — fine.
+
+Rate limiter for reports: add `avatar-lapor` limiter in AppServiceProvider: per user, e.g. 30/minute (service enforces hourly 20). Let me add:
+```php
+RateLimiter::for('avatar', function (Request $request) {
+    return Limit::perMinute(20)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+});
+```
+Apply `throttle:avatar` to POST /avatar, DELETE /avatar, POST lapor. Good.
+
+Also register policy: `Gate::policy(Avatar::class, AvatarPolicy::class);`
+
+Now write controllers.
+
+Let me write all three controllers + update provider + routes.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Controllers/AvatarController.php", "instructions": "Buat AvatarController (saya, daftar, unggah, hapus, lapor).", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Controllers;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Sections\\Avatar\\Enums\\AlasanLaporan;\nuse App\\Sections\\ …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now ModerasiAvatarController and BerkasAvatarController.
+
+Then provider + routes.
+
+Let me write.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Controllers/ModerasiAvatarController.php", "instructions": "Buat ModerasiAvatarController (antrean, pulihkan, hapus).", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Controllers;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Sections\\Avatar\\Http\\Requests\\ModerasiAvatarReques …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Controllers/BerkasAvatarController.php", "instructions": "Buat BerkasAvatarController untuk menyajikan gambar via URL bertanda tangan.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Sections\\Avatar\\Http\\Controllers;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Sections\\Avatar\\Enums\\StatusAvatar …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now update AppServiceProvider (policy + rate limiter) and routes/api.php.
+
+Then remove .gitkeep files in Avatar dirs (Enums, Models, Policies, Services, Http/*, and frontend sections/avatar/.gitkeep later).
+
+Let me update provider.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Providers/AppServiceProvider.php", "replacements": [{"oldString": "use App\\Sections\\Attempt\\Models\\Attempt;\nuse App\\Sections\\Attempt\\Policies\\AttemptPolicy;", "newString": "use App\\Sections\\Attempt\\Models\\Attempt;\nuse App\\Sections\\Attempt\\Policies\\AttemptPolicy;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\Avat …
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/routes/api.php", "replacements": [{"oldString": "use App\\Sections\\Auth\\Http\\Controllers\\VerifyEmailController;", "newString": "use App\\Sections\\Auth\\Http\\Controllers\\VerifyEmailController;\nuse App\\Sections\\Avatar\\Http\\Controllers\\AvatarController;\nuse App\\Sections\\Avatar\\Http\\Controllers\\BerkasAvatarController;\nuse App\\Sections …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now remove the .gitkeep files in Avatar dirs (they now have real files). Keep Cache's.
+
+Then write the Pest test.
+
+Let me remove .gitkeep in backend/app/Sections/Avatar/**: Enums, Models, Policies, Http/Resources, Http/Requests, Http/Controllers, Services.
+
+Then write test.
+
+Test plan (`tests/Feature/Slice08AvatarTest.php`):
+
+beforeEach: seed RolesAndAdminSeeder + SekolahSeeder; sekolah; kelas 3A; guru; murid A (with user), murid B, murid C, murid D (for reports).
+
+Helper `a08Gambar(string $jenis = 'png'): string` — generate a real image via GD:
+```php
+function a08Png(int $lebar = 400, int $tinggi = 300): string {
+    $g = imagecreatetruecolor($lebar, $tinggi);
+    $warna = imagecolorallocate($g, 10, 120, 200);
+    imagefilledrectangle($g, 0, 0, $lebar, $tinggi, $warna);
+    ob_start(); imagepng($g); $isi = (string) ob_get_clean(); imagedestroy($g); return $isi;
+}
+```
+
+Helper `a08Unggah(object $ctx, $murid, string $isi, string $nama = 'wajah.png')` → Sanctum::actingAs($murid->user); POST /api/v1/avatar with isi_base64.
+
+Tests:
+1. `it('menerima PNG, menolak SVG, dan mengencode ulang gambar ke ukuran tetap', ...)`:
+   - upload PNG 400x300 → 201, status aktif, url not null
+   - assert stored file is JPEG 256x256: read from storage via Avatar::latest → Storage::disk('local')->get(path); imagecreatefromstring → imagesx = 256, imagesy = 256. And mime image/jpeg.
+   - also name random: path basename != 'wajah' 
+   - attempt SVG upload → 422 with error 'avatar'
+2. `it('menolak gambar yang terlalu besar', ...)` → build a > config ukuran_maks string. config default 2MiB. Generating 2MiB+ memory is fine (2MB). But PNG magic bytes + 2MiB of padding: `"\x89PNG\r\n\x1a\n".str_repeat('a', 2*1024*1024)`. That's 2MB — OK. Expect 422.
+   Hmm — but the request also has `isi_base64` string validation (no max) so fine. And the service checks size.
+   Careful: 2MB base64 = 2.7MB JSON payload; fine.
+   Actually to keep the test fast, I could set config lower in the test: `config(['avatar.ukuran_maks' => 100])` then upload a proper PNG bigger than 100 bytes. Cleaner! Let me do that: set config to 100 in that test and upload a real PNG (~few hundred bytes) → 422. And then also verify that the same image passes when limit is normal. 
+   Note: config() at runtime works since service reads config at call time.
+3. `it('membuat avatar tetap terlihat sampai tiga laporan unik, lalu menyembunyikannya dari murid lain', ...)`:
+   - avatar milik murid A (upload by A)
+   - murid B, C lapor → still visible (jumlah 2)
+   - B lapor again → counted once (jumlah still 2)
+   - D lapor → 3 → disembunyikan true
+   - owner A's `GET /avatar/saya` → url not null, status disembunyikan
+   - murid B's `GET /avatar` list → avatar A not included
+   - murid B's `GET /avatar/{id}`? no such endpoint. Use list.
+   - guru's `GET /avatar/moderasi` → contains avatar A with laporan (count 3, pelapor_nama present)
+   - owner can't lapor own avatar → 403 (policy) — test separately.
+4. `it('mencatat pulihkan di audit dan mengembalikan avatar ke daftar teman', ...)`:
+   - setup 3 reports → hidden
+   - guru POST /avatar/{id}/pulihkan with catatan → 200, status aktif
+   - assert activity_log has log_name 'avatar', event 'pulihkan', causer_id guru, properties contains catatan
+   - murid B list includes it again
+5. `it('menghapus avatar lewat moderasi, membuang berkasnya, dan mencatat audit', ...)`:
+   - guru POST /avatar/{id}/hapus → 200
+   - file gone from storage; status dihapus; audit event 'hapus'
+   - murid A `GET /avatar/saya` → bawaan true
+   - signed URL for deleted avatar → 404
+6. `it('menolak laporan ganda dari murid yang sama (tidak menambah hitungan)', ...)` — part of test 3; maybe separate for clarity. I'll fold into 3.
+7. `it('menolak murid melaporkan avatarnya sendiri', ...)` → 403.
+8. `it('menolak avatar yang disembunyikan dihapus sendiri oleh pemiliknya', ...)` → 422 (evidence preserved) + can upload new.
+9. `it('menyajikan gambar lewat URL bertanda tangan dan menolak tanda tangan kedaluwarsa', ...)`:
+   - upload; get url; without session GET url → 200 nosniff, content-type image/jpeg
+   - expired signed route → 403
+10. `it('menolak guru mengunggah avatar murid / non-murid mengunggah avatar')` → guru POST /avatar → 403 (policy unggah requires murid).
+
+That's a good set (~8-9 tests).
+
+Need activity_log assertions: `DB::table('activity_log')->where('log_name','avatar')->where('event','pulihkan')->first()` and decode properties JSON.
+
+Also need to confirm the activitylog table exists (yes, used by Slice06Test).
+
+Let me write the test file.
+
+Careful with Sanctum::actingAs and `auth()->forgetGuards()` like existing tests.
+
+Also `$this->murid->user` etc.
+
+Let me write it.
+
+One thing: the murid list endpoint requires murid role; `Murid::factory()` creates user via `User::factory()->muridAktif()`. Good. Need email verified? `muridAktif` presumably verified.
+
+Let me write.
+
+Also: for reports, the reporter must be murid in the SAME class as the avatar owner (policy `lihat` requires same class). Murid B/C/D must be in kelas 3A. Let me create them with class_id = $this->kelas->id.
+
+Let me now write the test.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && find app/Sections/Avatar -name \".gitkeep\" -print -delete && find app/Sections/Avatar -type d | sort", "process_type": "SYNC", "timeout_seconds": 30}
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/backend/tests/Feature/Slice08AvatarTest.php", "instructions": "Buat Pest test untuk slice 08 avatar & moderasi.", "content": "<?php\n\ndeclare(strict_types=1);\n\nnamespace Tests\\Feature;\n\nuse App\\Models\\User;\nuse App\\Sections\\Avatar\\Models\\Avatar;\nuse App\\Sections\\Avatar\\Services\\PenyimpananAvatar;\nuse App\\Sections\\School\\Models\\Kelas;\nu …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now run the tests. Note a possible issue in the test: `a08Guru()` helper uses `test()->guru` — hacky. Let me simplify: in tests, `Sanctum::actingAs($this->guru)`. Let me replace `a08Guru()` usage with direct `auth()->forgetGuards(); Sanctum::actingAs($this->guru);`. Let me fix.
+
+Also `$this->getJson('/api/v1/avatar/moderasi')->assertOk()->json())->toBe([])` — JsonResource::withoutWrapping means AnonResourceCollection returns a plain array. Empty collection → `[]`. `.json()` returns array → `toBe([])` should pass.
+
+Also `$antrean->json('0.id')` — with unwrapped collection, json is a list → `json('0.id')` works.
+
+Let me fix a08Guru and run the test.
+
+Also potential issue: `$this->pelapor` is a Collection; `collect(range(1,3))->map(...)` creates Murid models. `$this->pelapor[0]` works on Collection? Collection supports array access via offsetGet. Yes.
+
+Another: `User::factory()->guru()` — exists (used in Slice08Test).
+
+Also the policy `unggah` requires `$user->isMurid()` — uses hasRole('murid'); acting as a Murid's user with role murid → ok.
+
+Potential issue: `preventLazyLoading` with `$request->user()?->murid` in the resource/policy. Existing code does this, so presumably fine.
+
+Wait, actually — in `AvatarResource::toArray` I call `$pengguna?->murid`. If lazy loading throws, tests fail. We'll see.
+
+Another potential issue: `StatusAvatar` cast + `$this->status->label()` in resource — fine.
+
+`Avatar::terkiniUntuk` uses `where('status','!=', Dihapus)`.
+
+In `daftar` for murid: `Murid::query()->where('class_id', $profil->class_id)->select('id')` used inside whereIn subquery — fine.
+
+Now `hapus` (self) test expects 422 — my controller throws ValidationException with key 'avatar'. Good.
+
+Test 'hanya murid': guru POST → authorize('unggah', Avatar::class) → policy unggah returns false for guru → 403. Good.
+
+Let me fix the helper and run.
+
+Also: `a08Unggah` asserts created and returns id.
+
+One more: in test 3 I call `a08Lapor($this, $this->pelapor[0], ...)` twice; second call is idempotent → returns existing with jumlah 2. Good.
+
+Also note: after `a08Lapor`, the acting user is pelapor; then I switch. Fine.
+
+Let me fix a08Guru → remove and inline.
+
+Let me apply edits then run.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/tests/Feature/Slice08AvatarTest.php", "replacements": [{"oldString": "function a08Guru(): User\n{\n auth()->forgetGuards();\n\n return test()->guru;\n}\n\n", "newString": "", "allowMultiple": false}, {"oldString": " Sanctum::actingAs(a08Guru());\n\n $respons = $this->postJson(\"/api/v1/avatar/{$avatarId}/pulihkan\", [", "newString": " auth()->forgetGu …
+**Balasan:**
+
+
+
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && php artisan test --filter=Slice08AvatarTest 2>&1 | tail -60", "process_type": "SYNC", "timeout_seconds": 300}
+**Thinking (mentah):**
+
+9/10 pass. The failing one: `mime` is null in the response — because `AvatarResource` doesn't expose `mime`! I removed it? Let me check: my resource has 'status','status_label','terlihat','milik_saya','url','lebar','tinggi','ukuran','ukuran_manusia','jumlah_laporan','disembunyikan_at','dibuat_at','boleh_lapor','laporan','id','student_id','nama_murid','kelas_nama'. No 'mime'. 
+
+Also `ukuran` test... fine.
+
+Fix: either add 'mime' to the resource or change the test. Exposing mime to the client is useful (though we always serve image/jpeg). Let me add 'mime' to the resource.
+
+Let me add it.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/backend/app/Sections/Avatar/Http/Resources/AvatarResource.php", "replacements": [{"oldString": " 'url' => $terlihat\n ? app(PenyimpananAvatar::class)->urlBertandaTangan($this->resource)\n : null,\n 'lebar' => $this->lebar,", "newString": " 'url' => $terlihat\n ? app(PenyimpananAvatar::class)->urlBertandaTangan($this->resource)\n : null,\n // Selalu JPEG hasil …
+**Balasan:**
+
+
+
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && php artisan test --filter=Slice08AvatarTest 2>&1 | tail -20", "process_type": "SYNC", "timeout_seconds": 300}
+**Thinking (mentah):**
+
+All 10 backend tests pass. Now run Pint on the new files and the full backend suite quickly to check nothing broke.
+
+Then frontend.
+
+Let me update todos and run pint + full pest.
+
+Actually let me first run Pint for backend.
+
+- 🔧 `write_todos` — {"todos": [{"task": "Pelajari skrip ekspor & struktur log lama yang akan dihapus", "completed": true}, {"task": "Buat skrip re-runnable: gzip byte-exact + transkrip .md dari chat-messages.json", "completed": true}, {"task": "Hapus arsip tak berguna (word-arsip, log bertanggal, arsip-prompt, log-mentah.docx)", "completed": true}, {"task": "Ringkas dokumentasi prompt (docs/word/AGENT.md) jadi hanya  …
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && ./vendor/bin/pint app/Sections/Avatar config/avatar.php database/factories/AvatarFactory.php database/factories/LaporanAvatarFactory.php database/migrations/2026_10_07_000016_create_avatars_and_reports.php tests/Feature/Slice08AvatarTest.php app/Providers/AppServiceProvider.php routes/api.php 2>&1 | tail -20", "process_type": "SYNC", "tim …
+**Thinking (mentah):**
+
+Pint passes. Now the frontend.
+
+Let me look at an existing frontend page for style — HalamanMateriMurid.jsx is probably the closest (murid uploading/consuming). Let me read it and the material api test for Vitest style.
+
+Let me read HalamanMateriMurid.jsx (maybe long) and the test file.
+
+Let me read them.
+
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/material/HalamanMateriMurid.jsx"}, {"path": "folder tanpa judul 2/lomba_m/frontend/src/__tests__/sections/material/api.test.js", "limit": 80}]}
+**Thinking (mentah):**
+
+Now let me write the frontend for avatar:
+
+1. `frontend/src/sections/avatar/api.js` — Zod schemas + API functions + pure helpers.
+2. `frontend/src/sections/avatar/HalamanAvatar.jsx` — murid page (upload, preview, list kelas, lapor).
+3. `frontend/src/sections/avatar/HalamanModerasiAvatar.jsx` — guru page (queue, pulihkan, hapus).
+4. `frontend/src/sections/avatar/PilihHalamanAvatar.jsx` — role switch (like PilihHalamanMateri).
+5. `routes.js`: add `avatar: '/avatar'`.
+6. `App.jsx`: import + route.
+7. `KerangkaUmum.jsx`: nav links (murid: "Avatar"; guru: "Moderasi Avatar").
+8. `frontend/src/__tests__/sections/avatar/api.test.js`.
+
+Design api.js:
+
+```js
+import { z } from 'zod'
+import { client, ambilCsrfCookie } from '../../shared/api/client.js'
+
+export const skemaLaporanAvatar = z.object({
+  id: z.number(),
+  alasan: z.string(),
+  alasan_label: z.string(),
+  keterangan: z.string().nullable(),
+  status: z.string(),
+  status_label: z.string(),
+  pelapor_nama: z.string().nullable().optional(),
+  dibuat_at: z.string().nullable().optional(),
+})
+
+export const skemaAvatar = z.object({
+  id: z.number(),
+  student_id: z.number(),
+  nama_murid: z.string().nullable().optional(),
+  kelas_nama: z.string().nullable().optional(),
+  status: z.string(),
+  status_label: z.string(),
+  terlihat: z.boolean(),
+  milik_saya: z.boolean(),
+  url: z.string().nullable(),
+  mime: z.string().optional(),
+  lebar: z.number().optional(),
+  tinggi: z.number().optional(),
+  ukuran: z.number().optional(),
+  ukuran_manusia: z.string().optional(),
+  jumlah_laporan: z.number(),
+  disembunyikan_at: z.string().nullable().optional(),
+  dibuat_at: z.string().nullable().optional(),
+  boleh_lapor: z.boolean().optional(),
+  laporan: z.array(skemaLaporanAvatar).optional(),
+})
+
+export const skemaAvatarSaya = z.object({ avatar: skemaAvatar.nullable(), bawaan: z.boolean() })
+export const skemaDaftarAvatar = z.object({ avatar: z.array(skemaAvatar), murid_id: z.number().optional() })
+export const skemaHasilLapor = z.object({ message: z.string(), laporan: skemaLaporanAvatar, jumlah_laporan: z.number(), disembunyikan: z.boolean() })
+export const skemaHasilModerasi = z.object({ message: z.string() })
+
+export const ALASAN_LAPORAN = [
+  { nilai: 'tidak_pantas', label: 'Gambar tidak pantas' },
+  { nilai: 'bullying', label: 'Menyinggung teman' },
+  { nilai: 'spam', label: 'Bukan foto asli / spam' },
+  { nilai: 'lainnya', label: 'Alasan lain' },
+]
+
+export const UKURAN_MAKS = 2 * 1024 * 1024  // hmm, duplicating server config. Better: don't hardcode; validate against server error.
+```
+
+Hmm: keep a client-side guard for size: the config is server-side. I'll expose a soft constant with a comment that the server is authoritative. Let me define `UKURAN_MAKS_BAWAAN = 2 * 1024 * 1024`.
+
+Pure helpers (testable):
+- `jenisGambarDariMagicBytes(isi: Uint8Array): 'jpeg'|'png'|'webp'|null` — mirrors server so the client can reject SVG early (UX), while server remains authoritative.
+- `namaAvatarBawaan(nama)` → initials (1-2 letters) for the default avatar.
+- `avatarTerlihatUntukSaya(avatar)` / `bolehMelapor(avatar)`.
+- `ringkasPelanggaran(avatar)`? maybe not.
+
+API functions:
+- `avatarSaya()`
+- `daftarAvatar()`
+- `unggahAvatar(berkas)` → FormData with 'berkas' (multipart) — client sends file; server accepts.
+- `kembalikanAvatarBawaan()` (DELETE)
+- `laporAvatar(avatarId, alasan, keterangan)`
+- `antreanModerasi()`
+- `pulihkanAvatar(id, catatan)`
+- `hapusAvatarModerasi(id, catatan)`
+
+Also a helper `berkasKeBase64`? Not needed for browser; use FormData. But for Vitest testing, FormData exists in node? Vitest environment — the existing tests only test pure functions. I'll only test pure functions to be safe.
+
+Hmm, the material test tests `potongBerkas` (pure). So for avatar I'll test: magic bytes detection (including SVG rejection), initials, and zod schemas parse.
+
+Let me be careful about the checkJs strict requirement — JSDoc types needed for all functions. The project uses JSDoc types.
+
+Let me write api.js.
+
+For initials: `namaAvatarBawaan('Budi Santoso')` → 'BS'. Implementation: split, take first letters of up to 2 words, uppercase.
+
+Let me write.
+
+Also "milik_saya" in list to allow client to mark own avatar.
+
+Frontend page HalamanAvatar (murid):
+- query avatarSaya → big preview (img or initials circle)
+- input file → on change, read as ArrayBuffer, check magic bytes client-side; if invalid, show error; else upload via FormData
+- button "Kembalikan ke bawaan" (delete)
+- list of classmates' avatars with "Lapor" button → opens a small form (select alasan + keterangan optional) → laporAvatar
+
+HalamanModerasiAvatar (guru):
+- query antreanModerasi → list with image, owner name, reports (alasan + keterangan), button "Pulihkan" (with optional catatan input) and "Hapus".
+
+Let me keep the pages reasonably compact but functional.
+
+Let me write api.js first.
+
+Note: client import path: `../../shared/api/client.js` (from src/sections/avatar → src/shared/api/client.js). Correct: sections/avatar/api.js → ../../shared/api/client.js.
+
+Alasan list should come from server? No endpoint for enum. Hardcode mirroring the PHP enum (documented as mirror).
+
+Let me write.
+
+**Balasan:**
+
+Backend hijau. Sekarang frontend `sections/avatar`:
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/avatar/api.js", "instructions": "Buat api.js avatar dengan skema Zod, fungsi API, dan helper murni.", "content": "/**\n * API avatar & moderasi (slice 08).\n *\n * Dua hal yang sengaja ada di sisi klien:\n *\n * 1. **Penolakan awal gambar yang bukan JPEG/PNG/WebP** (termasuk SVG) dari magic\n * bytes, supaya anak tidak menunggu unggahan  …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now the pages. Let me check what UI components exist: Banner, Tombol (from shared/ui). Tombol exports `Tombol` and `TombolTaut`. Isian exists.
+
+Let me check Isian props quickly? For the pages, I'll use plain HTML inputs with Bootstrap classes like HalamanMateriMurid uses `kartu-soal`, `teks-lembut`, `badge-status lembut`, `btn-teks`, `btn-tepi` classes (custom CSS from theme presumably).
+
+Let me check Tombol signature (varian, memuat, disabled).
+
+Also `useAuthStore` for the user name (for initials).
+
+Let me write HalamanAvatar.jsx (murid):
+
+```jsx
+import { useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import Banner from '../../shared/ui/Banner.jsx'
+import { Tombol } from '../../shared/ui/Tombol.jsx'
+import { useAuthStore } from '../auth/authStore.js'
+import { pesanGalatApi } from '../auth/api.js'
+import { ALASAN_LAPORAN, avatarSaya, daftarAvatar, hapusAvatarModerasi... }
+```
+Wait, murid page needs: avatarSaya, daftarAvatar, unggahAvatar, kembalikanAvatarBawaan, laporAvatar, inisialNama, jenisGambarDariMagicBytes, periksaBerkasAvatar, terlihatUntukTeman.
+
+Flow for upload:
+```js
+const unggah = useMutation({
+  mutationFn: async (berkas) => {
+    const pesan = periksaBerkasAvatar(berkas)
+    if (pesan) throw new Error(pesan)
+    const isi = new Uint8Array(await berkas.arrayBuffer())
+    if (jenisGambarDariMagicBytes(isi) === null) {
+      throw new Error('Hanya gambar JPEG, PNG, atau WebP. Berkas ini ditolak.')
+    }
+    return unggahAvatar(berkas)
+  },
+  onSuccess: () => { setGalat(''); invalidate }
+  onError: (e) => setGalat(pesanGalatApi(e)),
+})
+```
+Hmm `pesanGalatApi` handles Error too? Let me check its signature — probably `pesanGalatApi(error)` returns message from axios error or error.message. Let me check quickly.
+
+Let me grep pesanGalatApi.
+
+Also `pesanGalatApi` import path: '../auth/api.js' as in HalamanMateriMurid.
+
+Let me check it handles plain Error.
+
+Let me read that function.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && grep -n \"export function pesanGalatApi\" -A 30 src/sections/auth/api.js | head -45 && echo \"--- Tombol ---\" && sed -n '1,60p' src/shared/ui/Tombol.jsx", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+`pesanGalatApi` doesn't return error.message for plain Error. So if I throw `new Error(pesan)` from the mutation, the message becomes generic. I should handle locally: validate BEFORE calling mutate and set `galat` state directly.
+
+Let me restructure: in the file input onChange handler, do the client-side checks synchronously-ish (need arrayBuffer → async), set galat, and only call mutate if valid.
+
+Let me write HalamanAvatar.jsx now.
+
+```jsx
+export default function HalamanAvatar() {
+  const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
+  const [galat, setGalat] = useState('')
+  const [pesan, setPesan] = useState('')
+  const [lapor, setLapor] = useState(/** @type {DataAvatar|null} */ (null))
+  const [alasan, setAlasan] = useState(ALASAN_LAPORAN[0].nilai)
+  const [keterangan, setKeterangan] = useState('')
+
+  const saya = useQuery({ queryKey: ['avatar-saya'], queryFn: avatarSaya })
+  const daftar = useQuery({ queryKey: ['avatar-daftar'], queryFn: daftarAvatar })
+
+  const unggah = useMutation({...})
+  const bawaan = useMutation({...})
+  const laporkan = useMutation({...})
+
+  async function pilihBerkas(berkas) { ...validate... unggah.mutate(berkas) }
+  ...
+}
+```
+
+Filter the list to exclude own avatar (`terlihatUntukTeman`).
+
+Let me write it with reasonable Tailwind-free Bootstrap markup matching existing style classes.
+
+Let me write both pages and the picker.
+
+Also register routes and nav.
+
+Let me write HalamanAvatar.jsx.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/avatar/HalamanAvatar.jsx", "instructions": "Buat halaman avatar murid (unggah, kembali ke bawaan, lapor teman).", "content": "/**\n * Layar avatar murid (slice 08).\n *\n * Murid memasang fotonya sendiri, bisa mengembalikannya ke avatar bawaan\n * (inisial nama), dan bisa melaporkan avatar teman sekelas. Laporan **tidak**\n * menghapus a …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Hmm, todo #5 says "Perbarui rujukan ..." completed but it's marked false? Let me re-check: I wrote todo #5 as completed=true. The message says 8 of 11 done. Let me count: items 1-8 completed (1,2,3,4,5,6,7,8) — yes 8 done. OK it's fine, the system message is approximate. Actually my last write_todos had: 1,2,3,4,5,6,7,8 completed (8 items), then 9,10,11 false. Now I finished frontend api.js + HalamanAvatar; still need moderasi page, picker, routes, nav, tests. So still 8. Fine, no update needed yet — but the instruction says update when finishing items. Frontend isn't fully done. Let me continue and update after finishing the frontend.
+
+Let me write HalamanModerasiAvatar.jsx and PilihHalamanAvatar.jsx, then wire routes/nav, then tests.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/avatar/HalamanModerasiAvatar.jsx", "instructions": "Buat halaman moderasi avatar untuk guru.", "content": "/**\n * Antrean moderasi avatar untuk guru (slice 08).\n *\n * Guru melihat gambar yang dilaporkan teman sekelas beserta laporannya, lalu\n * memilih **pulihkan** (gambar kembali tampil, laporan ditandai tidak valid) atau\n * **hapu …
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/avatar/PilihHalamanAvatar.jsx", "instructions": "Buat pemilih halaman avatar berdasarkan peran.", "content": "/**\n * Rute /avatar dipakai dua peran: murid mengurus avatarnya sendiri, guru\n * meninjau laporan. Server tetap penentu akhir (policy), pemilihan di sini hanya\n * soal tampilan.\n */\nimport { useAuthStore } from '../auth/auth …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now wire routes: routes.js add `avatar: '/avatar'`; App.jsx import + route; KerangkaUmum nav.
+
+Note: guru page uses same route `/avatar` (moderasi). Nav for guru: "Moderasi Avatar" → /avatar. Murid: "Avatar" → /avatar.
+
+Let me do the edits.
+
+App.jsx: need to see imports region & where to add route. Let me look at lines 35-45 and 150-160.
+
+I'll add import near PilihHalamanMateri import (line 39) and route inside HanyaMasuk group near materi route (line 157).
+
+Let me apply str_replace.
+
+Also remove frontend/src/sections/avatar/.gitkeep? It's untracked? Let me check: summary said `frontend/src/sections/avatar/.gitkeep` exists. Since now real files exist, delete it (it may be tracked). Let me check with git ls-files.
+
+Let me do edits + check.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && git ls-files frontend/src/sections/avatar && sed -n '35,42p' frontend/src/App.jsx && echo \"---\" && sed -n '150,160p' frontend/src/App.jsx", "process_type": "SYNC", "timeout_seconds": 30}
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/routes.js", "replacements": [{"oldString": " // Materi berblok (slice 08) — guru menyusun, murid menempuh.\n materi: '/materi',", "newString": " // Materi berblok (slice 08) — guru menyusun, murid menempuh.\n materi: '/materi',\n // Avatar murid + moderasi (slice 08) — murid memasang, guru meninjau laporan.\n avatar: '/avatar',", "allowMultiple": …
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/App.jsx", "replacements": [{"oldString": "import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'", "newString": "import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'\nimport PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'", "allowMultiple": false}, {"oldString": " {/* Materi berblok ( …
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/shared/layout/KerangkaUmum.jsx", "replacements": [{"oldString": " <NavLink className=\"papan-nav-taut\" to={RUTE.materi}>Materi</NavLink>\n <NavLink className=\"papan-nav-taut\" to={RUTE.pengaturan}>Pengaturan</NavLink>", "newString": " <NavLink className=\"papan-nav-taut\" to={RUTE.materi}>Materi</NavLink>\n <NavLink className=\"papan-nav-taut\" …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now Vitest tests for the avatar api pure helpers + schemas.
+
+Test file: `frontend/src/__tests__/sections/avatar/api.test.js`
+
+Tests:
+1. jenisGambarDariMagicBytes: PNG/JPEG/WebP accepted; SVG rejected; HTML rejected; empty → null.
+2. inisialNama: 'Budi Santoso' → 'BS'; 'siti' → 'S'; '' → '?'; 'a b c' → 'AB'.
+3. periksaBerkasAvatar: too big → message; empty → message; ok → null.
+4. terlihatUntukTeman: own hidden vs other active.
+5. Zod schema parse: skemaAvatar parse a sample with hidden status + null url; skemaAvatarSaya parse bawaan; skemaHasilLapor parse.
+
+Let me write it.
+
+Note vitest config include patterns — test dir is `src/__tests__/sections/...`. Let me mirror the import path: '../../../sections/avatar/api.js'.
+
+Let me write.
+
+For magic bytes: PNG bytes: new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]). JPEG: [0xff,0xd8,0xff,0xe0]. WebP: 'RIFF' + 4 size + 'WEBP'.
+
+SVG: text encoder of '<svg ...'.
+
+Let me write the test file.
+
+- 🔧 `write_file` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/__tests__/sections/avatar/api.test.js", "instructions": "Buat Vitest untuk helper & skema avatar.", "content": "import { describe, expect, it } from 'vitest'\nimport {\n ALASAN_LAPORAN,\n inisialNama,\n jenisGambarDariMagicBytes,\n periksaBerkasAvatar,\n skemaAvatar,\n skemaAvatarSaya,\n skemaHasilLapor,\n skemaLaporanAvatar,\n terlihatUntukTeman …
+**Balasan:**
+
+
+
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && rm -f src/sections/avatar/.gitkeep && npm run check 2>&1 | tail -20 && echo \"=== LINT ===\" && npm run lint 2>&1 | tail -20", "process_type": "SYNC", "timeout_seconds": 300}
+**Thinking (mentah):**
+
+1 typecheck error: `periksaBerkasAvatar(undefined)` — my JSDoc says param is `File|{size:number}`, so passing undefined is a type error in the test. Fix: make the JSDoc param nullable: `@param {File|{size: number}|null|undefined} berkas`.
+
+Let me update the JSDoc in api.js.
+
+Lint: 0 errors, 2 pre-existing warnings. Good.
+
+Let me fix and re-run check + vitest.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/sections/avatar/api.js", "replacements": [{"oldString": " * @param {File|{size: number}} berkas\n * @returns {string|null} pesan galat, atau null bila lolos\n */", "newString": " * @param {File|{size: number}|null|undefined} berkas\n * @returns {string|null} pesan galat, atau null bila lolos\n */", "allowMultiple": false}]}
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && npm run check 2>&1 | tail -8 && echo \"=== VITEST ===\" && npx vitest run src/__tests__/sections/avatar 2>&1 | tail -25", "process_type": "SYNC", "timeout_seconds": 300}
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Typecheck passes now. One test fails: WebP detection.
+
+My test string 'RIFFxxxxxxxxWEBPVP8 ' — RIFF (4) + 8 x's = 12 chars, then W... but I intended bytes 8-12 to be 'WEBP'. Let me count: 'RIFF' = 4 chars (indices 0-3), then 'xxxxxxxx' = 8 chars (indices 4-11), then 'WEBP' at indices 12-15. My check uses `awal.slice(8, 12)` → indices 8-11 = 'xxxx'. So wrong test data.
+
+Correct WebP header: 'RIFF' + 4 bytes size + 'WEBP'. So: 'RIFF' + '0000' (4 bytes) + 'WEBP'. That's 12 chars, indices 8-11 = 'WEBP'. 
+
+Let me fix the test: `byte('RIFF0000WEBPVP8 ')`.
+
+And the second negative test `'RIFFxxxxxxxxWAVEfmt '` → indices 8-11 = 'xxxx' → null anyway, but let me make it meaningful: `'RIFF0000WAVEfmt '`.
+
+Let me fix both in the test file.
+
+Also double check my `jenisGambarDariMagicBytes` handles index 8-12 correctly with a 12-byte minimum — yes.
+
+Fix the test.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/frontend/src/__tests__/sections/avatar/api.test.js", "replacements": [{"oldString": " expect(jenisGambarDariMagicBytes(byte('RIFFxxxxxxxxWEBPVP8 '))).toBe('webp')", "newString": " // RIFF (4 byte) + ukuran (4 byte) + 'WEBP' tepat di byte ke-8..11.\n expect(jenisGambarDariMagicBytes(byte('RIFF0000WEBPVP8 '))).toBe('webp')", "allowMultiple": false}, {"oldString …
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/frontend\" && npx vitest run src/__tests__/sections/avatar 2>&1 | tail -12", "process_type": "SYNC", "timeout_seconds": 300}
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+12/12 pass. Now run the full verify.sh (all 6 gates) to make sure everything is green, including the arch tests (Pest arch tests may check controllers don't call DB:: directly — my ModerasiAvatarService uses DB? No, I use Eloquent. AvatarController uses no DB::. Good. But `BerkasAvatarController` uses `response()`/BinaryFileResponse — fine.)
+
+Also frontend build (`npm run build`) is part of nothing in verify.sh? verify.sh has 6 gates: backend test, pint, frontend check, lint, test, realtime test.
+
+Wait — the arch test may forbid `abort()` in controllers? Existing controllers use abort(). OK.
+
+One more: Pest arch test "controller tidak memanggil DB:: langsung" — ModerasiAvatarController/ AvatarController don't.
+
+Let me run ./verify.sh from root.
+
+Also there's a risk: `php artisan test` runs all tests; my new migration runs. Fine.
+
+Let me run.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && ./verify.sh > /tmp/verify-avatar.log 2>&1; echo \"exit=$?\"; grep -E \"^(WAKTU|VERIFY|>>>|verify.sh)\" /tmp/verify-avatar.log | head -20; echo \"--- ringkas ---\"; grep -E \"Tests:|Files:|tests [0-9]+|PASS [0-9]+ files|error\" /tmp/verify-avatar.log | head -20", "process_type": "SYNC", "timeout_seconds": 600}
+**Thinking (mentah):**
+
+All 6 gates green: Pest 130 passed (983 assertions) — up from 120/879; Vitest now 31 files (was 30) — 235 tests presumably. ESLint 0 errors/2 pre-existing warnings.
+
+Let me check the Vitest file/test counts from the log for the report.
+
+Now:
+1. Update `docs/penjelasan-fitur.md` status for avatar (it has "Status: belum dikerjakan" lines) — good practice? The prompt v2 says status is filled at each slice end. Let me check penjelasan-fitur.md for the avatar section status and update it. Hmm, that's part of the documentation workflow (each slice end). Let me check how material slice updated it. Let me grep "Status" in penjelasan-fitur.md.
+
+2. Update `docs/jurnal-prompt.md`? Entri 5 is for slice 10. Entri 4 covers slice 07-09; slice 08 materi was committed without jurnal update (the summary said Entri 5 empty). Hmm — the jurnal has max 5 entries; entry 4 = slices 07–09. So slice 08 work belongs to entry 4. Since entries describe completed work, and slice 08 is partially done (materi + avatar), I could note it. But minimal: the user asked to continue work. Let me not restructure the jurnal beyond what's needed.
+
+3. Commit + push + refresh raw log (export-log-sesi.py).
+
+Also: should I add `avatar` info to `chunks/slice-08.json`? It's already in scope. Fine.
+
+Also update `docs/catatan-demo.md` for slice 08 avatar demo? It's the "cara demo tiap akhir slice" doc. Let me check if it has a slice 08 section; adding one would be consistent. Let me check quickly.
+
+Also `docs/laporan-pengujian.md` — add a section for slice 08 avatar tests (the report should list what was run). Let me check its structure for slice 07 entries to mirror.
+
+Given time/deadline (Oct 15, plenty), doing the docs is appropriate since the project convention is "each slice end: run verify, update docs, export Word, commit". Let me do:
+- penjelasan-fitur.md: update avatar status
+- catatan-demo.md: add slice 08 avatar demo steps
+- laporan-pengujian.md: add D.xx section for slice 08 avatar
+
+Let me look at these files' relevant parts.
+
+Let me grep for the relevant sections.
+
+**Balasan:**
+
+Semua 6 gerbang hijau (Pest 130/983, Vitest 31 berkas). Sekarang saya perbarui dokumentasi slice sesuai kebiasaan proyek:
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m\" && grep -n \"Status\" docs/penjelasan-fitur.md | head -20 && echo \"=== avatar section ===\" && grep -n \"Avatar\" docs/penjelasan-fitur.md | head -20 && echo \"=== catatan-demo headings ===\" && grep -n \"^#\\|^## \" docs/catatan-demo.md | tail -25 && echo \"=== laporan-pengujian headings (slice 08) ===\" && grep -n \"^## \\|^### D\\.\" docs/lapora …
+**Thinking (mentah):**
+
+I need to:
+1. `docs/penjelasan-fitur.md` line 162 (section 8 = Avatar) status → "sudah bisa dipakai (slice 08)". Line 126 = section 6 (materi?) status → also probably slice 08 materi; the summary said slice 08 materi was done but maybe docs weren't updated. Let me check which section line 126 belongs to. Section 6 = "Materi berblok dengan kuis sisipan" presumably. Let me check line 110-165 to identify sections 6 and 8.
+
+2. `docs/catatan-demo.md`: add "Demo Slice 08 — Materi Berblok + Avatar" section (after slice 07).
+
+3. `docs/laporan-pengujian.md`: add "A.12 Slice 08 — Materi berblok, berkas aman, avatar & moderasi" with the test results.
+
+Let me read the relevant parts of penjelasan-fitur.md (lines 108-185).
+
+Let me read.
+
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/docs/penjelasan-fitur.md", "offset": 108, "limit": 80}]}
+**Thinking (mentah):**
+
+Section 6 (materi) status is also "belum dikerjakan" — but slice 08 materi is done and committed. So update both 6 and 8.
+
+Update section 6 status: "**sudah bisa dipakai** (slice 08). ... Yang belum ada: layar guru ke perangkat murid (sinkron konten lewat SSE) — masih ditunda..." Hmm, is the "layar guru ke murid" implemented? The slice-08 scope mentions it, but my work (materi blocks) didn't include the teacher-screen sync. The summary said slice 08 = materi (done, commit 0a3ff1a/cd4c387), and slice 08-D = avatar. The layar guru part was apparently not implemented. Let me verify: is there a teacher-screen sync endpoint? Let me grep for "layar" / "siarkan" in Material/Presence.
+
+To be honest in docs, I need to state what's done and what isn't. Let me check quickly whether teacher-screen sync exists.
+
+Let me grep.
+
+Then write statuses.
+
+Also for section 8 (avatar): all features implemented:
+- JPEG/PNG/WebP only, SVG rejected ✓
+- size limit ✓
+- re-encode fixed size ✓
+- random name ✓
+- default avatar (initials) ✓
+- one report per student per avatar ✓
+- rate limit ✓
+- N=3 unique → hidden from others, owner sees ✓
+- guru review queue + restore/delete + audit ✓
+So: "sudah bisa dipakai (slice 08)".
+
+Good. Let me check the teacher-screen thing.
+
+- 🔧 `run_terminal_command` — {"command": "cd \"folder tanpa judul 2/lomba_m/backend\" && grep -rn \"layar_guru\\|LayarGuru\\|siarkanKonten\\|layar-guru\" app/ routes/ | head -20 && echo \"--- frontend ---\" && grep -rn \"layar_guru\\|layar-guru\\|LayarGuru\" ../frontend/src | head -10", "process_type": "SYNC", "timeout_seconds": 30}
+**Thinking (mentah):**
+
+Confirmed: "layar guru ke perangkat murid" (content sync via SSE) is NOT implemented — only the settings key exists. So in penjelasan-fitur section 6, I must be honest: materi berblok + kuis sisipan sudah bisa dipakai; layar guru (sinkron konten) belum dikerjakan.
+
+Let me update statuses:
+
+Section 6:
+"Status: **sebagian sudah bisa dipakai** (slice 08). Materi berblok dengan kuis sisipan latihan, berkas aman (klasifikasi isi, tautan bertanda tangan), dan laporan tema per murid sudah jalan dan diuji. Yang **belum** dikerjakan dan kami sebutkan apa adanya: layar guru yang menyinkronkan konten ke perangkat murid (kunci pengaturannya sudah ada, tetapi penyiaran kontennya belum)."
+
+Section 8:
+"Status: **sudah bisa dipakai** (slice 08). Foto diencode ulang server ke 256×256, SVG dan berkas lain ditolak, avatar bawaan memakai inisial nama, satu laporan per murid per avatar, dan setelah 3 laporan unik avatar disembunyikan dari murid lain (pemilik tetap melihat) serta masuk antrean tinjau guru. Keputusan guru (pulihkan/hapus) tercatat di audit. Avatar yang menunggu tinjauan sengaja **tidak bisa** dihapus pemiliknya supaya buktinya tidak hilang."
+
+Let me apply.
+
+Then catatan-demo + laporan-pengujian sections.
+
+Then update docs/catatan-demo.md with a slice 08 section.
+
+Then commit.
+
+Let me do the penjelasan-fitur edits.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/docs/penjelasan-fitur.md", "replacements": [{"oldString": "Guru tidak perlu berteriak \"buka halaman 23\": semua perangkat murid ikut berpindah sendiri, hemat waktu kelas.\n\nStatus: belum dikerjakan (diisi ulang di tiap akhir slice).", "newString": "Guru tidak perlu berteriak \"buka halaman 23\": semua perangkat murid ikut berpindah sendiri, hemat waktu kela …
+**Balasan:**
+
+
+
+
+**Thinking (mentah):**
+
+Now add a slice 08 section to docs/catatan-demo.md (after slice 07 section, before/after "Satu hal yang sengaja tidak diperbaiki"). Let me look at the end of the slice 07 section to insert after it.
+
+Let me read lines 292-320 of catatan-demo.md.
+
+Also add A.12 to laporan-pengujian.md.
+
+Let me read the tail of catatan-demo.md.
+
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/docs/catatan-demo.md", "offset": 288, "limit": 30}, {"path": "folder tanpa judul 2/lomba_m/docs/laporan-pengujian.md", "offset": 690, "limit": 34}]}
+**Thinking (mentah):**
+
+Let me see the last lines of laporan-pengujian.md (724-730) to append A.12 at the end.
+
+Let me read.
+
+- 🔧 `read_files` — {"paths": [{"path": "folder tanpa judul 2/lomba_m/docs/laporan-pengujian.md", "offset": 720, "limit": 11}]}
+**Thinking (mentah):**
+
+Now append A.12 to laporan-pengujian.md and add slice 08 demo section to catatan-demo.md.
+
+Let me write the appended content for laporan-pengujian.md:
+
+```
+## A.12 Slice 08 — Materi Berblok, Berkas Aman, Avatar, dan Moderasi
+
+Dikerjakan dalam dua commit, masing-masing dengan pagar mutu hijau.
+
+### A.12.1 Perintah dan hasil
+- `php artisan test` → **130 passed (983 assertions)** — tambahan `Slice08Test` (8 test / 108 assertion)
+  dan `Slice08AvatarTest` (10 test / 104 assertion).
+- `./vendor/bin/pint --test` → PASS.
+- `npm run check` (tsc checkJs strict) → lolos.
+- `npm run lint` → 0 error, 2 warning lama (`react-hooks/incompatible-library` dari `watch()` RHF).
+- `npx vitest run` → 31 berkas uji; tambahan `__tests__/sections/avatar/api.test.js` (12 test).
+- `node --test` (realtime) → 11 test lulus.
+- `./verify.sh` → **SEMUA HIJAU** (log: `/tmp/verify-avatar.log`).
+
+### A.12.2 Yang diuji (bukti perilaku, bukan klaim)
+Materi (Slice08Test): klasifikasi dari magic bytes; berkas berisiko diunduh paksa sebagai `.upload`;
+hash potongan yang salah ditolak; URL bertanda tangan kedaluwarsa → 403; sapuan unggahan yatim;
+urutan blok wajib ditegakkan server; kuis sisipan dibuat sebagai attempt `latihan` (bukan skor asli,
+tidak masuk ranking); laporan tema memuat skor latihan; retry mengikuti pengaturan tiga lapis;
+blok kuis bersoal uraian / kelas lain ditolak.
+
+Avatar (Slice08AvatarTest): PNG asli diencode ulang jadi JPEG 256×256 dengan nama acak;
+**SVG ditolak** walau dinamai `.png`; batas ukuran ditegakkan; laporan ganda dari murid yang sama
+tidak menambah hitungan; ambang 3 laporan unik menyembunyikan avatar dari murid lain sementara
+pemiliknya tetap melihatnya; guru melihat antrean beserta laporan; **pulihkan** dan **hapus** tercatat
+di `activity_log` (log_name `avatar`, causer guru, `properties.catatan`); berkas terhapus saat moderasi
+hapus dan URL bertanda tangannya mati (404); gambar yang menunggu tinjauan tidak bisa dihapus pemiliknya.
+
+### A.12.3 Yang jujur BELUM dikerjakan di slice 08
+- **Layar guru ke perangkat murid** (sinkron konten/blok lewat SSE) belum dibuat; hanya kunci
+  pengaturannya yang sudah ada. Ini disebut apa adanya di `docs/penjelasan-fitur.md` bagian 6.
+- **Smoke UI Chrome (CDP) untuk slice 08 belum dijalankan** — berbeda dari slice 02–07 yang masing-masing
+  punya `docs/smoke-ui-sliceNN.mjs`. Yang terbukti untuk slice 08 baru pada tingkat test otomatis
+  (Pest + Vitest).
+```
+
+Hmm, the smoke UI — the summary said slice 08 (materi) docs may have had a smoke. Let me check if docs/smoke-ui-slice08.mjs exists. Earlier ls of docs showed smoke-ui-cdp, slice03..07 only. So no slice 08 smoke. Good, my statement is accurate.
+
+Now catatan-demo.md: add "## Demo Slice 08 — Materi Berblok, Berkas Aman, dan Avatar Termoderasi" before or after the slice 07 section. Order in file: slice 07 section, then "Satu hal yang sengaja tidak diperbaiki". I'll insert the slice 08 section right before "### Satu hal yang sengaja **tidak** diperbaiki (jujur)"? That heading belongs to slice 07's block. Better: append at the end of the file (after the "satu hal" note). Hmm, that note is about slice 07 broadly. Appending at the end is cleanest.
+
+Let me append a slice 08 demo section at the end of catatan-demo.md.
+
+Content: numbered demo steps for guru and murid + API curl evidence + honest note about no smoke UI.
+
+Let me write both edits.
+
+I need exact oldString anchors. For catatan-demo.md, anchor on the last lines:
+"Perbaikan penuh menunggu keputusan produk (pola \"kami sudah kirim email ke alamat itu\" tanpa auto-login).\n"
+
+For laporan-pengujian.md, anchor on the last lines.
+
+Let me apply.
+
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/docs/laporan-pengujian.md", "replacements": [{"oldString": "- **Uji beban dan koneksi SSE terhadap nginx sungguhan** belum dijalankan; verifikasi SSE masih di dev\n (`localhost:5173` → Node `:4000`).", "newString": "- **Uji beban dan koneksi SSE terhadap nginx sungguhan** belum dijalankan; verifikasi SSE masih di dev\n (`localhost:5173` → Node `:4000`).\n\n## …
+- 🔧 `str_replace` — {"path": "folder tanpa judul 2/lomba_m/docs/catatan-demo.md", "replacements": [{"oldString": "Perbaikan penuh menunggu keputusan produk (pola \"kami sudah kirim email ke alamat itu\" tanpa auto-login).", "newString": "Perbaikan penuh menunggu keputusan produk (pola \"kami sudah kirim email ke alamat itu\" tanpa auto-login).\n\n## Demo Slice 08 — Materi Berblok, Berkas Aman, dan Avatar Termoderasi\ …
 **Balasan:**
 
 

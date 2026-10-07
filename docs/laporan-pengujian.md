@@ -728,3 +728,42 @@ Skrip membuka jendela baru, menyalakan proteksi lewat API, lalu memakai antarmuk
 - **Deteksi IP sama antar murid** (salah satu butir chunk) belum ada.
 - **Uji beban dan koneksi SSE terhadap nginx sungguhan** belum dijalankan; verifikasi SSE masih di dev
   (`localhost:5173` → Node `:4000`).
+
+## A.12 Slice 08 — Materi Berblok, Berkas Aman, Avatar, dan Moderasi
+
+Dikerjakan dalam tiga commit terpisah (backend materi, frontend materi, avatar & moderasi), masing-masing
+dengan pagar mutu hijau.
+
+### A.12.1 Perintah dan hasil
+- `./verify.sh` dari root → **SEMUA HIJAU** (log terakhir `/tmp/verify-avatar.log`).
+- `php artisan test` → **130 passed (983 assertions)**; tambahan `Slice08Test` (8 test / 108 assertion)
+  dan `Slice08AvatarTest` (10 test / 104 assertion).
+- `./vendor/bin/pint --test` → PASS (238 berkas).
+- `npm run check` (tsc `checkJs` strict) → lolos; `npm run lint` → 0 error, 2 warning lama
+  (`react-hooks/incompatible-library` dari `watch()` React Hook Form di dua halaman auth).
+- `npx vitest run` → 31 berkas uji; tambahan `src/__tests__/sections/avatar/api.test.js` (12 test).
+- `node --test` (realtime) → 11 test lulus.
+
+### A.12.2 Yang diuji (bukti perilaku dari test, bukan klaim)
+**Materi berblok (`Slice08Test`)** — kategori berkas ditentukan magic bytes; berkas berisiko diunduh paksa
+sebagai `.upload`; hash potongan yang tidak cocok ditolak; URL bertanda tangan yang kedaluwarsa → 403;
+sapuan unggahan yatim menghapus baris + berkasnya; urutan blok wajib ditegakkan server (lompat blok → 422);
+blok kuis membuat attempt `latihan` lewat mesin kuis yang sama (bukan skor asli, tidak masuk ranking);
+laporan tema memuat skor latihan; retry kuis sisipan mengikuti pengaturan tiga lapis; blok kuis bersoal
+uraian atau kelas lain ditolak.
+
+**Avatar & moderasi (`Slice08AvatarTest`)** — PNG asli diencode ulang jadi JPEG 256×256 dengan nama berkas
+acak; **SVG ditolak** walau dinamai `.png`; batas ukuran ditegakkan; laporan ganda dari murid yang sama tidak
+menambah hitungan; ambang 3 laporan unik menyembunyikan avatar dari murid lain sementara pemiliknya tetap
+melihatnya (dan tetap mendapat URL gambarnya); guru melihat antrean beserta laporan tiap pelapor;
+**pulihkan** dan **hapus** tercatat di `activity_log` (log_name `avatar`, causer guru,
+`properties.catatan`); berkas fisik terhapus setelah moderasi hapus dan URL bertanda tangannya mati (404);
+avatar yang menunggu tinjauan tidak bisa dihapus pemiliknya (bukti tidak hilang sebelum guru melihatnya).
+
+### A.12.3 Yang jujur BELUM dikerjakan di slice 08
+- **Layar guru ke perangkat murid** (sinkron konten/nomor blok lewat SSE) belum dibuat; baru kunci
+  pengaturannya yang ada. Disebut apa adanya di `docs/penjelasan-fitur.md` bagian 6.
+- **Smoke UI Chrome (CDP) slice 08 belum dijalankan.** Berbeda dari slice 02–07 yang masing-masing punya
+  `docs/smoke-ui-sliceNN.mjs`, pembuktian slice 08 masih pada tingkat test otomatis (Pest + Vitest).
+- **Kuota penyimpanan sekolah belum diuji dengan berkas nyata berukuran besar**; yang diuji baru perhitungan
+  dan penolakannya pada tingkat unit/feature.

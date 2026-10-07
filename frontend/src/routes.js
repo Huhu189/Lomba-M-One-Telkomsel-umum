@@ -32,6 +32,8 @@ export const RUTE = {
   monitorKuis: '/kuis/:id/monitor',
   // Materi berblok (slice 08) — guru menyusun, murid menempuh.
   materi: '/materi',
+  // Avatar murid + moderasi (slice 08) — murid memasang, guru meninjau laporan.
+  avatar: '/avatar',
   badge: '/badge',
   progresTema: '/progres-tema',
 }

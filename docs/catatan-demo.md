@@ -302,3 +302,48 @@ Ini bertentangan dengan aturan anti-enumerasi di `AGENT.md`. Alasannya: alur pen
 adalah **langsung masuk setelah daftar**, jadi bila email terdaftar dibalas "sukses" tanpa akun baru,
 pemilik email itu justru tidak bisa masuk. Keputusan yang diambil: **pertahankan 422 dan catat jujur**.
 Perbaikan penuh menunggu keputusan produk (pola "kami sudah kirim email ke alamat itu" tanpa auto-login).
+
+## Demo Slice 08 — Materi Berblok, Berkas Aman, dan Avatar Termoderasi
+
+### Langkah demo (guru) — menyusun materi berblok
+1. Masuk sebagai guru (`http://localhost:5173`, `admin@sekolah.test`), buka **Materi** → buat materi
+   kelas 3A dengan tema yang sudah ada.
+2. Susun blok: **teks** → **media** (unggah sebuah gambar; sebutkan bahwa berkas yang tidak dikenali akan
+   dipaksa unduh sebagai `.upload`) → **kuis** (pilih kuis bersoal objektif) → **teks** penutup.
+   Tandai blok penting sebagai **wajib**.
+3. Terbitkan materi, lalu tunjukkan **laporan tema** materi itu setelah murid mengerjakan latihannya.
+4. Ajukan satu blok kuis bersoal uraian untuk menunjukkan server **menolaknya** (latihan anak harus dinilai pasti).
+
+### Langkah demo (murid) — menempuh materi
+1. Masuk sebagai murid kelas 3A, buka **Materi** → pilih materi tadi.
+2. Tunjukkan urutan ditegakkan **server**: mencoba membuka blok kuis sebelum blok wajib selesai ditolak.
+3. Buka blok teks → tandai selesai → blok kuis membuka latihan; soal memakai renderer yang sama seperti
+   ulangan, dan **tidak ada kunci jawaban** di respons mana pun.
+4. Kumpulkan latihan, tandai blok selesai. Tekankan: nilainya masuk laporan tema, **bukan** ranking.
+
+### Langkah demo (murid) — avatar dan lapor
+1. Buka **Avatar** → unggah sebuah foto. Tunjukkan gambar otomatis dikecilkan (256×256) dan avatar bawaan
+   memakai **inisial nama** sebelum ada foto.
+2. Coba unggah berkas SVG yang dinamai `.png` → ditolak dengan pesan jelas (SVG bisa memuat skrip).
+3. Dari akun murid lain, tekan **Lapor** pada avatar teman. Ulangi dari murid yang sama → hitungan laporan
+   **tidak** bertambah (satu laporan per murid per avatar).
+4. Setelah **tiga murid berbeda** melapor, avatar hilang dari daftar teman, tetapi **pemiliknya masih
+   melihatnya sendiri**; sedangkan guru melihatnya di **Moderasi Avatar** beserta alasan tiap pelapor.
+5. Guru menekan **Pulihkan** (dengan catatan alasan) → avatar kembali tampil dan laporan lama jadi tidak valid;
+   lalu tunjukkan **Hapus avatar** pada kasus lain beserta catatan jejaknya di audit.
+
+### Bukti lewat API (curl)
+
+```
+# Unggah avatar (jalur uji non-browser: base64) — server tetap mengencode ulang ke JPEG 256x256
+curl -s -X POST http://localhost:8000/api/v1/avatar \
+  -H 'Accept: application/json' -b cookie.txt \
+  -d 'isi_base64=<base64 gambar>' | jq '{id, status, mime, lebar, tinggi, url}'
+```
+
+### Bukti otomatis
+
+`Slice08AvatarTest` (10 test / 104 assertion) dan `Slice08Test` (8 test / 108 assertion) lulus, termasuk
+penolakan SVG, ambang 3 laporan unik, dan jejak audit pulihkan/hapus. **Catatan jujur:** smoke UI Chrome
+(CDP) untuk slice 08 **belum** dijalankan, jadi bukti slice ini masih sebatas test otomatis — rinciannya di
+`docs/laporan-pengujian.md` bagian A.12.

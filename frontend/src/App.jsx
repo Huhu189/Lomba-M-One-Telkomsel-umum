@@ -37,6 +37,7 @@ import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
 import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
 import HalamanMonitor from './sections/cheat/HalamanMonitor.jsx'
 import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
+import PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
@@ -155,6 +156,9 @@ export default function App() {
 
             {/* Materi berblok (slice 08) — guru menyusun, murid menempuh. */}
             <Route path={RUTE.materi} element={<PilihHalamanMateri />} />
+
+            {/* Avatar + moderasi (slice 08) — murid memasang, guru meninjau laporan. */}
+            <Route path={RUTE.avatar} element={<PilihHalamanAvatar />} />
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />
