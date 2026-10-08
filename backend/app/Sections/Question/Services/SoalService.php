@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sections\Question\Services;
 
 use App\Models\User;
+use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\School\Models\Sekolah;
@@ -45,8 +46,32 @@ class SoalService
     public function hapus(Soal $soal): void
     {
         $this->pastikanTidakTerkunci($soal);
+        $this->pastikanBelumDijawab($soal);
 
         $soal->delete();
+    }
+
+    /**
+     * Soal yang sudah dijawab murid tidak boleh dihapus (Q-09).
+     *
+     * FK `answers.question_id` memakai `cascadeOnDelete`, jadi menghapus soal
+     * ikut menghapus jawaban murid — nilai yang sudah dikerjakan hilang permanen
+     * dan tidak bisa dipertanggungjawabkan ke murid maupun orang tuanya. Guru
+     * yang ingin menarik soal cukup menonaktifkannya (`aktif = false`) supaya
+     * riwayat nilainya tetap utuh. Penghapusan tetap mungkin selama soal belum
+     * pernah dijawab siapa pun.
+     *
+     * @throws ValidationException
+     */
+    public function pastikanBelumDijawab(Soal $soal): void
+    {
+        if (! Jawaban::query()->where('question_id', $soal->getKey())->exists()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'soal' => 'Soal ini sudah dijawab murid, jadi tidak bisa dihapus. Nonaktifkan saja agar riwayat nilainya tetap utuh.',
+        ]);
     }
 
     /**

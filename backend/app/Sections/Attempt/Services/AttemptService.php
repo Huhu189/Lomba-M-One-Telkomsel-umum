@@ -13,6 +13,7 @@ use App\Sections\Attempt\Models\RevisiJawaban;
 use App\Sections\Attempt\Models\Tim;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Services\KecuranganService;
+use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
@@ -164,6 +165,10 @@ class AttemptService
                 'jumlah_soal' => $kuis->soal()->count(),
                 'jumlah_benar' => 0,
                 'skor_maksimal' => (float) $kuis->soal()->sum('skor'),
+                // Soal dibekukan di sini: apa pun yang guru ubah di bank soal
+                // sesudahnya tidak mengubah apa yang dibaca dan dinilai attempt
+                // ini (Q-09).
+                'snapshot_soal' => $this->snapshotSoal($kuis),
             ]);
         } catch (UniqueConstraintViolationException) {
             // Dua permintaan "Mulai" yang datang bersamaan (dobel klik, dua tab,
@@ -494,23 +499,91 @@ class AttemptService
     /**
      * Soal kuis dalam urutan seed attempt.
      *
+     * Sumbernya snapshot attempt, bukan bank soal hidup: nilai historis tidak
+     * boleh berubah ketika guru menyunting atau menonaktifkan soal (Q-09).
+     * Attempt lama yang belum punya snapshot (dibuat sebelum migrasi) tetap
+     * dilayani dari soal hidup supaya ulangan yang sedang berjalan tidak rusak.
+     *
      * @return array<int, Soal>
      */
     public function soalTerurut(Attempt $attempt): array
     {
-        $kuis = $attempt->kuis;
+        $snapshot = $attempt->snapshot_soal;
+        $daftar = is_array($snapshot) ? ($snapshot['soal'] ?? null) : null;
+        $kunciSnapshot = is_array($daftar) && $daftar !== [];
 
-        if (! $kuis->relationLoaded('soal')) {
-            $kuis->load('soal');
+        if ($kunciSnapshot) {
+            $soal = [];
+
+            foreach (array_values($daftar) as $satu) {
+                if (is_array($satu)) {
+                    $soal[] = $this->soalDariSnapshot($satu);
+                }
+            }
+
+            $acak = (bool) ($snapshot['acak_soal'] ?? false);
+        } else {
+            $kuis = $attempt->kuis;
+
+            if (! $kuis->relationLoaded('soal')) {
+                $kuis->load('soal');
+            }
+
+            $soal = array_values($kuis->soal->all());
+            $acak = (bool) $kuis->acak_soal;
         }
 
-        $soal = $kuis->soal->all();
-
-        if (! $kuis->acak_soal) {
-            return array_values($soal);
+        if (! $acak) {
+            return $soal;
         }
 
         return Pengacakan::urutSoal($soal, (int) $attempt->seed, (int) $attempt->getKey());
+    }
+
+    /**
+     * Salinan beku soal satu kuis: isi, kunci, skor, dan setelan pengacakan.
+     *
+     * Urutannya mengikuti relasi `kuis.soal` (diurutkan pivot `urutan`), sama
+     * seperti yang dibaca murid saat attempt dibuat.
+     *
+     * @return array{acak_soal: bool, soal: array<int, array<string, mixed>>}
+     */
+    private function snapshotSoal(Kuis $kuis): array
+    {
+        $soal = $kuis->relationLoaded('soal') ? $kuis->soal : $kuis->soal()->get();
+
+        return [
+            'acak_soal' => (bool) $kuis->acak_soal,
+            'soal' => $soal->map(static fn (Soal $satu): array => [
+                'id' => (int) $satu->getKey(),
+                'tipe' => $satu->tipeAman()?->value,
+                'konten' => $satu->kontenSebagaiArray(),
+                'kunci' => $satu->kunciSebagaiArray(),
+                'skor' => (int) $satu->skor,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Bentuk kembali satu soal dari snapshot sebagai instance sementara (tidak
+     * pernah disimpan) supaya penilaian dan penyajian soal bisa memakai jalur
+     * yang sama seperti sebelumnya.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function soalDariSnapshot(array $data): Soal
+    {
+        $soal = new Soal;
+        $soal->forceFill([
+            'id' => (int) ($data['id'] ?? 0),
+            'tipe' => TipeSoal::tryFrom((string) ($data['tipe'] ?? '')),
+            'konten' => is_array($data['konten'] ?? null) ? $data['konten'] : [],
+            'kunci' => is_array($data['kunci'] ?? null) ? $data['kunci'] : [],
+            'skor' => (int) ($data['skor'] ?? 0),
+        ]);
+        $soal->exists = false;
+
+        return $soal;
     }
 
     /**

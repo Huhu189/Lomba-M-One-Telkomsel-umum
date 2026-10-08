@@ -453,6 +453,74 @@ it('jawaban yang tiba setelah attempt ditutup ditolak walau model di memori masi
         ->and(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(2);
 });
 
+it('membekukan soal saat attempt dimulai sehingga ubah kunci dan skor tidak mengubah nilainya', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+    $pilihan = collect($hasil['soal'])->firstWhere('tipe', 'pilihan_ganda');
+
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+        'question_id' => $pilihan['id'],
+        'jawaban' => 'B',
+    ])->assertOk();
+
+    $attempt = Attempt::query()->findOrFail($hasil['attempt']);
+    $tersimpan = collect($attempt->snapshot_soal['soal'])->firstWhere('id', (int) $pilihan['id']);
+
+    expect($attempt->snapshot_soal['soal'])->toHaveCount(2)
+        ->and($tersimpan['kunci'])->toBe(['jawaban' => 'B'])
+        ->and($attempt->snapshot_soal['acak_soal'])->toBeFalse();
+
+    // Guru menyunting bank soal di tengah ulangan. Ditulis langsung ke DB untuk
+    // meniru suntingan yang lolos dari penjagaan jendela jadwal (mis. attempt
+    // yang masih berjalan melewati `selesai_at` + durasi).
+    Soal::query()->whereKey((int) $pilihan['id'])->update([
+        'kunci' => json_encode(['jawaban' => 'A'], JSON_THROW_ON_ERROR),
+        'skor' => 100,
+    ]);
+
+    $respons = $this->postJson("/api/v1/attempt/{$hasil['attempt']}/kumpulkan", [
+        'idempotency_key' => 'kunci-snapshot-1',
+    ])->assertOk();
+
+    // Jawaban 'B' tetap benar dan bernilai 5 seperti saat attempt dimulai, dan
+    // soal kedua tetap 5 — jadi maksimal 10, bukan 105.
+    $perSoal = collect($respons->json('per_soal'))->firstWhere('question_id', (int) $pilihan['id']);
+
+    expect($respons->json('skor'))->toEqual(5.0)
+        ->and($respons->json('skor_maksimal'))->toEqual(10.0)
+        ->and($respons->json('jumlah_benar'))->toBe(1)
+        ->and($perSoal['benar'])->toBeTrue()
+        ->and($perSoal['skor'])->toEqual(5.0)
+        ->and($perSoal['skor_maksimal'])->toEqual(5.0);
+});
+
+it('soal yang sudah dijawab murid tidak bisa dihapus agar jawabannya tidak ikut terhapus', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+    $pilihan = collect($hasil['soal'])->firstWhere('tipe', 'pilihan_ganda');
+
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+        'question_id' => $pilihan['id'],
+        'jawaban' => 'B',
+    ])->assertOk();
+
+    // Jendela jadwal kuis sudah lewat, jadi penjagaan "soal terkunci saat kuis
+    // berjalan" tidak lagi berlaku; yang menahan hapus kini hanya riwayat
+    // jawaban murid (FK `answers.question_id` memakai cascadeOnDelete).
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
+    $kuis->forceFill(['selesai_at' => Carbon::now()->subMinutes(20)])->save();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->deleteJson("/api/v1/soal/{$pilihan['id']}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['soal']);
+
+    expect(Soal::query()->whereKey((int) $pilihan['id'])->exists())->toBeTrue()
+        ->and(Jawaban::query()->where('question_id', (int) $pilihan['id'])->count())->toBe(1);
+});
+
 it('dua permintaan Mulai yang bertabrakan tidak 500 dan tetap menyisakan satu attempt aktif', function (): void {
     $kuis = siapkanKuis($this);
 

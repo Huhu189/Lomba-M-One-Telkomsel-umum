@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'school_id', 'quiz_id', 'student_id', 'team_id', 'jenis', 'attempt_no', 'asli', 'status', 'aktif', 'seed',
     'mulai_at', 'deadline_at', 'dikumpulkan_at', 'terlambat', 'jumlah_soal',
-    'skor', 'skor_maksimal', 'jumlah_benar', 'idempotency_key',
+    'skor', 'skor_maksimal', 'jumlah_benar', 'idempotency_key', 'snapshot_soal',
 ])]
 class Attempt extends Model
 {
@@ -45,6 +45,8 @@ class Attempt extends Model
         'skor' => 'float',
         'skor_maksimal' => 'float',
         'jumlah_benar' => 'integer',
+        // Salinan beku soal saat attempt dimulai (Q-09).
+        'snapshot_soal' => 'array',
     ];
 
     /** @return BelongsTo<Sekolah, $this> */
