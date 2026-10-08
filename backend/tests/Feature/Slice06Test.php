@@ -9,6 +9,7 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
+use App\Sections\Question\Registry\BantuanTeks;
 use App\Sections\Question\Registry\RegistryTipeSoal;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Kelas;
@@ -164,6 +165,51 @@ it('isian singkat: angka harus persis dan penjaga negasi menolak jawaban menyang
 
     expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kalimat, 'air mengalir dari tempat tinggi'))->toBeTrue()
         ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kalimat, 'air tidak mengalir dari tempat tinggi'))->toBeFalse();
+});
+
+it('isian singkat: imbuhan pembalik tidak dianggap jawaban benar', function (): void {
+    // Q-11: "invertebrata" mirip 0,91 dengan "vertebrata", jadi murid yang
+    // menulis arti kebalikannya dulu dinilai BENAR.
+    expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['vertebrata']], 'invertebrata'))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['organik']], 'anorganik'))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['legal']], 'ilegal'))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['simetris']], 'asimetris'))->toBeFalse()
+        // Arah sebaliknya juga salah: murid menulis bentuk dasarnya padahal
+        // kuncinya memakai bentuk berimbuhan.
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['invertebrata']], 'vertebrata'))->toBeFalse()
+        // Kata berimbuhan yang memang sama tetap diterima apa adanya.
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['invertebrata']], 'invertebrata'))->toBeTrue()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['nonfiksi']], 'non fiksi'))->toBeTrue();
+});
+
+it('isian singkat: ambang guru juga berlaku untuk jawaban satu kata', function (): void {
+    $fotosintesis = ['jawaban_baku' => ['fotosintesis']];
+
+    // Satu huruf salah masih diterima pada ambang bawaan (0,8)...
+    expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $fotosintesis, 'fotosintesi'))->toBeTrue()
+        // ...tetapi guru yang menuntut hampir persis (0,99) harus ditaati: dulu
+        // kemiripanKata selalu mengembalikan 1,0 begitu katanya "cocok", jadi
+        // ambang guru tidak pernah berpengaruh untuk jawaban satu kata.
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['fotosintesis'], 'ambang' => 0.99], 'fotosintesi'))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['fotosintesis'], 'ambang' => 0.99], 'fotosintesis'))->toBeTrue();
+});
+
+it('isian singkat: kata tambahan menurunkan kemiripan', function (): void {
+    // Penyebutnya dulu dihitung dari sisa daftar setelah kata yang cocok dibuang,
+    // sehingga mengulang kata baku tetap menghasilkan 1,0.
+    expect(BantuanTeks::kemiripanKata('air bersih', 'air bersih air bersih'))->toBeLessThan(0.8)
+        ->and(BantuanTeks::kemiripanKata('air bersih', 'air bersih'))->toBe(1.0)
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['air bersih']], 'air bersih air bersih'))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], ['jawaban_baku' => ['air bersih']], 'air bersih'))->toBeTrue();
+});
+
+it('isian singkat: kata sanggahan sehari-hari juga dikenali', function (): void {
+    $kunci = ['jawaban_baku' => ['air mengalir dari tempat tinggi']];
+
+    foreach (['tak', 'nggak', 'gak', 'ga', 'belum', 'non'] as $kata) {
+        expect(RegistryTipeSoal::nilai(TipeSoal::IsianSingkat, [], $kunci, "air {$kata} mengalir dari tempat tinggi"))
+            ->toBeFalse();
+    }
 });
 
 it('uraian: kata kunci berbobot memberi skor parsial, di bawah ambang perlu tinjau', function (): void {
