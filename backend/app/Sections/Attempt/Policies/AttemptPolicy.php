@@ -63,12 +63,20 @@ class AttemptPolicy
     }
 
     /**
-     * Koreksi manual nilai (slice 06) — hanya guru/admin, dan hanya attempt
-     * yang sudah dikumpulkan (diperiksa lagi di service).
+     * Koreksi manual nilai (slice 06) — hanya guru/admin, hanya attempt yang
+     * sudah dikumpulkan (diperiksa lagi di service), dan hanya pada kuis milik
+     * guru itu sendiri (S-05). Nilai murid di kuis guru lain bukan haknya untuk
+     * diubah.
      */
     public function koreksi(User $user, Attempt $attempt): bool
     {
-        return $user->isGuru();
+        if (! $user->isGuru()) {
+            return false;
+        }
+
+        $kuis = $attempt->kuis;
+
+        return $kuis !== null && $user->bolehKelola($kuis->dibuat_oleh);
     }
 
     public function delete(User $user, Attempt $attempt): bool

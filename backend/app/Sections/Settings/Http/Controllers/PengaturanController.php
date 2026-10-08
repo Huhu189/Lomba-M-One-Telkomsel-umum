@@ -35,8 +35,6 @@ class PengaturanController extends Controller
         SekolahService $sekolah,
         PengaturanService $service,
     ): JsonResponse {
-        $this->authorize('update', Pengaturan::class);
-
         $data = $request->validated();
         $lingkup = LingkupPengaturan::from((string) $data['lingkup']);
         $kunci = KunciPengaturan::from((string) $data['kunci']);
@@ -45,6 +43,10 @@ class PengaturanController extends Controller
         $lingkupId = $lingkup === LingkupPengaturan::Sekolah
             ? $sekolahId
             : (int) $data['lingkup_id'];
+
+        // Lingkup kuis diperiksa kepemilikannya (S-05): saklar anti-cheat satu
+        // kuis bukan milik semua guru.
+        $this->authorize('update', [Pengaturan::class, $lingkup, $lingkupId]);
 
         $nilai = $kunci->tipe() === 'integer' ? (int) $data['nilai'] : (bool) $data['nilai'];
 

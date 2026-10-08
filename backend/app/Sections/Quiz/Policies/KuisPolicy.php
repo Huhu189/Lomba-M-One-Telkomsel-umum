@@ -41,19 +41,26 @@ class KuisPolicy
         return $user->isGuru();
     }
 
+    /**
+     * Ubah/susun kuis — hanya pembuatnya; admin boleh semuanya (S-04).
+     *
+     * Sebelumnya semua guru setara, jadi guru mana pun bisa mengubah judul,
+     * jadwal, daftar soal, dan urutan pengacakan kuis milik guru lain — termasuk
+     * saat ulangannya sedang berjalan.
+     */
     public function update(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru();
+        return $user->isGuru() && $user->bolehKelola($kuis->dibuat_oleh);
     }
 
     public function delete(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $kuis);
     }
 
     public function publikasi(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $kuis);
     }
 
     /**
@@ -66,11 +73,13 @@ class KuisPolicy
     }
 
     /**
-     * Antrean koreksi manual (slice 06) — memuat kunci jawaban: guru saja.
+     * Antrean koreksi manual (slice 06) — memuat kunci jawaban, jadi guru saja,
+     * dan hanya pemilik kuisnya (S-05): nilai murid di kuis itu tanggung jawab
+     * guru yang menyusunnya.
      */
     public function koreksi(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $kuis);
     }
 
     /**

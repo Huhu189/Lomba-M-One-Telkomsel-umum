@@ -28,13 +28,20 @@ class SoalPolicy
         return $user->isGuru();
     }
 
+    /**
+     * Ubah soal — hanya pembuatnya; admin boleh semuanya (S-04).
+     *
+     * Satu soal bisa dipakai beberapa kuis sekaligus, jadi tanpa batas ini guru
+     * mana pun bisa mengganti kunci atau skor soal yang sedang dipakai ulangan
+     * murid guru pembuatnya — dan nilai yang sudah dihitung ikut berubah.
+     */
     public function update(User $user, Soal $soal): bool
     {
-        return $user->isGuru();
+        return $user->isGuru() && $user->bolehKelola($soal->dibuat_oleh);
     }
 
     public function delete(User $user, Soal $soal): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $soal);
     }
 }

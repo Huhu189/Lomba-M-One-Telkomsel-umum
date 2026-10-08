@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Sekolah;
 use Database\Seeders\RolesAndAdminSeeder;
@@ -62,12 +63,18 @@ it('resolusi tiga lapis kuis > kelas > sekolah; lock sekolah mengalahkan semua',
     expect($res->json('pengaturan.retry.nilai'))->toBeTrue()
         ->and($res->json('pengaturan.retry.sumber'))->toBe('kelas');
 
-    // Kuis menimpa kelas.
+    // Kuis menimpa kelas. Kuisnya harus benar-benar ada dan milik guru ini:
+    // pengaturan lingkup kuis kini diperiksa kepemilikannya (S-05), jadi id
+    // karangan seperti 777 tidak lagi cukup.
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
+        'dibuat_oleh' => $this->guru->id,
+    ]);
+
     $this->putJson('/api/v1/pengaturan', [
-        'lingkup' => 'kuis', 'lingkup_id' => 777, 'kunci' => 'retry', 'nilai' => false,
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'retry', 'nilai' => false,
     ])->assertOk();
 
-    $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id.'&kuis_id=777')->assertOk();
+    $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id.'&kuis_id='.$kuis->id)->assertOk();
     expect($res->json('pengaturan.retry.nilai'))->toBeFalse()
         ->and($res->json('pengaturan.retry.sumber'))->toBe('kuis');
 
@@ -76,7 +83,7 @@ it('resolusi tiga lapis kuis > kelas > sekolah; lock sekolah mengalahkan semua',
         'lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => true, 'terkunci' => true,
     ])->assertOk();
 
-    $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id.'&kuis_id=777')->assertOk();
+    $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id.'&kuis_id='.$kuis->id)->assertOk();
     expect($res->json('pengaturan.retry.nilai'))->toBeTrue()
         ->and($res->json('pengaturan.retry.sumber'))->toBe('sekolah')
         ->and($res->json('pengaturan.retry.terkunci'))->toBeTrue();

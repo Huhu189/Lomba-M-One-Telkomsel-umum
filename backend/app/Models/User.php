@@ -85,6 +85,30 @@ class User extends Authenticatable
         return $this->hasRole('murid');
     }
 
+    /**
+     * Boleh mengubah/menghapus baris yang dibuat oleh `$pemilikId`? (S-04/S-05)
+     *
+     * Admin boleh semuanya. Guru hanya baris buatannya sendiri — kuis, soal,
+     * pengaturan anti-cheat satu kuis, sampai koreksi nilainya.
+     *
+     * Baris tanpa pemilik (`dibuat_oleh` NULL: data lama sebelum kolom itu diisi
+     * konsisten, termasuk hasil impor) dianggap milik bersama. Tanpa pengecualian
+     * ini guru bisa terkunci dari kuis/soalnya sendiri yang dibuat sebelum
+     * kolom pemilik dicatat.
+     */
+    public function bolehKelola(?int $pemilikId): bool
+    {
+        if ($this->hasRole('admin')) {
+            return true;
+        }
+
+        if (! $this->isGuru()) {
+            return false;
+        }
+
+        return $pemilikId === null || (int) $this->getKey() === $pemilikId;
+    }
+
     /** @return HasOne<Murid, $this> */
     public function murid(): HasOne
     {
