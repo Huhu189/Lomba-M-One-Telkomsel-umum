@@ -57,8 +57,15 @@ class PresenceService
         // Sesi ganda: sesi lain yang MASIH segar untuk attempt yang sama.
         // Ini satu-satunya kategori kecurangan yang bisa dilihat server sendiri
         // tanpa menanyai perangkat murid.
+        //
+        // Mode tim dikecualikan (Q-14): satu attempt tim memang dipakai bersama
+        // beberapa anggota, dan tiap anggota masuk dari perangkat/sesi sendiri.
+        // Tanpa pengecualian ini, setiap rekan setim yang membuka lembar yang
+        // sama dicatat sebagai "sesi ganda" berisiko 8 — anak dituduh curang
+        // hanya karena mengerjakan tugas kelompoknya.
         if (
-            is_array($sebelum)
+            $attempt->team_id === null
+            && is_array($sebelum)
             && $sesi !== null
             && isset($sebelum['sesi'])
             && $sebelum['sesi'] !== $sesi

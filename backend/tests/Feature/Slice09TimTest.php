@@ -9,6 +9,8 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Attempt\Models\RevisiJawaban;
 use App\Sections\Attempt\Models\Tim;
+use App\Sections\Cheat\Models\KejadianKecurangan;
+use App\Sections\Presence\Services\PresenceService;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
@@ -283,6 +285,28 @@ it('mode tim memakai satu jawaban bersama dengan versi dan penjawab yang jelas',
 
     expect($riwayat->pluck('versi')->all())->toBe([1, 2])
         ->and($riwayat->pluck('student_id')->all())->toBe([$b->id, $a->id]);
+});
+
+it('dua anggota tim dengan sesi berbeda tidak dicatat sebagai sesi ganda palsu', function (): void {
+    $soal = t09Soal($this);
+    $kuis = t09Kuis($this, [$soal]);
+
+    t09Guru($this);
+    $this->postJson("/api/v1/kuis/{$kuis->id}/tim/bagi", ['jumlah_tim' => 2])->assertOk();
+    t09Saklar($this, $kuis, KunciPengaturan::ModeTim);
+
+    [$a] = t09AnggotaTim($this, $kuis);
+    $attempt = Attempt::query()->findOrFail(t09Mulai($a, $kuis));
+
+    // Satu lembar jawaban tim memang dipakai beberapa anggota, dan tiap anggota
+    // masuk dari perangkat/sesi sendiri. Sesi yang berbeda di attempt tim yang
+    // sama bukan kecurangan (Q-14) — dulu ini mencatat `duplicate_session`
+    // berisiko 8 terhadap anak yang hanya mengerjakan tugas kelompoknya.
+    $presence = app(PresenceService::class);
+    $presence->tandaiHadir($attempt, 'sesi-anggota-a');
+    $presence->tandaiHadir($attempt, 'sesi-anggota-b');
+
+    expect(KejadianKecurangan::query()->where('kategori', 'duplicate_session')->count())->toBe(0);
 });
 
 it('murid tanpa tim ditolak, dan mode individu tetap seperti sebelumnya', function (): void {
