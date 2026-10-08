@@ -123,6 +123,45 @@ it('registry menolak struktur soal yang tidak lengkap', function (): void {
     ])->assertStatus(422)->assertJsonValidationErrors(['konten']);
 });
 
+it('media soal hanya boleh path internal atau host https yang diizinkan', function (): void {
+    Sanctum::actingAs($this->guru);
+
+    $dasar = [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'kunci' => ['jawaban' => 'B'],
+    ];
+
+    // Path internal aplikasi diterima (bentuk yang dipakai editor soal).
+    $this->postJson('/api/v1/soal', [
+        ...$dasar,
+        'konten' => [...kontenPilihanGanda(), 'media' => '/media/lingkaran.png'],
+    ])->assertCreated();
+
+    // Host luar, skema http, data URI, dan javascript: ditolak: alamat pihak
+    // ketiga membocorkan IP/Referer anak ke server lain (U-01).
+    foreach ([
+        'https://situs-luar.example/gambar.png',
+        'http://situs-luar.example/gambar.png',
+        '//situs-luar.example/gambar.png',
+        'data:image/png;base64,AAAA',
+        'javascript:alert(1)',
+    ] as $nakal) {
+        $this->postJson('/api/v1/soal', [
+            ...$dasar,
+            'konten' => [...kontenPilihanGanda(), 'media' => $nakal],
+        ])->assertStatus(422)->assertJsonValidationErrors(['konten']);
+    }
+
+    // Host yang didaftarkan sekolah (CDN sendiri) tetap diterima lewat https.
+    config(['media.hosts' => ['cdn.sekolah.test']]);
+
+    $this->postJson('/api/v1/soal', [
+        ...$dasar,
+        'konten' => [...kontenPilihanGanda(), 'media' => 'https://cdn.sekolah.test/gambar.png'],
+    ])->assertCreated();
+});
+
 it('penilai registry benar untuk empat jenis soal objektif', function (): void {
     $pilihanGanda = kontenPilihanGanda();
 

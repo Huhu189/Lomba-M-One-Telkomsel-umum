@@ -6,7 +6,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import MediaSoal, { mathmlKeElemen, teksTanpaTag } from '../../../../sections/question/render/MediaSoal.jsx'
+import MediaSoal, {
+  altMedia,
+  mathmlKeElemen,
+  teksTanpaTag,
+} from '../../../../sections/question/render/MediaSoal.jsx'
 import RendererSoal from '../../../../sections/question/render/RendererSoal.jsx'
 import SoalBenarSalah from '../../../../sections/question/render/SoalBenarSalah.jsx'
 import SoalMenjodohkan from '../../../../sections/question/render/SoalMenjodohkan.jsx'
@@ -333,6 +337,24 @@ describe('MediaSoal & MathML', () => {
   it('menampilkan gambar media bila ada', () => {
     const html = renderToStaticMarkup(<MediaSoal konten={{ media: '/media/lingkaran.png' }} />)
     expect(html).toContain('src="/media/lingkaran.png"')
+  })
+
+  // U-01: alt bermakna per soal (bukan label generik yang sama) + rasio cadangan
+  // supaya tata letak tidak melompat sebelum gambar selesai dimuat.
+  it('memberi alt bermakna per soal dan dimensi cadangan', () => {
+    const html = renderToStaticMarkup(
+      <MediaSoal konten={{ teks: 'Berapa hasil 4 + 5?', media: '/media/lingkaran.png' }} />,
+    )
+
+    expect(html).toContain('alt="Gambar pendukung: Berapa hasil 4 + 5?"')
+    expect(html).toContain('width="480"')
+    expect(html).toContain('height="270"')
+  })
+
+  it('altMedia memakai deskripsi khusus lalu jatuh ke teks soal', () => {
+    expect(altMedia({ teks: 'x', alt: 'Lingkaran merah' })).toBe('Lingkaran merah')
+    expect(altMedia({ teks: 'Berapa hasil 4 + 5?' })).toBe('Gambar pendukung: Berapa hasil 4 + 5?')
+    expect(altMedia({ media: '/a.png' })).toBe('Gambar pendukung soal')
   })
 
   it('teksTanpaTag membuang markup sebagai cadangan', () => {

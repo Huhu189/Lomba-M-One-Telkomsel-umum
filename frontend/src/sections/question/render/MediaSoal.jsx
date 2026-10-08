@@ -4,7 +4,7 @@
  * MathML diubah dari untai menjadi elemen React lewat DOMParser + daftar putih
  * tag/atribut — tanpa dangerouslySetInnerHTML (aturan react/no-danger).
  */
-import { Fragment, createElement } from 'react'
+import { Fragment, createElement, useState } from 'react'
 import { teksAman } from '../tipeSoal.js'
 
 /** Elemen MathML yang boleh dirender. */
@@ -128,16 +128,56 @@ export function teksTanpaTag(teks) {
   return teks.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * Teks alternatif gambar soal (U-01).
+ *
+ * Deskripsi khusus dipakai bila guru mengisinya; kalau tidak, cuplikan teks
+ * soal memberi konteks kepada pembaca layar — jauh lebih berguna daripada label
+ * generik yang sama untuk setiap soal di seluruh aplikasi.
+ *
+ * @param {Record<string, unknown>} konten
+ * @returns {string}
+ */
+export function altMedia(konten) {
+  const khusus = teksAman(konten.alt).trim()
+
+  if (khusus !== '') return khusus
+
+  const teks = teksAman(konten.teks).replace(/\s+/g, ' ').trim()
+
+  if (teks === '') return 'Gambar pendukung soal'
+
+  return `Gambar pendukung: ${teks.slice(0, 120)}`
+}
+
 /** @param {{ konten: Record<string, unknown> }} props */
 export default function MediaSoal({ konten }) {
   const media = teksAman(konten.media).trim()
   const matematika = teksAman(konten.matematika).trim()
   const elemen = matematika === '' ? null : mathmlKeElemen(matematika)
+  const [gagalMuat, setGagalMuat] = useState(false)
 
   return (
     <>
-      {media !== '' && (
-        <img className="media-soal" src={media} alt="Media pendukung soal" loading="lazy" />
+      {media !== '' && !gagalMuat && (
+        // `width`/`height` eksplisit memberi rasio cadangan sebelum gambar
+        // termuat, jadi tata letak tidak melompat (CLS). Bila gambar gagal
+        // dimuat, `onError` menggantinya dengan keterangan, bukan ikon rusak.
+        <img
+          className="media-soal"
+          src={media}
+          alt={altMedia(konten)}
+          loading="lazy"
+          width={480}
+          height={270}
+          onError={() => setGagalMuat(true)}
+        />
+      )}
+
+      {media !== '' && gagalMuat && (
+        <p className="media-soal-galat teks-lembut small mb-0" role="note">
+          Gambar tidak bisa dimuat. Minta gurumu memeriksa gambarnya.
+        </p>
       )}
 
       {elemen !== null && <div className="mathml-soal">{elemen}</div>}

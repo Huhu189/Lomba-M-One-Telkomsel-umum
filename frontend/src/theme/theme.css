@@ -1358,6 +1358,14 @@ a {
   border-radius: var(--radius-kecil);
 }
 
+/* Pengganti saat gambar soal gagal dimuat (U-01) — keterangan, bukan ikon rusak. */
+.media-soal-galat {
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-kecil);
+  margin-bottom: 0.75rem;
+}
+
 .mathml-soal {
   margin-bottom: 0.75rem;
   font-size: 1.15rem;

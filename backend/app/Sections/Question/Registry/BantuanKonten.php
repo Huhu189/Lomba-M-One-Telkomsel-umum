@@ -85,6 +85,11 @@ final class BantuanKonten
     /**
      * Media (opsional) hanya boleh berupa path/URL pendek.
      *
+     * Sejak U-01 alamatnya juga dibatasi: path internal aplikasi (mis.
+     * `/media/lingkaran.png`) atau URL `https` dari host yang diizinkan. Tanpa
+     * batas ini guru bisa menempelkan URL host mana pun, sehingga IP dan Referer
+     * anak terkirim ke server pihak ketiga saat gambar dimuat.
+     *
      * @param  array<string, mixed>  $konten
      * @return array<int, string>
      */
@@ -100,7 +105,56 @@ final class BantuanKonten
             return ['konten.media wajib berupa teks maksimal 255 karakter.'];
         }
 
+        if (! self::mediaAman($media)) {
+            return ['konten.media wajib berupa path internal (mis. /media/gambar.png) atau URL https dari host yang diizinkan sistem.'];
+        }
+
         return [];
+    }
+
+    /**
+     * Apakah alamat media boleh dipakai: path internal same-origin, atau URL
+     * `https` pada host aplikasi/allowlist.
+     */
+    private static function mediaAman(string $media): bool
+    {
+        $media = trim($media);
+
+        if ($media === '') {
+            return true;
+        }
+
+        // Path internal: satu garis miring di depan, bukan `//host` (protocol-relative).
+        if (str_starts_with($media, '/')) {
+            return ! str_starts_with($media, '//');
+        }
+
+        $bagian = parse_url($media);
+
+        if ($bagian === false || ($bagian['scheme'] ?? '') !== 'https') {
+            return false;
+        }
+
+        $host = strtolower((string) ($bagian['host'] ?? ''));
+
+        return $host !== '' && in_array($host, self::hostMediaDiizinkan(), true);
+    }
+
+    /**
+     * Host yang diizinkan memuat gambar soal: host aplikasi sendiri + allowlist
+     * `media.hosts` (env `MEDIA_HOSTS`).
+     *
+     * @return array<int, string>
+     */
+    private static function hostMediaDiizinkan(): array
+    {
+        $host = [strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST))];
+
+        foreach ((array) config('media.hosts', []) as $satu) {
+            $host[] = strtolower((string) $satu);
+        }
+
+        return array_values(array_unique(array_filter($host)));
     }
 
     /**
