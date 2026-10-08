@@ -7,13 +7,13 @@
 #   - docs/word/ = dokumen untuk dikumpulkan, dalam .docx:
 #       * AGENT.md + AGENT.docx  -> RINGKASAN prompt (isi identik; teks prompt asli ada di log mentah)
 #       * jurnal-prompt.docx     -> jurnal prompt (dari docs/jurnal-prompt.md)
-#       * log-mentah.docx        -> log mentah sesi (dari transkrip yang mudah dibaca)
+#       * log-mentah.docx        -> log mentah sesi (transkrip utuh tanpa potong)
 #       * penjelasan-fitur.docx  -> penjelasan fitur untuk juri & guru
 #       * catatan-demo.docx      -> cara mendemokan aplikasi
 #       * laporan-pengujian.docx -> apa yang dijalankan dan hasilnya
 #   - docs/log-mentah/ = log mentah sesi apa adanya:
 #       * sesi-<tanggal>-chat-messages.json.gz (BYTE-EXACT, tidak disunting)
-#       * sesi-<tanggal>-transkrip.md          (bantuan baca)
+#       * sesi-<tanggal>-transkrip.md          (transkrip mentah utuh, tidak dipotong)
 #       * prompt-/log-claude-eksternal.md      (pekerjaan AI lain di luar repo, apa adanya)
 #
 # Sumber berkas sesi diatur lewat env SESI_DIR (bawaan: direktori sesi chat Freebuff).

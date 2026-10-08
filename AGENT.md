@@ -56,7 +56,7 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
   melainkan di log mentah.
 - **`docs/log-mentah/`** = log mentah apa adanya: `sesi-2026-10-05-chat-messages.json.gz` (salinan
   **byte-exact** dari berkas chat sesi asli — tidak disunting) + `sesi-2026-10-05-transkrip.md`
-  (bantuan baca), plus prompt/log pekerjaan AI lain di luar repo (`prompt-claude-eksternal.md`,
+  (transkrip mentah: isi utuh, argumen panggilan alat tidak dipotong), plus prompt/log pekerjaan AI lain di luar repo (`prompt-claude-eksternal.md`,
   `log-claude-eksternal.md`). Pekerjaan luar repo wajib dicatat tempatnya di log dan tidak boleh
   dijadikan bukti tanpa diverifikasi ulang di repo ini.
 - `docs/export-log-sesi.py` menyegarkan log mentah (gzip byte-exact + transkrip);

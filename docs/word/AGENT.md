@@ -63,6 +63,7 @@ Isi berkas ini identik dengan `docs/word/AGENT.docx`.
 ## Log mentah (cara berkas ini dijaga tetap mutakhir)
 - `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz` — salinan **byte-exact** (gzip) dari berkas
   chat sesi asli, tanpa disunting.
-- `docs/log-mentah/sesi-2026-10-05-transkrip.md` — transkrip yang enak dibaca (bantuan baca).
+- `docs/log-mentah/sesi-2026-10-05-transkrip.md` — transkrip mentah yang enak dibaca: isinya utuh
+  apa adanya, argumen panggilan alat **tidak dipotong**.
 - Keduanya **disegarkan ulang setiap akhir slice** dengan `docs/export-log-sesi.py` supaya log selalu
   mutakhir; `docs/export-word.sh` memanggilnya sekaligus mengekspor dokumen Word.

@@ -4,6 +4,8 @@ Jurnal penggunaan prompt AI (maksimal 5 entri — batas ini berlaku untuk entri 
 Seluruh prompt dan jawaban (utuh, mentah, dengan tanggal-jam asli) ada di `docs/log-mentah/`:
 transkrip `sesi-2026-10-05-transkrip.md` dan salinan byte-exact `sesi-2026-10-05-chat-messages.json.gz`.
 Log mentah tidak disunting; rujukan tanggal-jam di bawah menunjuk ke berkas itu.
+Berkas mentah disegarkan ulang 8 Oktober 2026 (207 pesan) dan transkripnya kini memuat isi **utuh
+apa adanya tanpa potong**; angka byte & md5 salinan byte-exact tercatat di kepala transkrip.
 
 ---
 
@@ -116,3 +118,53 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   `docs/log-mentah/editor-materi-*.png` (diverifikasi MD5 + piksel). Temuan alat dicatat
   jujur di `laporan-pengujian.md` A.17: capture CDP beku pasca-reload, cookie
   `.localhost` tak tersimpan di origin 127.0.0.1.
+
+- **Putaran audit eksternal ProjectLA dan perbaikan per temuan (8 Oktober 2026)**: pengguna
+  melampirkan laporan audit statis (`audit-projectla-lomba.md` — 84 temuan: 1 kritis, 18 tinggi,
+  51 sedang, 14 rendah; berkas prompt & lognya disalin apa adanya ke
+  `docs/log-mentah/prompt-claude-eksternal.md` + `log-claude-eksternal.md`) dengan instruksi
+  "cek lagi dan kerjakan progres penyelesaian bug". Dari 84 temuan hanya **23 yang membawa
+  rincian lokasi + skenario** (U-01..U-04, Q-01..Q-19), ditambah enam temuan dari ringkasan
+  Top-10 yang skenarionya cukup jelas (S-01, S-04, S-05, S-07, S-14, I-01) — jadi total
+  **29 temuan** diselesaikan. Sisanya hanya berupa daftar tanpa lokasi/skenario sehingga
+  **tidak ditebak** dan tidak diklaim selesai. Cara kerja tiap ID: verifikasi bug di kode →
+  tulis test yang MERAH → perbaiki → test HIJAU → `./verify.sh` → commit + push; tanpa refactor
+  di luar temuan dan tanpa mengubah skema DB tanpa migrasi aman. Sorotan: timer klien benar-benar
+  berkurang (`offsetServer` dihitung sekali per respons — Q-01) dan kumpul otomatis berhenti pada
+  galat permanen (Q-04); antrean jawaban, `tandaiTerkirim`, dan cadangan lokal tidak lagi menimpa
+  jawaban yang lebih baru (Q-02, Q-03, Q-05); simpan-vs-tutup diamankan `lockForUpdate` (Q-06);
+  satu attempt aktif per tim lewat indeks unik + `Mulai` ramah dobel klik (Q-07); deadline dipotong
+  `selesai_at` (Q-08); soal dan setelan kuis dibekukan saat attempt dimulai serta hapus soal tidak
+  lagi menghapus jawaban murid (Q-09, Q-12); jendela waktu jawab = kumpul (Q-10); isian singkat
+  menolak jawaban berlawanan arti dan menghormati ambang guru (Q-11); penutup attempt basi lanjut
+  walau satu penutupan gagal (Q-13); presence tim tak lagi memunculkan bukti sesi ganda palsu
+  (Q-14); kode mati dibersihkan (Q-15); ekspor/impor CSV ramah Excel Indonesia (Q-16: BOM UTF-8,
+  pemisah `,`/`;`/tab, deteksi encoding, jam ekspor WIB) dan impor murid atomik + laporan galat
+  alih-alih 500 (Q-17); keanggotaan tim dibekukan di tabel baru `attempt_members` (Q-18); penilaian
+  menjodohkan/mengurutkan menolak elemen non-skalar (Q-19). Di sisi UI: media soal dibatasi
+  allowlist host + fallback gambar + dimensi (U-01), kontainer soal di-`inert` dengan fokus pindah
+  ke overlay `alertdialog` (U-02), pesan galat awal ulangan memakai pesan server + tombol "Coba
+  lagi" (U-03), dan spinner ber-`aria-busy` + teks panjang dipatahkan (U-04). Ditutup dengan
+  pembatasan hak ubah kuis/soal/setelan anti-cheat/nilai ke guru pembuatnya (S-04/S-05), throttle
+  auth per IP dilonggarkan agar satu kelas di balik NAT tak kena 429 (S-01), batas piksel gambar
+  avatar (S-07), pembersihan cadangan jawaban & cache saat keluar (S-14), dan penjagaan versi +
+  umur salinan lapisan Redis (I-01). Diverifikasi `./verify.sh` **HIJAU** — Pest **211 passed
+  (1670 assertions)**, Pint OK, checkJs OK, ESLint **0 error (2 warning lama)**, Vitest
+  **41 berkas/327 test**, realtime **13 test**. Batasan jujur ada di `laporan-pengujian.md`
+  A.18.5.
+
+- **Perapian dokumen lomba (8 Oktober 2026)**: permintaan pengguna — "perbaiki docs nya: untuk
+  prompt pakai `docs`, untuk log pakai yang benar-benar mentah, dan yang ada ringkasan di Word".
+  Yang dikerjakan: (1) **prompt** tetap satu tempat di `docs/` — `jurnal-prompt.md` (maks 5 entri)
+  dan `log-mentah/` (seluruh prompt/jawaban mentah); (2) **log mentah** disegarkan dari sesi asli —
+  `sesi-2026-10-05-chat-messages.json.gz` (salinan byte-exact, 207 pesan) dan transkripnya kini
+  **utuh tanpa potong** (transkrip sebelumnya memotong setiap argumen panggilan alat di 400
+  karakter), serta transkrip dibaca dari berkas `.gz` yang ikut dikumpulkan supaya byte/md5 di
+  kepalanya benar-benar sepadan dengan salinan mentahnya; (3) **ringkasan di Word** diekspor ulang
+  ke `docs/word/` (`AGENT.docx`, `jurnal-prompt.docx`, `log-mentah.docx`, `penjelasan-fitur.docx`,
+  `catatan-demo.docx`, `laporan-pengujian.docx`).
+
+- **Rujukan log mentah**: `log-mentah/sesi-2026-10-05-transkrip.md` — `2026-10-08 ±15.30–19.45 WIB`
+  (audit U-01..U-04 + Q-01..Q-19 + S-01/S-04/S-05/S-07/S-14/I-01 dikerjakan satu per ID sampai
+  ekspor Word ulang) dan `2026-10-08 ±20.10 WIB` (perapian dokumen: transkrip mentah utuh +
+  ekspor Word). Salinan byte-exact: `log-mentah/sesi-2026-10-05-chat-messages.json.gz`.

@@ -8,6 +8,13 @@ Diperbarui: 5 Oktober 2026 (sesi prompt 2 — revisi dokumen acuan).
 > beserta berkas log bertanggal di `docs/log-mentah/` dihapus, dan log mentah sesi diganti oleh
 > `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz` (byte-exact) + transkrip bacanya.
 > Penyebutan nama berkas lama di bawah ini adalah catatan apa adanya dari sesi saat itu.
+>
+> **Catatan revisi dokumentasi (8 Oktober 2026):** atas permintaan pengguna, log mentah disegarkan
+> ulang dari sesi asli (207 pesan) dan transkrip mentahnya kini **utuh tanpa potong** (argumen
+> panggilan alat tidak lagi diringkas 400 karakter); transkrip juga dibaca dari berkas `.gz` yang
+> ikut dikumpulkan agar angka byte + md5 di kepalanya sepadan dengan salinan byte-exact-nya.
+> Jurnal prompt diperbarui (entri 5) dan seluruh dokumen Word di `docs/word/` diekspor ulang.
+> Selengkapnya di A.18.6.
 
 ## A. Sudah dijalankan (dengan perintah dan hasil)
 
@@ -1105,3 +1112,104 @@ Guru ingin menyusun materi `/materi` "seperti video editor" — hasil susunannya
 - Pratinjau media/kuis memakai data yang sudah ada di state (unggahan selesai, daftar
   kuis); blok kuis tidak menjalankan attempt sungguhan di pratinjau — itu memang
   tampilan, bukan simulator attempt.
+
+## A.18 Putaran Audit Eksternal — 29 Temuan Dikerjakan (8 Oktober 2026)
+
+### A.18.1 Permintaan dan cakupan
+Pengguna melampirkan hasil audit statis (`audit-projectla-lomba.md`: 84 temuan — 1 kritis, 18
+tinggi, 51 sedang, 14 rendah, **tanpa ada kode yang dijalankan** karena PHP tidak tersedia di
+sandbox audit) dengan instruksi "cek lagi dan kerjakan progres penyelesaian bug". Berkas prompt
+dan log pekerjaan audit itu disimpan apa adanya di `docs/log-mentah/prompt-claude-eksternal.md`
+dan `docs/log-mentah/log-claude-eksternal.md` supaya asal setiap temuan bisa ditelusuri.
+
+Isi berkas audit **tidak lengkap**: hanya 23 temuan yang membawa rincian lokasi + skenario
+(U-01..U-04, Q-01..Q-19). Enam temuan lain punya ringkasan Top-10 yang skenarionya cukup jelas
+(S-01, S-04, S-05, S-07, S-14, I-01) sehingga ikut dikerjakan. Sisanya (S-*, I-*, R-*, Putaran 2)
+hanya berupa daftar tanpa lokasi/skenario — **tidak ditebak dan tidak diklaim selesai**.
+
+### A.18.2 Cara kerja (per ID temuan)
+1. Buka kode yang disebut temuan, pastikan bug-nya masih ada di kode **sekarang** (sebagian
+   temuan audit berasal dari salinan zip lama).
+2. Tulis test yang **MERAH** lebih dulu (Pest untuk backend, Vitest untuk logika murni frontend).
+3. Perbaiki akar masalahnya, lalu jalankan test itu sampai **HIJAU**.
+4. `./verify.sh` (Pest + Pint + checkJs + ESLint + Vitest + realtime `node --test`).
+5. Commit kecil per temuan + push. Tanpa refactor di luar temuan; perubahan skema hanya lewat
+   migrasi baru yang aman untuk data lama.
+
+### A.18.3 Temuan dan perbaikannya
+| ID | Inti temuan | Perbaikan | Commit |
+|---|---|---|---|
+| Q-01 [K] | `sisaDetik` menghitung `deadline − (sekarangMs + (server_now − sekarangMs))` sehingga waktu saling meniadakan: timer ulangan beku | Koreksi jam dihitung sekali saat respons tiba (`dataUpdatedAt`) lalu dipakai sebagai offset tetap; auto-submit akhirnya berjalan | `d04515b` |
+| Q-02 [T] | `kirimAntrean` mengembalikan entri gagal tanpa pemeriksaan sehingga jawaban lama menimpa jawaban lebih baru | Antrean menyimpan nomor urut per perubahan; entri gagal hanya kembali bila tidak ada entri lebih baru; satu pengirim tunggal agar autosave & kumpul tak berjalan bersamaan | `8d259ee` |
+| Q-03 [S] | `tandaiTerkirim` membuang entri tanpa membandingkan nilai | Nilai tersimpan disertakan; entri hanya dibuang bila antrean masih memuat nilai itu | `c69eb58` |
+| Q-04 [T] | Efek auto-submit memanggil ulang dirinya tanpa jeda saat kumpul gagal | Kebijakan percobaan di modul murni: backoff 2s berlipat sampai 30s, maks 4 percobaan, berhenti pada 4xx permanen, lalu tombol "Coba kirim lagi" | `690be53` |
+| Q-05 [S] | `gabungJawaban` menaruh salinan lokal paling akhir sehingga selalu menimpa jawaban server | Hanya entri yang masih menunggu di `belumTerkirim` yang menang atas jawaban server | `c636d04` |
+| Q-06 [T] | `simpanJawaban` memeriksa status/deadline di luar transaksi dan hanya mengunci baris `jawaban` | Status, deadline, dan kepemilikan soal dibaca ulang dari baris attempt yang dikunci (`lockForUpdate`) di dalam transaksi | `475531d` |
+| Q-07 [T] | Dua anggota tim menekan "Mulai" bersamaan → dua attempt aktif; yang kalah menerima 500 dari pelanggaran indeks unik | Indeks unik `(quiz_id, team_id, jenis, aktif)` lewat migrasi baru; `mulai()` menangkap `UniqueConstraintViolationException` dan mengembalikan attempt yang menang | `9bf9dd8` |
+| Q-08 [S] | Deadline attempt dihitung dari durasi kuis saja sehingga bisa melewati jadwal selesai kuis | `deadlineAttempt()` memotong deadline pada `selesai_at` kuis | `bfe9e49` |
+| Q-09 [T] | Kunci/skor soal dibaca hidup → sunting bank soal mengubah nilai attempt lama; hapus soal ikut menghapus jawaban (`cascadeOnDelete`) | `snapshot_soal` (acak soal + daftar soal lengkap) diisi saat `mulai` dan dipakai untuk menyajikan & menilai; `SoalService::hapus` menolak (422) menghapus soal yang sudah dijawab | `ed0edcc` |
+| Q-10 [S] | `jawab` dan unggah lampiran ditolak sedetik setelah deadline, `kumpulkan` masih menerima +120 detik | Ketiganya memakai satu toleransi `TENGGAT_TERLAMBAT` | `41bd0d9` |
+| Q-11 [T] | Penilaian isian singkat: imbuhan pembalik ("invertebrata" vs "vertebrata") lolos, ambang guru tak berpengaruh pada jawaban satu kata, kata baku berulang bernilai 1,0, dan daftar negasi tak memuat bentuk sehari-hari | `melawanAntonim()` (kata dasar wajib persis, minimal 4 huruf), kemiripan huruf sungguhan per kata, penyebut memakai panjang asli jawaban, negasi `tak/nggak/gak/ga/belum/non`; jalur khusus "12" = "12.0" dipertahankan | `5c5740e` |
+| Q-12 [S] | `payloadSoal` membaca `acak_opsi` hidup dari kuis sehingga ulangan yang sedang berjalan berubah saat halaman dimuat ulang | `acak_opsi` ikut masuk snapshot attempt dan dibaca dari sana (fallback setelan hidup untuk attempt lama) | `5eae341` |
+| Q-13 [S] | Sapuan `tutupSemuaBasi` berhenti pada galat pertama sehingga attempt basi sesudahnya menumpuk | Tiap attempt dibungkus try/catch, galat dilaporkan, dan hitungan hanya memuat attempt yang benar-benar ditutup | `c191d87` |
+| Q-14 [S] | Attempt tim (banyak anggota, satu lembar) dicatat `duplicate_session` berisiko 8 | Deteksi sesi ganda dilewati untuk attempt ber-`team_id`; `PresenceService::lupakan()` dipanggil saat attempt ditutup | `44ef14f`, `d935aca` |
+| Q-15 [R] | `Attempt::soalTerurut()` mati dan pasti fatal; `ALASAN_MIN` hanya ditegakkan di Form Request; alias POST menumpang di controller reset sandi | Kode mati dihapus, aturan koreksi ditegakkan di `KoreksiService`, alias dipindah ke `ProgresController`/`BadgeController` | `d935aca` |
+| Q-16 [S] | Ekspor tanpa BOM dan hanya koma → Excel Indonesia menampilkan nama rusak; impor berkas `;`/ANSI gagal | Helper baru `CsvExcel` (deteksi pemisah `,`/`;`/tab, konversi Windows-1252, BOM UTF-8), endpoint ekspor menerima `?delimiter=`, ekspor nilai memakai jam WIB + urutan `strcasecmp` | `e31c79e` |
+| Q-17 [S] | Impor murid menulis per batch → galat di tengah meninggalkan data separuh dan melempar 500 tanpa laporan | Impor dibungkus satu transaksi (gagal di tengah menggulung seluruhnya) dan laporan galat per baris menggantikan 500 | `e31c79e` |
+| Q-18 [S] | Ekspor nilai & peringkat tim membaca keanggotaan hidup → nilai historis berubah saat murid keluar/tim dihapus/akun dihapus | Tabel baru `attempt_members` (migrasi `2026_10_08_000003`) di-snapshot saat attempt tim dibuat, dipakai ekspor/peringkat/penelusuran; attempt lama tetap dilayani dari data hidup | `ebc1c20` |
+| Q-19 [R] | Elemen jawaban berupa array dipaksa `(string)` → `ErrorException: Array to string conversion` sehingga soal berstatus gagal (bisa disalahgunakan murid); penghitung "Terjawab" menghitung isian kosong | Penjagaan skalar di `PenanganMenjodohkan`/`PenanganMengurutkan` (jawaban salah bentuk dinilai salah) + helper `ringkasanJawaban.js` (`adaJawaban`, `hitungTerjawab`) | `4ae9254` |
+| U-01 [S] | Media soal boleh URL host mana pun (IP & Referer anak terkirim ke pihak ketiga), tanpa `onError`/dimensi/alt bermakna | Allowlist host (`config/media.php` + `BantuanKonten::mediaAman`), `onError` → keterangan pengganti, `width`/`height` cadangan, `alt` per soal | `f98cd43` |
+| U-02 [S] | Overlay kunci layar hanya menutupi secara visual; soal di belakangnya tetap bisa difokus & diisi | Kontainer soal di-`inert`, overlay `role="alertdialog" aria-modal`, fokus dipindah ke dialog lalu dikembalikan | `1d1095f` |
+| U-03 [S] | Kegagalan membuka ulangan selalu satu teks umum; `retry: 1` mengulang POST `mulai` yang ditolak 422 | Pesan server ditampilkan apa adanya, galat jaringan/5xx menawarkan "Coba lagi", retry hanya untuk galat sementara | `1d1095f` |
+| U-04 [R] | Judul/nama tim panjang tanpa spasi meluber; tidak ada indikator memuat | Utilitas `.teks-patah` + indikator memuat ber-`aria-busy` | `1d1095f` |
+| S-01 [S] | Throttle `auth` 20/menit per IP: murid ke-21 satu kelas di balik NAT sekolah langsung 429 | Batas per IP dinaikkan ke 120/menit; batas per akun+IP (5/menit) dipertahankan | `7fd13f7` |
+| S-04/S-05 [S] | Semua guru setara: guru mana pun bisa mengubah kuis/soal/setelan anti-cheat dan mengoreksi nilai guru lain | `User::bolehKelola($pemilikId)` (admin boleh semua, guru hanya baris buatannya) dipakai `KuisPolicy`, `SoalPolicy`, `AttemptPolicy::koreksi`, dan `PengaturanPolicy` berlingkup; baris lama ber-`dibuat_oleh` NULL sengaja tetap boleh | `2880cf4` |
+| S-07 [S] | Batas 2 MiB pada berkas gambar tidak menahan piksel: PNG kecil bisa meminta memori raksasa saat didekode | Dimensi dibaca dari header (`getimagesizefromstring`) dan ditolak bila melewati `avatar.batas_piksel` (24 juta piksel) sebelum didekode | `9d54105` |
+| S-14 [S] | Keluar hanya menyetel `user: null`: cache TanStack Query, cadangan jawaban di localStorage, dan penanda klien HTTP tetap tersisa untuk murid berikutnya | `bersihkanJejakSesi()` dipanggil pada keluar sengaja dan sesi habis (401/419); klien query dipindah ke `shared/store/klienQuery.js`; `bersihkanSemua()` di `useSimpananJawaban` | `52c9d4b` |
+| I-01 [—] | `dariLapisanTahanLama` tidak memeriksa `versi` dan `LapisanL2` menyimpan `forever` → pengaturan basi bisa bertahan selamanya | Salinan lapisan tahan lama dipakai hanya bila versinya sama dengan versi terkini (versi diambil SEBELUM sumber dibaca), plus TTL 1800 detik sebagai jaring pengaman | `93a528f` |
+
+### A.18.4 Hasil verifikasi
+- Tiap temuan diuji sendiri sebelum lanjut: test baru **merah** di kode lama, **hijau** setelah
+  perbaikan; Pest naik bertahap 176 → 178 → 180 → 183 → 184 → 189 → 191 → 195 → 211 test.
+- Penutup putaran, `./verify.sh` **HIJAU** (`verify.sh: SEMUA HIJAU`):
+  Pest **211 passed (1670 assertions)** · Pint **OK** · `npm run check` (checkJs) **OK** ·
+  ESLint **0 error, 2 warning lama** (`react-hooks/incompatible-library` dari `watch()` RHF di
+  `HalamanDaftar.jsx`/`HalamanMasuk.jsx`) · Vitest **41 berkas / 327 test** · realtime
+  `node --test` **13 test, 0 gagal**.
+- Migrasi baru `2026_10_08_000003_create_attempt_members_table.php` sudah dijalankan di DB dev;
+  deploy berikutnya butuh `php artisan migrate --force`.
+
+### A.18.5 Batasan jujur (yang sengaja tidak dikerjakan / belum diuji otomatis)
+- **61 temuan sisanya tidak dikerjakan** karena berkas audit tidak memuat lokasi/skenarionya;
+  temuan SSE/service Node tidak bisa diperiksa karena kodenya tidak ada di unggahan audit.
+- **U-02 dan U-04 belum punya test DOM otomatis** — proyek belum memakai
+  `@testing-library/react`; keduanya diverifikasi lewat checkJs, ESLint, dan pemeriksaan markup.
+- **Q-19 sub-item "login pakai NIS"** (saran produk di audit) sengaja tidak dikerjakan karena
+  menambah jalur autentikasi baru di luar cakupan bug.
+- **Q-15 `idempotency_key`** tersimpan tetapi tidak dipakai pembanding masih dibiarkan —
+  mengubahnya berisiko pada perilaku kumpul-ganda yang sudah diuji.
+- **Q-14** hanya menutup bukti palsu untuk attempt tim; dua tab dalam satu browser/efek login
+  ulang tidak terpisahkan di sisi server (session id sama).
+- Penandaan ID di dua pesan commit bertumpuk: `5eae341` menulis "(Q-09)" sedangkan `ed0edcc` juga
+  "(Q-09)"; keduanya temuan berbeda di audit (snapshot soal vs `acak_opsi` hidup), dan isi
+  perbaikannya sesuai tabel di atas.
+- Dua celah kepatuhan lomba masih terbuka dan dicatat apa adanya: **belum ada deploy publik** dan
+  **Octane Swoole** belum jalan (ekstensi `swoole` tidak ada di mesin dev).
+
+### A.18.6 Perapian dokumen (8 Oktober 2026)
+Permintaan pengguna: "perbaiki docs nya — untuk prompt pakai `docs`, untuk log pakai yang
+benar-benar mentah, dan yang ada ringkasan di Word". Yang dikerjakan:
+- **Prompt**: tetap satu tempat di `docs/` (`jurnal-prompt.md` untuk 5 entri jurnal, `log-mentah/`
+  untuk seluruh prompt & jawaban mentah); tidak ada teks prompt yang dipindah keluar dari `docs/`.
+- **Log mentah**: `sesi-2026-10-05-chat-messages.json.gz` disegarkan dari sesi asli (207 pesan,
+  salinan byte-exact) dan transkripnya kini **utuh tanpa potong** — sebelumnya setiap argumen
+  panggilan alat dipotong di 400 karakter. Transkrip juga dibaca dari berkas `.gz` yang ikut
+  dikumpulkan, sehingga angka byte + md5 di kepalanya benar-benar sepadan dengan salinan mentahnya
+  (sebelumnya dihitung dari berkas sesi yang masih hidup dan bisa berbeda).
+- **Ringkasan di Word**: `docs/word/` diekspor ulang (`AGENT.docx`, `jurnal-prompt.docx`,
+  `log-mentah.docx`, `penjelasan-fitur.docx`, `catatan-demo.docx`, `laporan-pengujian.docx`).
+
+### A.18.7 Rujukan log mentah
+`docs/log-mentah/sesi-2026-10-05-transkrip.md` (dan salinan byte-exact
+`sesi-2026-10-05-chat-messages.json.gz`): `2026-10-08 ±15.30–19.45 WIB` (audit satu per ID sampai
+`verify.sh` hijau + ekspor Word) dan `2026-10-08 ±20.10 WIB` (perapian dokumen).

@@ -8,10 +8,10 @@ Menghasilkan dua berkas di `docs/log-mentah/`:
    Sengaja digzip: berkas aslinya ~76 MB, tetapi ~67 MB di antaranya hanyalah
    `metadata.runState` (snapshot state berulang tiap pesan) sehingga setelah
    digzip menjadi ~13 MB — tetap di bawah batas peringatan GitHub 50 MB.
-2. `sesi-<tanggal>-transkrip.md` — **bantuan baca**: berisi setiap prompt
-   pengguna, lampiran promptnya, dan setiap balasan AI apa adanya. Panggilan
-   alat diringkas jadi satu baris supaya tetap terbaca; berkas `.gz` di atas
-   tetap menjadi salinan mentah yang sah.
+2. `sesi-<tanggal>-transkrip.md` — transkrip mentah yang enak dibaca: berisi
+   setiap prompt pengguna, lampiran promptnya, setiap balasan/thinking AI, dan
+   setiap panggilan alat **utuh apa adanya tanpa dipotong**. Berkas `.gz` di
+   atas tetap menjadi salinan byte-exact dari berkas sesi aslinya.
 
 Jalankan ulang setiap akhir slice (dan tiap kali log diperbarui), lalu komit
 hasilnya — supaya log mentah selalu mutakhir tanpa membengkakkan riwayat git.
@@ -24,32 +24,38 @@ import gzip
 import hashlib
 import json
 import os
-import shutil
 import sys
 
 DIR_SESI_DEFAULT = (
     "/Users/marcel.sgmail.com/.config/manicode/projects/Desktop/chats/2026-10-05T07-39-24.876Z"
 )
 TANGGAL_DEFAULT = "2026-10-05"
-POTONG_ALAT = 400  # karakter maksimal untuk satu panggilan alat di transkrip
+POTONG_ALAT = None  # None = tanpa potong: transkrip memuat isi mentah utuh apa adanya
 
 
-def md5(berkas: str) -> str:
+def gzip_byte_exact(sumber: str, tujuan: str) -> tuple:
+    """Gzip isi berkas apa adanya (byte-exact setelah didekompresi).
+
+    Mengembalikan `(ukuran_asli, md5_isi)` dari salinan yang ditulis, supaya
+    transkrip bisa menyebut angka yang benar-benar ada di berkas `.gz` ini.
+    """
     h = hashlib.md5()
-    with open(berkas, "rb") as f:
-        for potong in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(potong)
-    return h.hexdigest()
-
-
-def gzip_byte_exact(sumber: str, tujuan: str) -> None:
-    """Gzip isi berkas apa adanya (byte-exact setelah didekompresi)."""
+    ukuran = 0
     with open(sumber, "rb") as masuk, gzip.open(tujuan, "wb", compresslevel=9) as keluar:
-        shutil.copyfileobj(masuk, keluar, length=1024 * 1024)
+        while True:
+            potong = masuk.read(1024 * 1024)
+            if not potong:
+                break
+            ukuran += len(potong)
+            h.update(potong)
+            keluar.write(potong)
+    return ukuran, h.hexdigest()
 
 
-def ringkas(nilai, batas: int = POTONG_ALAT) -> str:
+def ringkas(nilai, batas: int | None = POTONG_ALAT) -> str:
     teks = nilai if isinstance(nilai, str) else json.dumps(nilai, ensure_ascii=False)
+    if batas is None:
+        return teks
     teks = " ".join(teks.split())
     return teks if len(teks) <= batas else teks[:batas] + " …"
 
@@ -70,18 +76,20 @@ def blok_ke_markdown(baris: list, blok: dict) -> None:
         baris.append(f"- ▪ blok `{jenis}` — {ringkas(blok)}")
 
 
-def tulis_transkrip(sesi: str, berkas_chat: str, tujuan: str) -> int:
-    pesan = json.load(open(berkas_chat, encoding="utf-8"))
+def tulis_transkrip(sesi: str, berkas_gz: str, tujuan: str, ukuran: int, md5_isi: str) -> int:
+    # Dibaca dari berkas .gz (salinan byte-exact), bukan dari berkas sesi hidup,
+    # supaya transkrip selalu sepadan dengan berkas mentah yang ikut dikumpulkan.
+    with gzip.open(berkas_gz, "rt", encoding="utf-8") as f:
+        pesan = json.load(f)
     baris: list = [
         "# Log Mentah — Transkrip Sesi",
         "",
-        "Bantuan baca. Seluruh isi di bawah diambil apa adanya dari berkas sesi asli",
-        f"(`{os.path.basename(berkas_chat)}`, {os.path.getsize(berkas_chat)} byte, "
-        f"md5 `{md5(berkas_chat)}`).",
+        "Transkrip mentah isi sesi. Seluruh isi di bawah diambil apa adanya dari berkas",
+        f"sesi asli (`chat-messages.json`, {ukuran} byte, md5 `{md5_isi}`).",
         "",
         "Salinan **byte-exact** dari berkas aslinya ada di berkas `*.json.gz` di folder yang sama.",
-        "Panggilan alat di sini diringkas jadi satu baris agar tetap terbaca; isi lengkapnya ada",
-        "di berkas `.gz`. Berkas runtime sesi (`log.jsonl`, `run-state.json`) bukan isi percakapan",
+        "Isi di bawah ini **utuh tanpa dipotong** — termasuk seluruh argumen panggilan alat.",
+        "Berkas runtime sesi (`log.jsonl`, `run-state.json`) bukan isi percakapan",
         "sehingga tidak disalin.",
         "",
     ]
@@ -106,7 +114,7 @@ def tulis_transkrip(sesi: str, berkas_chat: str, tujuan: str) -> int:
             baris.append("")
 
         for lampiran in m.get("fileAttachments") or []:
-            baris.append(f"- 📎 berkas: {ringkas(lampiran, 200)}")
+            baris.append(f"- 📎 berkas: {ringkas(lampiran)}")
 
         if isinstance(m.get("content"), str) and m["content"].strip():
             baris.append(m["content"].strip())
@@ -141,10 +149,10 @@ def utama() -> None:
     tujuan_gz = os.path.join(logdir, f"sesi-{tanggal}-chat-messages.json.gz")
     tujuan_md = os.path.join(logdir, f"sesi-{tanggal}-transkrip.md")
 
-    gzip_byte_exact(asal, tujuan_gz)
-    jumlah = tulis_transkrip(sesi, asal, tujuan_md)
+    ukuran, md5_isi = gzip_byte_exact(asal, tujuan_gz)
+    jumlah = tulis_transkrip(sesi, tujuan_gz, tujuan_md, ukuran, md5_isi)
 
-    print(f"OK: {tujuan_gz} ({os.path.getsize(tujuan_gz)} byte)")
+    print(f"OK: {tujuan_gz} ({os.path.getsize(tujuan_gz)} byte) · asli={ukuran} byte · md5={md5_isi}")
     print(f"OK: {tujuan_md} ({os.path.getsize(tujuan_md)} byte) · pesan={jumlah}")
 
 
