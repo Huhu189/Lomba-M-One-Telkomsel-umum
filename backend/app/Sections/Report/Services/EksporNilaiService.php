@@ -77,13 +77,12 @@ class EksporNilaiService
 
             foreach ($this->baris($kuis, $soal) as $satu) {
                 $attempt = $satu['attempt'];
-                $murid = $satu['murid'];
                 $maksimal = (float) $attempt->skor_maksimal;
 
                 $baris = [
-                    EksporMuridService::amankanSel($murid->user?->name),
-                    EksporMuridService::amankanSel($murid->nis),
-                    EksporMuridService::amankanSel($murid->nisn),
+                    EksporMuridService::amankanSel($satu['nama']),
+                    EksporMuridService::amankanSel($satu['nis']),
+                    EksporMuridService::amankanSel($satu['nisn']),
                     EksporMuridService::amankanSel($kuis->kelas?->nama),
                     EksporMuridService::amankanSel($satu['tim']),
                     (string) $satu['jumlah_anggota'],
@@ -113,8 +112,14 @@ class EksporNilaiService
     /**
      * Susun baris ekspor: satu baris per murid, skor tim dibagi ke anggotanya.
      *
+     * Sumber anggota adalah SNAPSHOT attempt (`attempt_members`, Q-18), bukan
+     * keanggotaan tim yang hidup. Dengan begitu murid yang kemudian keluar dari
+     * tim, tim yang dihapus, atau akun murid yang dihapus tidak mengubah baris
+     * buku nilai yang sudah terlanjur dibuat. Attempt lama yang belum punya
+     * snapshot tetap dilayani dari keanggotaan hidup.
+     *
      * @param  Collection<int, Soal>  $soal
-     * @return array<int, array{murid: Murid, attempt: Attempt, tim: string|null, jumlah_anggota: int}>
+     * @return array<int, array{attempt: Attempt, nama: string, nis: string|null, nisn: string|null, tim: string|null, jumlah_anggota: int}>
      */
     private function baris(Kuis $kuis, Collection $soal): array
     {
@@ -123,12 +128,33 @@ class EksporNilaiService
             ->where('jenis', JenisAttempt::Ulangan->value)
             ->where('asli', true)
             ->whereNotNull('dikumpulkan_at')
-            ->with(['murid.user', 'jawaban', 'tim.murid.user'])
+            ->with(['anggota.murid', 'murid.user', 'jawaban', 'tim.murid.user'])
             ->get();
 
         $baris = [];
 
         foreach ($attempts as $attempt) {
+            if ($attempt->anggota->isNotEmpty()) {
+                $jumlah = $attempt->anggota->count();
+
+                foreach ($attempt->anggota as $anggota) {
+                    $murid = $anggota->murid;
+
+                    $baris[] = [
+                        'attempt' => $attempt,
+                        // Nama dari snapshot; jatuh ke profil hidup bila snapshot kosong.
+                        'nama' => (string) ($anggota->nama !== '' ? $anggota->nama : $murid?->user?->name),
+                        'nis' => $murid?->nis,
+                        'nisn' => $murid?->nisn,
+                        'tim' => $anggota->tim_nama,
+                        'jumlah_anggota' => $jumlah,
+                    ];
+                }
+
+                continue;
+            }
+
+            // Attempt lama (dibuat sebelum snapshot ada) atau ulangan individu.
             $tim = $attempt->tim;
 
             /** @var array<int, Murid> $anggota */
@@ -138,8 +164,10 @@ class EksporNilaiService
 
             foreach ($anggota as $murid) {
                 $baris[] = [
-                    'murid' => $murid,
                     'attempt' => $attempt,
+                    'nama' => (string) $murid->user?->name,
+                    'nis' => $murid->nis,
+                    'nisn' => $murid->nisn,
                     'tim' => $tim?->nama,
                     'jumlah_anggota' => count($anggota),
                 ];
@@ -149,10 +177,7 @@ class EksporNilaiService
         // Urut nama supaya cocok dengan daftar kelas yang biasa dilihat guru.
         // `strcasecmp`, bukan `strcmp`: tanpa ini huruf kecil jatuh setelah huruf
         // besar sehingga "andi" muncul setelah "Zahra" (Q-16).
-        usort($baris, static fn (array $a, array $b): int => strcasecmp(
-            (string) $a['murid']->user?->name,
-            (string) $b['murid']->user?->name,
-        ));
+        usort($baris, static fn (array $a, array $b): int => strcasecmp($a['nama'], $b['nama']));
 
         return $baris;
     }

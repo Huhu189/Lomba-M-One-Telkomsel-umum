@@ -178,6 +178,45 @@ it('ekspor mengamankan nama yang mirip rumus spreadsheet', function (): void {
         ->and($isi)->not->toContain("\n=SUM(1+1)");
 });
 
+it('ekspor tim memakai snapshot anggota sehingga tetap utuh walau tim berubah', function (): void {
+    $soal = e10Soal($this);
+    $kuis = e10Kuis($this, [$soal]);
+
+    Murid::factory()->count(3)->create(['school_id' => $this->sekolah->id, 'class_id' => $this->kelas->id]);
+
+    e10Guru($this);
+    $this->postJson("/api/v1/kuis/{$kuis->id}/tim/bagi", ['jumlah_tim' => 2])->assertOk();
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => KunciPengaturan::ModeTim->value, 'nilai' => true,
+    ])->assertOk();
+
+    $tim = DB::table('team_members')->where('quiz_id', $kuis->id)->first();
+    $timId = (int) $tim->team_id;
+    $namaTim = (string) DB::table('teams')->where('id', $timId)->value('nama');
+    $anggota = DB::table('team_members')->where('team_id', $timId)->pluck('student_id');
+
+    $pertama = Murid::query()->findOrFail($anggota[0]);
+    $rekan = Murid::query()->findOrFail($anggota[1]);
+
+    e10Kerjakan($this, $kuis, $pertama, $soal, 'a');
+
+    // Setelah ujian: satu anggota keluar dari tim dan timnya dihapus. Tanpa
+    // snapshot, `attempts.team_id` jadi null sehingga ekspor menyusut menjadi
+    // satu baris tanpa nama tim — nilai historis berubah (Q-18).
+    DB::table('team_members')->where('team_id', $timId)->where('student_id', $rekan->id)->delete();
+    DB::table('teams')->where('id', $timId)->delete();
+
+    e10Guru($this);
+    $isi = $this->get("/api/v1/kuis/{$kuis->id}/ekspor-nilai")->assertOk()->streamedContent();
+    $baris = explode("\n", trim($isi));
+
+    // Baris snapshot tetap dua anggota dan masih membawa nama tim aslinya.
+    expect($baris)->toHaveCount(3)
+        ->and($isi)->toContain((string) $pertama->user->name)
+        ->and($isi)->toContain((string) $rekan->user->name)
+        ->and(substr_count($isi, ',"'.$namaTim.'",2,'))->toBe(2);
+});
+
 it('murid tidak boleh mengunduh nilai kelas dan kuis belum dikerjakan tetap kosong', function (): void {
     $soal = e10Soal($this);
     $kuis = e10Kuis($this, [$soal]);

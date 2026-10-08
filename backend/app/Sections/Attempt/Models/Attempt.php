@@ -88,6 +88,18 @@ class Attempt extends Model
     }
 
     /**
+     * Snapshot anggota yang mengerjakan attempt ini (Q-18): beku saat attempt
+     * dibuat, sehingga ekspor/laporan tidak ikut berubah bila susunan tim atau
+     * akun murid kemudian berubah.
+     *
+     * @return HasMany<AnggotaAttempt, $this>
+     */
+    public function anggota(): HasMany
+    {
+        return $this->hasMany(AnggotaAttempt::class, 'attempt_id');
+    }
+
+    /**
      * Skor mencakup attempt milik sendiri DAN attempt tim yang diikuti murid ini.
      *
      * Dipakai laporan/badge/lencana supaya satu nilai tim benar-benar dibagi rata
@@ -102,6 +114,11 @@ class Attempt extends Model
             $dalam->where('student_id', $muridId)
                 ->orWhereIn('team_id', function ($sub) use ($muridId): void {
                     $sub->select('team_id')->from('team_members')->where('student_id', $muridId);
+                })
+                // Snapshot anggota (Q-18): murid yang pernah mengerjakan attempt
+                // tim tetap melihat nilainya walau ia sudah keluar dari tim.
+                ->orWhereIn('id', function ($sub) use ($muridId): void {
+                    $sub->select('attempt_id')->from('attempt_members')->where('student_id', $muridId);
                 });
         });
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sections\Attempt\Services;
 
+use App\Sections\Attempt\Models\AnggotaAttempt;
 use App\Sections\Attempt\Models\AnggotaTim;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Tim;
@@ -131,15 +132,30 @@ class TimService
      */
     public function anggotaPerTim(Kuis $kuis): array
     {
-        $anggota = AnggotaTim::query()
-            ->where('quiz_id', $kuis->getKey())
-            ->with('murid.user')
-            ->get();
+        // Utamakan SNAPSHOT attempt (Q-18): daftar anggota yang benar-benar
+        // mengerjakan, tahan terhadap perubahan susunan tim atau akun murid
+        // setelah ujian. Attempt lama tanpa snapshot memakai anggota hidup.
+        $snapshot = AnggotaAttempt::query()
+            ->join('attempts', 'attempts.id', '=', 'attempt_members.attempt_id')
+            ->where('attempts.quiz_id', $kuis->getKey())
+            ->whereNotNull('attempt_members.team_id')
+            ->get(['attempt_members.team_id', 'attempt_members.nama']);
 
         $peta = [];
 
-        foreach ($anggota as $satu) {
-            $peta[(int) $satu->team_id][] = (string) ($satu->murid?->user?->name ?? 'Murid');
+        if ($snapshot->isNotEmpty()) {
+            foreach ($snapshot as $satu) {
+                $peta[(int) $satu->team_id][] = (string) $satu->nama;
+            }
+        } else {
+            $anggota = AnggotaTim::query()
+                ->where('quiz_id', $kuis->getKey())
+                ->with('murid.user')
+                ->get();
+
+            foreach ($anggota as $satu) {
+                $peta[(int) $satu->team_id][] = (string) ($satu->murid?->user?->name ?? 'Murid');
+            }
         }
 
         foreach ($peta as $timId => $nama) {

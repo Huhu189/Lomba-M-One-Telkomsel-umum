@@ -7,6 +7,7 @@ namespace App\Sections\Attempt\Services;
 use App\Models\User;
 use App\Sections\Attempt\Enums\JenisAttempt;
 use App\Sections\Attempt\Enums\StatusAttempt;
+use App\Sections\Attempt\Models\AnggotaAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Attempt\Models\RevisiJawaban;
@@ -196,7 +197,35 @@ class AttemptService
             ]);
         }
 
+        // Snapshot anggota tim (Q-18): beku siapa saja yang mengerjakan attempt
+        // ini supaya ekspor/laporan tidak ikut berubah bila susunan tim, nama
+        // tim, atau akun murid kemudian berubah.
+        $this->snapshotAnggota($attempt, $tim);
+
         return $this->muat($attempt);
+    }
+
+    /**
+     * Bekukan anggota satu attempt tim (Q-18). Tidak melakukan apa pun untuk
+     * ulangan individu: barisnya cukup diwakili `attempts.student_id`.
+     */
+    private function snapshotAnggota(Attempt $attempt, ?Tim $tim): void
+    {
+        if ($tim === null) {
+            return;
+        }
+
+        $tim->loadMissing('murid.user');
+
+        foreach ($tim->murid as $murid) {
+            AnggotaAttempt::query()->create([
+                'attempt_id' => $attempt->getKey(),
+                'student_id' => $murid->getKey(),
+                'team_id' => $tim->getKey(),
+                'nama' => (string) $murid->user?->name,
+                'tim_nama' => $tim->nama,
+            ]);
+        }
     }
 
     /**
