@@ -27,6 +27,14 @@ import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
 import { formatSisa, offsetAttemptMs, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
+import {
+  adaSisa,
+  ambilUntukKirim,
+  buatAntrean,
+  buatPengirim,
+  catat as catatAntrean,
+  kembalikan,
+} from './antreanJawaban.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
 import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
@@ -71,17 +79,16 @@ function tungguMilidetik(milidetik) {
  * dikembalikan ke antrean, yang ditolak permanen (4xx) dibuang + diberitahukan.
  *
  * @param {number} attemptId
- * @param {Map<string, unknown>} antrean
+ * @param {{ entri: Map<string, { nilai: unknown, seq: number }>, urut: number }} antrean
  * @param {(attemptId: number, questionId: number) => void} tandaiTerkirim
  * @returns {Promise<number>} jumlah yang gagal
  */
 async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
-  const entri = [...antrean.entries()]
-  antrean.clear()
+  const daftar = ambilUntukKirim(antrean)
   let gagal = 0
 
-  for (const [questionId, nilai] of entri) {
-    const idSoal = Number(questionId)
+  for (const { kunci, nilai, seq } of daftar) {
+    const idSoal = Number(kunci)
 
     try {
       await kirimJawaban(attemptId, idSoal, nilai)
@@ -94,7 +101,10 @@ async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
       const layakCobaLagi = status === undefined || status === 408 || status === 429 || status >= 500
 
       if (layakCobaLagi) {
-        antrean.set(questionId, nilai)
+        // Entri dikembalikan hanya bila murid belum mengubah soal ini lagi
+        // selagi pengiriman berjalan — kalau tidak, jawaban lama menimpa yang
+        // baru dan murid dinilai dari isian yang sudah ia tinggalkan (Q-02).
+        kembalikan(antrean, kunci, { nilai, seq })
         gagal += 1
       } else {
         // Server menolak permanen (mis. sudah lewat deadline) — beri tahu murid.
@@ -134,7 +144,10 @@ export default function HalamanKerjakan() {
   const [autoMandek, setAutoMandek] = useState(false)
   const percobaanAuto = useRef(0)
 
-  const antrean = useRef(new Map())
+  // Antrean ber-nomor urut (Q-02). Semua pengiriman lewat satu pengirim tunggal
+  // `pengirim` supaya autosave tidak berjalan bersamaan dengan "Kumpulkan".
+  const antrean = useRef(buatAntrean())
+  const pengirim = useRef(buatPengirim())
   const timerKirim = useRef(0)
   const timerUlang = useRef(0)
   const sedangKirimRef = useRef(false)
@@ -195,9 +208,9 @@ export default function HalamanKerjakan() {
   const jalankanAntrean = useCallback(async () => {
     if (attempt === undefined) return
 
-    await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+    await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
 
-    if (antrean.current.size > 0 && timerUlang.current === 0) {
+    if (adaSisa(antrean.current) && timerUlang.current === 0) {
       timerUlang.current = window.setTimeout(() => {
         timerUlang.current = 0
         void jalankanRef.current()
@@ -222,7 +235,7 @@ export default function HalamanKerjakan() {
       }
 
       try {
-        let sisa = await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+        let sisa = await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
 
         // Kumpul MANUAL: beri jaringan kesempatan pulih dulu. Tanpa ini, jawaban
         // terakhir yang belum terkirim hilang diam-diam — server hanya menilai
@@ -230,7 +243,7 @@ export default function HalamanKerjakan() {
         if (!otomatis) {
           for (let percobaan = 1; percobaan < PERCOBAAN_SEBELUM_KUMPUL && sisa > 0; percobaan++) {
             await tungguMilidetik(JEDA_SEBELUM_KUMPUL)
-            sisa = await kirimAntrean(attempt.id, antrean.current, tandaiTerkirim)
+            sisa = await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
           }
 
           if (sisa > 0) {
@@ -312,7 +325,7 @@ export default function HalamanKerjakan() {
 
     setPerubahan((lama) => ({ ...(lama ?? jawaban), [String(soalId)]: nilai }))
     catat(attempt.id, soalId, nilai)
-    antrean.current.set(String(soalId), nilai)
+    catatAntrean(antrean.current, soalId, nilai)
 
     if (timerKirim.current === 0) {
       timerKirim.current = window.setTimeout(() => {
