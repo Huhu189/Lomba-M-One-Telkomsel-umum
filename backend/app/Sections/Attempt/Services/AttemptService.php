@@ -283,7 +283,12 @@ class AttemptService
                 throw ValidationException::withMessages(['attempt' => 'Ulangan ini sudah dikumpulkan.']);
             }
 
-            if (Carbon::now()->greaterThan($terkunci->deadline_at)) {
+            // Satu aturan dengan pengumpulan: jawaban masih diterima sampai
+            // deadline + TENGGAT_TERLAMBAT. Autosave terakhir yang telat karena
+            // latensi jaringan tidak boleh ditolak 422 selagi `kumpulkan` untuk
+            // attempt yang sama tetap sah — kalau tidak, jawaban terakhir hilang
+            // meski ulangannya dinilai (Q-10).
+            if (Carbon::now()->greaterThan($terkunci->deadline_at->copy()->addSeconds(self::TENGGAT_TERLAMBAT))) {
                 throw ValidationException::withMessages(['attempt' => 'Waktu ulangan sudah habis; jawaban tidak bisa disimpan.']);
             }
 

@@ -26,7 +26,8 @@ use Throwable;
  *
  * Aturan yang ditegakkan di sini (bukan di klien):
  *
- * - **Deadline ditegakkan server.** Unggahan ditolak begitu waktu ulangan habis;
+ * - **Deadline ditegakkan server.** Unggahan ditolak setelah waktu ulangan habis
+ *   (plus toleransi yang sama dengan pengumpulan);
  *   melampirkan foto jawaban bukan jalan pintas menambah waktu.
  * - **Gambar kanvas diencode ulang ke PNG di server.** Berkas kiriman tidak
  *   pernah disajikan apa adanya, dan dimensinya dibatasi supaya gambar raksasa
@@ -147,9 +148,11 @@ class PenyimpananJawaban
             throw ValidationException::withMessages(['potongan' => 'Sesi unggah sudah kedaluwarsa; mulai ulang.']);
         }
 
-        // Waktu habis juga menghentikan pengiriman potongan: berkas yang datang
-        // setelah deadline tidak boleh ikut digabung.
-        if (Carbon::now()->greaterThan($unggahan->attempt->deadline_at)) {
+        // Waktu habis juga menghentikan pengiriman potongan, tetapi dengan
+        // toleransi yang SAMA dengan pengumpulan (Q-10): potongan terakhir yang
+        // telat beberapa detik karena latensi jaringan tidak boleh ditolak
+        // selagi `kumpulkan` untuk attempt yang sama tetap sah.
+        if (Carbon::now()->greaterThan($unggahan->attempt->deadline_at->copy()->addSeconds(AttemptService::TENGGAT_TERLAMBAT))) {
             throw ValidationException::withMessages(['potongan' => 'Waktu ulangan sudah habis; lampiran tidak bisa dikirim.']);
         }
 
@@ -351,7 +354,8 @@ class PenyimpananJawaban
             throw ValidationException::withMessages(['attempt' => 'Ulangan ini sudah dikumpulkan.']);
         }
 
-        if (Carbon::now()->greaterThan($attempt->deadline_at)) {
+        // Toleransi seragam dengan pengumpulan (Q-10).
+        if (Carbon::now()->greaterThan($attempt->deadline_at->copy()->addSeconds(AttemptService::TENGGAT_TERLAMBAT))) {
             throw ValidationException::withMessages([
                 'attempt' => 'Waktu ulangan sudah habis; lampiran jawaban tidak bisa diunggah lagi.',
             ]);

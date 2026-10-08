@@ -181,7 +181,8 @@ it('menerima gambar kanvas dan mengencode ulangnya menjadi PNG', function (): vo
 it('menolak unggahan setelah waktu ulangan habis', function (): void {
     $ctx = m09Attempt($this, durasiMenit: 10);
 
-    $this->travel(11)->minutes();
+    // 3 menit lewat deadline — di luar toleransi pengumpulan (Q-10).
+    $this->travel(13)->minutes();
 
     auth()->forgetGuards();
     Sanctum::actingAs($this->murid->user);
@@ -208,11 +209,34 @@ it('menolak potongan yang datang setelah deadline walau sesinya sudah dibuka', f
         'ukuran' => strlen($isi),
     ])->assertCreated();
 
-    $this->travel(11)->minutes();
+    // 3 menit lewat deadline — di luar toleransi pengumpulan (Q-10).
+    $this->travel(13)->minutes();
 
     $this->putJson('/api/v1/lampiran/'.$mulai->json('kode').'/potongan/0', [
         'isi_base64' => base64_encode($isi),
     ])->assertStatus(422)->assertJsonValidationErrors(['potongan']);
+});
+
+it('menerima potongan lampiran yang telat beberapa detik karena latensi jaringan', function (): void {
+    $ctx = m09Attempt($this, durasiMenit: 10);
+    $isi = m09Png();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/attempt/{$ctx['attempt']}/lampiran", [
+        'question_id' => $ctx['soal'],
+        'jenis' => 'gambar',
+        'ukuran' => strlen($isi),
+    ])->assertCreated();
+
+    // Deadline baru lewat 1 detik: masih di dalam toleransi yang sama dengan
+    // pengumpulan, jadi potongan terakhir tidak boleh ditolak 422 (Q-10).
+    $this->travel(601)->seconds();
+
+    $this->putJson('/api/v1/lampiran/'.$mulai->json('kode').'/potongan/0', [
+        'isi_base64' => base64_encode($isi),
+    ])->assertOk();
 });
 
 it('hanya mengizinkan rekaman diri bila sekolah menyalakan izinnya', function (): void {

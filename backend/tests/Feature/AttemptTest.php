@@ -217,12 +217,36 @@ it('jawaban ditolak setelah deadline dan soal di luar kuis ditolak', function ()
         'jawaban' => 'A',
     ])->assertStatus(422)->assertJsonValidationErrors(['question_id']);
 
-    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subSeconds(10)]);
+    // Di luar toleransi pengumpulan: jawaban ditolak.
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
 
     $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
         'question_id' => $hasil['soal'][0]['id'],
         'jawaban' => 'B',
     ])->assertStatus(422)->assertJsonValidationErrors(['attempt']);
+});
+
+it('menerima autosave yang telat beberapa detik selama masih dalam toleransi pengumpulan', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    // Latensi jaringan: autosave terakhir tiba 1 detik setelah deadline. Dulu
+    // `jawab` ditolak 422 sedetik setelah deadline padahal `kumpulkan` masih
+    // menerima sampai +TENGGAT_TERLAMBAT, jadi jawaban terakhir hilang walau
+    // attempt-nya tetap dianggap sah (Q-10). Kini keduanya memakai satu aturan.
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subSecond()]);
+
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+        'question_id' => $hasil['soal'][0]['id'],
+        'jawaban' => 'B',
+    ])->assertOk();
+
+    expect(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(1);
+
+    // Di dalam toleransi yang sama, pengumpulan tetap sah (dicatat terlambat).
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/kumpulkan", [
+        'idempotency_key' => 'kunci-autosave-telat',
+    ])->assertOk()->assertJsonPath('terlambat', true);
 });
 
 it('mengumpulkan menilai soal objektif dan idempoten saat ditekan dua kali', function (): void {
@@ -607,7 +631,7 @@ it('jawaban yang tiba setelah deadline ditolak walau model di memori belum tahu 
     $soal = Soal::query()->findOrFail((int) $hasil['soal'][0]['id']);
 
     // Waktu habis setelah model dibaca (permintaan sempat mengantre di jaringan).
-    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subSeconds(10)]);
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
 
     expect(fn () => app(AttemptService::class)->simpanJawaban($basah, $soal, 'B'))
         ->toThrow(ValidationException::class);
