@@ -20,6 +20,7 @@ use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -420,4 +421,50 @@ it('sapuan berkala menutup attempt yang ditinggalkan tanpa menunggu murid kembal
 
     expect(app(AttemptService::class)->tutupSemuaBasi())->toBe(0)
         ->and(Attempt::query()->findOrFail($kedua['attempt'])->status->value)->toBe('berjalan');
+});
+
+it('jawaban yang tiba setelah attempt ditutup ditolak walau model di memori masih berjalan', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    // Model yang dipegang request "menjawab": dibaca selagi attempt masih berjalan.
+    $basah = Attempt::query()->findOrFail($hasil['attempt']);
+    $soal = Soal::query()->findOrFail((int) $hasil['soal'][0]['id']);
+    $layanan = app(AttemptService::class);
+
+    // Request lain menutup attempt lebih dulu (murid menekan "Kumpulkan" dari tab
+    // lain, atau sapuan berkala menutup attempt yang ditinggalkan).
+    $layanan->kumpulkan(Attempt::query()->findOrFail($hasil['attempt']), 'kunci-balapan-tutup');
+
+    // Tanpa baca ulang di dalam kunci, jawaban ini tetap tersimpan pada attempt
+    // yang sudah final: barisnya ditandai "menunggu" selamanya dan skornya tidak
+    // pernah ikut dihitung, karena penilaian sudah selesai sebelum jawaban masuk.
+    expect(fn () => $layanan->simpanJawaban($basah, $soal, 'B'))
+        ->toThrow(ValidationException::class);
+
+    $baris = Jawaban::query()
+        ->where('attempt_id', $hasil['attempt'])
+        ->where('question_id', $soal->getKey())
+        ->firstOrFail();
+
+    expect($baris->jawaban)->toBeNull()
+        ->and($baris->status->value)->not->toBe('menunggu')
+        ->and((int) Attempt::query()->findOrFail($hasil['attempt'])->skor)->toBe(0)
+        ->and(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(2);
+});
+
+it('jawaban yang tiba setelah deadline ditolak walau model di memori belum tahu waktu habis', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    $basah = Attempt::query()->findOrFail($hasil['attempt']);
+    $soal = Soal::query()->findOrFail((int) $hasil['soal'][0]['id']);
+
+    // Waktu habis setelah model dibaca (permintaan sempat mengantre di jaringan).
+    Attempt::query()->whereKey($hasil['attempt'])->update(['deadline_at' => Carbon::now()->subSeconds(10)]);
+
+    expect(fn () => app(AttemptService::class)->simpanJawaban($basah, $soal, 'B'))
+        ->toThrow(ValidationException::class);
+
+    expect(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(0);
 });

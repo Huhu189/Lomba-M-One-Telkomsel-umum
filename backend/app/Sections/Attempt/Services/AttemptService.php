@@ -223,32 +223,47 @@ class AttemptService
      */
     public function simpanJawaban(Attempt $attempt, Soal $soal, mixed $jawaban, ?int $penjawabId = null): Jawaban
     {
-        if (! $attempt->berjalan()) {
-            throw ValidationException::withMessages(['attempt' => 'Ulangan ini sudah dikumpulkan.']);
-        }
-
-        if (Carbon::now()->greaterThan($attempt->deadline_at)) {
-            throw ValidationException::withMessages(['attempt' => 'Waktu ulangan sudah habis; jawaban tidak bisa disimpan.']);
-        }
-
-        if (! $this->soalMilikKuis($attempt, $soal)) {
-            throw ValidationException::withMessages(['question_id' => 'Soal itu bukan bagian dari kuis ini.']);
-        }
-
         return DB::transaction(function () use ($attempt, $soal, $jawaban, $penjawabId): Jawaban {
+            // Status dan jam dibaca ULANG di dalam kunci baris attempt.
+            //
+            // Model `$attempt` datang dari binding rute, yaitu keadaan beberapa
+            // milidetik yang lalu. Selagi permintaan ini mengantre, request lain
+            // bisa saja sudah menutup attempt ini (`kumpulkan`, `tutupBasi`, atau
+            // sapuan berkala) atau melewati deadline. Memutuskan berdasarkan model
+            // yang basah membuat jawaban tetap tersimpan pada attempt yang sudah
+            // final — dan baris itu tidak akan pernah dinilai, karena penilaian
+            // sudah berjalan sebelum jawabannya masuk (`tutup` hanya mengunci baris
+            // attempt, bukan baris jawaban).
+            $terkunci = Attempt::query()
+                ->whereKey($attempt->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $terkunci->berjalan()) {
+                throw ValidationException::withMessages(['attempt' => 'Ulangan ini sudah dikumpulkan.']);
+            }
+
+            if (Carbon::now()->greaterThan($terkunci->deadline_at)) {
+                throw ValidationException::withMessages(['attempt' => 'Waktu ulangan sudah habis; jawaban tidak bisa disimpan.']);
+            }
+
+            if (! $this->soalMilikKuis($terkunci, $soal)) {
+                throw ValidationException::withMessages(['question_id' => 'Soal itu bukan bagian dari kuis ini.']);
+            }
+
             $baris = Jawaban::query()
-                ->where('attempt_id', $attempt->getKey())
+                ->where('attempt_id', $terkunci->getKey())
                 ->where('question_id', $soal->getKey())
                 ->lockForUpdate()
                 ->first();
 
             $berubah = $baris === null || json_encode($baris->jawaban) !== json_encode($jawaban);
-            $baris ??= new Jawaban(['attempt_id' => $attempt->getKey(), 'question_id' => $soal->getKey()]);
+            $baris ??= new Jawaban(['attempt_id' => $terkunci->getKey(), 'question_id' => $soal->getKey()]);
 
             // Versi hanya bertambah di mode tim dan hanya saat isinya berubah:
             // autosave berulang dengan jawaban sama tidak membanjiri riwayat.
             $versi = (int) ($baris->versi ?? 0);
-            $bersama = $attempt->team_id !== null;
+            $bersama = $terkunci->team_id !== null;
 
             if ($bersama && $berubah) {
                 $versi++;
@@ -266,7 +281,7 @@ class AttemptService
 
             if ($bersama && $berubah) {
                 RevisiJawaban::query()->create([
-                    'attempt_id' => $attempt->getKey(),
+                    'attempt_id' => $terkunci->getKey(),
                     'question_id' => $soal->getKey(),
                     'student_id' => $penjawabId,
                     'versi' => $versi,
