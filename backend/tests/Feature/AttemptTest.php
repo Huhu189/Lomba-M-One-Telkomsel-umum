@@ -99,6 +99,19 @@ it('murid memulai ulangan dan menerima soal tanpa kunci dengan deadline dari ser
         ->and($respons->json('soal.0'))->not->toHaveKey('kunci');
 });
 
+it('memotong deadline attempt pada jadwal selesai kuis', function (): void {
+    // Durasi kuis 30 menit, tetapi jendela jadwal hanya 2 menit lagi.
+    $kuis = siapkanKuis($this, ['selesai_at' => Carbon::now()->addMinutes(2)]);
+
+    $hasil = mulaiUlangan($this, $kuis);
+    $attempt = Attempt::query()->findOrFail($hasil['attempt']);
+
+    // Dulu deadline = sekarang + 30 menit, sehingga ujian berjalan melewati
+    // jadwal yang ditetapkan guru (Q-08).
+    expect($attempt->deadline_at->lessThanOrEqualTo($kuis->selesai_at))->toBeTrue()
+        ->and(abs($attempt->deadline_at->diffInSeconds($kuis->selesai_at)))->toBeLessThanOrEqual(2);
+});
+
 it('mulai dua kali mengembalikan attempt yang sama (satu attempt aktif)', function (): void {
     $kuis = siapkanKuis($this);
 

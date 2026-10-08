@@ -169,7 +169,7 @@ class AttemptService
                 'aktif' => true,
                 'seed' => random_int(1, 2_147_483_647),
                 'mulai_at' => $sekarang,
-                'deadline_at' => $sekarang->copy()->addMinutes((int) $kuis->durasi_menit),
+                'deadline_at' => $this->deadlineAttempt($kuis, $sekarang),
                 'terlambat' => false,
                 'jumlah_soal' => $kuis->soal()->count(),
                 'jumlah_benar' => 0,
@@ -197,6 +197,23 @@ class AttemptService
         }
 
         return $this->muat($attempt);
+    }
+
+    /**
+     * Batas akhir satu attempt: durasi penuh kuis, tetapi tidak pernah melewati
+     * jadwal `selesai_at`. Tanpa potongan ini, murid yang mulai satu menit
+     * sebelum jendela ditutup tetap mendapat durasi penuh, sehingga ujian
+     * berjalan melewati jadwal yang ditetapkan guru (Q-08).
+     */
+    private function deadlineAttempt(Kuis $kuis, Carbon $sekarang): Carbon
+    {
+        $batas = $sekarang->copy()->addMinutes((int) $kuis->durasi_menit);
+
+        if ($kuis->selesai_at !== null && $kuis->selesai_at->lessThan($batas)) {
+            return $kuis->selesai_at->copy();
+        }
+
+        return $batas;
     }
 
     /**
