@@ -9,6 +9,7 @@ use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Report\Services\EksporNilaiService;
 use App\Sections\Report\Services\LaporanTagService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -29,10 +30,11 @@ class LaporanController extends Controller
      * Pada mode tim semua anggota mendapat baris dengan skor tim yang sama,
      * jadi ekspor ini konsisten dengan aturan "skor dibagi sama".
      */
-    public function eksporNilai(Kuis $kuis, EksporNilaiService $service): StreamedResponse
+    public function eksporNilai(Request $request, Kuis $kuis, EksporNilaiService $service): StreamedResponse
     {
         $this->authorize('laporan', $kuis);
 
-        return $service->ekspor($kuis);
+        // `?delimiter=;` untuk Excel berbahasa Indonesia (Q-16).
+        return $service->ekspor($kuis, (string) $request->query('delimiter', ','));
     }
 }

@@ -13,6 +13,7 @@ use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -51,6 +52,23 @@ it('impor CSV valid membuat akun murid beserta profil dan kelasnya', function ()
         ->and($ayu->hasRole('murid'))->toBeTrue()
         ->and($ayu->status->value)->toBe('aktif')
         ->and($ayu->murid->kelas->nama)->toBe('6A');
+});
+
+it('impor CSV Excel Indonesia bertitik koma dan ber-encoding ANSI', function (): void {
+    // Excel berbahasa Indonesia menyimpan berkas dengan `;` dan ANSI
+    // (Windows-1252), bukan UTF-8 (Q-16).
+    $csv = "nama;email;nis;kelas\n"
+        ."Ayu Lestari;ayu.win@murid.test;1001;6A\n"
+        ."Budi Santoso;budi.win@murid.test;1002;6B\n";
+    $ansi = mb_convert_encoding($csv, 'Windows-1252', 'UTF-8');
+
+    $this->post('/api/v1/murid/impor', ['file' => buatBerkasCsv($ansi)], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('laporan.sukses', 2)
+        ->assertJsonPath('laporan.gagal', 0);
+
+    expect(User::query()->where('email', 'ayu.win@murid.test')->exists())->toBeTrue()
+        ->and(Murid::query()->count())->toBe(2);
 });
 
 it('impor melaporkan galat per baris dan tetap memproses baris valid', function (): void {
@@ -106,6 +124,35 @@ it('impor 500 baris meng-upsert dalam batch tanpa duplikasi', function (): void 
 
     expect(Murid::query()->count())->toBe(500)
         ->and(User::query()->where('role', 'murid')->count())->toBe(500);
+});
+
+it('impor yang gagal di tengah menggulung seluruh transaksi tanpa menyimpan sebagian', function (): void {
+    // Enam ratus baris = dua batch (500 + 100). Dulu batch pertama tersimpan
+    // lebih dulu, sehingga kegagalan di batch kedua meninggalkan data separuh
+    // masuk lalu melempar 500 tanpa laporan (Q-17).
+    $baris = ['nama,email,nis,kelas'];
+    for ($i = 1; $i <= 600; $i++) {
+        $baris[] = "Murid {$i},murid{$i}@murid.test,{$i},6A";
+    }
+    $csv = implode("\n", $baris)."\n";
+
+    Murid::saving(function (Murid $murid): void {
+        if ((string) $murid->nis === '550') {
+            throw new RuntimeException('gagal paksa di tengah impor');
+        }
+    });
+
+    $respons = $this->post('/api/v1/murid/impor', ['file' => buatBerkasCsv($csv)], ['Accept' => 'application/json'])
+        ->assertOk();
+
+    $pesan = collect($respons->json('laporan.galat'))->pluck('pesan');
+
+    expect($respons->json('laporan.sukses'))->toBe(0)
+        ->and($respons->json('laporan.dihentikan'))->toBeTrue()
+        ->and($pesan->contains(fn (string $p): bool => str_contains($p, 'Impor dibatalkan')))->toBeTrue()
+        // Tidak ada satu pun baris yang tertinggal di database.
+        ->and(Murid::query()->count())->toBe(0)
+        ->and(User::query()->where('role', 'murid')->count())->toBe(0);
 });
 
 it('ekspor CSV mengamankan sel berawalan = + - @', function (): void {

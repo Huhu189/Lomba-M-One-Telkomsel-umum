@@ -8,13 +8,14 @@ use App\Models\User;
 use App\Sections\Auth\Enums\UserStatus;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Murid;
+use App\Support\CsvExcel;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use League\Csv\Reader;
+use Throwable;
 
 /**
  * Impor murid dari CSV: streaming, validasi per baris, batas 100 galat,
@@ -37,7 +38,9 @@ class ImporMuridService
      */
     public function impor(string $path, int $sekolahId): array
     {
-        $reader = Reader::createFromPath($path, 'r');
+        // Pemisah & encoding dideteksi dulu: Excel Indonesia sering memakai `;`
+        // dan menyimpan berkas sebagai ANSI, bukan UTF-8 (Q-16).
+        $reader = CsvExcel::reader($path);
         $reader->setHeaderOffset(0);
         $reader->skipEmptyRecords();
 
@@ -66,40 +69,79 @@ class ImporMuridService
         $emailTerpakai = [];
         $batch = [];
 
-        foreach ($reader->getRecords() as $record) {
-            $total++;
-            $nomorBaris = $total + 1; // baris 1 = header
+        // Seluruh batch ditulis dalam SATU transaksi. Dulu tiap 500 baris punya
+        // transaksinya sendiri, sehingga galat pada batch ke-3 melemparkan 500
+        // sementara batch 1-2 sudah tersimpan — data setengah masuk tanpa
+        // laporan (Q-17).
+        try {
+            DB::transaction(function () use (
+                $reader,
+                $mapKolom,
+                $kelasMap,
+                $muridPerNis,
+                $sekolahId,
+                &$galat,
+                &$sukses,
+                &$total,
+                &$dihentikan,
+                &$nisTerpakai,
+                &$emailTerpakai,
+                &$batch,
+            ): void {
+                foreach ($reader->getRecords() as $record) {
+                    $total++;
+                    $nomorBaris = $total + 1; // baris 1 = header
 
-            $baris = $this->barisDariRecord($record, $mapKolom);
+                    $baris = $this->barisDariRecord($record, $mapKolom);
 
-            $pesan = $this->validasiBaris($baris, $kelasMap, $muridPerNis, $nisTerpakai, $emailTerpakai);
+                    $pesan = $this->validasiBaris($baris, $kelasMap, $muridPerNis, $nisTerpakai, $emailTerpakai);
 
-            if ($pesan !== null) {
-                $galat[] = ['baris' => $nomorBaris, 'pesan' => $pesan];
+                    if ($pesan !== null) {
+                        $galat[] = ['baris' => $nomorBaris, 'pesan' => $pesan];
 
-                if (count($galat) >= self::BATAS_GALAT) {
-                    $dihentikan = true;
-                    break;
+                        if (count($galat) >= self::BATAS_GALAT) {
+                            $dihentikan = true;
+                            break;
+                        }
+
+                        continue;
+                    }
+
+                    if ($baris['nis'] !== null) {
+                        $nisTerpakai[$baris['nis']] = true;
+                    }
+                    $emailTerpakai[$baris['email']] = true;
+
+                    $batch[] = $baris;
+
+                    if (count($batch) >= self::UKURAN_BATCH) {
+                        $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
+                        $batch = [];
+                    }
                 }
 
-                continue;
-            }
+                if ($batch !== []) {
+                    $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
+                    $batch = [];
+                }
+            });
+        } catch (Throwable $galatDb) {
+            // Transaksi sudah dibatalkan seluruhnya, jadi tidak ada baris yang
+            // setengah masuk. Kembalikan laporan (bukan 500) supaya guru tahu
+            // impor digulung dan bisa mencoba lagi (Q-17).
+            report($galatDb);
 
-            if ($baris['nis'] !== null) {
-                $nisTerpakai[$baris['nis']] = true;
-            }
-            $emailTerpakai[$baris['email']] = true;
-
-            $batch[] = $baris;
-
-            if (count($batch) >= self::UKURAN_BATCH) {
-                $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
-                $batch = [];
-            }
-        }
-
-        if ($batch !== []) {
-            $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
+            return [
+                'total' => $total,
+                'sukses' => 0,
+                'gagal' => count($galat) + 1,
+                'dihentikan' => true,
+                'batas_galat' => self::BATAS_GALAT,
+                'galat' => [
+                    ...$galat,
+                    ['baris' => 0, 'pesan' => 'Impor dibatalkan karena galat tak terduga; tidak ada baris yang tersimpan. Coba lagi.'],
+                ],
+            ];
         }
 
         return [
@@ -198,6 +240,14 @@ class ImporMuridService
         array $nisTerpakai,
         array $emailTerpakai,
     ): ?string {
+        // Byte non-UTF-8 (encoding berkas aneh) dilaporkan per baris, bukan
+        // dijadikan 500 yang menggulung seluruh impor tanpa keterangan (Q-17).
+        foreach ($baris as $nilai) {
+            if ($nilai !== null && ! mb_check_encoding($nilai, 'UTF-8')) {
+                return 'Baris memuat karakter yang tidak dikenali (encoding berkas tidak didukung).';
+            }
+        }
+
         $validator = Validator::make($baris, [
             'nama' => ['required', 'string', 'min:2', 'max:120'],
             'email' => ['required', 'string', 'email:rfc', 'max:120'],

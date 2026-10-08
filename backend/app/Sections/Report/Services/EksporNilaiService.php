@@ -10,6 +10,7 @@ use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Murid;
 use App\Sections\School\Services\EksporMuridService;
+use App\Support\CsvExcel;
 use Illuminate\Support\Collection;
 use League\Csv\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,21 +31,37 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class EksporNilaiService
 {
-    public function ekspor(Kuis $kuis): StreamedResponse
+    /**
+     * Zona waktu jam dinding guru: berkas buku nilai dibaca di Indonesia,
+     * sedangkan waktu di DB tersimpan UTC (selisih 7 jam dari WIB).
+     */
+    public const ZONA_WAKTU = 'Asia/Jakarta';
+
+    /**
+     * @param  string  $pemisah  pemisah kolom (`;` untuk Excel Indonesia)
+     */
+    public function ekspor(Kuis $kuis, string $pemisah = ','): StreamedResponse
     {
         $kuis->loadMissing(['kelas', 'mapel']);
         $soal = $kuis->soal()->orderBy('quiz_questions.urutan')->get();
 
         $namaBerkas = 'nilai-kuis-'.$kuis->getKey().'-'.now()->format('Ymd-His').'.csv';
+        $pemisah = CsvExcel::pemisahAman($pemisah);
 
-        return response()->streamDownload(function () use ($kuis, $soal): void {
+        return response()->streamDownload(function () use ($kuis, $soal, $pemisah): void {
             $keluaran = fopen('php://output', 'w');
 
             if ($keluaran === false) {
                 return;
             }
 
+            // BOM ditulis langsung: `Writer::setOutputBOM` hanya dipakai jalur
+            // `output()`, tidak saat menulis lewat `insertOne`.
+            fwrite($keluaran, CsvExcel::BOM_UTF8);
+
             $penulis = Writer::createFromStream($keluaran);
+            // Pemisah terpilih supaya kolom terbaca rapi di Excel Indonesia (Q-16).
+            $penulis->setDelimiter($pemisah);
 
             $judulKolom = [
                 'nama', 'nis', 'nisn', 'kelas', 'tim', 'jumlah_anggota_tim',
@@ -75,7 +92,7 @@ class EksporNilaiService
                     $this->angka($maksimal > 0 ? round((float) $attempt->skor / $maksimal * 100, 1) : 0.0),
                     (string) $attempt->jumlah_benar,
                     (string) $attempt->jumlah_soal,
-                    $attempt->dikumpulkan_at?->toIso8601String() ?? '',
+                    $attempt->dikumpulkan_at?->timezone(self::ZONA_WAKTU)->format('Y-m-d H:i') ?? '',
                     (string) $attempt->attempt_no,
                 ];
 
@@ -130,7 +147,9 @@ class EksporNilaiService
         }
 
         // Urut nama supaya cocok dengan daftar kelas yang biasa dilihat guru.
-        usort($baris, static fn (array $a, array $b): int => strcmp(
+        // `strcasecmp`, bukan `strcmp`: tanpa ini huruf kecil jatuh setelah huruf
+        // besar sehingga "andi" muncul setelah "Zahra" (Q-16).
+        usort($baris, static fn (array $a, array $b): int => strcasecmp(
             (string) $a['murid']->user?->name,
             (string) $b['murid']->user?->name,
         ));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sections\School\Services;
 
 use App\Sections\School\Models\Murid;
+use App\Support\CsvExcel;
 use League\Csv\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,18 +30,28 @@ class EksporMuridService
         return $teks;
     }
 
-    public function ekspor(int $sekolahId): StreamedResponse
+    /**
+     * @param  string  $pemisah  pemisah kolom (`;` untuk Excel Indonesia)
+     */
+    public function ekspor(int $sekolahId, string $pemisah = ','): StreamedResponse
     {
         $namaBerkas = 'murid-'.now()->format('Ymd-His').'.csv';
+        $pemisah = CsvExcel::pemisahAman($pemisah);
 
-        return response()->streamDownload(function () use ($sekolahId): void {
+        return response()->streamDownload(function () use ($sekolahId, $pemisah): void {
             $keluaran = fopen('php://output', 'w');
 
             if ($keluaran === false) {
                 return;
             }
 
+            // BOM ditulis langsung: `Writer::setOutputBOM` hanya dipakai jalur
+            // `output()`, bukan saat menulis lewat `insertOne`.
+            fwrite($keluaran, CsvExcel::BOM_UTF8);
+
             $penulis = Writer::createFromStream($keluaran);
+            // Pemisah bisa dipilih: Excel Indonesia memakai `;` (Q-16).
+            $penulis->setDelimiter($pemisah);
             $penulis->insertOne(['nis', 'nisn', 'nama', 'email', 'kelas']);
 
             Murid::query()

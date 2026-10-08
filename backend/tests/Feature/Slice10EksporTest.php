@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
@@ -16,6 +17,7 @@ use App\Sections\Settings\Enums\KunciPengaturan;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 
@@ -103,6 +105,57 @@ it('guru mengunduh nilai kuis sebagai CSV satu baris per murid', function (): vo
     // Skor asli: satu murid 10, satu 0, dengan maksimal 10.
     expect($isi)->toContain(',10,10,100,')
         ->and($isi)->toContain(',0,10,0,');
+});
+
+it('ekspor nilai diawali BOM UTF-8 dan mendukung pemisah titik koma', function (): void {
+    $soal = e10Soal($this);
+    $kuis = e10Kuis($this, [$soal]);
+    e10Kerjakan($this, $kuis, $this->murid, $soal, 'a');
+    e10Guru($this);
+
+    // Excel berbahasa Indonesia butuh BOM agar mengenali UTF-8, dan memakai
+    // `;` sebagai pemisah kolom (Q-16).
+    $bawaan = $this->get("/api/v1/kuis/{$kuis->id}/ekspor-nilai")->assertOk()->streamedContent();
+
+    expect(str_starts_with($bawaan, "\xEF\xBB\xBF"))->toBeTrue();
+
+    $titikKoma = $this->get("/api/v1/kuis/{$kuis->id}/ekspor-nilai?delimiter=;")
+        ->assertOk()
+        ->streamedContent();
+    $baris = explode("\n", trim($titikKoma));
+
+    expect($baris[0])->toContain('nama;nis;nisn')
+        ->and($baris[1])->toContain(';10;10;100;');
+});
+
+it('ekspor nilai memakai jam WIB dan mengurut nama tanpa peduli besar-kecil huruf', function (): void {
+    // Waktu dipatok DULU agar jadwal kuis (berjalan = mulai tadi, selesai nanti)
+    // tetap mengapit jam yang dibekukan; UTC 03:00 → WIB 10:00.
+    $this->travelTo(Carbon::parse('2026-03-01T03:00:00Z'));
+
+    $soal = e10Soal($this);
+    $kuis = e10Kuis($this, [$soal]);
+
+    $zahra = Murid::factory()->create(['school_id' => $this->sekolah->id, 'class_id' => $this->kelas->id]);
+    $zahra->user->forceFill(['name' => 'Zahra'])->save();
+    $andi = Murid::factory()->create(['school_id' => $this->sekolah->id, 'class_id' => $this->kelas->id]);
+    $andi->user->forceFill(['name' => 'andi'])->save();
+
+    e10Kerjakan($this, $kuis, $zahra, $soal, 'a');
+    e10Kerjakan($this, $kuis, $andi, $soal, 'a');
+
+    e10Guru($this);
+    $isi = $this->get("/api/v1/kuis/{$kuis->id}/ekspor-nilai")->assertOk()->streamedContent();
+    $baris = explode("\n", trim($isi));
+
+    // Case-insensitive: "andi" mendahului "Zahra" (strcmp lama menyimpannya
+    // setelah huruf besar).
+    expect($baris[1])->toContain('andi')
+        ->and($baris[2])->toContain('Zahra')
+        ->and($isi)->toContain('2026-03-01 10:00')
+        ->and($isi)->not->toContain('2026-03-01 03:00');
+
+    expect(Attempt::query()->where('quiz_id', $kuis->id)->count())->toBe(2);
 });
 
 it('ekspor mengamankan nama yang mirip rumus spreadsheet', function (): void {

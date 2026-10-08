@@ -14,6 +14,7 @@ use App\Sections\School\Services\ImporMuridService;
 use App\Sections\School\Services\MuridService;
 use App\Sections\School\Services\SekolahService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -81,10 +82,11 @@ class MuridController extends Controller
         ]);
     }
 
-    public function ekspor(SekolahService $sekolah, EksporMuridService $ekspor): StreamedResponse
+    public function ekspor(Request $request, SekolahService $sekolah, EksporMuridService $ekspor): StreamedResponse
     {
         $this->authorize('viewAny', Murid::class);
 
-        return $ekspor->ekspor($sekolah->tunggal()->id);
+        // `?delimiter=;` untuk Excel berbahasa Indonesia (Q-16).
+        return $ekspor->ekspor($sekolah->tunggal()->id, (string) $request->query('delimiter', ','));
     }
 }
