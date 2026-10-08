@@ -14,6 +14,7 @@ use App\Sections\Settings\Enums\LingkupPengaturan;
 use App\Sections\Settings\Models\Pengaturan;
 use App\Sections\Settings\Services\PengaturanService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
@@ -136,6 +137,74 @@ it('menolak salinan L1 yang versinya ketinggalan (validation check)', function (
 
     expect($hasil)->toBe(['nilai' => 'baru'])
         ->and($l1->jejak)->toContain('lupakan:l1:pengaturan:kuis:3');
+});
+
+it('menolak salinan lapisan tahan lama yang versinya ketinggalan', function (): void {
+    $l2 = new LapisanPalsu('redis');
+    $l1 = new LapisanPalsu('l1');
+    $berlapis = new CacheBerlapis($this->pintu, [$l2, $l1]);
+
+    $berlapis->ingat('pengaturan:kuis:5', fn (): array => ['nilai' => 'lama'], 'pengaturan');
+
+    // Versinya sudah naik (guru menyimpan pengaturan baru) tetapi salinan datanya
+    // belum tergantikan — mis. invalidasi tidak sampai ke node/proses ini, atau
+    // prosesnya mati tepat di antara "naikkan versi" dan "buang salinan". L1 juga
+    // sudah hilang (tmpfs dibersihkan saat restart).
+    $l2->isi['pengaturan:kuis:5'] = ['muatan' => ['nilai' => 'basi'], 'versi' => 0];
+    $l2->isi['pengaturan:kuis:5:versi'] = ['muatan' => 3, 'versi' => 3];
+
+    $dipanggil = 0;
+    $hasil = $berlapis->ingat('pengaturan:kuis:5', function () use (&$dipanggil): array {
+        $dipanggil++;
+
+        return ['nilai' => 'baru'];
+    }, 'pengaturan');
+
+    // Sebelum diperbaiki, salinan lama itu langsung dilayani tanpa memanggil
+    // sumber dan tanpa memeriksa versinya — dan karena `Cache::forever`, data
+    // basinya bertahan selamanya (mis. saklar anti-cheat yang sudah dimatikan
+    // guru tetap terbaca menyala).
+    expect($hasil)->toBe(['nilai' => 'baru'])
+        ->and($dipanggil)->toBe(1)
+        ->and($l2->jejak)->toContain('lupakan:redis:pengaturan:kuis:5')
+        ->and($l2->isi['pengaturan:kuis:5'])->toBe(['muatan' => ['nilai' => 'baru'], 'versi' => 3]);
+});
+
+it('tidak menyimpan salinan basi bila versi berubah selagi sumber dibaca', function (): void {
+    $l2 = new LapisanPalsu('redis');
+    $l1 = new LapisanPalsu('l1');
+    $berlapis = new CacheBerlapis($this->pintu, [$l2, $l1]);
+
+    // Guru menyimpan pengaturan baru tepat setelah pembacaan database dimulai:
+    // nilai yang dibaca murid sudah basi, dan menyimpannya dengan nomor versi
+    // yang baru membuat kebasian itu awet (versi cocok, jadi lolos pemeriksaan).
+    $hasil = $berlapis->ingat('pengaturan:kuis:6', function () use ($berlapis): array {
+        $berlapis->lupakan('pengaturan:kuis:6');
+
+        return ['nilai' => 'basi'];
+    }, 'pengaturan');
+
+    expect($hasil)->toBe(['nilai' => 'basi'])
+        ->and($l2->jejak)->not->toContain('simpan:redis:pengaturan:kuis:6')
+        ->and($l2->isi)->not->toHaveKey('pengaturan:kuis:6');
+});
+
+it('salinan lapisan Redis punya umur, jadi kebasian tidak bertahan selamanya', function (): void {
+    Carbon::setTestNow();
+
+    try {
+        (new LapisanL2)->simpan('pengaturan:kuis:9', ['nilai' => true], 1);
+
+        expect(Cache::get('pengaturan:kuis:9'))->not->toBeNull();
+
+        // Maju melewati umur maksimal: salinan hilang sendiri walau invalidasi
+        // tidak pernah sampai ke node ini.
+        Carbon::setTestNow(now()->addSeconds(LapisanL2::TTL_DETIK + 1));
+
+        expect(Cache::get('pengaturan:kuis:9'))->toBeNull();
+    } finally {
+        Carbon::setTestNow();
+    }
 });
 
 it('L1 hanya dipakai saat lalu lintas padat dan dibuang saat reda', function (): void {

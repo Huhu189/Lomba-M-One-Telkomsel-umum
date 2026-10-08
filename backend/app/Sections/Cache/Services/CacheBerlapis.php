@@ -124,14 +124,31 @@ final class CacheBerlapis
     private function dariLapisanTahanLama(string $kunci, callable $sumber): mixed
     {
         $tahanLama = $this->lapisan[0];
+        $versi = $this->versi($kunci);
         $isi = $tahanLama->ambil($kunci);
 
-        if ($isi !== null) {
+        // Salinan lapisan tahan lama WAJIB diperiksa versinya, sama seperti L1:
+        // versi yang sudah naik berarti ada penulisan baru yang mungkin belum
+        // sempat membuang salinan ini di node/proses ini (I-01). Dulu salinan L2
+        // langsung dipercaya, dan karena umurnya tak terbatas, data basi bisa
+        // bertahan selamanya.
+        if ($isi !== null && (int) $isi['versi'] === $versi) {
             return $isi['muatan'];
         }
 
+        if ($isi !== null) {
+            $tahanLama->lupakan($kunci);
+        }
+
         $muatan = $sumber();
-        $tahanLama->simpan($kunci, $muatan, $this->versi($kunci));
+
+        // Bila versi berubah selagi sumber dibaca (guru menyimpan pengaturan baru
+        // di tengah pembacaan murid), nilai yang baru saja dibaca sudah basi:
+        // jangan disimpan, apalagi dengan nomor versi baru — kalau tidak, versinya
+        // akan cocok dan pemeriksaan di atas justru melegalkan data basi itu.
+        if ($this->versi($kunci) === $versi) {
+            $tahanLama->simpan($kunci, $muatan, $versi);
+        }
 
         return $muatan;
     }
