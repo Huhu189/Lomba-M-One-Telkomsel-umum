@@ -106,6 +106,10 @@ class KoreksiService
      */
     public function mintaToken(User $guru, Attempt $attempt, Soal $soal, string $alasan, ?string $ip = null): array
     {
+        // Aturan domain, bukan cuma aturan request: koreksi nilai wajib punya
+        // alasan yang bisa dipertanggungjawabkan, termasuk saat layanan ini
+        // dipanggil dari jalur lain selain `KoreksiRequest` (Q-15).
+        $this->pastikanAlasan($alasan);
         $this->pastikanSasaranValid($attempt, $soal);
 
         $sasaran = ['attempt_id' => $attempt->getKey(), 'question_id' => $soal->getKey()];
@@ -114,6 +118,20 @@ class KoreksiService
         $this->token->matikanSebelumnya($guru, TokenKonfirmasiService::TUJUAN_KOREKSI, $sasaran);
 
         return $this->token->terbitkan($guru, TokenKonfirmasiService::TUJUAN_KOREKSI, $sasaran, $ip);
+    }
+
+    /**
+     * Pastikan alasan cukup panjang supaya koreksi audit-nya bermakna.
+     *
+     * @throws ValidationException
+     */
+    private function pastikanAlasan(string $alasan): void
+    {
+        if (mb_strlen(trim($alasan)) < self::ALASAN_MIN) {
+            throw ValidationException::withMessages([
+                'alasan' => 'Alasan koreksi minimal '.self::ALASAN_MIN.' karakter.',
+            ]);
+        }
     }
 
     /**
@@ -129,6 +147,7 @@ class KoreksiService
         string $alasan,
         string $token,
     ): Jawaban {
+        $this->pastikanAlasan($alasan);
         $this->pastikanSasaranValid($attempt, $soal);
 
         $maksimal = (float) $soal->skor;

@@ -57,4 +57,18 @@ class ProgresController extends Controller
             'remedial' => $remedial->untukMurid($murid, $sekolahId, $kelasId),
         ]);
     }
+
+    /**
+     * Alias POST dari `/progres/saya` — klien yang tersalah mengirim POST tidak
+     * menabrak 405. Hanya membaca, jadi setara GET.
+     */
+    public function sayaPost(
+        Request $request,
+        LaporanTagService $laporan,
+        RemedialService $remedial,
+        BadgeService $badge,
+        MuridService $muridService,
+    ): JsonResponse {
+        return $this->saya($request, $laporan, $remedial, $badge, $muridService);
+    }
 }

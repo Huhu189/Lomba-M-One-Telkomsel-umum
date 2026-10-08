@@ -38,4 +38,12 @@ class BadgeController extends Controller
 
         return response()->json($service->untukMurid($murid));
     }
+
+    /**
+     * Alias POST dari `/badge/saya` — setara GET, hanya membaca.
+     */
+    public function sayaPost(Request $request, BadgeService $service, MuridService $muridService): JsonResponse
+    {
+        return $this->saya($request, $service, $muridService);
+    }
 }

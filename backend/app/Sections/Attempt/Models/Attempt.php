@@ -6,7 +6,6 @@ namespace App\Sections\Attempt\Models;
 
 use App\Sections\Attempt\Enums\JenisAttempt;
 use App\Sections\Attempt\Enums\StatusAttempt;
-use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
@@ -121,18 +120,6 @@ class Attempt extends Model
     public function scopeAsli($query)
     {
         return $query->where('asli', true);
-    }
-
-    /**
-     * Soal kuis dalam urutan yang sudah diacak seed attempt.
-     *
-     * @return array<int, Soal>
-     */
-    public function soalTerurut(): array
-    {
-        $soal = $this->kuis->soal->all();
-
-        return Pengacakan::urut($soal, $this->seed, (int) $this->getKey());
     }
 
     /** Sisa detik sampai deadline (negatif berarti sudah lewat). */

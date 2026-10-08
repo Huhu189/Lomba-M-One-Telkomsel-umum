@@ -16,6 +16,7 @@ use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Mapel;
 use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
+use App\Sections\Scoring\Services\KoreksiService;
 use App\Sections\Scoring\Services\PenilaianTeks;
 use App\Sections\Scoring\Services\TokenKonfirmasiService;
 use Database\Seeders\RolesAndAdminSeeder;
@@ -23,6 +24,7 @@ use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -378,6 +380,39 @@ it('koreksi manual butuh token sekali pakai dan alasan yang jelas', function ():
     Sanctum::actingAs($this->murid->user);
 
     $this->postJson("/api/v1/attempt/{$attempt->id}/koreksi", $muatan)->assertStatus(403);
+});
+
+it('aturan alasan koreksi dijaga layanan, bukan hanya request', function (): void {
+    $uraian = buatSoal06($this, 'uraian', ['teks' => 'Jelaskan fotosintesis.'], [
+        'kata_kunci' => [['teks' => 'fotosintesis']],
+    ], 4);
+
+    $kuis = kuisSoal06($this, [$uraian]);
+    $attempt = kerjakan06($this, $kuis, $this->murid, [$uraian->id => 'Belum tahu.']);
+
+    $layanan = app(KoreksiService::class);
+    $panjang = 'Jawaban murid benar secara konsep, saya lihat di kelas.';
+
+    // Jalur lain yang memanggil layanan langsung tidak boleh melewati aturan
+    // alasan minimal yang selama ini hanya dicek `KoreksiRequest` (Q-15).
+    expect(fn () => $layanan->mintaToken($this->guru, $attempt, $uraian, 'pendek'))
+        ->toThrow(ValidationException::class);
+
+    $token = (string) $layanan->mintaToken($this->guru, $attempt, $uraian, $panjang)['token'];
+
+    expect(fn () => $layanan->koreksi($this->guru, $attempt, $uraian, 4.0, 'pendek', $token))
+        ->toThrow(ValidationException::class);
+
+    // Alasan pendek ditolak SEBELUM token dipakai, jadi token masih berlaku.
+    $layanan->koreksi($this->guru, $attempt, $uraian, 4.0, $panjang, $token);
+
+    $baris = Jawaban::query()
+        ->where('attempt_id', $attempt->id)
+        ->where('question_id', $uraian->id)
+        ->firstOrFail();
+
+    expect($baris->dinilai_manual)->toBeTrue()
+        ->and($baris->alasan_koreksi)->toBe($panjang);
 });
 
 it('koreksi manual menghitung ulang total attempt dan mencatat audit', function (): void {

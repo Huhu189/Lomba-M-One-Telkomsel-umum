@@ -288,6 +288,23 @@ it('sesi ganda diturunkan server dan murid yang lama tidak aktif dicatat saat sa
     expect($presence->sapu())->toBe(0);
 });
 
+it('kehadiran attempt hilang begitu attempt dikumpulkan', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+
+    $presence = app(PresenceService::class);
+    expect($presence->daftar($kuis))->toHaveCount(1);
+
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kumpulkan", [
+        'idempotency_key' => 'kunci-lupakan-presence',
+    ])->assertOk();
+
+    // Attempt selesai tidak perlu lagi di peta kehadiran: tanpa ini Live Monitor
+    // sempat menampilkan murid "online" yang sudah mengumpulkan sampai sapuan
+    // berkala membuangnya (Q-15: `lupakan` dulu tidak pernah dipanggil).
+    expect($presence->daftar($kuis))->toHaveCount(0);
+});
+
 it('snapshot Live Monitor memuat presence, progres, dan ringkasan kecurangan untuk guru', function (): void {
     $kuis = kuisBerjalan07($this);
     $attempt = mulaiAttempt07($this->murid, $kuis);

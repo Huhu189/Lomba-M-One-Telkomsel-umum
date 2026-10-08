@@ -13,6 +13,7 @@ use App\Sections\Attempt\Models\RevisiJawaban;
 use App\Sections\Attempt\Models\Tim;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Services\KecuranganService;
+use App\Sections\Presence\Services\PresenceService;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
@@ -53,6 +54,7 @@ class AttemptService
         private readonly KecuranganService $kecurangan,
         private readonly PenilaiAiService $ai,
         private readonly TimService $tim,
+        private readonly PresenceService $presence,
     ) {}
 
     /**
@@ -420,7 +422,7 @@ class AttemptService
      */
     private function tutup(Attempt $attempt, string $idempotencyKey, bool $abaikanToleransi): Attempt
     {
-        return DB::transaction(function () use ($attempt, $idempotencyKey, $abaikanToleransi): Attempt {
+        $hasil = DB::transaction(function () use ($attempt, $idempotencyKey, $abaikanToleransi): Attempt {
             $terkunci = Attempt::query()->whereKey($attempt->getKey())->lockForUpdate()->firstOrFail();
 
             // Sudah pernah dikumpulkan: kembalikan hasil lama (aman dobel klik/dua tab).
@@ -480,6 +482,13 @@ class AttemptService
 
             return $this->muatHasil($terkunci->refresh());
         });
+
+        // Attempt yang sudah selesai tidak perlu lagi tampil di peta kehadiran:
+        // tanpa ini entri-nya bertahan sampai sapuan berkala membuangnya, dan
+        // Live Monitor sempat menampilkan murid "online" yang sudah mengumpulkan.
+        $this->presence->lupakan($hasil);
+
+        return $hasil;
     }
 
     /**

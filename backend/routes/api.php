@@ -200,10 +200,10 @@ Route::prefix('v1')->group(function (): void {
         // POST disediakan sebagai alias yang setara (dua-duanya hanya membaca)
         // supaya klien tidak menabrak 405 saat tersalah kirim POST.
         Route::get('/badge/saya', [BadgeController::class, 'saya'])->name('badge.saya');
-        Route::post('/badge/saya', [PasswordResetController::class, 'badgeSayaPost'])
+        Route::post('/badge/saya', [BadgeController::class, 'sayaPost'])
             ->name('badge.saya.post');
         Route::get('/progres/saya', [ProgresController::class, 'saya'])->name('progres.saya');
-        Route::post('/progres/saya', [PasswordResetController::class, 'progresSayaPost'])
+        Route::post('/progres/saya', [ProgresController::class, 'sayaPost'])
             ->name('progres.saya.post');
 
         // Tim kuis mode kelompok (slice 09-C): guru menyusun, murid melihat timnya.
