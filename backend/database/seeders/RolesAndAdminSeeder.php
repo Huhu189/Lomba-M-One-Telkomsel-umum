@@ -34,10 +34,10 @@ class RolesAndAdminSeeder extends Seeder
         );
 
         $guru = User::query()->firstOrCreate(
-            ['email' => 'aadmin@sekolah.test'],
+            ['email' => 'guru1@gmail.com'],
             [
                 'name' => 'Guru Sekolah',
-                'password' => 'qawsedrftg',
+                'password' => 'password12',
                 'status' => UserStatus::Aktif->value,
                 'email_verified_at' => now(),
                 'role' => 'guru',
