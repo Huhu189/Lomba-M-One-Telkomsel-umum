@@ -135,13 +135,18 @@ class AppServiceProvider extends ServiceProvider
         // Throttle jalur auth (chunk security: anti brute-force & anti spam email).
         // Dua batas: per akun+IP (menebak sandi satu akun) dan per IP (mengganti-ganti
         // email dari satu alamat tetap terbatas).
+        //
+        // Batas per IP WAJIB longgar: satu kelas SD di balik NAT sekolah berbagi
+        // satu alamat publik, sehingga batas kecil (dulu 20/menit) menolak murid
+        // ke-21 yang menekan "Masuk" saat jam pelajaran mulai (temuan S-01).
+        // Yang menjaga brute-force tetap batas per akun+IP di baris pertama.
         RateLimiter::for('auth', function (Request $request) {
             $perAlamat = (string) $request->ip();
             $perAkun = $perAlamat.'|'.mb_strtolower((string) $request->input('email'));
 
             return [
                 Limit::perMinute(5)->by($perAkun),
-                Limit::perMinute(20)->by($perAlamat),
+                Limit::perMinute(120)->by($perAlamat),
             ];
         });
 

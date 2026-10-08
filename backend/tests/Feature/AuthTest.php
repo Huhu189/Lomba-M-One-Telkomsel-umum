@@ -169,6 +169,28 @@ it('brute force login kena 429', function () {
     $this->postJson('/api/v1/auth/masuk', $data())->assertStatus(429);
 });
 
+it('satu kelas di balik satu IP bisa masuk serentak tanpa 429', function () {
+    // Sekolah nyata memakai satu alamat IP publik (NAT): satu kelas menekan
+    // "Masuk" hampir bersamaan saat jam pelajaran mulai. Batas per IP harus
+    // cukup longgar untuk itu, sementara batas per akun tetap ketat (lihat test
+    // brute force di atas) supaya menebak sandi satu akun tetap terkunci.
+    $sandi = 'kata-sandi-kelas-1';
+
+    foreach (range(1, 30) as $i) {
+        User::factory()->muridAktif()->create([
+            'email' => "kelas5-{$i}@murid.test",
+            'password' => $sandi,
+        ]);
+    }
+
+    foreach (range(1, 30) as $i) {
+        $this->postJson('/api/v1/auth/masuk', [
+            'email' => "kelas5-{$i}@murid.test",
+            'password' => $sandi,
+        ])->assertOk();
+    }
+});
+
 it('lupa sandi: respons identik untuk email yang ada dan tidak ada; token tersimpan ter-hash', function () {
     User::factory()->muridAktif()->create(['email' => 'gilang@murid.test']);
 
