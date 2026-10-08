@@ -453,6 +453,49 @@ it('jawaban yang tiba setelah attempt ditutup ditolak walau model di memori masi
         ->and(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(2);
 });
 
+it('dua permintaan Mulai yang bertabrakan tidak 500 dan tetap menyisakan satu attempt aktif', function (): void {
+    $kuis = siapkanKuis($this);
+
+    // Meniru request kedua (dobel klik / dua tab / dua perangkat) yang menulis
+    // attempt aktifnya tepat setelah pemeriksaan "satu attempt aktif" request ini
+    // lewat. Inilah celah yang membuat indeks unik `(quiz_id, student_id, jenis,
+    // aktif)` terpicu — dulu tidak tertangkap, jadi murid melihat 500 pada klik
+    // pertamanya; `retry: 1` menutupinya sebagian, tetapi layar tetap berkedip.
+    $penyerobot = null;
+
+    Attempt::creating(function (Attempt $attempt) use (&$penyerobot): void {
+        if ($penyerobot !== null) {
+            return;
+        }
+
+        $penyerobot = DB::table('attempts')->insertGetId([
+            'school_id' => $attempt->school_id,
+            'quiz_id' => $attempt->quiz_id,
+            'student_id' => $attempt->student_id,
+            'team_id' => $attempt->team_id,
+            'jenis' => 'ulangan',
+            'status' => 'berjalan',
+            'aktif' => true,
+            'seed' => 1,
+            'mulai_at' => now(),
+            'deadline_at' => now()->addMinutes(30),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    });
+
+    try {
+        auth()->forgetGuards();
+        Sanctum::actingAs($this->murid->user);
+        $respons = $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated();
+    } finally {
+        Attempt::flushEventListeners();
+    }
+
+    expect((int) $respons->json('id'))->toBe($penyerobot)
+        ->and(Attempt::query()->where('quiz_id', $kuis->id)->where('aktif', true)->count())->toBe(1);
+});
+
 it('jawaban yang tiba setelah deadline ditolak walau model di memori belum tahu waktu habis', function (): void {
     $kuis = siapkanKuis($this);
     $hasil = mulaiUlangan($this, $kuis);

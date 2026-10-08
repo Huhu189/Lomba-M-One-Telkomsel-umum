@@ -19,6 +19,7 @@ use App\Sections\School\Models\Sekolah;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -126,6 +127,47 @@ function t09AnggotaTim(object $ctx, Kuis $kuis, int $indeks = 0): array
 
     return $tim->murid->values()->all();
 }
+
+it('satu tim tidak bisa punya dua attempt aktif walau dua anggota menekan Mulai bersamaan', function (): void {
+    $soal = t09Soal($this);
+    $kuis = t09Kuis($this, [$soal]);
+
+    /** @var Tim $tim */
+    $tim = Tim::query()->create([
+        'school_id' => $this->sekolah->id,
+        'quiz_id' => $kuis->id,
+        'nama' => 'Tim Merah',
+    ]);
+
+    $anggota = $this->murid->values();
+
+    /** Meniru satu permintaan "Mulai" yang menulis attempt timnya. */
+    $buat = function (Murid $murid) use ($kuis, $tim): void {
+        DB::table('attempts')->insert([
+            'school_id' => $kuis->school_id,
+            'quiz_id' => $kuis->id,
+            'student_id' => $murid->id,
+            'team_id' => $tim->id,
+            'jenis' => 'ulangan',
+            'status' => 'berjalan',
+            'aktif' => true,
+            'seed' => 1,
+            'mulai_at' => now(),
+            'deadline_at' => now()->addMinutes(30),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    };
+
+    $buat($anggota[0]);
+
+    // Anggota kedua membuka kuis bersamaan. Sebelum ada indeks unik per tim,
+    // baris ini lolos: dua attempt aktif ber-`team_id` sama, keduanya `asli`,
+    // sehingga tim terbelah dua lembar jawaban dan ranking menghitung dua kali.
+    expect(fn () => $buat($anggota[1]))->toThrow(UniqueConstraintViolationException::class);
+
+    expect(Attempt::query()->where('quiz_id', $kuis->id)->where('aktif', true)->count())->toBe(1);
+});
 
 it('guru membagi murid kelas jadi tim otomatis, murid tidak boleh menyentuhnya', function (): void {
     $kuis = t09Kuis($this, [t09Soal($this)]);

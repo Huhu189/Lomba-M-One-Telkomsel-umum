@@ -10,6 +10,7 @@ use App\Sections\Attempt\Enums\StatusAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Attempt\Models\RevisiJawaban;
+use App\Sections\Attempt\Models\Tim;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Services\KecuranganService;
 use App\Sections\Question\Models\Soal;
@@ -20,6 +21,7 @@ use App\Sections\Scoring\Services\PenilaiAiService;
 use App\Sections\Scoring\Services\PenilaiSoal;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Services\PengaturanService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -96,16 +98,7 @@ class AttemptService
 
         // Satu attempt aktif per murid (atau per tim) per kuis per jenis:
         // mulai ulang = lanjutkan.
-        $aktif = Attempt::query()
-            ->where('quiz_id', $kuis->getKey())
-            ->where('jenis', $jenis->value)
-            ->where('aktif', true)
-            ->when(
-                $tim !== null,
-                static fn ($query) => $query->where('team_id', $tim?->getKey()),
-                static fn ($query) => $query->where('student_id', $profil->getKey()),
-            )
-            ->first();
+        $aktif = $this->attemptAktif($kuis, $jenis, $tim, (int) $profil->getKey());
 
         // Attempt yang ditinggalkan (tab ditutup sebelum waktu habis) ditutup dulu.
         // Tanpa ini murid mentok selamanya: `jawab` menolak (deadline lewat),
@@ -150,29 +143,64 @@ class AttemptService
             }
         }
 
-        $attempt = Attempt::query()->create([
-            'school_id' => $kuis->school_id,
-            'quiz_id' => $kuis->getKey(),
-            // Pencatat attempt: murid pertama yang membuka. Pada mode tim yang
-            // menentukan nilai adalah `team_id`, bukan murid ini.
-            'student_id' => $profil->getKey(),
-            'team_id' => $tim?->getKey(),
-            'jenis' => $jenis,
-            'attempt_no' => $nomorPercobaan,
-            // Skor asli hanya milik percobaan pertama yang resmi (bukan latihan).
-            'asli' => $nomorPercobaan === 1 && $jenis->resmi(),
-            'status' => StatusAttempt::Berjalan,
-            'aktif' => true,
-            'seed' => random_int(1, 2_147_483_647),
-            'mulai_at' => $sekarang,
-            'deadline_at' => $sekarang->copy()->addMinutes((int) $kuis->durasi_menit),
-            'terlambat' => false,
-            'jumlah_soal' => $kuis->soal()->count(),
-            'jumlah_benar' => 0,
-            'skor_maksimal' => (float) $kuis->soal()->sum('skor'),
-        ]);
+        try {
+            $attempt = Attempt::query()->create([
+                'school_id' => $kuis->school_id,
+                'quiz_id' => $kuis->getKey(),
+                // Pencatat attempt: murid pertama yang membuka. Pada mode tim yang
+                // menentukan nilai adalah `team_id`, bukan murid ini.
+                'student_id' => $profil->getKey(),
+                'team_id' => $tim?->getKey(),
+                'jenis' => $jenis,
+                'attempt_no' => $nomorPercobaan,
+                // Skor asli hanya milik percobaan pertama yang resmi (bukan latihan).
+                'asli' => $nomorPercobaan === 1 && $jenis->resmi(),
+                'status' => StatusAttempt::Berjalan,
+                'aktif' => true,
+                'seed' => random_int(1, 2_147_483_647),
+                'mulai_at' => $sekarang,
+                'deadline_at' => $sekarang->copy()->addMinutes((int) $kuis->durasi_menit),
+                'terlambat' => false,
+                'jumlah_soal' => $kuis->soal()->count(),
+                'jumlah_benar' => 0,
+                'skor_maksimal' => (float) $kuis->soal()->sum('skor'),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Dua permintaan "Mulai" yang datang bersamaan (dobel klik, dua tab,
+            // dua perangkat, atau dua anggota tim) sama-sama lolos pemeriksaan
+            // "satu attempt aktif" di atas lalu bertabrakan di indeks unik. Yang
+            // kalah balapan memakai attempt yang sudah menang — murid melihat
+            // lembar yang sama, bukan galat 500 pada klik pertamanya.
+            $menang = $this->attemptAktif($kuis, $jenis, $tim, (int) $profil->getKey());
+
+            if ($menang !== null) {
+                return $this->muat($menang);
+            }
+
+            throw ValidationException::withMessages([
+                'kuis' => 'Ulangan ini sedang dibuka di perangkat lain. Tekan Mulai sekali lagi.',
+            ]);
+        }
 
         return $this->muat($attempt);
+    }
+
+    /**
+     * Attempt yang masih aktif untuk kuis+jenis ini — milik murid ini, atau milik
+     * timnya pada mode tim (satu lembar jawaban dipakai bersama).
+     */
+    private function attemptAktif(Kuis $kuis, JenisAttempt $jenis, ?Tim $tim, int $muridId): ?Attempt
+    {
+        return Attempt::query()
+            ->where('quiz_id', $kuis->getKey())
+            ->where('jenis', $jenis->value)
+            ->where('aktif', true)
+            ->when(
+                $tim !== null,
+                static fn ($query) => $query->where('team_id', $tim?->getKey()),
+                static fn ($query) => $query->where('student_id', $muridId),
+            )
+            ->first();
     }
 
     /** Muat relasi yang dibutuhkan resource attempt. */
