@@ -67,6 +67,23 @@ class PenyimpananAvatar
             ]);
         }
 
+        // Dimensi dibaca dari header dulu, SEBELUM raster-nya didekode.
+        //
+        // Batas ukuran berkas tidak menahan gambar raksasa: PNG yang sangat
+        // terkompresi tetap kecil di disk tetapi meminta memori sebesar
+        // lebar x tinggi saat `imagecreatefromstring` berjalan (terukur: satu
+        // kiriman 16 KB memakai ~12 MB). Menunggu sampai gambar terbuka berarti
+        // melayani serangan itu sampai RAM habis.
+        $dimensi = $this->dimensiHeader($isi);
+        $batasPiksel = (int) config('avatar.batas_piksel');
+
+        if ($dimensi !== null && $batasPiksel < $dimensi[0] * $dimensi[1]) {
+            throw ValidationException::withMessages([
+                'avatar' => 'Gambar terlalu besar ('.$dimensi[0].'x'.$dimensi[1]
+                    .' piksel; batas '.$this->pikselManusia($batasPiksel).').',
+            ]);
+        }
+
         $gambar = $this->bukaGambar($isi);
         $kanvas = $this->kuadratkan($gambar);
 
@@ -133,6 +150,40 @@ class PenyimpananAvatar
         if ($path !== '' && $this->disk()->exists($path)) {
             $this->disk()->delete($path);
         }
+    }
+
+    /**
+     * Lebar & tinggi dari HEADER berkas saja, tanpa mengalokasikan raster.
+     *
+     * `getimagesizefromstring` hanya membaca beberapa byte awal, jadi biayanya
+     * tetap kecil walau gambarnya menyatakan ukuran raksasa. Null berarti header
+     * tidak bisa dibaca — biarkan `bukaGambar` yang menolaknya.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    public function dimensiHeader(string $isi): ?array
+    {
+        try {
+            $ukuran = @getimagesizefromstring($isi);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_array($ukuran) || (int) $ukuran[0] < 1 || (int) $ukuran[1] < 1) {
+            return null;
+        }
+
+        return [(int) $ukuran[0], (int) $ukuran[1]];
+    }
+
+    /** Jumlah piksel dalam satuan yang enak dibaca pengguna awam. */
+    public function pikselManusia(int $piksel): string
+    {
+        if ($piksel >= 1_000_000) {
+            return rtrim(rtrim(number_format($piksel / 1_000_000, 1, ',', '.'), '0'), ',').' juta piksel';
+        }
+
+        return number_format($piksel, 0, ',', '.').' piksel';
     }
 
     public function ukuranManusia(int $byte): string

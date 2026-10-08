@@ -160,6 +160,34 @@ it('menolak gambar melebihi batas ukuran', function (): void {
     a08Unggah($this, $this->pemilik, a08Png(400, 300));
 });
 
+it('menolak gambar yang pikselnya membengkak walau berkasnya kecil (bom dekompresi)', function (): void {
+    // Avatar akhir selalu 256x256 px, jadi 2 juta piksel sudah jauh lebih dari cukup.
+    config(['avatar.batas_piksel' => 2_000_000]);
+
+    // 2000x2000 = 4 juta piksel. Berkas PNG-nya hanya puluhan kilobyte karena
+    // warnanya rata, tetapi terdekode menjadi puluhan MB memori: pola yang dipakai
+    // untuk menghabiskan RAM server lewat kiriman yang tampak kecil dan tak
+    // menabrak batas ukuran berkas.
+    $bom = a08Png(2000, 2000);
+
+    expect(strlen($bom))->toBeLessThan(100_000)
+        ->and(2000 * 2000)->toBeGreaterThan((int) config('avatar.batas_piksel'));
+
+    $berkasSebelum = Storage::disk(PenyimpananAvatar::DISK)->allFiles('avatar');
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->pemilik->user);
+
+    $this->postJson('/api/v1/avatar', [
+        'nama' => 'bom.png',
+        'isi_base64' => base64_encode($bom),
+    ])->assertStatus(422)->assertJsonValidationErrors(['avatar']);
+
+    // Ditolak sebelum didekode: tidak ada baris avatar dan tidak ada berkas ditulis.
+    expect(Avatar::query()->count())->toBe(0)
+        ->and(Storage::disk(PenyimpananAvatar::DISK)->allFiles('avatar'))->toBe($berkasSebelum);
+});
+
 it('menghitung laporan unik saja lalu menyembunyikan avatar dari murid lain', function (): void {
     $avatarId = a08Unggah($this, $this->pemilik, a08Png());
 

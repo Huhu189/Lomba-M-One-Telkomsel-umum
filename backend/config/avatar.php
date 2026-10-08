@@ -22,6 +22,13 @@ return [
     // Batas berkas kiriman (byte). 2 MiB cukup untuk foto/ gambar anak.
     'ukuran_maks' => (int) env('AVATAR_UKURAN_MAKS', 2 * 1024 * 1024),
 
+    // Batas jumlah piksel gambar kiriman (lebar x tinggi). Batas byte TIDAK
+    // menahan gambar raksasa: PNG 16 KB bisa terdekode menjadi ~12 MB memori
+    // (terukur), jadi kiriman 2 MiB yang padat bisa meminta lebih dari 1 GB RAM
+    // dan menjatuhkan server. 24 juta piksel menampung foto ponsel biasa
+    // (12 MP) dengan ruang lega, sementara hasil akhirnya hanya 256x256 px.
+    'batas_piksel' => (int) env('AVATAR_BATAS_PIKSEL', 24_000_000),
+
     // Sisi persegi gambar hasil encode ulang (px).
     'sisi' => (int) env('AVATAR_SISI', 256),
 
