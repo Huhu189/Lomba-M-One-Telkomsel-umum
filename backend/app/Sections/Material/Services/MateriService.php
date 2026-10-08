@@ -95,13 +95,17 @@ class MateriService
                 $urutan = $indeks + 1;
                 $tipe = TipeBlok::from((string) ($satu['tipe'] ?? ''));
 
-                $isi = null;
+                // Penempatan timeline berlaku untuk SEMUA tipe blok (termasuk
+                // kuis), jadi waktu dihitung lebih dulu lalu digabung dengan isi
+                // khusus tipe. Disimpan di dalam kolom JSON `isi`.
+                $waktu = $this->validasiWaktu($satu, $urutan);
+                $isi = $waktu;
                 $kuisId = null;
 
                 if ($tipe->berkuis()) {
                     $kuisId = $this->validasiKuis($materi, (int) ($satu['quiz_id'] ?? 0));
                 } else {
-                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? []));
+                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? [])) + $waktu;
                 }
 
                 BlokMateri::query()->updateOrCreate(
@@ -182,6 +186,32 @@ class MateriService
         }
 
         return (int) $kuis->getKey();
+    }
+
+    /**
+     * Durasi bawaan satu klip di timeline (detik) bila klien tidak mengirimnya.
+     */
+    public const DURASI_BAWAAN = 10.0;
+
+    /**
+     * Penempatan satu blok di timeline: track (lapisan), titik mulai, dan durasi.
+     * Semuanya dibatasi agar satu permintaan nakal tidak menyimpan angka ekstrem.
+     * Bila klien tidak mengirim, blok disusun berurutan seperti sebelumnya.
+     *
+     * @param  array<string, mixed>  $satu
+     * @return array{track: int, mulai_detik: float, durasi_detik: float}
+     */
+    private function validasiWaktu(array $satu, int $urutan): array
+    {
+        $track = max(0, min((int) ($satu['track'] ?? 0), 20));
+        $mulai = (float) ($satu['mulai_detik'] ?? (($urutan - 1) * self::DURASI_BAWAAN));
+        $durasi = (float) ($satu['durasi_detik'] ?? self::DURASI_BAWAAN);
+
+        return [
+            'track' => $track,
+            'mulai_detik' => round(max(0.0, min($mulai, 86400.0)), 2),
+            'durasi_detik' => round(max(0.5, min($durasi, 86400.0)), 2),
+        ];
     }
 
     /**

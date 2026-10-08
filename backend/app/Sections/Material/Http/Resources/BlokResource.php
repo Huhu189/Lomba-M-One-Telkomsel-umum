@@ -35,6 +35,10 @@ class BlokResource extends JsonResource
             'unggahan_kode' => $this->tipe === TipeBlok::Media ? ($isi['unggahan_kode'] ?? null) : null,
             'keterangan' => $this->tipe === TipeBlok::Media ? ($isi['keterangan'] ?? null) : null,
             'quiz_id' => $this->quiz_id,
+            // Penempatan klip di timeline editor (gaya video editor).
+            'track' => (int) ($isi['track'] ?? 0),
+            'mulai_detik' => (float) ($isi['mulai_detik'] ?? 0),
+            'durasi_detik' => (float) ($isi['durasi_detik'] ?? 0),
             'kuis_judul' => $this->whenLoaded('kuis', fn () => $this->kuis->judul),
             'jumlah_soal' => $this->whenLoaded('kuis', fn () => $this->kuis->soal()->count()),
         ];

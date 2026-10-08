@@ -26,6 +26,11 @@ class SinkronBlokRequest extends FormRequest
             'blok.*.wajib' => ['nullable', 'boolean'],
             'blok.*.isi' => ['nullable', 'array'],
             'blok.*.quiz_id' => ['nullable', 'integer'],
+            // Penempatan klip di timeline editor (gaya video editor). Disimpan di
+            // dalam kolom JSON `isi`, jadi tidak perlu kolom/migrasi baru.
+            'blok.*.track' => ['nullable', 'integer', 'min:0', 'max:20'],
+            'blok.*.mulai_detik' => ['nullable', 'numeric', 'min:0', 'max:86400'],
+            'blok.*.durasi_detik' => ['nullable', 'numeric', 'min:0', 'max:86400'],
         ];
     }
 

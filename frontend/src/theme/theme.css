@@ -1547,82 +1547,297 @@ a {
   cursor: pointer;
 }
 
-/* ===== Editor materi gaya video editor (pratinjau langsung) ===== */
+/* ===== Editor materi gaya non-linear video editor ===== */
 
-/* Dua panel: kiri timeline + form blok terpilih, kanan monitor pratinjau. */
-.editor-materi {
+/* Sidebar sempit + area kerja yang memprioritaskan canvas & timeline. */
+.nle {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
-@media (min-width: 992px) {
-  .editor-materi {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  }
-}
-
-/* Jalur klip horizontal yang bisa digulir saat blok bertambah. */
-.timeline-klip {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.5rem;
-  background: var(--kartu-lembut);
-  border: 1px solid var(--garis);
-  border-radius: var(--radius-kecil);
-}
-
-.klip {
-  flex: 0 0 auto;
-  min-width: 6.5rem;
-  padding: 0.5rem 0.75rem;
-  font: inherit;
-  color: var(--teks);
-  text-align: start;
-  background: var(--kartu);
-  border: 1px solid var(--garis);
-  border-radius: var(--radius-kecil);
-  cursor: grab;
-}
-
-.klip:active {
-  cursor: grabbing;
-}
-
-.klip:focus-visible {
-  outline: 2px solid var(--aksen);
-  outline-offset: 2px;
-}
-
-/* Klip terpilih = bingkai playhead: stabilo dengan garis tepi. */
-.klip-aktif {
-  background: var(--sorot-hangat);
-  border-color: var(--teks);
-}
-
-.klip-diseret {
-  opacity: 0.5;
-}
-
-/* Monitor pratinjau: layar tempat hasil susunan guru tampil. */
-.monitor-materi {
+.nle-sidebar {
+  position: sticky;
+  top: 1rem;
+  padding: 0.75rem;
   background: var(--kartu);
   border: 1px solid var(--garis);
   border-radius: var(--radius);
 }
 
-/* Toolbar aksi editor (impor media, sisip kuis, template). */
-.editor-materi-aksi {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.nle-judul {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--teks-lembut);
 }
 
-/* Pustaka media & panel template: blok lembut di dalam kolom editor. */
-.pustaka-media,
-.template-materi {
+.nle-tool {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--teks);
+  text-align: start;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  cursor: pointer;
+}
+
+.nle-tool:hover {
+  border-color: var(--aksen);
+}
+
+.nle-kerja {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Canvas pratinjau: panggung gelap tempat hasil susunan tampil. */
+.nle-canvas {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  padding: 1rem;
+  overflow: hidden;
+  background: #0f1115;
+  border-radius: var(--radius);
+}
+
+.nle-canvas-isi {
+  width: 100%;
+  color: var(--putih);
+  text-align: center;
+}
+
+.nle-canvas-catatan {
+  position: absolute;
+  inset-block-end: 0.5rem;
+  inset-inline-start: 0.75rem;
+  color: var(--teks-di-panel-lembut);
+}
+
+/* Kontrol playback: waktu kini — tombol bulat — durasi total. */
+.nle-playback {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.nle-waktu {
+  min-width: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.nle-play {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1rem;
+  color: var(--teks-di-aksen);
+  cursor: pointer;
+  background: var(--aksen);
+  border: none;
+  border-radius: 50%;
+}
+
+.nle-scrub {
+  flex: 1;
+}
+
+/* Timeline: penggaris, track bertingkat, playhead, dan tombol tambah. */
+.nle-timeline {
+  overflow: hidden;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+}
+
+.nle-ruler {
+  position: relative;
+  height: 1.7rem;
+  background: var(--kartu-lembut);
+  border-bottom: 1px solid var(--garis);
+}
+
+.nle-tanda {
+  position: absolute;
+  top: 0.2rem;
+  font-size: 0.65rem;
+  color: var(--teks-lembut);
+  transform: translateX(-50%);
+}
+
+.nle-tanda-kuat {
+  font-weight: 700;
+}
+
+.nle-lane-wrap {
+  position: relative;
+}
+
+.nle-lane {
+  position: relative;
+  height: 2.75rem;
+  background: var(--kartu);
+  border-bottom: 1px solid var(--garis);
+}
+
+.nle-lane-baru {
+  background: var(--kartu-lembut);
+}
+
+.nle-lane-audio {
+  height: 2.25rem;
+  background: var(--kartu-lembut);
+}
+
+.nle-lane-label {
+  position: absolute;
+  inset-block-start: 0.3rem;
+  inset-inline-start: 0.3rem;
+  z-index: 3;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--teks-lembut);
+  pointer-events: none;
+}
+
+.nle-lane-kosong {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0.3rem;
+  font-size: 0.65rem;
+  color: var(--teks-lembut);
+  transform: translateY(-50%);
+}
+
+/* Klip: panjang mengikuti durasi; warnanya dibedakan lewat garis tepi kiri. */
+.nle-klip {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  height: 2rem;
+  min-width: 1.5rem;
+  padding: 0 0.4rem;
+  overflow: hidden;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--teks);
+  text-align: start;
+  white-space: nowrap;
+  cursor: grab;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-inline-start-width: 3px;
+  border-radius: var(--radius-kecil);
+}
+
+.nle-klip-teks {
+  border-inline-start-color: var(--aksen);
+}
+
+.nle-klip-media {
+  border-inline-start-color: var(--status-benar);
+}
+
+.nle-klip-kuis {
+  border-inline-start-color: var(--status-peringatan);
+}
+
+.nle-klip-aktif {
+  background: var(--sorot-hangat);
+  border-color: var(--teks);
+}
+
+.nle-klip:focus-visible {
+  outline: 2px solid var(--aksen);
+  outline-offset: 1px;
+}
+
+/* Playhead vertikal + kepalanya. */
+.nle-playhead {
+  position: absolute;
+  inset-block: 0;
+  z-index: 4;
+  width: 2px;
+  background: var(--status-salah);
+  pointer-events: none;
+}
+
+.nle-playhead-kepala {
+  position: absolute;
+  inset-block-start: -0.35rem;
+  inset-inline-start: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--status-salah);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.nle-plus {
+  position: absolute;
+  inset-block-end: 0.6rem;
+  inset-inline-end: 0.6rem;
+  z-index: 5;
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--teks-di-aksen);
+  cursor: pointer;
+  background: var(--aksen);
+  border: none;
+  border-radius: 50%;
+}
+
+.nle-menu {
+  position: absolute;
+  inset-block-end: 3.2rem;
+  inset-inline-end: 0.6rem;
+  z-index: 6;
+  display: grid;
+  overflow: hidden;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  box-shadow: var(--bayangan);
+}
+
+.nle-menu button {
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.nle-menu button:hover {
+  background: var(--kartu-lembut);
+}
+
+.nle-inspector {
+  padding: 0.75rem;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+}
+
+.pustaka-media {
   padding: 0.75rem;
   background: var(--kartu-lembut);
   border: 1px solid var(--garis);
@@ -1630,17 +1845,29 @@ a {
 }
 
 /*
- * Layar sempit: area editor sengaja lebih besar daripada hasil visual. Panel
- * editor diberi tinggi minimum lega, sedangkan pratinjau dibatasi dan bisa
- * digulir supaya tidak memakan ruang mengetik guru.
+ * Layar sempit: prioritaskan tab editor. Hasil pratinjau dikecilkan dan bisa
+ * digulir, sementara timeline + inspector tetap lega.
  */
 @media (max-width: 991.98px) {
-  .editor-utama {
-    min-height: 62vh;
+  .nle {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .monitor-materi {
-    max-height: 34vh;
-    overflow: auto;
+  .nle-sidebar {
+    position: static;
+  }
+
+  .nle-canvas {
+    min-height: 0;
+    max-height: 26vh;
+    padding: 0.5rem;
+  }
+
+  .nle-canvas-isi img {
+    max-height: 22vh;
+  }
+
+  .nle-lane {
+    height: 3rem;
   }
 }

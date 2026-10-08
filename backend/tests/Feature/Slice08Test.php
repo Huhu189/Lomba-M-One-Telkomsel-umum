@@ -10,6 +10,7 @@ use App\Sections\Material\Jobs\SapuUnggahanYatim;
 use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\UnggahanMateri;
+use App\Sections\Material\Services\MateriService;
 use App\Sections\Material\Services\PenyimpananMateri;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
@@ -328,6 +329,51 @@ it('menegakkan urutan blok wajib dan menjalankan kuis sisipan sebagai latihan', 
         ->and($laporan->json('murid.0.skor_latihan_maksimal'))->toEqual(4)
         ->and($laporan->json('murid.0.tema.0.tag_nama'))->toBe('Penjumlahan')
         ->and($laporan->json('murid.0.tema.0.jumlah_benar'))->toBe(1);
+});
+
+it('menyimpan penempatan timeline (track, mulai, durasi) untuk semua tipe blok', function (): void {
+    $soal = m08Soal($this, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
+    ], ['jawaban' => 'B'], 4, $this->tag->id);
+
+    $kuis = m08Kuis($this, [$soal]);
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    // Editor gaya video editor menempatkan klip di track dengan titik mulai dan
+    // durasi sendiri; kuis punya penempatan, jadi tidak boleh hilang saat simpan.
+    $respons = $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Pembuka.'], 'track' => 0, 'mulai_detik' => 0, 'durasi_detik' => 6],
+        ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'track' => 2, 'mulai_detik' => 12.5, 'durasi_detik' => 30],
+    ]])->assertOk();
+
+    expect($respons->json('blok.0.track'))->toBe(0)
+        ->and($respons->json('blok.0.durasi_detik'))->toEqual(6.0)
+        ->and($respons->json('blok.1.track'))->toBe(2)
+        ->and($respons->json('blok.1.mulai_detik'))->toEqual(12.5)
+        ->and($respons->json('blok.1.durasi_detik'))->toEqual(30.0);
+
+    // Bertahan setelah dibaca ulang (bukan sekadar gema permintaan).
+    $ulang = $this->getJson("/api/v1/materi/{$materi->id}")->assertOk();
+
+    expect($ulang->json('blok.1.track'))->toBe(2)
+        ->and($ulang->json('blok.1.mulai_detik'))->toEqual(12.5)
+        ->and($ulang->json('blok.1.durasi_detik'))->toEqual(30.0);
+
+    // Blok tanpa penempatan disusun berurutan memakai durasi bawaan.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Satu.']],
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Dua.']],
+    ]])->assertOk();
+
+    $baris = BlokMateri::query()->where('material_id', $materi->id)->orderBy('urutan')->get();
+
+    expect($baris[0]->isi['mulai_detik'])->toEqual(0.0)
+        ->and($baris[1]->isi['mulai_detik'])->toEqual(MateriService::DURASI_BAWAAN)
+        ->and($baris[1]->isi['durasi_detik'])->toEqual(MateriService::DURASI_BAWAAN);
 });
 
 it('retry kuis sisipan mengikuti pengaturan tiga lapis', function (): void {

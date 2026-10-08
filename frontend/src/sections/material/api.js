@@ -43,6 +43,10 @@ export const skemaBlokMateri = z.object({
   unggahan_kode: z.string().nullable().optional(),
   keterangan: z.string().nullable().optional(),
   quiz_id: z.number().nullable().optional(),
+  // Penempatan klip di timeline editor (gaya video editor).
+  track: z.number().optional(),
+  mulai_detik: z.number().optional(),
+  durasi_detik: z.number().optional(),
   kuis_judul: z.string().nullable().optional(),
   jumlah_soal: z.number().nullable().optional(),
 })
@@ -224,6 +228,9 @@ export const skemaResponsPotongan = z.object({
  *   wajib: boolean,
  *   isi?: Record<string, unknown>,
  *   quiz_id?: number|null,
+ *   track?: number,
+ *   mulai_detik?: number,
+ *   durasi_detik?: number,
  * }} MuatanBlok
  */
 
