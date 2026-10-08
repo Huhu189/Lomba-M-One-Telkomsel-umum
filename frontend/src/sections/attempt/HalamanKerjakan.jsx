@@ -28,6 +28,7 @@ import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
 import { formatSisa, offsetAttemptMs, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
+import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
 import { adaProteksiAktif } from '../../security/pengaturanProteksi.js'
@@ -43,6 +44,14 @@ const AMBANG_PERINGATAN = 300
 const PERCOBAAN_SEBELUM_KUMPUL = 3
 /** Jeda antar percobaan kirim sebelum mengumpulkan (ms). */
 const JEDA_SEBELUM_KUMPUL = 700
+/**
+ * Status HTTP dari galat (undefined bila galat jaringan — layak dicoba lagi).
+ * @param {unknown} galat
+ * @returns {number|undefined}
+ */
+function statusGalat(galat) {
+  return /** @type {{ response?: { status?: number } }} */ (galat)?.response?.status
+}
 
 /**
  * Tunggu sekian milidetik — dipakai memberi kesempatan jaringan pulih sebelum
@@ -122,6 +131,8 @@ export default function HalamanKerjakan() {
   const [sedangKirim, setSedangKirim] = useState(false)
   const [sudahKumpul, setSudahKumpul] = useState(false)
   const [sudahSetujuProteksi, setSudahSetujuProteksi] = useState(false)
+  const [autoMandek, setAutoMandek] = useState(false)
+  const percobaanAuto = useRef(0)
 
   const antrean = useRef(new Map())
   const timerKirim = useRef(0)
@@ -200,7 +211,7 @@ export default function HalamanKerjakan() {
 
   const kumpulkan = useCallback(
     async (/** @type {boolean} */ otomatis) => {
-      if (attempt === undefined || sedangKirimRef.current) return
+      if (attempt === undefined || sedangKirimRef.current) return { berhasil: false, permanen: false }
 
       sedangKirimRef.current = true
       setSedangKirim(true)
@@ -227,7 +238,8 @@ export default function HalamanKerjakan() {
               'salah',
               'Sebagian jawaban belum tersimpan. Periksa koneksi internet, lalu tekan Kumpulkan lagi.',
             )
-            return
+
+            return { berhasil: false, permanen: false }
           }
         }
 
@@ -240,8 +252,16 @@ export default function HalamanKerjakan() {
         setSudahKumpul(true)
         tampilkanToast('sukses', otomatis ? 'Waktu habis — jawaban terkumpul otomatis.' : 'Jawaban terkumpul.')
         navigate(ruteHasil(attempt.id), { replace: true })
+
+        return { berhasil: true, permanen: false }
       } catch (galat) {
         tampilkanToast('salah', pesanGalatApi(galat))
+
+        const status = statusGalat(galat)
+
+        // 4xx = server menolak permanen (mis. attempt sudah dinilai) — mencoba
+        // lagi hanya menambah beban tanpa harapan, jadi loop dihentikan (Q-04).
+        return { berhasil: false, permanen: status !== undefined && status >= 400 && status < 500 }
       } finally {
         sedangKirimRef.current = false
         setSedangKirim(false)
@@ -250,17 +270,29 @@ export default function HalamanKerjakan() {
     [attempt, bersihkan, kunciIdempotensi, navigate, tandaiTerkirim],
   )
 
-  // Waktu habis → kumpulkan otomatis (server tetap penentu akhir).
+  // Waktu habis → kumpulkan otomatis (server tetap penentu akhir). Kegagalan
+  // diulang dengan backoff berlipat dan jumlah percobaan terbatas; penolakan
+  // permanen (4xx) menghentikan loop seketika, lalu murid diminta menghubungi
+  // guru — tanpa ini efek memanggil ulang tanpa henti (Q-04).
   useEffect(() => {
     if (attempt === undefined || attempt.status !== 'berjalan') return
-    if (detik > 0 || sudahKumpul || sedangKirim) return
+    if (autoMandek || detik > 0 || sudahKumpul || sedangKirim) return
 
+    const percobaan = percobaanAuto.current
     const id = window.setTimeout(() => {
-      void kumpulkan(true)
-    }, 0)
+      void (async () => {
+        percobaanAuto.current = percobaan + 1
+
+        const hasil = await kumpulkan(true)
+
+        if (harusMandek({ percobaan: percobaan + 1, permanen: hasil.permanen, berhasil: hasil.berhasil })) {
+          setAutoMandek(true)
+        }
+      })()
+    }, jedaAutoMs(percobaan))
 
     return () => window.clearTimeout(id)
-  }, [attempt, detik, sudahKumpul, sedangKirim, kumpulkan])
+  }, [attempt, autoMandek, detik, sudahKumpul, sedangKirim, kumpulkan])
 
   // Bersihkan timer saat meninggalkan halaman.
   useEffect(() => {
@@ -399,9 +431,27 @@ export default function HalamanKerjakan() {
           </Banner>
         )}
 
-        {waktuHabis && (
+        {waktuHabis && !autoMandek && (
           <Banner jenis="peringatan" judul="Waktu habis">
             <p className="mb-0">Jawabanmu sedang dikumpulkan otomatis.</p>
+          </Banner>
+        )}
+
+        {autoMandek && (
+          <Banner jenis="salah" judul="Jawaban belum terkirim">
+            <p className="mb-3">
+              Waktu habis, tetapi jawabanmu belum berhasil dikumpulkan setelah {BATAS_PERCOBAAN_AUTO} percobaan.
+              Jangan tutup halaman ini — hubungi gurumu, lalu coba kirim lagi.
+            </p>
+            <Tombol
+              memuat={sedangKirim}
+              onClick={() => {
+                percobaanAuto.current = 0
+                setAutoMandek(false)
+              }}
+            >
+              Coba kirim lagi
+            </Tombol>
           </Banner>
         )}
 
