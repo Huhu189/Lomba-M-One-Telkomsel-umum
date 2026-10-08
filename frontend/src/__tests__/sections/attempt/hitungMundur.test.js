@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { formatSisa, geserJamMs, sisaDetik, sisaDetikAttempt, tingkatWaktu } from '../../../sections/attempt/hitungMundur.js'
+import {
+  formatSisa,
+  geserJamMs,
+  offsetAttemptMs,
+  sisaDetik,
+  sisaDetikAttempt,
+  tingkatWaktu,
+} from '../../../sections/attempt/hitungMundur.js'
 
 const ISO = '2026-10-06T10:00:00+07:00'
+const DEADLINE = '2026-10-06T10:30:00+07:00'
 
 describe('geserJamMs', () => {
   it('menghitung selisih jam server terhadap jam klien', () => {
@@ -17,15 +25,23 @@ describe('geserJamMs', () => {
 })
 
 describe('sisaDetik', () => {
-  it('memakai jam server, bukan jam klien', () => {
-    const serverNow = ISO
-    // Jam klien mundur 10 menit, jadi tanpa koreksi murid merasa punya 10 menit ekstra.
-    const jamKlien = Date.parse(serverNow) - 600_000
+  // Q-01: offset dihitung SEKALI saat respons diterima, bukan tiap detak.
+  it('berkurang seiring waktu berjalan', () => {
+    const awal = Date.parse(ISO)
 
-    // Deadline 30 menit setelah server_now → tetap 1800 detik.
-    expect(
-      sisaDetik({ deadlineIso: '2026-10-06T10:30:00+07:00', serverNowIso: serverNow, sekarangMs: jamKlien }),
-    ).toBe(1800)
+    expect(sisaDetik({ deadlineIso: DEADLINE, offsetMs: 0, sekarangMs: awal })).toBe(1800)
+    expect(sisaDetik({ deadlineIso: DEADLINE, offsetMs: 0, sekarangMs: awal + 60_000 })).toBe(1740)
+    expect(sisaDetik({ deadlineIso: DEADLINE, offsetMs: 0, sekarangMs: awal + 1_799_000 })).toBe(1)
+  })
+
+  it('tidak memberi waktu ekstra saat jam klien dimundurkan', () => {
+    // Jam klien mundur 10 menit; offset dihitung sekali dari respons server.
+    const jamKlien = Date.parse(ISO) - 600_000
+    const offsetMs = geserJamMs(ISO, jamKlien)
+
+    // Tanpa koreksi murid merasa punya 10 menit ekstra; dengan offset tetap 1800.
+    expect(sisaDetik({ deadlineIso: DEADLINE, offsetMs, sekarangMs: jamKlien })).toBe(1800)
+    expect(sisaDetik({ deadlineIso: DEADLINE, offsetMs, sekarangMs: jamKlien + 30_000 })).toBe(1770)
   })
 
   it('tidak pernah negatif setelah deadline lewat', () => {
@@ -34,25 +50,36 @@ describe('sisaDetik', () => {
     expect(
       sisaDetik({
         deadlineIso: '2026-10-06T09:30:00+07:00',
-        serverNowIso: ISO,
+        offsetMs: 0,
         sekarangMs: serverNow,
       }),
     ).toBe(0)
   })
 
   it('mengembalikan 0 bila deadline tidak terbaca', () => {
-    expect(sisaDetik({ deadlineIso: '', serverNowIso: ISO, sekarangMs: Date.now() })).toBe(0)
+    expect(sisaDetik({ deadlineIso: '', offsetMs: 0, sekarangMs: Date.now() })).toBe(0)
+  })
+})
+
+describe('offsetAttemptMs', () => {
+  it('menghitung offset dari payload attempt', () => {
+    const jamKlien = Date.parse(ISO) + 120_000
+
+    expect(offsetAttemptMs({ server_now: ISO }, jamKlien)).toBe(-120_000)
   })
 })
 
 describe('sisaDetikAttempt', () => {
-  it('menghitung dari payload attempt', () => {
+  it('menghitung dari payload attempt memakai offset tetap', () => {
     const attempt = {
       deadline_at: '2026-10-06T10:10:00+07:00',
       server_now: ISO,
     }
+    const jamKlien = Date.parse(ISO)
+    const offsetMs = offsetAttemptMs(attempt, jamKlien)
 
-    expect(sisaDetikAttempt(attempt, Date.parse(ISO))).toBe(600)
+    expect(sisaDetikAttempt(attempt, jamKlien, offsetMs)).toBe(600)
+    expect(sisaDetikAttempt(attempt, jamKlien + 120_000, offsetMs)).toBe(480)
   })
 })
 

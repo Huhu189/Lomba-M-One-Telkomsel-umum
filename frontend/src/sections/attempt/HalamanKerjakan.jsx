@@ -26,7 +26,7 @@ import PanelLayarMurid from '../presence/PanelLayarMurid.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
-import { formatSisa, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
+import { formatSisa, offsetAttemptMs, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
@@ -152,7 +152,15 @@ export default function HalamanKerjakan() {
     return perubahan ?? gabungJawaban(attempt.jawaban, ambilCadangan(attempt.id))
   }, [attempt, perubahan, ambilCadangan])
 
-  const detik = attempt === undefined ? 0 : sisaDetikAttempt(attempt, sekarang)
+  // Q-01: offset jam server dihitung SEKALI per respons — `dataUpdatedAt` adalah
+  // jam klien saat data benar-benar tiba. Menghitungnya ulang dengan Date.now()
+  // yang berjalan membuat `sekarangMs` saling meniadakan dan timer membeku.
+  const offsetMs = useMemo(
+    () => (attempt === undefined ? 0 : offsetAttemptMs(attempt, mulainya.dataUpdatedAt)),
+    [attempt, mulainya.dataUpdatedAt],
+  )
+
+  const detik = attempt === undefined ? 0 : sisaDetikAttempt(attempt, sekarang, offsetMs)
 
   // Detak 1 detik + peringatan sisa 5 menit (semua efek di dalam callback).
   useEffect(() => {
@@ -162,7 +170,7 @@ export default function HalamanKerjakan() {
       const kini = Date.now()
       setSekarang(kini)
 
-      const sisa = sisaDetikAttempt(attempt, kini)
+      const sisa = sisaDetikAttempt(attempt, kini, offsetMs)
 
       if (!peringatanTersiar.current && sisa > 0 && sisa <= AMBANG_PERINGATAN) {
         peringatanTersiar.current = true
@@ -171,7 +179,7 @@ export default function HalamanKerjakan() {
     }, 1000)
 
     return () => window.clearInterval(id)
-  }, [attempt])
+  }, [attempt, offsetMs])
 
   const jalankanAntrean = useCallback(async () => {
     if (attempt === undefined) return
