@@ -578,7 +578,7 @@ class AttemptService
      * Urutannya mengikuti relasi `kuis.soal` (diurutkan pivot `urutan`), sama
      * seperti yang dibaca murid saat attempt dibuat.
      *
-     * @return array{acak_soal: bool, soal: array<int, array<string, mixed>>}
+     * @return array{acak_soal: bool, acak_opsi: bool, soal: array<int, array<string, mixed>>}
      */
     private function snapshotSoal(Kuis $kuis): array
     {
@@ -586,6 +586,10 @@ class AttemptService
 
         return [
             'acak_soal' => (bool) $kuis->acak_soal,
+            // Setelan acak opsi juga dibekukan: kalau dibaca hidup saat menyusun
+            // layar, guru yang menyalakan/mematikannya di tengah ulangan
+            // mengubah urutan opsi begitu murid memuat ulang halaman (Q-12).
+            'acak_opsi' => (bool) $kuis->acak_opsi,
             'soal' => $soal->map(static fn (Soal $satu): array => [
                 'id' => (int) $satu->getKey(),
                 'tipe' => $satu->tipeAman()?->value,
@@ -619,6 +623,23 @@ class AttemptService
     }
 
     /**
+     * Setelan acak opsi untuk attempt ini, dibaca dari snapshot bila ada.
+     *
+     * Attempt lama (dibuat sebelum snapshot menyimpan `acak_opsi`) tetap
+     * dilayani dari setelan kuis hidup supaya ulangannya tidak rusak.
+     */
+    private function acakOpsi(Attempt $attempt): bool
+    {
+        $snapshot = $attempt->snapshot_soal;
+
+        if (is_array($snapshot) && array_key_exists('acak_opsi', $snapshot)) {
+            return (bool) $snapshot['acak_opsi'];
+        }
+
+        return (bool) $attempt->kuis->acak_opsi;
+    }
+
+    /**
      * Payload soal untuk layar pengerjaan — DAFTAR PUTIH kolom, tanpa kunci.
      * Opsi diacak di server sesuai seed attempt.
      *
@@ -626,7 +647,6 @@ class AttemptService
      */
     public function payloadSoal(Attempt $attempt): array
     {
-        $kuis = $attempt->kuis;
         $payload = [];
 
         foreach ($this->soalTerurut($attempt) as $nomor => $soal) {
@@ -652,7 +672,7 @@ class AttemptService
 
                 /** @var array<int, array<string, mixed>> $baris */
                 $baris = array_values(array_filter($daftar, static fn (mixed $satu): bool => is_array($satu)));
-                $bersih[$namaDaftar] = Pengacakan::urutOpsi($baris, (int) $attempt->seed, (int) $soal->getKey(), (bool) $kuis->acak_opsi);
+                $bersih[$namaDaftar] = Pengacakan::urutOpsi($baris, (int) $attempt->seed, (int) $soal->getKey(), $this->acakOpsi($attempt));
             }
 
             $tipe = $soal->tipeAman();

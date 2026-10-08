@@ -553,6 +553,28 @@ it('membekukan soal saat attempt dimulai sehingga ubah kunci dan skor tidak meng
         ->and($perSoal['skor_maksimal'])->toEqual(5.0);
 });
 
+it('membekukan setelan acak opsi sehingga ubah kuis saat berjalan tidak mengubah layar murid', function (): void {
+    $kuis = siapkanKuis($this, ['acak_opsi' => true]);
+    $hasil = mulaiUlangan($this, $kuis);
+
+    $urutAwal = collect(collect($hasil['soal'])->firstWhere('tipe', 'pilihan_ganda')['konten']['opsi'])
+        ->pluck('id')->all();
+
+    // Guru mematikan pengacakan opsi di tengah ulangan (Q-12). Snapshot attempt
+    // harus tetap memegang setelan saat attempt dimulai, kalau tidak urutan opsi
+    // di layar murid berubah begitu halaman dimuat ulang.
+    $kuis->forceFill(['acak_opsi' => false])->save();
+
+    $attempt = Attempt::query()->findOrFail($hasil['attempt']);
+    expect($attempt->snapshot_soal['acak_opsi'])->toBeTrue();
+
+    $ulang = collect(app(AttemptService::class)->payloadSoal($attempt->fresh()))
+        ->firstWhere('tipe', 'pilihan_ganda');
+    $urutUlang = collect($ulang['konten']['opsi'])->pluck('id')->all();
+
+    expect($urutUlang)->toBe($urutAwal);
+});
+
 it('soal yang sudah dijawab murid tidak bisa dihapus agar jawabannya tidak ikut terhapus', function (): void {
     $kuis = siapkanKuis($this);
     $hasil = mulaiUlangan($this, $kuis);
