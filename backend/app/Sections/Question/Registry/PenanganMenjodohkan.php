@@ -106,6 +106,15 @@ class PenanganMenjodohkan implements PenanganTipeSoal
         foreach ($pasangan as $dari => $ke) {
             $dijawab = $jawaban[$dari] ?? $jawaban[(string) $dari] ?? null;
 
+            // Elemen berbentuk array/objek (kiriman nakal) bukan jawaban yang
+            // bisa dicocokkan. Tanpa penjagaan ini `(string) array` memunculkan
+            // warning "Array to string conversion" yang Laravel ubah jadi
+            // ErrorException, sehingga soal berstatus `gagal` (bukan salah biasa)
+            // dan guru kebanjiran antrean tinjauan (Q-19).
+            if (! is_scalar($dijawab)) {
+                return false;
+            }
+
             if ((string) $dijawab !== (string) $ke) {
                 return false;
             }

@@ -36,6 +36,7 @@ import {
   kembalikan,
 } from './antreanJawaban.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
+import { hitungTerjawab } from './ringkasanJawaban.js'
 import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
@@ -364,7 +365,7 @@ export default function HalamanKerjakan() {
   }
 
   const waktuHabis = detik === 0
-  const terjawab = attempt.soal.filter((satu) => jawaban[String(satu.id)] !== undefined).length
+  const terjawab = hitungTerjawab(attempt.soal, jawaban)
   const tingkat = tingkatWaktu(detik)
 
   return (

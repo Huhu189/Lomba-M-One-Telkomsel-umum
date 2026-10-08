@@ -75,9 +75,23 @@ final class PenanganMengurutkan implements PenanganTipeSoal
             return false;
         }
 
-        $jawaban = array_values(array_map(static fn (mixed $satu): string => (string) $satu, $jawaban));
+        // Setiap elemen jawaban wajib skalar. Elemen berbentuk array/objek
+        // (kiriman nakal) dulu dipaksa `(string)` sehingga memunculkan warning
+        // "Array to string conversion" yang Laravel ubah jadi ErrorException —
+        // soal jadi berstatus `gagal` (bukan salah biasa) dan guru kebanjiran
+        // antrean tinjauan (Q-19).
+        $jawabanUrut = [];
+
+        foreach (array_values($jawaban) as $satu) {
+            if (! is_scalar($satu)) {
+                return false;
+            }
+
+            $jawabanUrut[] = (string) $satu;
+        }
+
         $kunciUrut = array_values(array_map(static fn (mixed $satu): string => (string) $satu, $urutan));
 
-        return $jawaban === $kunciUrut;
+        return $jawabanUrut === $kunciUrut;
     }
 }

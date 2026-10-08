@@ -146,6 +146,32 @@ it('penilai registry benar untuk empat jenis soal objektif', function (): void {
         ->and(RegistryTipeSoal::nilai(TipeSoal::Mengurutkan, [], ['urutan' => ['a', 'b']], ['b', 'a']))->toBeFalse();
 });
 
+it('penilai menjodohkan dan mengurutkan menolak jawaban berisi array tanpa melempar', function (): void {
+    // Murid bisa mengirim jawaban berbentuk apa pun. Elemen berupa array dulu
+    // dipaksa `(string)` sehingga PHP memunculkan warning "Array to string
+    // conversion" yang Laravel ubah jadi ErrorException — soal jadi berstatus
+    // gagal dan guru kebanjiran antrean tinjauan (Q-19). Jawaban bersalah
+    // bentuk harus dinilai salah biasa, bukan melempar.
+    expect(RegistryTipeSoal::nilai(
+        TipeSoal::Menjodohkan,
+        [],
+        ['pasangan' => ['k1' => 'n1', 'k2' => 'n2']],
+        ['k1' => ['nakal'], 'k2' => 'n2'],
+    ))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(
+            TipeSoal::Mengurutkan,
+            [],
+            ['urutan' => ['a', 'b']],
+            [['nakal'], 'b'],
+        ))->toBeFalse()
+        ->and(RegistryTipeSoal::nilai(
+            TipeSoal::Mengurutkan,
+            [],
+            ['urutan' => ['a', 'b']],
+            ['a', ['nakal']],
+        ))->toBeFalse();
+});
+
 it('publikasi kuis ditolak bila belum lengkap', function (): void {
     Sanctum::actingAs($this->guru);
 
