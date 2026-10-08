@@ -25,7 +25,7 @@ describe('alur sesi (401/419 & 429)', () => {
     useAuthStore.setState({ user: null, detikTunggu: 0 })
   })
 
-  it('auth:sesi-habis mengosongkan user (tanpa localStorage)', () => {
+  it('auth:sesi-habis mengosongkan user dan tidak menyimpan data sesi di localStorage', () => {
     pasangListenerSesi()
     useAuthStore.setState({
       user: {
@@ -42,7 +42,19 @@ describe('alur sesi (401/419 & 429)', () => {
     siarkan('auth:sesi-habis')
 
     expect(useAuthStore.getState().user).toBeNull()
-    expect(window.localStorage.length).toBe(0)
+
+    // Sesi tetap hidup di cookie httpOnly, bukan di localStorage. Satu kunci
+    // boleh ada — cadangan jawaban yang MEMANG harus dikosongkan saat sesi
+    // berakhir (S-14) — dan isinya wajib kosong tanpa data murid.
+    let semua = ''
+
+    for (let i = 0; i < window.localStorage.length; i++) {
+      semua += window.localStorage.getItem(window.localStorage.key(i) ?? '') ?? ''
+    }
+
+    expect(window.localStorage.length).toBeLessThanOrEqual(1)
+    expect(semua).not.toContain('Rina')
+    expect(semua).not.toContain('token')
   })
 
   it('auth:throttle memulai hitung mundur dari detail.detik', () => {

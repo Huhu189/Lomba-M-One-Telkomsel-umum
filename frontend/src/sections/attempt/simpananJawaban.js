@@ -54,6 +54,7 @@ export function gabungJawaban(dariServer, cadangan) {
  *   ambil: (attemptId: number) => EntriCadangan,
  *   kunciIdempotensi: (attemptId: number, buat: () => string) => string,
  *   bersihkan: (attemptId: number) => void,
+ *   bersihkanSemua: () => void,
  * }>>}
  */
 export const useSimpananJawaban = create(
@@ -133,6 +134,19 @@ export const useSimpananJawaban = create(
 
           return { perAttempt }
         })
+      },
+
+      /**
+       * Bersihkan SEMUA cadangan — dipakai saat keluar (S-14).
+       *
+       * Cadangan ini disimpan di localStorage dan tidak terikat akun, sedangkan
+       * komputer lab dipakai bergantian: murid berikutnya bisa membuka isian
+       * jawaban murid sebelumnya hanya dengan membuka halaman ulangan yang sama.
+       * Menyetel `perAttempt` jadi kosong sekaligus menimpa isi localStorage
+       * lewat persist, jadi tidak ada sisa jawaban yang tertinggal di perangkat.
+       */
+      bersihkanSemua() {
+        set({ perAttempt: {} })
       },
     }),
     { name: 'ulangan-cadangan-jawaban-v1' },

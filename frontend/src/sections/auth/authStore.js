@@ -5,6 +5,8 @@
  */
 import { create } from 'zustand'
 import { resetStatusSiaran } from '../../shared/api/client.js'
+import { klienQuery } from '../../shared/store/klienQuery.js'
+import { useSimpananJawaban } from '../attempt/simpananJawaban.js'
 import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.js'
 
 /**
@@ -37,6 +39,26 @@ import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.j
 let timerThrottle = /** @type {ReturnType<typeof setInterval>|null} */ (null)
 
 /**
+ * Bersihkan jejak sesi dari perangkat ini — dipakai keluar sengaja maupun sesi
+ * habis sendiri (401/419).
+ *
+ * Tiga tempat menyimpan data murid, dan ketiganya harus kosong sebelum murid
+ * berikutnya memakai komputer lab yang sama:
+ *
+ * 1. `klienQuery` — cache TanStack Query (daftar ulangan, jawaban, hasil).
+ *    Kuncinya tidak memuat identitas pengguna, jadi tanpa dibuang murid
+ *    berikutnya melihat data murid sebelumnya.
+ * 2. `useSimpananJawaban` — cadangan jawaban di localStorage (tanpa akun).
+ * 3. `resetStatusSiaran` — penanda "sudah pernah diberi tahu" di klien HTTP,
+ *    supaya toast sesi berakhir/429 muncul lagi untuk sesi berikutnya.
+ */
+export function bersihkanJejakSesi() {
+  resetStatusSiaran()
+  klienQuery.clear()
+  useSimpananJawaban.getState().bersihkanSemua()
+}
+
+/**
  * Creator store auth dengan tipe eksplisit untuk checkJs.
  * @param {{
  *   (updater: (state: AuthState) => Partial<AuthState>): void,
@@ -63,6 +85,9 @@ function buatStoreAuth(set, get) {
       try {
         await keluar()
       } finally {
+        // Dibersihkan walau server menolak: murid yang menekan "Keluar" di
+        // komputer lab bersama harus meninggalkan perangkat tanpa data apa pun.
+        bersihkanJejakSesi()
         set({ user: null })
       }
     },
@@ -126,7 +151,9 @@ export function pasangListenerSesi() {
   listenerTerpasang = true
 
   window.addEventListener('auth:sesi-habis', () => {
-    resetStatusSiaran()
+    // Sesi kedaluwarsa di komputer bersama sama bocornya dengan keluar sengaja,
+    // jadi jalur ini dibersihkan dengan cara yang sama (S-14).
+    bersihkanJejakSesi()
     useAuthStore.getState().aturUser(null)
   })
 
