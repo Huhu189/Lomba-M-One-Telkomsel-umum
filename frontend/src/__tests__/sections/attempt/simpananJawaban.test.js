@@ -15,7 +15,7 @@ beforeEach(() => {
 })
 
 describe('gabungJawaban', () => {
-  it('mengutamakan antrean lokal di atas jawaban server', () => {
+  it('mengutamakan jawaban lokal yang belum terkirim di atas jawaban server', () => {
     const hasil = gabungJawaban(
       [
         { question_id: 1, jawaban: 'A' },
@@ -29,7 +29,24 @@ describe('gabungJawaban', () => {
       },
     )
 
-    expect(hasil).toEqual({ 1: 'C', 2: true, 3: 'B' })
+    // Soal 1 ada di antrean lokal yang belum terkirim → menang.
+    // Soal 2 hanya ada di server → dipakai.
+    // Soal 3 ada di `jawaban` lokal tetapi SUDAH terkirim (tidak di antrean),
+    // jadi server yang jadi acuan — bukan salinan lokal.
+    expect(hasil).toEqual({ 1: 'C', 2: true })
+  })
+
+  it('tidak menimpa jawaban server yang lebih baru dengan cadangan yang sudah terkirim (Q-05)', () => {
+    // Mode tim: anggota B baru saja menyimpan 'B' ke server, sedangkan layar A
+    // masih memegang salinan lama 'A' yang sudah pernah terkirim.
+    const hasil = gabungJawaban(
+      [{ question_id: 1, jawaban: 'B' }],
+      { jawaban: { 1: 'A' }, belumTerkirim: {}, kunciIdempotensi: '', disimpanAt: 1 },
+    )
+
+    // Tampilan harus sama dengan yang dinilai server; kalau tidak, A diam-diam
+    // menimpa jawaban B dan jawaban yang dikirim tidak sesuai yang terlihat.
+    expect(hasil).toEqual({ 1: 'B' })
   })
 
   it('aman saat cadangan kosong', () => {

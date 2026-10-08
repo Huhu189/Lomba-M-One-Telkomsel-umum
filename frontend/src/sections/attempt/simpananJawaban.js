@@ -42,7 +42,14 @@ function samaNilai(a, b) {
 }
 
 /**
- * Gabung jawaban server dengan cadangan lokal (antrean lokal menang).
+ * Gabung jawaban server dengan cadangan lokal.
+ *
+ * Cadangan hanya dipakai untuk entri yang MASIH di `belumTerkirim` — jawaban
+ * yang belum pernah diterima server. `cadangan.jawaban` adalah salinan lokal
+ * semata dan bisa lebih tua dari server (mode tim: anggota lain menyimpan
+ * jawaban baru), jadi menimpakannya membuat layar tidak sama dengan yang
+ * dinilai (Q-05).
+ *
  * @param {JawabanServer[]} dariServer
  * @param {EntriCadangan} cadangan
  * @returns {Record<string, unknown>}
@@ -55,7 +62,7 @@ export function gabungJawaban(dariServer, cadangan) {
     hasil[String(baris.question_id)] = baris.jawaban
   }
 
-  return { ...hasil, ...cadangan.belumTerkirim, ...cadangan.jawaban }
+  return { ...hasil, ...cadangan.belumTerkirim }
 }
 
 /**
