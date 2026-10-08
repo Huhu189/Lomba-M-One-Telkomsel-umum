@@ -29,6 +29,19 @@ export function entriKosong() {
 }
 
 /**
+ * Bandingkan dua nilai jawaban secara dangkal-tapi-cukup: bentuk nilai di sini
+ * selalu string/angka/boolean/daftar sederhana (isian singkat, pilihan ganda,
+ * menjodohkan), jadi perbandingan JSON sudah menentukan.
+ *
+ * @param {unknown} a
+ * @param {unknown} b
+ * @returns {boolean}
+ */
+function samaNilai(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/**
  * Gabung jawaban server dengan cadangan lokal (antrean lokal menang).
  * @param {JawabanServer[]} dariServer
  * @param {EntriCadangan} cadangan
@@ -50,7 +63,7 @@ export function gabungJawaban(dariServer, cadangan) {
  * @type {import('zustand').UseBoundStore<import('zustand').StoreApi<{
  *   perAttempt: Record<string, EntriCadangan>,
  *   catat: (attemptId: number, questionId: number, jawaban: unknown) => void,
- *   tandaiTerkirim: (attemptId: number, questionId: number) => void,
+ *   tandaiTerkirim: (attemptId: number, questionId: number, nilaiTerkirim: unknown) => void,
  *   ambil: (attemptId: number) => EntriCadangan,
  *   kunciIdempotensi: (attemptId: number, buat: () => string) => string,
  *   bersihkan: (attemptId: number) => void,
@@ -82,14 +95,24 @@ export const useSimpananJawaban = create(
       },
 
       /** Server sudah menyimpan jawaban ini — keluarkan dari antrean. */
-      tandaiTerkirim(attemptId, questionId) {
+      tandaiTerkirim(attemptId, questionId, nilaiTerkirim) {
         set((state) => {
           const entri = state.perAttempt[String(attemptId)]
 
           if (entri === undefined) return state
 
+          const kunci = String(questionId)
+
+          // Hanya buang entri yang isinya masih PERSIS nilai yang tadi dikirim.
+          // Bila murid sudah mengetik nilai baru selagi permintaan berjalan,
+          // nilai baru itu belum pernah tersimpan di server dan harus tetap
+          // menunggu di antrean — kalau tidak, muat ulang menghapusnya (Q-03).
+          if (!(kunci in entri.belumTerkirim) || !samaNilai(entri.belumTerkirim[kunci], nilaiTerkirim)) {
+            return state
+          }
+
           const belumTerkirim = { ...entri.belumTerkirim }
-          delete belumTerkirim[String(questionId)]
+          delete belumTerkirim[kunci]
 
           return {
             perAttempt: {

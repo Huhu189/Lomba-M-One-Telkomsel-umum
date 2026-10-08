@@ -46,10 +46,29 @@ describe('store cadangan jawaban', () => {
     expect(ambil(9).jawaban['21']).toBe('B')
     expect(ambil(9).belumTerkirim['21']).toBe('B')
 
-    tandaiTerkirim(9, 21)
+    tandaiTerkirim(9, 21, 'B')
 
     expect(ambil(9).belumTerkirim['21']).toBeUndefined()
     expect(ambil(9).jawaban['21']).toBe('B')
+  })
+
+  it('tidak membuang jawaban lebih baru yang diketik selagi pengiriman berjalan (Q-03)', () => {
+    const { catat, tandaiTerkirim, ambil } = useSimpananJawaban.getState()
+
+    // Murid mengetik X; permintaan X sedang berjalan menuju server.
+    catat(9, 21, 'X')
+    // Selagi menunggu balasan, murid mengganti isian menjadi Y.
+    catat(9, 21, 'Y')
+    // Server menerima jawaban lama X dan membalas OK.
+    tandaiTerkirim(9, 21, 'X')
+
+    // Y belum pernah tersimpan di server, jadi harus tetap menunggu di antrean;
+    // tanpa ini, muat ulang halaman menghapus Y dari cadangan (Q-03).
+    expect(ambil(9).belumTerkirim['21']).toBe('Y')
+
+    // Setelah giliran Y benar-benar tersimpan, barulah antrean bersih.
+    tandaiTerkirim(9, 21, 'Y')
+    expect(ambil(9).belumTerkirim['21']).toBeUndefined()
   })
 
   it('menyimpan hasil ke localStorage sehingga bisa dipulihkan', () => {

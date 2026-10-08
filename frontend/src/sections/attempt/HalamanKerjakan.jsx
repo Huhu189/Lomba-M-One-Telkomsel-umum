@@ -80,7 +80,7 @@ function tungguMilidetik(milidetik) {
  *
  * @param {number} attemptId
  * @param {{ entri: Map<string, { nilai: unknown, seq: number }>, urut: number }} antrean
- * @param {(attemptId: number, questionId: number) => void} tandaiTerkirim
+ * @param {(attemptId: number, questionId: number, nilaiTerkirim: unknown) => void} tandaiTerkirim
  * @returns {Promise<number>} jumlah yang gagal
  */
 async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
@@ -92,7 +92,9 @@ async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
 
     try {
       await kirimJawaban(attemptId, idSoal, nilai)
-      tandaiTerkirim(attemptId, idSoal)
+      // Sertakan nilai yang benar-benar tersimpan: entri hanya dibuang bila
+      // antrean masih memuat nilai itu (Q-03).
+      tandaiTerkirim(attemptId, idSoal, nilai)
     } catch (galat) {
       const respons = /** @type {{ status?: number }|undefined} */ (
         /** @type {{ response?: { status?: number } }} */ (galat).response
