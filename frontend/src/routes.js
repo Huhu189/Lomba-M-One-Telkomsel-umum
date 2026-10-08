@@ -36,6 +36,8 @@ export const RUTE = {
   layarKuis: '/kuis/:id/layar',
   // Materi berblok (slice 08) — guru menyusun, murid menempuh.
   materi: '/materi',
+  // Editor materi guru (gaya video editor) — dibuka setelah materi dibuat.
+  materiEditor: '/materi/:id/editor',
   // Avatar murid + moderasi (slice 08) — murid memasang, guru meninjau laporan.
   avatar: '/avatar',
   badge: '/badge',
@@ -121,4 +123,13 @@ export function ruteTimKuis(id) {
  */
 export function ruteLayarKuis(id) {
   return `/kuis/${id}/layar`
+}
+
+/**
+ * Tautan editor materi (guru) dari id materi.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteMateriEditor(id) {
+  return `/materi/${id}/editor`
 }

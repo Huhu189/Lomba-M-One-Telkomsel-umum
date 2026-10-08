@@ -1612,3 +1612,35 @@ a {
   border: 1px solid var(--garis);
   border-radius: var(--radius);
 }
+
+/* Toolbar aksi editor (impor media, sisip kuis, template). */
+.editor-materi-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Pustaka media & panel template: blok lembut di dalam kolom editor. */
+.pustaka-media,
+.template-materi {
+  padding: 0.75rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+/*
+ * Layar sempit: area editor sengaja lebih besar daripada hasil visual. Panel
+ * editor diberi tinggi minimum lega, sedangkan pratinjau dibatasi dan bisa
+ * digulir supaya tidak memakan ruang mengetik guru.
+ */
+@media (max-width: 991.98px) {
+  .editor-utama {
+    min-height: 62vh;
+  }
+
+  .monitor-materi {
+    max-height: 34vh;
+    overflow: auto;
+  }
+}
