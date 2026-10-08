@@ -40,6 +40,13 @@ class AttemptService
     /** Toleransi keterlambatan mengumpulkan (detik) sebelum ditolak. */
     public const TENGGAT_TERLAMBAT = 120;
 
+    /**
+     * Apakah pemanggilan `tutup()` terakhir benar-benar MENUTUP attempt, bukan
+     * cuma mengembalikan hasil yang sudah ada? Dipakai sapuan berkala supaya
+     * hitungannya hanya memuat attempt yang benar-benar berubah.
+     */
+    private bool $penutupanTerakhirNyata = false;
+
     public function __construct(
         private readonly PenilaiSoal $penilaian,
         private readonly PengaturanService $pengaturan,
@@ -377,8 +384,24 @@ class AttemptService
             ->where('deadline_at', '<', $batas)
             ->chunkById(200, function ($daftar) use (&$jumlah): void {
                 foreach ($daftar as $satu) {
-                    $this->tutupBasi($satu);
-                    $jumlah++;
+                    try {
+                        $this->tutupBasi($satu);
+
+                        // Hanya hitung attempt yang benar-benar ditutup oleh
+                        // pemanggilan ini: attempt yang sudah ditutup lebih dulu
+                        // (murid menekan "Kumpulkan", atau sapuan sebelumnya)
+                        // mengembalikan hasil lama tanpa menutup apa pun, jadi
+                        // angkanya tidak menggelembung.
+                        if ($this->penutupanTerakhirNyata) {
+                            $jumlah++;
+                        }
+                    } catch (Throwable $galat) {
+                        // Satu attempt yang gagal ditutup (deadlock, layanan AI,
+                        // DB) tidak boleh menghentikan sapuan: attempt basi
+                        // sesudahnya tetap harus ditutup, kalau tidak layar guru
+                        // menampilkan murid "sedang mengerjakan" berjam-jam.
+                        report($galat);
+                    }
                 }
             });
 
@@ -397,6 +420,8 @@ class AttemptService
 
             // Sudah pernah dikumpulkan: kembalikan hasil lama (aman dobel klik/dua tab).
             if (! $terkunci->berjalan()) {
+                $this->penutupanTerakhirNyata = false;
+
                 return $this->muatHasil($terkunci);
             }
 
@@ -421,6 +446,8 @@ class AttemptService
                     $jumlahBenar++;
                 }
             }
+
+            $this->penutupanTerakhirNyata = true;
 
             $terkunci->forceFill([
                 'status' => StatusAttempt::Selesai,

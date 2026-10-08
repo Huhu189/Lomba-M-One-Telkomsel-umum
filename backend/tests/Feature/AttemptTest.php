@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -451,6 +452,40 @@ it('jawaban yang tiba setelah attempt ditutup ditolak walau model di memori masi
         ->and($baris->status->value)->not->toBe('menunggu')
         ->and((int) Attempt::query()->findOrFail($hasil['attempt'])->skor)->toBe(0)
         ->and(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(2);
+});
+
+it('sapuan berkala tetap menutup attempt lain walau satu attempt gagal ditutup', function (): void {
+    $kuis = siapkanKuis($this);
+    $lain = Murid::factory()->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $this->kelas->id,
+    ]);
+
+    $satu = mulaiUlangan($this, $kuis);
+    $dua = mulaiUlangan($this, $kuis, $lain);
+
+    Attempt::query()->whereIn('id', [$satu['attempt'], $dua['attempt']])
+        ->update(['deadline_at' => Carbon::now()->subMinutes(10)]);
+
+    // Meniru satu attempt yang gagal ditutup (deadlock, layanan AI mati, DB).
+    // Dulu galat itu keluar dari `chunkById` sehingga sapuan berhenti di situ
+    // dan attempt basi setelahnya menumpuk — layar guru menampilkan murid
+    // "sedang mengerjakan" berjam-jam setelah waktunya habis.
+    Attempt::saving(function (Attempt $attempt) use ($dua): void {
+        if ((int) $attempt->getKey() === $dua['attempt']) {
+            throw new RuntimeException('deadlock tiruan saat menutup attempt.');
+        }
+    });
+
+    try {
+        $jumlah = app(AttemptService::class)->tutupSemuaBasi();
+    } finally {
+        Attempt::flushEventListeners();
+    }
+
+    expect($jumlah)->toBe(1)
+        ->and(Attempt::query()->findOrFail($satu['attempt'])->status->value)->toBe('selesai')
+        ->and(Attempt::query()->findOrFail($dua['attempt'])->status->value)->toBe('berjalan');
 });
 
 it('membekukan soal saat attempt dimulai sehingga ubah kunci dan skor tidak mengubah nilainya', function (): void {
