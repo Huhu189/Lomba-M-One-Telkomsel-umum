@@ -1059,3 +1059,49 @@ tadi menolak `abort(403)` begitu `$user->murid === null`.
   berikutnya — tidak ada migrasi data manual. Murid lama itu muncul di kelas `"Tanpa Kelas"` sampai guru
   memindahkannya lewat halaman Murid.
 - Perilaku 403 untuk guru pada `badge/saya` & `progres/saya` **dipertahankan** sesuai kontrak `Slice05Test`.
+
+## A.17 Editor Materi "Video Editor" dengan Pratinjau Langsung (8 Oktober 2026)
+
+### A.17.1 Permintaan
+Guru ingin menyusun materi `/materi` "seperti video editor" — hasil susunannya bisa
+**dilihat langsung** saat menyusun, tanpa harus menerbitkan atau membuka akun murid.
+
+### A.17.2 Implementasi (frontend saja, kontrak API tetap)
+- **Timeline klip** horizontal: setiap blok jadi klip (ikon ¶/▶/?, nomor, label tipe,
+  penanda opsional) yang bisa **di-drag** untuk mengurutkan (HTML5 drag native, tanpa
+  dependensi baru) dan diklik untuk memilih.
+- **Monitor pratinjau**: panel kanan menampilkan blok terpilih seperti dilihat murid —
+  teks dirender persis (pre-wrap), media memakai URL bertanda tangan dari daftar
+  unggahan selesai (img/video/audio/PDF/unduh sesuai mime), kuis sisipan sebagai kartu
+  judul + jumlah soal. Dirender dari state lokal `blok`, jadi reaksi **instan**.
+- **Navigasi playhead**: tombol ← Mundur / Lanjut →, indikator "Blok X dari Y"
+  (aria-live polite), klip aktif disorot stabilo + garis tepi.
+- **Status "Belum tersimpan"**: badge peringatan muncul bila muatan editor berbeda dari
+  data server (perbandingan `muatanBlok`), hilang setelah simpan.
+- Tombol ↑/↓/Hapus **dipertahankan** (aksesibilitas keyboard), semua aria-label tetap;
+  semua warna via `var(--…)` tanpa hex baru (guard `tema.test.js`).
+- CSS baru di `theme.css`: `.editor-materi` (grid dua-panel ≥lg), `.timeline-klip`,
+  `.klip`/`.klip-aktif`/`.klip-diseret`, `.monitor-materi`.
+
+### A.17.3 Bukti perilaku
+- `./verify.sh` → **SEMUA HIJAU**: Pest 175/1433, Pint 304, checkJs & ESLint OK
+  (2 warning pre-existing react-hooks), Vitest **36 berkas/279 test**, realtime 13.
+- **Smoke UI nyata** via Chrome headless CDP (`docs/tangkap-editor-materi.mjs`,
+  dijalankan `docs/jalankan-bukti-editor.sh`): login guru → buka /materi → pilih materi
+  → tambah blok teks → ketik teks → DOM dicek: 2 klip, klip aktif "¶ Blok 2 Teks",
+  indikator "Blok 2 dari 2", dan **monitor pratinjau menampilkan teks yang baru
+  diketik** (reaksi langsung terbukti).
+- **Bukti visual**: `docs/log-mentah/editor-materi-terang.png` (74,8% kertas krem,
+  klip aktif stabilo) dan `editor-materi-gelap.png` (75,2% navy gelap #0F1631) —
+  diverifikasi beda lewat MD5 + analisis piksel Python (dekode PNG manual).
+
+### A.17.4 Catatan jujur (temuan alat, bukan bug aplikasi)
+- `Page.captureScreenshot` Chrome headless (v143) mengembalikan **gambar beku** bila
+  diambil setelah `Page.reload` atau navigasi ke URL yang sama. Solusinya: dua putusan
+  terpisah dengan navigasi URL berbeda (`?putusan=gelap`) + tema dipilih lewat jalur
+  resmi aplikasi (`localStorage tema-ulangan`) sebelum navigasi.
+- Cookie Sanctum berdomain `.localhost` tidak tersimpan di origin `127.0.0.1`
+  (konsisten temuan A.15) — smoke harus memakai `http://localhost:5173`.
+- Pratinjau media/kuis memakai data yang sudah ada di state (unggahan selesai, daftar
+  kuis); blok kuis tidak menjalankan attempt sungguhan di pratinjau — itu memang
+  tampilan, bukan simulator attempt.

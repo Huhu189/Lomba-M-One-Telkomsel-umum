@@ -73,6 +73,17 @@ function dariServer(blok) {
 }
 
 /**
+ * Ikon singkat & label klip per tipe blok di timeline.
+ * @param {'teks'|'media'|'kuis'} tipe
+ * @returns {{ ikon: string, label: string }}
+ */
+function ciriKlip(tipe) {
+  if (tipe === 'media') return { ikon: '▶', label: 'Media' }
+  if (tipe === 'kuis') return { ikon: '?', label: 'Kuis' }
+  return { ikon: '¶', label: 'Teks' }
+}
+
+/**
  * Ubah baris editor menjadi muatan yang diterima server.
  * @param {BarisBlok[]} blok
  */
@@ -91,6 +102,78 @@ function muatanBlok(blok) {
 }
 
 /**
+ * Pratinjau satu blok seperti yang dilihat murid — tanpa aksi nyata, hanya
+ * tampilan. Sengaja dirender dari state editor, bukan dari server, agar guru
+ * melihat hasil susunannya seketika.
+ * @param {{
+ *   satu: BarisBlok,
+ *   cariUnggahan: (kode: string) => import('./api.js').DataUnggahan | undefined,
+ *   daftarKuis: BarisKuis[],
+ * }} props
+ */
+function PratinjauBlok({ satu, cariUnggahan, daftarKuis }) {
+  if (satu.tipe === 'teks') {
+    return satu.teks === '' ? (
+      <p className="teks-lembut mb-0">(Teks blok ini belum ditulis.)</p>
+    ) : (
+      <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+        {satu.teks}
+      </p>
+    )
+  }
+
+  if (satu.tipe === 'media') {
+    const berkas = satu.unggahan_kode === '' ? undefined : cariUnggahan(satu.unggahan_kode)
+
+    if (!berkas) {
+      return <p className="teks-lembut mb-0">(Belum ada berkas terunggah untuk blok ini.)</p>
+    }
+
+    return (
+      <div>
+        {berkas.tampil_langsung && berkas.mime?.startsWith('image/') && (
+          <img
+            src={berkas.url ?? undefined}
+            alt={satu.keterangan || berkas.nama_asli}
+            className="img-fluid rounded-3"
+          />
+        )}
+        {berkas.tampil_langsung && berkas.mime?.startsWith('video/') && (
+          <video src={berkas.url ?? undefined} controls className="w-100 rounded-3" />
+        )}
+        {berkas.tampil_langsung && berkas.mime?.startsWith('audio/') && (
+          <audio src={berkas.url ?? undefined} controls className="w-100" />
+        )}
+        {berkas.tampil_langsung && berkas.mime === 'application/pdf' && (
+          <a href={berkas.url ?? undefined} target="_blank" rel="noreferrer">
+            Buka dokumen PDF
+          </a>
+        )}
+        {!berkas.tampil_langsung && (
+          <a href={berkas.url ?? undefined} className="btn btn-tepi" download>
+            Unduh berkas ({berkas.kategori_label})
+          </a>
+        )}
+        {satu.keterangan !== '' && (
+          <p className="small teks-lembut mt-2 mb-0">{satu.keterangan}</p>
+        )}
+      </div>
+    )
+  }
+
+  const kuis = daftarKuis.find((satuKuis) => String(satuKuis.id) === String(satu.quiz_id))
+
+  return (
+    <div className="border rounded-3 p-3">
+      <p className="small teks-lembut mb-1">Kuis sisipan · latihan tidak masuk ranking</p>
+      <p className="fw-semibold mb-0">
+        {kuis ? `${kuis.judul} (${kuis.jumlah_soal ?? 0} soal)` : 'Kuis belum dipilih.'}
+      </p>
+    </div>
+  )
+}
+
+/**
  * Editor blok satu materi.
  * @param {{ materi: import('./api.js').DataMateri, daftarKuis: BarisKuis[] }} props
  */
@@ -99,6 +182,8 @@ function PanelMateri({ materi, daftarKuis }) {
   const [blok, setBlok] = useState(() => dariServer(materi.blok))
   const [progresUnggah, setProgresUnggah] = useState(0)
   const [galat, setGalat] = useState('')
+  const [terpilih, setTerpilih] = useState(0)
+  const [indeksSeret, setIndeksSeret] = useState(/** @type {number|null} */ (null))
 
   const laporan = useQuery({
     queryKey: ['materi-laporan', materi.id],
@@ -171,10 +256,41 @@ function PanelMateri({ materi, daftarKuis }) {
 
   const berkasSiap = (materi.unggahan ?? []).filter((satu) => satu.status === 'selesai')
 
+  /** Blok yang sedang dipilih di timeline (dijepit agar selalu sah). */
+  const aktif = Math.min(terpilih, Math.max(blok.length - 1, 0))
+  const blokAktif = blok[aktif]
+
+  /** Cari berkas selesai lewat kodenya, untuk pratinjau media. */
+  const cariUnggahan = (/** @type {string} */ kode) =>
+    berkasSiap.find((satu) => satu.kode === kode)
+
+  /**
+ * Pindahkan klip dari satu posisi ke posisi lain (hasil drag).
+ * @param {number} dari
+ * @param {number} ke
+ */
+  function pindah(dari, ke) {
+    if (dari === ke || dari < 0 || ke < 0 || dari >= blok.length || ke >= blok.length) return
+
+    setBlok((sebelum) => {
+      const salinan = [...sebelum]
+      const [diangkat] = salinan.splice(dari, 1)
+      salinan.splice(ke, 0, diangkat)
+      return salinan
+    })
+    setTerpilih(ke)
+  }
+
+  // Pratinjau dihitung dari state lokal, jadi penanda "belum tersimpan" perlu
+  // membandingkan muatan editor dengan muatan yang terakhir datang dari server.
+  const belumTersimpan =
+    JSON.stringify(muatanBlok(blok)) !== JSON.stringify(muatanBlok(dariServer(materi.blok)))
+
   return (
     <section className="kartu-soal p-3">
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h2 className="h6 fw-bold mb-0">{materi.judul}</h2>
+        {belumTersimpan && <span className="badge-status peringatan">Belum tersimpan</span>}
         <span className="badge-status lembut ms-auto">{materi.status_label ?? materi.status}</span>
       </div>
 
@@ -185,109 +301,193 @@ function PanelMateri({ materi, daftarKuis }) {
           <Tombol
             key={satu.nilai}
             varian="tepi"
-            onClick={() => setBlok((sebelum) => [...sebelum, blokBaru(satu.nilai)])}
+            onClick={() => {
+              setBlok((sebelum) => [...sebelum, blokBaru(satu.nilai)])
+              setTerpilih(blok.length)
+            }}
           >
             + {satu.label}
           </Tombol>
         ))}
       </div>
 
-      {blok.map((satu, indeks) => (
-        <div className="border rounded-3 p-3 mb-3" key={`blok-${indeks}-${satu.tipe}`}>
-          <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-            <strong className="small">Blok {indeks + 1}</strong>
-            <span className="badge-status lembut">{satu.tipe}</span>
-            <label className="small d-flex align-items-center gap-1 ms-auto">
-              <input
-                type="checkbox"
-                checked={satu.wajib}
-                onChange={(e) => ubahBaris(indeks, { wajib: e.target.checked })}
-              />
-              wajib
-            </label>
-            <button
-              type="button"
-              className="btn btn-teks btn-sm"
-              onClick={() => geser(indeks, -1)}
-              aria-label={`Naikkan blok ${indeks + 1}`}
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              className="btn btn-teks btn-sm"
-              onClick={() => geser(indeks, 1)}
-              aria-label={`Turunkan blok ${indeks + 1}`}
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              className="btn btn-teks btn-sm"
-              onClick={() => setBlok((sebelum) => sebelum.filter((_, urutan) => urutan !== indeks))}
-              aria-label={`Hapus blok ${indeks + 1}`}
-            >
-              Hapus
-            </button>
+      <div className="editor-materi mb-3">
+        <div>
+          <div className="timeline-klip mb-2" aria-label="Timeline blok materi">
+            {blok.map((satu, indeks) => {
+              const ciri = ciriKlip(satu.tipe)
+              const klipAktif = indeks === aktif
+
+              return (
+                <button
+                  type="button"
+                  key={`klip-${indeks}-${satu.tipe}`}
+                  className={`klip${klipAktif ? ' klip-aktif' : ''}${indeksSeret === indeks ? ' klip-diseret' : ''}`}
+                  aria-pressed={klipAktif}
+                  aria-label={`Blok ${indeks + 1}: ${ciri.label}${satu.wajib ? '' : ', opsional'}`}
+                  draggable
+                  onDragStart={() => setIndeksSeret(indeks)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (indeksSeret !== null) pindah(indeksSeret, indeks)
+                    setIndeksSeret(null)
+                  }}
+                  onDragEnd={() => setIndeksSeret(null)}
+                  onClick={() => setTerpilih(indeks)}
+                >
+                  <span className="small fw-bold" aria-hidden="true">
+                    {ciri.ikon} Blok {indeks + 1}
+                  </span>
+                  <span className="d-block small teks-lembut">
+                    {ciri.label}
+                    {satu.wajib ? '' : ' · opsional'}
+                  </span>
+                </button>
+              )
+            })}
+            {blok.length === 0 && (
+              <span className="small teks-lembut align-self-center px-2">Timeline masih kosong.</span>
+            )}
           </div>
 
-          {satu.tipe === 'teks' && (
-            <textarea
-              className="form-control"
-              rows={3}
-              value={satu.teks}
-              onChange={(e) => ubahBaris(indeks, { teks: e.target.value })}
-              placeholder="Tulis penjelasan singkat untuk murid…"
-            />
-          )}
-
-          {satu.tipe === 'media' && (
-            <>
-              <input
-                className="form-control mb-2"
-                type="file"
-                aria-label={`Unggah berkas blok ${indeks + 1}`}
-                onChange={(e) => {
-                  const berkas = e.target.files?.[0]
-                  if (berkas) unggah.mutate({ indeks, berkas })
-                }}
-              />
-              {unggah.isPending && (
-                <p className="small teks-lembut">Mengunggah… {progresUnggah}%</p>
-              )}
-              {satu.unggahan_kode !== '' && (
-                <p className="small mb-2">Berkas tersimpan: {satu.unggahan_kode}</p>
-              )}
-              <input
-                className="form-control"
-                value={satu.keterangan}
-                onChange={(e) => ubahBaris(indeks, { keterangan: e.target.value })}
-                placeholder="Keterangan berkas (opsional)"
-              />
-            </>
-          )}
-
-          {satu.tipe === 'kuis' && (
-            <select
-              className="form-select"
-              aria-label={`Pilih kuis untuk blok ${indeks + 1}`}
-              value={satu.quiz_id}
-              onChange={(e) => ubahBaris(indeks, { quiz_id: e.target.value })}
+          <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <button
+              type="button"
+              className="btn btn-teks btn-sm"
+              disabled={aktif === 0}
+              onClick={() => setTerpilih(aktif - 1)}
+              aria-label="Blok sebelumnya"
             >
-              <option value="">Pilih kuis dari bank soal…</option>
-              {daftarKuis.map((satuKuis) => (
-                <option key={satuKuis.id} value={satuKuis.id}>
-                  {satuKuis.judul} ({satuKuis.jumlah_soal ?? 0} soal)
-                </option>
-              ))}
-            </select>
+              ← Mundur
+            </button>
+            <span className="small teks-lembut" aria-live="polite">
+              Blok {blok.length === 0 ? 0 : aktif + 1} dari {blok.length}
+            </span>
+            <button
+              type="button"
+              className="btn btn-teks btn-sm"
+              disabled={aktif >= blok.length - 1}
+              onClick={() => setTerpilih(aktif + 1)}
+              aria-label="Blok berikutnya"
+            >
+              Lanjut →
+            </button>
+            <span className="small teks-lembut ms-auto">Tarik klip untuk mengurutkan.</span>
+          </div>
+
+          {blokAktif && (
+            <div className="border rounded-3 p-3">
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <strong className="small">Blok {aktif + 1}</strong>
+                <span className="badge-status lembut">{blokAktif.tipe}</span>
+                <label className="small d-flex align-items-center gap-1 ms-auto">
+                  <input
+                    type="checkbox"
+                    checked={blokAktif.wajib}
+                    onChange={(e) => ubahBaris(aktif, { wajib: e.target.checked })}
+                  />
+                  wajib
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-teks btn-sm"
+                  onClick={() => geser(aktif, -1)}
+                  aria-label={`Naikkan blok ${aktif + 1}`}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-teks btn-sm"
+                  onClick={() => geser(aktif, 1)}
+                  aria-label={`Turunkan blok ${aktif + 1}`}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-teks btn-sm"
+                  onClick={() =>
+                    setBlok((sebelum) => sebelum.filter((_, urutan) => urutan !== aktif))
+                  }
+                  aria-label={`Hapus blok ${aktif + 1}`}
+                >
+                  Hapus
+                </button>
+              </div>
+
+              {blokAktif.tipe === 'teks' && (
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={blokAktif.teks}
+                  onChange={(e) => ubahBaris(aktif, { teks: e.target.value })}
+                  placeholder="Tulis penjelasan singkat untuk murid…"
+                />
+              )}
+
+              {blokAktif.tipe === 'media' && (
+                <>
+                  <input
+                    className="form-control mb-2"
+                    type="file"
+                    aria-label={`Unggah berkas blok ${aktif + 1}`}
+                    onChange={(e) => {
+                      const berkas = e.target.files?.[0]
+                      if (berkas) unggah.mutate({ indeks: aktif, berkas })
+                    }}
+                  />
+                  {unggah.isPending && (
+                    <p className="small teks-lembut">Mengunggah… {progresUnggah}%</p>
+                  )}
+                  {blokAktif.unggahan_kode !== '' && (
+                    <p className="small mb-2">Berkas tersimpan: {blokAktif.unggahan_kode}</p>
+                  )}
+                  <input
+                    className="form-control"
+                    value={blokAktif.keterangan}
+                    onChange={(e) => ubahBaris(aktif, { keterangan: e.target.value })}
+                    placeholder="Keterangan berkas (opsional)"
+                  />
+                </>
+              )}
+
+              {blokAktif.tipe === 'kuis' && (
+                <select
+                  className="form-select"
+                  aria-label={`Pilih kuis untuk blok ${aktif + 1}`}
+                  value={blokAktif.quiz_id}
+                  onChange={(e) => ubahBaris(aktif, { quiz_id: e.target.value })}
+                >
+                  <option value="">Pilih kuis dari bank soal…</option>
+                  {daftarKuis.map((satuKuis) => (
+                    <option key={satuKuis.id} value={satuKuis.id}>
+                      {satuKuis.judul} ({satuKuis.jumlah_soal ?? 0} soal)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {blok.length === 0 && (
+            <p className="teks-lembut mb-0">Belum ada blok. Tambahkan blok teks untuk mulai.</p>
           )}
         </div>
-      ))}
 
-      {blok.length === 0 && (
-        <p className="teks-lembut">Belum ada blok. Tambahkan blok teks untuk mulai.</p>
-      )}
+        <aside className="monitor-materi p-3" aria-label="Pratinjau tampilan murid">
+          <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <h3 className="h6 fw-bold mb-0">Pratinjau murid</h3>
+            <span className="badge-status lembut">langsung</span>
+          </div>
+          {blokAktif ? (
+            <PratinjauBlok satu={blokAktif} cariUnggahan={cariUnggahan} daftarKuis={daftarKuis} />
+          ) : (
+            <p className="teks-lembut mb-0">Pratinjau blok muncul di sini.</p>
+          )}
+        </aside>
+      </div>
 
       <div className="d-flex flex-wrap gap-2">
         <Tombol memuat={simpanBlok.isPending} onClick={() => simpanBlok.mutate()}>

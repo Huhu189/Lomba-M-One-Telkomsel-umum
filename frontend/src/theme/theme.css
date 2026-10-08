@@ -1546,3 +1546,69 @@ a {
   height: 1.6em;
   cursor: pointer;
 }
+
+/* ===== Editor materi gaya video editor (pratinjau langsung) ===== */
+
+/* Dua panel: kiri timeline + form blok terpilih, kanan monitor pratinjau. */
+.editor-materi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 992px) {
+  .editor-materi {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+
+/* Jalur klip horizontal yang bisa digulir saat blok bertambah. */
+.timeline-klip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.klip {
+  flex: 0 0 auto;
+  min-width: 6.5rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--teks);
+  text-align: start;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  cursor: grab;
+}
+
+.klip:active {
+  cursor: grabbing;
+}
+
+.klip:focus-visible {
+  outline: 2px solid var(--aksen);
+  outline-offset: 2px;
+}
+
+/* Klip terpilih = bingkai playhead: stabilo dengan garis tepi. */
+.klip-aktif {
+  background: var(--sorot-hangat);
+  border-color: var(--teks);
+}
+
+.klip-diseret {
+  opacity: 0.5;
+}
+
+/* Monitor pratinjau: layar tempat hasil susunan guru tampil. */
+.monitor-materi {
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+}

@@ -101,3 +101,18 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   `theme.css` (dijaga `tema.test.js`), dibuktikan visual lewat tangkapan Chrome headless
   (`docs/log-mentah/palet-terang.png`, `palet-gelap.png`) dan `./verify.sh` HIJAU — Pest **175 passed
   (1433 assertions)**, Vitest 36 berkas/279 test.
+
+- **Editor materi "video editor" + pratinjau langsung (8 Oktober 2026)**: permintaan
+  pengguna — menyusun materi di `/materi` harus terasa seperti video editor dan hasilnya
+  terlihat seketika. `PanelMateri` dirombak jadi dua panel: **timeline klip** (satu klip
+  per blok, drag-to-reorder HTML5 native, klik untuk memilih, tombol ↑/↓ dipertahankan
+  untuk keyboard) dan **monitor pratinjau** yang merender blok terpilih persis seperti
+  dilihat murid (teks pre-wrap, media via URL bertanda tangan, kuis sisipan sebagai
+  kartu) langsung dari state editor — reaksi instan tanpa menyentuh server. Ditambah
+  navigasi ←/→ dengan indikator "Blok X dari Y" (aria-live) dan badge **"Belum
+  tersimpan"** otomatis. Kontrak API tidak berubah. Diverifikasi `./verify.sh` HIJAU
+  (Pest 175/1433, Vitest 36/279) plus smoke UI Chrome headless yang membuktikan teks
+  yang baru diketik langsung muncul di monitor; bukti visual terang/gelap di
+  `docs/log-mentah/editor-materi-*.png` (diverifikasi MD5 + piksel). Temuan alat dicatat
+  jujur di `laporan-pengujian.md` A.17: capture CDP beku pasca-reload, cookie
+  `.localhost` tak tersimpan di origin 127.0.0.1.
