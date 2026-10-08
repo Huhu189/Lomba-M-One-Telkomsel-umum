@@ -38,6 +38,7 @@ import {
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
 import { hitungTerjawab } from './ringkasanJawaban.js'
 import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
+import { pesanMulaiGagal, retryMulai } from './pesanMulai.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
 import { adaProteksiAktif } from '../../security/pengaturanProteksi.js'
@@ -128,7 +129,8 @@ export default function HalamanKerjakan() {
     queryKey: ['attempt-mulai', idKuis],
     queryFn: () => mulaiKuis(idKuis),
     enabled: Number.isInteger(idKuis) && idKuis > 0,
-    retry: 1,
+    // Jaringan/5xx dicoba sekali lagi; penolakan permanen (422/403) tidak (U-03).
+    retry: retryMulai,
   })
 
   const attempt = mulainya.data
@@ -156,6 +158,10 @@ export default function HalamanKerjakan() {
   const sedangKirimRef = useRef(false)
   const peringatanTersiar = useRef(false)
   const jalankanRef = useRef(/** @type {() => Promise<void>} */ (async () => {}))
+  // U-02: kunci fokus-lock bukan sekadar visual — fokus dipindah ke dialog dan
+  // dikembalikan saat kunci selesai.
+  const overlayKunci = useRef(/** @type {HTMLDivElement|null} */ (null))
+  const fokusSebelumKunci = useRef(/** @type {HTMLElement|null} */ (null))
 
   const berjalan = attempt !== undefined && attempt.status === 'berjalan'
 
@@ -171,6 +177,10 @@ export default function HalamanKerjakan() {
   })
 
   const adaProteksi = attempt !== undefined && adaProteksiAktif(attempt.proteksi)
+
+  // U-02: layar sedang dikunci fokus-lock (dihitung sekali di sini supaya efek
+  // pengelolaan fokus tidak dijalankan ulang tiap detik).
+  const terkunci = kunciDetik > 0
 
   // Jawaban = jawaban server + sisa antrean lokal, ditimpa perubahan murid.
   const jawaban = useMemo(() => {
@@ -318,6 +328,21 @@ export default function HalamanKerjakan() {
     }
   }, [])
 
+  // U-02: saat layar terkunci, fokus dipindah ke dialog kunci dan dikembalikan
+  // setelah kunci selesai. Kontainer soal di-`inert`, jadi Tab, keyboard, dan
+  // pembaca layar tidak bisa menembus ke soal di belakang overlay.
+  useEffect(() => {
+    if (!terkunci) return
+
+    const aktif = document.activeElement
+    fokusSebelumKunci.current = aktif instanceof HTMLElement ? aktif : null
+    overlayKunci.current?.focus()
+
+    return () => {
+      fokusSebelumKunci.current?.focus()
+    }
+  }, [terkunci])
+
   /**
    * Simpan jawaban lokal + jadwalkan autosave.
    * @param {number} soalId
@@ -339,19 +364,46 @@ export default function HalamanKerjakan() {
   }
 
   if (mulainya.isLoading) {
-    return <p className="text-body-secondary">Menyiapkan ulangan…</p>
+    return (
+      <p className="text-body-secondary d-flex align-items-center gap-2" aria-busy="true">
+        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+        Menyiapkan ulangan…
+      </p>
+    )
   }
 
-  if (mulainya.isError || attempt === undefined) {
+  if (mulainya.isError) {
+    // U-03: tampilkan alasan dari server (mis. "Kuis belum dimulai", "Bukan
+    // untuk kelasmu", "Batas percobaan habis") dan bedakan galat sementara.
+    const galatMulai = pesanMulaiGagal(mulainya.error)
+
     return (
-      <Banner jenis="salah" judul="Ulangan belum bisa dibuka">
-        <p className="mb-3">
-          Mungkin gurumu belum menerbitkan kuis ini, jadwalnya belum mulai, atau sudah berakhir.
-        </p>
-        <TombolTaut to={RUTE.kuis} varian="tepi">
-          Kembali ke daftar ulangan
-        </TombolTaut>
+      <Banner jenis="salah" judul={galatMulai.judul}>
+        <p className="mb-3">{galatMulai.pesan}</p>
+        <div className="d-flex flex-wrap gap-2">
+          {galatMulai.cobaLagi && (
+            <Tombol
+              memuat={mulainya.isFetching}
+              teksMemuat="Mencoba…"
+              onClick={() => void mulainya.refetch()}
+            >
+              Coba lagi
+            </Tombol>
+          )}
+          <TombolTaut to={RUTE.kuis} varian="tepi">
+            Kembali ke daftar ulangan
+          </TombolTaut>
+        </div>
       </Banner>
+    )
+  }
+
+  if (attempt === undefined) {
+    return (
+      <p className="text-body-secondary d-flex align-items-center gap-2" aria-busy="true">
+        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+        Menyiapkan ulangan…
+      </p>
     )
   }
 
@@ -367,7 +419,6 @@ export default function HalamanKerjakan() {
   const waktuHabis = detik === 0
   const terjawab = hitungTerjawab(attempt.soal, jawaban)
   const tingkat = tingkatWaktu(detik)
-
   return (
     <div className="row justify-content-center">
       {adaProteksi && !sudahSetujuProteksi && (
@@ -382,14 +433,20 @@ export default function HalamanKerjakan() {
         />
       )}
 
-      {kunciDetik > 0 && (
+      {terkunci && (
         <div
+          ref={overlayKunci}
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
           style={{ background: 'rgba(11, 21, 48, 0.92)', zIndex: 1090 }}
-          role="alert"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="judul-kunci-layar"
+          tabIndex={-1}
         >
           <div className="text-center" style={{ maxWidth: '26rem' }}>
-            <p className="h5 fw-bold text-white mb-2">Layar terkunci sementara</p>
+            <p className="h5 fw-bold text-white mb-2" id="judul-kunci-layar">
+              Layar terkunci sementara
+            </p>
             <p className="small mb-3 text-white-50">
               Kamu keluar dari jendela ulangan. Ulangan tetap berjalan, dan gurumu akan melihat catatannya.
             </p>
@@ -400,11 +457,11 @@ export default function HalamanKerjakan() {
         </div>
       )}
 
-      <div className="col-lg-9">
+      <div className="col-lg-9" inert={terkunci}>
         <div className="kartu-soal p-3 p-md-4 mb-3">
           <div className="d-flex flex-wrap align-items-center gap-3">
-            <div className="me-auto">
-              <h1 className="h5 fw-bold mb-0">{attempt.judul_kuis ?? 'Ulangan'}</h1>
+            <div className="me-auto teks-patah">
+              <h1 className="h5 fw-bold mb-0 teks-patah">{attempt.judul_kuis ?? 'Ulangan'}</h1>
               <p className="teks-lembut small mb-0">
                 {attempt.mapel_nama ?? '—'} · {attempt.kelas_nama ?? '—'} · {attempt.jumlah_soal} soal
               </p>
@@ -434,7 +491,7 @@ export default function HalamanKerjakan() {
 
         {(attempt.tim ?? null) !== null && (
           <Banner jenis="info" judul={`Mengerjakan sebagai ${attempt.tim?.nama ?? 'tim'}`}>
-            <p className="mb-0">
+            <p className="mb-0 teks-patah">
               Jawaban di layar ini dipakai bersama tim: apa pun yang kamu simpan langsung menjadi jawaban tim, dan
               nilainya nanti juga dibagi ke semua anggota.
               {(attempt.tim?.rekan?.length ?? 0) > 0 && (

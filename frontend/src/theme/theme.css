@@ -1350,6 +1350,14 @@ a {
   border: 1px solid var(--teks-di-aksen);
 }
 
+/* Utilitas: patahkan teks panjang tanpa spasi supaya tidak meluber dari
+   kartu/flex (U-04). `min-width: 0` wajib agar elemen flex mau menyusut. */
+.teks-patah {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
 .media-soal {
   display: block;
   max-width: 100%;
