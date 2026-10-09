@@ -6,6 +6,7 @@ Folder ini menyimpan bukti konfirmasi tertulis dari panitia lomba
 - konfirmasi keterlambatan pengumpulan
 - konfirmasi konflik antara prompt dan spesifikasi resmi lomba;
 - konfirmasi aturan yang tidak jelas.
+- dll
 
 Belum ada konfirmasi yang perlu disimpan per 5 Oktober 2026.
 
