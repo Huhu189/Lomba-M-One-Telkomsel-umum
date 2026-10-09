@@ -60,8 +60,8 @@ export default function HalamanKuisDetail() {
               </div>
 
               <p className="teks-lembut small mb-1">
-                {data.mapel_nama ?? '—'} · {data.kelas_nama ?? '—'} · {data.soal?.length ?? 0} soal ·{' '}
-                {formatDurasi(data.durasi_menit)}
+                {data.mapel_nama ?? '—'} · {data.kelas_nama ?? '—'} ·{' '}
+                {data.soal?.length ?? data.jumlah_soal ?? 0} soal · {formatDurasi(data.durasi_menit)}
               </p>
               <p className="teks-lembut small mb-3">
                 Jadwal {formatJadwal(data.mulai_at)} s.d. {formatJadwal(data.selesai_at)}
@@ -117,8 +117,16 @@ export default function HalamanKuisDetail() {
                 )}
               </div>
 
+              {/* Murid tidak menerima daftar soal sebelum mengerjakan (K-02):
+                  isi ulangan hanya keluar lewat attempt yang sudah dimulai. */}
+              {!sebagaiGuru && (
+                <p className="teks-lembut small mt-3 mb-0">
+                  Soal muncul saat kamu menekan “Kerjakan sekarang”, dalam urutan yang diacak server.
+                </p>
+              )}
+
               <div className="d-flex flex-column gap-3 mt-3">
-                {(data.soal ?? []).map((soal, index) => (
+                {(sebagaiGuru ? (data.soal ?? []) : []).map((soal, index) => (
                   <section key={soal.id} className="kartu-soal p-3" aria-label={`Soal nomor ${index + 1}`}>
                     <div className="d-flex align-items-baseline gap-2 mb-2">
                       <h2 className="h6 fw-bold mb-0">Soal {index + 1}</h2>

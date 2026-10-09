@@ -1,6 +1,6 @@
 /**
  * Halaman kuis untuk murid (slice 03) — hanya kuis terbit kelasnya yang
- * dikirim server, tanpa kunci jawaban. Pengerjaan penuh menyusul di slice 04.
+ * dikirim server, tanpa kunci jawaban dan tanpa daftar soal (K-02).
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -17,7 +17,8 @@ export default function HalamanKuisMurid() {
         <div className="kartu-soft p-4 p-md-5">
           <h1 className="h5 fw-bold mb-1">Ulangan Saya</h1>
           <p className="text-body-secondary">
-            Kuis muncul di sini setelah gurumu menerbitkannya. Klik untuk melihat soal yang akan diujikan.
+            Kuis muncul di sini setelah gurumu menerbitkannya. Soalnya baru terbuka saat kamu menekan
+            “Kerjakan sekarang”.
           </p>
 
           {daftarKuis.isLoading && <p className="text-body-secondary">Memuat ulangan…</p>}
@@ -58,7 +59,7 @@ export default function HalamanKuisMurid() {
                       </Link>
                     )}
                     <Link className="btn btn-sm btn-tepi" to={`${RUTE.kuis}/${kuis.id}`}>
-                      Lihat soal
+                      Lihat detail
                     </Link>
                     <Link className="btn btn-sm btn-teks" to={rutePeringkat(kuis.id)}>
                       Peringkat

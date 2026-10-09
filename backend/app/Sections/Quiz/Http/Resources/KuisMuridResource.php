@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Sections\Quiz\Http\Resources;
 
-use App\Sections\Question\Http\Resources\SoalMuridResource;
 use App\Sections\Quiz\Models\Kuis;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Kuis untuk murid — hanya kuis terbit kelasnya dan TANPA kunci jawaban.
+ * Kuis untuk murid — hanya kuis terbit kelasnya, TANPA kunci jawaban dan
+ * TANPA daftar soal (K-02).
+ *
+ * Sebelumnya resource ini ikut mengirim seluruh soal beserta `konten` mentahnya,
+ * sehingga murid kelas bisa membaca isi ulangan jauh sebelum `mulai_at` — cukup
+ * dengan `GET /kuis/{id}`. Pengacakan di server pun jadi tidak ada artinya.
+ * Soal sekarang hanya keluar lewat attempt yang sudah dimulai (`payloadSoal`),
+ * yang memakai snapshot + urutan hasil pengacakan.
  *
  * @mixin Kuis
  */
@@ -33,7 +39,6 @@ class KuisMuridResource extends JsonResource
             'durasi_menit' => $this->durasi_menit,
             'jumlah_soal' => $this->whenCounted('soal'),
             'sedang_berjalan' => $this->sedangBerjalan(),
-            'soal' => SoalMuridResource::collection($this->whenLoaded('soal')),
         ];
     }
 }

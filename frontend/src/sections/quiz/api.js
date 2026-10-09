@@ -61,8 +61,8 @@ export const skemaKuis = z.object({
  */
 
 /**
- * Daftar kuis — guru menerima semua kuis sekolah, murid hanya kuis terbit
- * kelasnya (ditentukan server).
+ * Daftar kuis — guru menerima kuis buatannya sendiri (admin seluruh sekolah,
+ * K-04), murid hanya kuis terbit kelasnya. Semuanya ditentukan server.
  * @returns {Promise<DataKuis[]>}
  */
 export async function ambilKuis() {
