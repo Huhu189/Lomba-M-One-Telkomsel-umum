@@ -13,8 +13,10 @@ use Spatie\Permission\Models\Role;
 class RolesAndAdminSeeder extends Seeder
 {
     /**
-     * Role dasar + satu akun admin awal.
+     * Role dasar + satu akun admin dan dua akun guru awal.
      * Guru/admin TIDAK bisa self-register (chunk security); akun dibuat lewat seeder/impor.
+     * Guru kedua diperlukan supaya uji kepemilikan (guru lain menolak mengubah milik
+     * orang lain) bisa dijalankan di basis data yang baru di-seed.
      */
     public function run(): void
     {
@@ -43,7 +45,19 @@ class RolesAndAdminSeeder extends Seeder
                 'role' => 'guru',
             ],
         );
+        $guruDua = User::query()->firstOrCreate(
+            ['email' => 'guru2@sekolah.test'],
+            [
+                'name' => 'Guru Kedua',
+                'password' => 'password12',
+                'status' => UserStatus::Aktif->value,
+                'email_verified_at' => now(),
+                'role' => 'guru',
+            ],
+        );
+
         $admin->assignRole('admin');
         $guru->assignRole('guru');
+        $guruDua->assignRole('guru');
     }
 }

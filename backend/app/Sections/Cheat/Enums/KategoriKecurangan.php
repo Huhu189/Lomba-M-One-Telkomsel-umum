@@ -11,9 +11,11 @@ namespace App\Sections\Cheat\Enums;
  * enum ini, skor risiko di sini, dan label UI (dipakai Live Monitor).
  *
  * `dariKlien()` membedakan kejadian yang boleh dikirim perangkat murid dari
- * kejadian yang **hanya** boleh diturunkan server. Ini menutup celah murid
- * menuduh dirinya sendiri dengan kategori berat (mis. `tamper_suspected`)
- * untuk mengaburkan catatan.
+ * kejadian yang **hanya** boleh diturunkan server (mis. `duplicate_session`,
+ * `late_submit`). Ini menutup celah murid menulis catatan turunan server —
+ * mis. mengaku "sesi ganda" — untuk mengaburkan catatan. `tamper_suspected`
+ * tetap kategori sisi klien sesuai chunk anticheat (detektor tamper berjalan
+ * di perangkat); saat ini belum ada pengirimnya.
  */
 enum KategoriKecurangan: string
 {
