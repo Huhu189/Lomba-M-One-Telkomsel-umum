@@ -340,7 +340,7 @@ class AttemptService
                 throw ValidationException::withMessages(['attempt' => 'Waktu ulangan sudah habis; jawaban tidak bisa disimpan.']);
             }
 
-            if (! $this->soalMilikKuis($terkunci, $soal)) {
+            if (! $this->soalMilikKuis($terkunci, (int) $soal->getKey())) {
                 throw ValidationException::withMessages(['question_id' => 'Soal itu bukan bagian dari kuis ini.']);
             }
 
@@ -491,8 +491,11 @@ class AttemptService
             $skor = 0.0;
             $jumlahBenar = 0;
 
-            foreach ($soal as $satu) {
-                $hasil = $this->nilaiSatuSoal($terkunci, $satu, $sekarang);
+            // Dinilai sekali jalan: seluruh baris jawaban attempt dibaca dalam
+            // satu query, dinilai di memori, lalu ditulis satu `upsert`. Versi
+            // lama menembak satu SELECT + satu UPDATE per soal; di detik deadline
+            // kelas besar mengalikan itu dengan jumlah murid (P-04).
+            foreach ($this->nilaiSemuaSoal($terkunci, $soal, $sekarang) as $hasil) {
                 $skor += $hasil['skor'];
 
                 if ($hasil['benar'] === true) {
@@ -802,44 +805,87 @@ class AttemptService
         return $ringkasan;
     }
 
-    private function soalMilikKuis(Attempt $attempt, Soal $soal): bool
+    /**
+     * Apakah soal ini bagian dari kuis attempt?
+     *
+     * Sengaja TIDAK memuat relasi `kuis.soal`: jalur ini dipanggil setiap
+     * autosave (setiap ~0,8 detik per murid), dan memuat seluruh soal beserta
+     * konten + kuncinya membuat biaya tiap simpan tumbuh seiring besar bank soal
+     * (P-03). Unggahan snapshot sudah cukup — snapshot itu juga yang menentukan
+     * urutan dan skor saat menilai (Q-09). Attempt lama tanpa snapshot diperiksa
+     * lewat pivot `quiz_questions` dengan satu EXISTS ber-indeks.
+     */
+    private function soalMilikKuis(Attempt $attempt, int $soalId): bool
     {
-        $kuis = $attempt->kuis;
+        $snapshot = $attempt->snapshot_soal;
+        $daftar = is_array($snapshot) ? ($snapshot['soal'] ?? null) : null;
 
-        if (! $kuis->relationLoaded('soal')) {
-            $kuis->load('soal');
+        if (is_array($daftar) && $daftar !== []) {
+            foreach ($daftar as $satu) {
+                if (is_array($satu) && (int) ($satu['id'] ?? 0) === $soalId) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        return $kuis->soal->contains(static fn (Soal $satu): bool => (int) $satu->getKey() === (int) $soal->getKey());
+        return DB::table('quiz_questions')
+            ->where('quiz_id', $attempt->quiz_id)
+            ->where('question_id', $soalId)
+            ->exists();
     }
 
     /**
-     * Nilai satu soal + simpan baris jawabannya (walau tidak diisi) supaya guru
-     * bisa melihat soal mana yang kosong.
+     * Nilai SELURUH soal satu attempt dan simpan baris jawabannya sekali jalan.
      *
-     * @return array{status: StatusPenilaian, benar: bool|null, skor: float}
+     * Sebelumnya tiap soal melakukan satu SELECT + satu `save()` di dalam
+     * transaksi ber-kunci, jadi N murid yang mengumpulkan bersamaan di detik
+     * deadline berarti O(N x Q) query (P-04). Di sini: satu SELECT untuk semua
+     * baris, penilaian di memori, lalu satu `upsert` — yang sekaligus membuat
+     * baris kosong untuk soal yang tidak dijawab supaya guru tetap bisa melihat
+     * soal mana yang kosong.
+     *
+     * `jawaban` sengaja TIDAK ikut di-update: baris yang sudah ada mempertahankan
+     * jawaban murid apa adanya, dan baris baru berisi NULL.
+     *
+     * @param  array<int, Soal>  $soal
+     * @return array<int, array{status: StatusPenilaian, benar: bool|null, skor: float}>
      */
-    private function nilaiSatuSoal(Attempt $attempt, Soal $soal, Carbon $sekarang): array
+    private function nilaiSemuaSoal(Attempt $attempt, array $soal, Carbon $sekarang): array
     {
-        $baris = Jawaban::query()
+        $tersimpan = Jawaban::query()
             ->where('attempt_id', $attempt->getKey())
-            ->where('question_id', $soal->getKey())
-            ->first();
+            ->get()
+            ->keyBy('question_id');
 
-        try {
-            $hasil = $this->penilaian->nilai($soal, $baris?->jawaban);
-        } catch (Throwable) {
-            $hasil = ['status' => StatusPenilaian::Gagal, 'benar' => null, 'skor' => 0.0];
+        $hasil = [];
+        $tulis = [];
+
+        foreach ($soal as $satu) {
+            $soalId = (int) $satu->getKey();
+            $lama = $tersimpan->get($soalId);
+
+            try {
+                $nilai = $this->penilaian->nilai($satu, $lama?->jawaban);
+            } catch (Throwable) {
+                $nilai = ['status' => StatusPenilaian::Gagal, 'benar' => null, 'skor' => 0.0];
+            }
+
+            $hasil[$soalId] = $nilai;
+            $tulis[] = [
+                'attempt_id' => $attempt->getKey(),
+                'question_id' => $soalId,
+                'status' => $nilai['status']->value,
+                'benar' => $nilai['benar'],
+                'skor' => $nilai['skor'],
+                'dinilai_at' => $sekarang,
+            ];
         }
 
-        $baris ??= new Jawaban(['attempt_id' => $attempt->getKey(), 'question_id' => $soal->getKey()]);
-
-        $baris->forceFill([
-            'status' => $hasil['status'],
-            'benar' => $hasil['benar'],
-            'skor' => $hasil['skor'],
-            'dinilai_at' => $sekarang,
-        ])->save();
+        if ($tulis !== []) {
+            Jawaban::query()->upsert($tulis, ['attempt_id', 'question_id'], ['status', 'benar', 'skor', 'dinilai_at']);
+        }
 
         return $hasil;
     }

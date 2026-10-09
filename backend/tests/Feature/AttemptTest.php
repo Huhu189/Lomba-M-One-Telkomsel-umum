@@ -64,6 +64,26 @@ function siapkanKuis(object $ctx, array $ubah = []): Kuis
     return $kuis->refresh();
 }
 
+/**
+ * Kuis terbit yang sedang berjalan dengan `jumlah` soal pilihan ganda.
+ * Dipakai uji biaya pengumpulan (P-04).
+ */
+function siapkanKuisBanyak(object $ctx, int $jumlah): Kuis
+{
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
+
+    for ($urutan = 1; $urutan <= $jumlah; $urutan++) {
+        $soal = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create(['skor' => 5]);
+        $kuis->soal()->attach($soal->id, ['urutan' => $urutan]);
+    }
+
+    return $kuis->refresh();
+}
+
 /** @return array{attempt: int, soal: array<int, array<string, mixed>>} */
 function mulaiUlangan(object $ctx, Kuis $kuis, ?Murid $murid = null): array
 {
@@ -675,4 +695,77 @@ it('jawaban yang tiba setelah deadline ditolak walau model di memori belum tahu 
         ->toThrow(ValidationException::class);
 
     expect(Jawaban::query()->where('attempt_id', $hasil['attempt'])->count())->toBe(0);
+});
+
+it('autosave memakai snapshot tanpa memuat seluruh bank soal, fallback pivot tetap benar', function (): void {
+    // Bank soal besar: 30 soal. Jalur autosave dulu memuat SELURUH soal kuis
+    // beserta konten + kuncinya pada tiap simpan (~0,8 detik sekali per murid),
+    // jadi biaya tiap ketukan tumbuh seiring besar bank soal (P-03).
+    $kuis = siapkanKuisBanyak($this, 30);
+    $hasil = mulaiUlangan($this, $kuis);
+    $attempt = Attempt::query()->findOrFail($hasil['attempt']);
+    $soal = Soal::query()->findOrFail((int) $hasil['soal'][0]['id']);
+
+    $sql = [];
+    DB::listen(function ($event) use (&$sql): void {
+        $sql[] = $event->sql;
+    });
+
+    app(AttemptService::class)->simpanJawaban($attempt, $soal, 'A');
+
+    $memuatBankSoal = array_filter(
+        $sql,
+        static fn (string $s): bool => str_contains($s, 'from "questions"') || str_contains($s, 'from `questions`'),
+    );
+
+    expect($memuatBankSoal)->toBe([]);
+
+    // Attempt lama (dibuat sebelum kolom snapshot ada) tetap dilayani lewat pivot:
+    // soal milik kuis diterima, soal di luar kuis ditolak 422.
+    Attempt::query()->whereKey($attempt->getKey())->update(['snapshot_soal' => null]);
+    $lama = Attempt::query()->findOrFail($attempt->getKey());
+
+    app(AttemptService::class)->simpanJawaban($lama, $soal, 'B');
+
+    $lain = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
+
+    expect(fn () => app(AttemptService::class)->simpanJawaban($lama, $lain, 'A'))
+        ->toThrow(ValidationException::class);
+});
+
+it('biaya pengumpulan tidak tumbuh seiring jumlah soal (penilaian batch)', function (): void {
+    // Ukur jumlah query DB yang benar-benar dijalankan saat `kumpulkan`, untuk
+    // kuis kecil dan kuis besar. Dulu tiap soal menembak satu SELECT + satu
+    // UPDATE di dalam transaksi ber-kunci, jadi 10 soal tambahan berarti ~20
+    // query ekstra per murid — dan itulah lonjakan di detik deadline (P-04).
+    $hitung = function (int $jumlahSoal): int {
+        $kuis = siapkanKuisBanyak($this, $jumlahSoal);
+        $hasil = mulaiUlangan($this, $kuis);
+
+        foreach ($hasil['soal'] as $satu) {
+            $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+                'question_id' => $satu['id'],
+                'jawaban' => 'A',
+            ])->assertOk();
+        }
+
+        $query = 0;
+        DB::listen(function () use (&$query): void {
+            $query++;
+        });
+
+        $this->postJson("/api/v1/attempt/{$hasil['attempt']}/kumpulkan", [
+            'idempotency_key' => 'kunci-batch-'.$jumlahSoal,
+        ])->assertOk()->assertJsonPath('status', 'selesai');
+
+        return $query;
+    };
+
+    $kecil = $hitung(2);
+    $besar = $hitung(12);
+
+    // Terukur: 11 query untuk 2 soal dan 11 query untuk 12 soal. Pola lama
+    // (satu SELECT + satu UPDATE per soal) memberi 14 vs 34 pada data yang sama,
+    // jadi ambang `+4` ini memang menjaga regresi itu.
+    expect($besar)->toBeLessThanOrEqual($kecil + 4);
 });
