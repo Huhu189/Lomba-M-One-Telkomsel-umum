@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Sections\Attempt\Models\AnggotaAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Attempt\Models\RevisiJawaban;
@@ -374,6 +375,46 @@ it('skor tim dibagi sama ke anggotanya di laporan dan badge', function (): void 
     $hasil = $this->getJson("/api/v1/attempt/{$attemptId}/hasil")->assertOk();
 
     expect((float) $hasil->json('skor'))->toEqual(10.0);
+});
+
+it('ekspor nilai memakai snapshot anggota tim, bukan susunan tim yang hidup (Q-18)', function (): void {
+    $soal = t09Soal($this);
+    $kuis = t09Kuis($this, [$soal]);
+
+    t09Guru($this);
+    $this->postJson("/api/v1/kuis/{$kuis->id}/tim/bagi", ['jumlah_tim' => 2])->assertOk();
+    t09Saklar($this, $kuis, KunciPengaturan::ModeTim);
+
+    [$a, $b] = t09AnggotaTim($this, $kuis);
+    $tim = Tim::query()->where('quiz_id', $kuis->id)->orderBy('nama')->firstOrFail();
+
+    $attemptId = t09Mulai($a, $kuis);
+
+    t09Murid($b);
+    $this->postJson("/api/v1/attempt/{$attemptId}/jawab", ['question_id' => $soal->id, 'jawaban' => 'a'])->assertOk();
+    $this->postJson("/api/v1/attempt/{$attemptId}/kumpulkan", ['idempotency_key' => 'tim-09-q18'])->assertOk();
+
+    // Snapshot dibekukan saat attempt dimulai: satu baris per anggota tim.
+    expect(AnggotaAttempt::query()->where('attempt_id', $attemptId)->count())->toBe(2);
+
+    $namaAnak = (string) $a->user->name;
+    $namaTim = (string) $tim->nama;
+
+    // Setelah ujian, data sumber boleh berubah (mis. admin membetulkan nama anak
+    // atau mengganti nama tim). Buku nilai harus TIDAK ikut berubah.
+    $a->user->forceFill(['name' => 'Nama Anak Sudah Diubah'])->save();
+    $tim->forceFill(['nama' => 'Tim Sudah Diganti'])->save();
+
+    t09Guru($this);
+    $csv = $this->get("/api/v1/kuis/{$kuis->id}/ekspor-nilai")->assertOk()->streamedContent();
+
+    expect($csv)
+        ->toContain($namaAnak)
+        ->toContain($namaTim)
+        ->not->toContain('Nama Anak Sudah Diubah')
+        ->not->toContain('Tim Sudah Diganti')
+        // Skor tim dibagi sama: dua baris anggota, keduanya berjumlah anggota 2.
+        ->and(substr_count($csv, ',2,'))->toBeGreaterThanOrEqual(2);
 });
 
 it('peringkat mode tim diurutkan per tim, bukan per anak', function (): void {
