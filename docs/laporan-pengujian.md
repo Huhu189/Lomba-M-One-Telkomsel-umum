@@ -1275,10 +1275,16 @@ menjadi kutip tunggal lalu pint hijau.
   dev) — sama seperti catatan A.18.5.
 
 ### A.19.4 Rujukan log mentah & catatan jujur
-- Sesi 9 Oktober 2026 (±10.50–12.20 WIB) melakukan pematangan + pengujian ulang menyeluruh, smoke
+- Sesi 9 Oktober 2026 (±10.50–15.10 WIB) melakukan pematangan + pengujian ulang menyeluruh, smoke
   HTTP/UI, audit UI, dan perbaikan sasaran sentuh.
-- **Log mentah sesi ini BELUM diekspor** ke `docs/log-mentah/`: sesi masih berjalan, jadi berkas
-  `chat-messages.json` sesi belum lengkap. Ekspor menyusul lewat
-  `python3 docs/export-log-sesi.py <dir_sesi> 2026-10-09` + `./docs/export-word.sh` (menulis berkas
-  bertanggal baru `sesi-2026-10-09-*`, tidak menimpa salinan byte-exact 5 Oktober).
-- `docs/word/laporan-pengujian.docx` juga belum diekspor ulang setelah bagian A.19 ini ditulis.
+- **Log mentah sesi ini SUDAH diekspor** ke `docs/log-mentah/` lewat `./docs/export-word.sh`
+  (pukul ±15.08 WIB): `sesi-2026-10-05-chat-messages.json.gz` (≈24,2 MB, salinan byte-exact) dan
+  `sesi-2026-10-05-transkrip.md` (≈10,7 MB, transkrip utuh tanpa potong). Kedua berkas disegarkan
+  (menggantikan salinan lama), bukan ditulis sebagai berkas bertanggal baru, karena sesi ini adalah
+  sesi `2026-10-05T07-39-24.876Z` yang sama dan terus berjalan.
+- **Sesi masih berjalan**, jadi berkas `.gz` di atas adalah snapshot per ±15.08 WIB, bukan akhir
+  sesi. Segarkan lagi dengan `./docs/export-word.sh` pada akhir sesi sebelum penilaian dikumpulkan.
+- `docs/word/laporan-pengujian.docx` **sudah diekspor ulang** dari `docs/laporan-pengujian.md`
+  (termasuk bagian A.19) pada pukul ±15.10 WIB.
+- Deploy publik & Octane Swoole tetap belum ada (lihat A.19.3); itu bukan kekurangan putaran ini,
+  melainkan ditunda dengan sadar.
