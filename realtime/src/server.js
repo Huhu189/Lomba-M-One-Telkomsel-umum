@@ -9,7 +9,10 @@
  * - **fail-open**: bila Redis tidak terjangkau, handshake ditolak dengan 503
  *   (bukan crash) sehingga klien jatuh ke polling dan ulangan tetap jalan;
  * - **keepalive**: komentar SSE berkala supaya proxy tidak menutup koneksi diam;
- * - **cek Origin**: hanya origin yang diizinkan yang boleh menyambung.
+ * - **cek Origin**: hanya origin yang diizinkan yang boleh menyambung;
+ * - **kanal per peran** (K-03): tiket guru hanya sah untuk `/sse/monitor` dan
+ *   tiket murid hanya sah untuk `/sse/kuis`, dan masing-masing berlangganan
+ *   kanal terpisah — murid tidak bisa lagi memantau siaran guru.
  */
 import crypto from 'node:crypto'
 import { pathToFileURL } from 'node:url'
@@ -31,6 +34,26 @@ function daftarOrigin() {
 /** Hash ticket seperti yang disimpan Laravel. */
 function hashTiket(tiket) {
   return crypto.createHash('sha256').update(tiket).digest('hex')
+}
+
+/**
+ * Peran yang sah untuk tiap jalur SSE.
+ *
+ * Dulu kedua jalur memakai penangan dan kanal yang sama, sehingga `peran` di
+ * tiket tidak pernah diperiksa: tiket murid bisa dipakai membuka
+ * `/sse/monitor` dan mendengarkan siaran guru (kejadian kecurangan).
+ */
+export const PERAN_JALUR = { monitor: 'guru', kuis: 'murid' }
+
+/**
+ * Nama kanal per kuis + per peran — harus sama persis dengan
+ * `PenyiarRealtime::kanalGuru`/`kanalMurid` di Laravel.
+ *
+ * @param {'guru'|'murid'} peran
+ * @param {number} kuisId
+ */
+export function kanalKuis(peran, kuisId) {
+  return `ulangan:kuis:${kuisId}:${peran}`
 }
 
 /**
@@ -105,12 +128,14 @@ export function buildApp(options = {}) {
    * Alur: ambil tiket dari Redis (GETDEL) → langganan kanal kuis → teruskan
    * setiap pesan → keepalive berkala. Koneksi ditutup begitu klien pergi.
    *
-   * Satu penangan dipakai dua jalur: guru (`/sse/monitor`, slice 07) dan murid
-   * yang mengikuti layar guru (`/sse/kuis`, slice 10). Keduanya memakai kanal
-   * `ulangan:kuis:{id}` yang sama; yang membedakan hanya siapa yang boleh
-   * meminta tiket di sisi Laravel.
+   * Dua jalur memakai penangan yang sama tetapi **peran yang berbeda**: guru
+   * (`/sse/monitor`, slice 07) dan murid yang mengikuti layar guru
+   * (`/sse/kuis`, slice 10). `peranWajib` dibaca dari jalurnya, dan tiket yang
+   * perannya tidak cocok ditolak — inilah yang menutup K-03.
+   *
+   * @param {'guru'|'murid'} peranWajib
    */
-  const aliranKuis = async (request, reply) => {
+  const aliranKuis = (peranWajib) => async (request, reply) => {
     const tiket = /** @type {string|undefined} */ (request.query?.tiket)
 
     if (typeof tiket !== 'string' || tiket.length < 20) {
@@ -152,6 +177,15 @@ export function buildApp(options = {}) {
       return reply.code(401).send({ ok: false, alasan: 'tiket-tidak-lengkap' })
     }
 
+    // Tiket murid tidak sah untuk Live Monitor, dan sebaliknya (K-03).
+    // Tiket sudah terpakai (GETDEL) — memang begitu: klien yang salah jalur
+    // harus meminta tiket baru, bukan memakai ulang yang lama.
+    const peran = pemilik?.peran === 'guru' || pemilik?.peran === 'murid' ? pemilik.peran : null
+
+    if (peran !== peranWajib) {
+      return reply.code(403).send({ ok: false, alasan: 'peran-tidak-cocok' })
+    }
+
     // Kita menulis langsung ke socket, jadi Fastify tidak boleh ikut mengirim
     // respons JSON apa pun setelah ini.
     reply.hijack()
@@ -166,11 +200,11 @@ export function buildApp(options = {}) {
       ...(typeof origin === 'string' ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
     })
 
-    reply.raw.write(`event: siap\ndata: ${JSON.stringify({ quiz_id: kuisId })}\n\n`)
+    reply.raw.write(`event: siap\ndata: ${JSON.stringify({ quiz_id: kuisId, peran: peranWajib })}\n\n`)
 
-    // Hanya kanal kuis ini: satu guru tidak perlu (dan tidak boleh) menerima
-    // kejadian kuis kelas lain.
-    const kanal = [`ulangan:kuis:${kuisId}`]
+    // Hanya kanal kuis ini DAN peran ini: guru tidak menerima kuis kelas lain,
+    // dan perangkat murid tidak pernah menerima siaran guru (K-03).
+    const kanal = [kanalKuis(peranWajib, kuisId)]
     const pendengar = redis.duplicate()
 
     const teruskan = (_kanal, pesan) => {
@@ -245,8 +279,8 @@ export function buildApp(options = {}) {
     return reply
   }
 
-  app.get('/sse/monitor', aliranKuis)
-  app.get('/sse/kuis', aliranKuis)
+  app.get('/sse/monitor', aliranKuis(PERAN_JALUR.monitor))
+  app.get('/sse/kuis', aliranKuis(PERAN_JALUR.kuis))
 
   return app
 }

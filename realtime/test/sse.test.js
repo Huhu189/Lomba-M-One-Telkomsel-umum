@@ -125,8 +125,8 @@ function redisTiruan({ isi, gagal = false }) {
           throw new Error('Connection is closed.')
         },
         /** Kirim pesan seolah datang dari Redis. */
-        kirimPesan(pesan) {
-          this.pendengar.message?.(`ulangan:kuis:1`, pesan)
+        kirimPesan(pesan, kanal = 'ulangan:kuis:1:guru') {
+          this.pendengar.message?.(kanal, pesan)
         },
       }
       return klien
@@ -200,7 +200,9 @@ describe('SSE Live Monitor', () => {
 
   it('handshake tiket valid: 200 event-stream, tiket hilang setelah dipakai', async () => {
     const tiket = 'd'.repeat(64)
-    const isi = { [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1, nama: 'Guru' }) }
+    const isi = {
+      [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1, nama: 'Guru', peran: 'guru' }),
+    }
     const tiruan = redisTiruan({ isi })
     const app = buildApp({ logger: false, redis: tiruan.utama })
 
@@ -215,9 +217,10 @@ describe('SSE Live Monitor', () => {
     assert.match(respons.teks, /event: siap/)
     assert.match(respons.teks, /"quiz_id":1/)
 
-    // Hanya kanal kuis itu yang dilanggan: guru tidak menerima kuis lain.
+    // Hanya kanal kuis itu DAN peran guru yang dilanggan: guru tidak menerima
+    // kuis lain, dan murid tidak berbagi kanal dengannya (K-03).
     assert.equal(tiruan.pelanggan.length, 1)
-    assert.deepEqual(tiruan.pelanggan[0].kanal, ['ulangan:kuis:1'])
+    assert.deepEqual(tiruan.pelanggan[0].kanal, ['ulangan:kuis:1:guru'])
 
     // Tiket sekali pakai: kunci Redis sudah terhapus oleh GETDEL.
     assert.equal(isi[`sse:tiket:${hashTiket(tiket)}`], undefined)
@@ -227,7 +230,9 @@ describe('SSE Live Monitor', () => {
 
   it('handshake membawa Access-Control-Allow-Origin agar EventSource tidak diblokir browser', async () => {
     const tiket = 'f'.repeat(64)
-    const isi = { [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1 }) }
+    const isi = {
+      [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1, peran: 'guru' }),
+    }
     const { utama } = redisTiruan({ isi })
     const app = buildApp({ logger: false, redis: utama })
 
@@ -263,7 +268,9 @@ describe('SSE Live Monitor', () => {
 
   it('penutupan koneksi klien tidak pernah menjatuhkan service', async () => {
     const tiket = '1'.repeat(64)
-    const isi = { [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 5, quiz_id: 1 }) }
+    const isi = {
+      [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 5, quiz_id: 1, peran: 'guru' }),
+    }
     const tiruan = redisTiruan({ isi })
     const app = buildApp({ logger: false, redis: tiruan.utama })
 
@@ -292,7 +299,9 @@ describe('SSE Live Monitor', () => {
 
   it('tiket yang sama tidak bisa dipakai dua kali', async () => {
     const tiket = 'e'.repeat(64)
-    const isi = { [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1 }) }
+    const isi = {
+      [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 7, quiz_id: 1, peran: 'guru' }),
+    }
     const { utama } = redisTiruan({ isi })
     const app = buildApp({ logger: false, redis: utama })
 
@@ -306,9 +315,9 @@ describe('SSE Live Monitor', () => {
     await app.close()
   })
 
-  it('jalur /sse/kuis melayani layar guru dengan aturan tiket yang sama', async () => {
-    // Tiket murid (slice 10) membawa `peran`, tetapi aliran dan kanalnya sama:
-    // perangkat murid hanya perlu mengikuti kanal kuis kelasnya.
+  it('jalur /sse/kuis melayani perangkat murid di kanal muridnya sendiri', async () => {
+    // Tiket murid (slice 10) hanya sah di jalur ini, dan kanalnya terpisah dari
+    // kanal guru (K-03) supaya siaran Live Monitor tidak pernah sampai ke murid.
     const tiket = '2'.repeat(64)
     const isi = {
       [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 12, quiz_id: 3, peran: 'murid' }),
@@ -321,13 +330,54 @@ describe('SSE Live Monitor', () => {
     assert.equal(respons.status, 200)
     assert.match(respons.headers.get('content-type'), /text\/event-stream/)
     assert.match(respons.teks, /"quiz_id":3/)
-    assert.deepEqual(tiruan.pelanggan[0].kanal, ['ulangan:kuis:3'])
+    assert.match(respons.teks, /"peran":"murid"/)
+    assert.deepEqual(tiruan.pelanggan[0].kanal, ['ulangan:kuis:3:murid'])
 
     // Sekali pakai tetap berlaku di jalur ini.
     assert.equal(isi[`sse:tiket:${hashTiket(tiket)}`], undefined)
 
     const ulang = await app.inject({ method: 'GET', url: `/sse/kuis?tiket=${tiket}` })
     assert.equal(ulang.statusCode, 401)
+
+    await app.close()
+  })
+
+  it('tiket murid ditolak di jalur guru, dan tiket guru ditolak di jalur murid (K-03)', async () => {
+    const tiketMurid = '3'.repeat(64)
+    const tiketGuru = '4'.repeat(64)
+    const isi = {
+      [`sse:tiket:${hashTiket(tiketMurid)}`]: JSON.stringify({ user_id: 12, quiz_id: 5, peran: 'murid' }),
+      [`sse:tiket:${hashTiket(tiketGuru)}`]: JSON.stringify({ user_id: 9, quiz_id: 5, peran: 'guru' }),
+    }
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama })
+
+    // Sebelum ini tiket murid sah-sah saja membuka /sse/monitor dan menerima
+    // siaran guru berisi attempt_id kecurangan.
+    const muridKeMonitor = await app.inject({ method: 'GET', url: `/sse/monitor?tiket=${tiketMurid}` })
+    assert.equal(muridKeMonitor.statusCode, 403)
+    assert.equal(JSON.parse(muridKeMonitor.body).alasan, 'peran-tidak-cocok')
+
+    const guruKeMurid = await app.inject({ method: 'GET', url: `/sse/kuis?tiket=${tiketGuru}` })
+    assert.equal(guruKeMurid.statusCode, 403)
+    assert.equal(JSON.parse(guruKeMurid.body).alasan, 'peran-tidak-cocok')
+
+    // Tidak ada langganan yang dibuka untuk percobaan yang ditolak.
+    assert.equal(tiruan.pelanggan.length, 0)
+
+    await app.close()
+  })
+
+  it('tiket tanpa peran yang sah ditolak, bukan dianggap murid', async () => {
+    const tiket = '5'.repeat(64)
+    const isi = { [`sse:tiket:${hashTiket(tiket)}`]: JSON.stringify({ user_id: 12, quiz_id: 5 }) }
+    const { utama } = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: utama })
+
+    const respons = await app.inject({ method: 'GET', url: `/sse/kuis?tiket=${tiket}` })
+
+    assert.equal(respons.statusCode, 403)
+    assert.equal(JSON.parse(respons.body).alasan, 'peran-tidak-cocok')
 
     await app.close()
   })

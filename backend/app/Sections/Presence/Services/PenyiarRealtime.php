@@ -26,10 +26,25 @@ class PenyiarRealtime
      */
     public const KONEKSI = 'realtime';
 
-    /** Kanal per kuis: satu kanal untuk seluruh kejadian kuis itu. */
-    public function kanalKuis(int $kuisId): string
+    /**
+     * Kanal per kuis, **dipisah per peran** (K-03).
+     *
+     * Sebelumnya guru dan murid berbagi satu kanal `ulangan:kuis:{id}`. Tiket
+     * murid sah untuk kanal itu juga, jadi murid yang menyambung ke
+     * `/sse/monitor` menerima siaran yang seharusnya hanya untuk guru — antara
+     * lain kejadian kecurangan berisi `attempt_id` dan jumlahnya, yang bisa
+     * dipakai membidik teman. Peran kini menjadi bagian nama kanal, dan service
+     * Node menolak tiket yang perannya tidak cocok dengan endpoint yang dibuka.
+     */
+    public function kanalGuru(int $kuisId): string
     {
-        return 'ulangan:kuis:'.$kuisId;
+        return 'ulangan:kuis:'.$kuisId.':guru';
+    }
+
+    /** Kanal untuk perangkat murid (layar kelas): tanpa data guru mana pun. */
+    public function kanalMurid(int $kuisId): string
+    {
+        return 'ulangan:kuis:'.$kuisId.':murid';
     }
 
     /**

@@ -124,7 +124,9 @@ class LayarService
         ])->save();
 
         // Versi naik = validation check bagi klien: salinan lama tidak dipakai lagi.
-        $this->penyiar->siarkan($this->penyiar->kanalKuis($kuisId), [
+        // Kanal MURID (K-03): yang mengikuti layar adalah perangkat murid,
+        // sedangkan kanal guru dipakai catatan kecurangan yang memuat attempt_id.
+        $this->penyiar->siarkan($this->penyiar->kanalMurid($kuisId), [
             'jenis' => 'layar',
             'kuis_id' => $kuisId,
             'mode' => $mode->value,

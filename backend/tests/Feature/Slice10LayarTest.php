@@ -41,8 +41,9 @@ beforeEach(function (): void {
 });
 
 /**
- * Penyiar realtime palsu: `kanalKuis()` tetap memakai kode asli (supaya kanal
- * yang diuji benar-benar kanal aplikasi), sedangkan `siarkan()`/`armTicket()`
+ * Penyiar realtime palsu: `kanalGuru()`/`kanalMurid()` tetap memakai kode asli
+ * (supaya kanal yang diuji benar-benar kanal aplikasi), sedangkan
+ * `siarkan()`/`armTicket()`
  * direkam atau dinetralkan — test tidak boleh butuh Redis, dan tidak boleh
  * bergantung pada Redis yang kebetulan hidup di mesin pengembang.
  */
@@ -65,7 +66,7 @@ function l10Penyiar(object $ctx): void
 
 function l10Soal(object $ctx, string $teks = 'Hasil dari 7 x 8?'): Soal
 {
-    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create([
+    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create([
         'tipe' => TipeSoal::PilihanGanda,
         'konten' => [
             'teks' => $teks,
@@ -82,10 +83,13 @@ function l10Soal(object $ctx, string $teks = 'Hasil dari 7 x 8?'): Soal
  */
 function l10Kuis(object $ctx, array $soal): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Pemilik = guru yang sedang masuk: layar kelas dan tiket SSE-nya milik guru
+    // pembuat kuis (K-04).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach (array_values($soal) as $urutan => $satu) {
         $kuis->soal()->attach($satu->id, ['urutan' => $urutan + 1]);
@@ -269,7 +273,9 @@ it('setiap perubahan menaikkan versi dan disiarkan ke kanal kuis', function (): 
 
     $pertama = $this->siaran[0];
 
-    expect($pertama['kanal'])->toBe("ulangan:kuis:{$kuis->id}")
+    // Kanal MURID (K-03): layar kelas diterima perangkat murid, sedangkan kanal
+    // guru dipakai catatan kecurangan yang memuat attempt_id.
+    expect($pertama['kanal'])->toBe("ulangan:kuis:{$kuis->id}:murid")
         ->and($pertama['payload']['jenis'])->toBe('layar')
         ->and($pertama['payload']['kuis_id'])->toBe((int) $kuis->id)
         ->and($pertama['payload']['versi'])->toBe(1)

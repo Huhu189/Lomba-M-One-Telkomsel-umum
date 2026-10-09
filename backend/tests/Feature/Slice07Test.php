@@ -10,6 +10,7 @@ use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Enums\StatusTinjauan;
 use App\Sections\Cheat\Models\KejadianKecurangan;
 use App\Sections\Presence\Models\TiketSse;
+use App\Sections\Presence\Services\PenyiarRealtime;
 use App\Sections\Presence\Services\PresenceService;
 use App\Sections\Presence\Services\TokenSseService;
 use App\Sections\Question\Models\Soal;
@@ -25,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use Mockery;
 use RuntimeException;
 
 uses(RefreshDatabase::class);
@@ -50,13 +52,16 @@ beforeEach(function (): void {
 /** Kuis berjalan berisi dua soal pilihan ganda, siap dikerjakan. */
 function kuisBerjalan07(object $ctx): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Pemilik = guru yang sedang masuk: monitor, tiket SSE, dan saklar anti-cheat
+    // kini hanya untuk guru pemilik kuisnya (K-04).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach ([1, 2] as $nomor) {
-        $soal = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create([
+        $soal = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create([
             'tipe' => 'pilihan_ganda',
             'konten' => [
                 'teks' => 'Soal nomor '.$nomor,
@@ -106,6 +111,33 @@ it('murid mencatat kejadian berkelompok dan dedupe membuat kiriman ulang tidak m
     expect(KejadianKecurangan::query()->count())->toBe(2)
         ->and(KejadianKecurangan::query()->where('kategori', 'paste_attempt')->firstOrFail()->skor_risiko)->toBe(6)
         ->and(KejadianKecurangan::query()->where('kategori', 'tab_switch')->firstOrFail()->skor_risiko)->toBe(4);
+});
+
+it('siaran kejadian kecurangan hanya ke kanal guru, bukan kanal murid (K-03)', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+
+    // Penyiar palsu supaya test tidak butuh Redis; kanal tetap kanal aplikasi
+    // (kanalGuru/kanalMurid tidak dimock).
+    $siaran = [];
+    $palsu = Mockery::mock(PenyiarRealtime::class)->makePartial();
+    $palsu->shouldReceive('siarkan')->andReturnUsing(function (string $kanal, array $muatan) use (&$siaran): bool {
+        $siaran[] = ['kanal' => $kanal, 'muatan' => $muatan];
+
+        return true;
+    });
+    app()->instance(PenyiarRealtime::class, $palsu);
+
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [['kategori' => 'paste_attempt']],
+    ])->assertCreated()->assertJsonPath('tersimpan', 1);
+
+    // Muatan ini memuat attempt_id, jadi kanal murid tidak boleh menerimanya:
+    // sebelumnya satu kanal dibagi dua peran dan murid bisa memantau temannya.
+    expect($siaran)->toHaveCount(1)
+        ->and($siaran[0]['kanal'])->toBe("ulangan:kuis:{$kuis->id}:guru")
+        ->and($siaran[0]['muatan']['jenis'])->toBe('kejadian')
+        ->and($siaran[0]['muatan']['attempt_id'])->toBe($attempt->id);
 });
 
 it('kategori turunan server ditolak bila dikirim klien', function (): void {

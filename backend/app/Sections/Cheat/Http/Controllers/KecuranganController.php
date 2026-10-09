@@ -47,8 +47,10 @@ class KecuranganController extends Controller
         $tersimpan = $service->catat($attempt, $pengguna, (array) $request->validated('kejadian'));
 
         // Guru yang sedang memantau langsung tahu tanpa menunggu polling.
+        // Kanal GURU saja (K-03): muatannya memuat `attempt_id`, jadi kanal
+        // murid tidak boleh menerimanya.
         if ($tersimpan > 0) {
-            $penyiar->siarkan($penyiar->kanalKuis((int) $attempt->quiz_id), [
+            $penyiar->siarkan($penyiar->kanalGuru((int) $attempt->quiz_id), [
                 'jenis' => 'kejadian',
                 'attempt_id' => (int) $attempt->getKey(),
                 'jumlah' => $tersimpan,
