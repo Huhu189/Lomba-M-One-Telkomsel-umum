@@ -1,6 +1,7 @@
 # Laporan Pengujian
 
-Diperbarui: 5 Oktober 2026 (sesi prompt 2 — revisi dokumen acuan).
+Diperbarui: 9 Oktober 2026 (sesi pematangan + pengujian ulang menyeluruh — lihat A.19).
+Bagian A.1–A.18 adalah catatan apa adanya dari sesi-sesinya masing-masing; status terkini ada di A.19.
 
 > **Catatan revisi dokumentasi (7 Oktober 2026):** tata letak dokumen dirapikan atas permintaan
 > pengguna. Ringkasan prompt kini ada di `docs/word/AGENT.md` + `AGENT.docx` (bukan lagi dump prompt
@@ -47,10 +48,10 @@ Hasil:
 - Ekspor Word versi baru dijalankan sekali saat pembuatan (output OK, 8 berkas .docx),
   tetapi **belum dijalankan ulang setelah commit akhir** — jalankan ulang
   `./docs/export-word.sh` tiap akhir slice berikutnya.
-- Smoke run aplikasi (backend/frontend/realtime hidup bersamaan) terakhir dilakukan
-  pada sesi prompt 1 (slice 00), **bukan** pada sesi ini — sesi ini tidak menyentuh kode.
-- `verify.sh` belum dijalankan ulang setelah perubahan dokumen (perubahan dokumen tidak
-  memengaruhi test, tetapi dilaporkan apa adanya).
+- (Catatan sesi lama, sudah tidak berlaku.) Smoke run aplikasi terakhir saat itu dilakukan pada
+  sesi prompt 1 (slice 00) — sesi tersebut tidak menyentuh kode. **Status terbaru:** smoke run
+  penuh dijalankan berulang pada 9 Oktober 2026 (lihat A.19), termasuk `verify.sh` setelah setiap
+  perubahan kode.
 
 ## C. Yang memang tidak diuji di sesi ini
 
@@ -1213,3 +1214,71 @@ benar-benar mentah, dan yang ada ringkasan di Word". Yang dikerjakan:
 `docs/log-mentah/sesi-2026-10-05-transkrip.md` (dan salinan byte-exact
 `sesi-2026-10-05-chat-messages.json.gz`): `2026-10-08 ±15.30–19.45 WIB` (audit satu per ID sampai
 `verify.sh` hijau + ekspor Word) dan `2026-10-08 ±20.10 WIB` (perapian dokumen).
+
+## A.19 Pematangan & Pengujian Ulang Menyeluruh (9 Oktober 2026)
+
+Permintaan pengguna: "mulai matangkan dan kau test masing-masing fitur dan pastikan udah sesuai".
+Yang dikerjakan: menyalakan layanan sungguhan (backend `:8000`, realtime `:4000`, vite `:5173`,
+Chrome CDP `:9333`), menjalankan **semua** pagar mutu dan skrip uji yang ada di repo, memperbaiki
+skrip uji yang tuntutannya tidak lagi sesuai dengan kontrak nyata, lalu menutup cacat UI yang
+ditemukan audit.
+
+### A.19.1 Perintah dan hasil (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (dari root) | **SEMUA HIJAU** — Pest **213 passed (1693 assertions)** · Pint **312 files PASS** · checkJs **OK** · ESLint **0 error, 2 warning lama** · Vitest **41 berkas / 329 test** · realtime **13 test, 0 gagal** |
+| `node docs/smoke-http-fitur.mjs` | **229/229 lulus, 0 gagal** (16 bagian A–P, 20.8–84.9 detik tergantung cache) |
+| `node docs/audit-ui.mjs` | **44 tampilan BERSIH, 0 cacat** (`{}`) — hp 390×844 + laptop 1366×900 |
+| `node docs/smoke-ui-slice03..07` | **8/8 · 13/13 · 17/17 · 27/27 · 21/21 lulus** |
+| `node docs/smoke-ui-cdp.mjs` | login guru 200 + kelas/mapel/murid/impor/pengaturan terender |
+| `npm run build` | sukses (`index-*.css` 258,03 kB · `index-*.js` 730,90 kB) — peringatan "chunk > 500 kB" Vite lama, dicatat apa adanya |
+| `php artisan db:seed --force` | mengisi ulang data demo (`BankSoalSeeder` idempoten) agar smoke UI punya kuis ujian |
+
+### A.19.2 Yang diperbaiki pada putaran ini
+
+**Kode aplikasi (nyata, bukan dokumen uji):**
+
+| Berkas | Perbaikan | Alasan |
+| --- | --- | --- |
+| `frontend/src/theme/theme.css` | `.form-check` & `.form-check-label` minimal 44 px; `.soal-opsi .form-check-input` 1,35 rem; kelas baru `.tautan-jari` (padding blok 0,65 rem) | Audit UI menemukan **107 sasaran sentuh < 44 px** di halaman Kerjakan kuis (radio opsi 17×17, kotak centang 15×15) — terlalu kecil untuk jari anak SD |
+| `frontend/src/sections/attempt/HalamanKerjakan.jsx` | Tautan "Kembali ke daftar" memakai `.tautan-jari` | Tautan 17 px tinggi tidak layak jadi sasaran jari |
+| `backend/app/Sections/Cheat/Enums/KategoriKecurangan.php` | Komentar enum diperbaiki | Komentar lama menyebut `tamper_suspected` sebagai kategori turunan server, padahal chunk anti-cheat menaruhnya di daftar kategori KLIEN — menyesatkan pembaca berikutnya |
+| `backend/database/seeders/RolesAndAdminSeeder.php` | Penegasan akun guru kedua + peran | Guru kedua dipakai uji kepemilikan (guru lain menolak mengubah milik orang lain) |
+| `backend/tests/Feature/Slice09TimTest.php` | Test baru **Q-18**: ekspor nilai memakai snapshot anggota tim | Uji nyata bahwa mengubah nama anak/nama tim setelah ujian **tidak** mengubah buku nilai |
+
+**Skrip uji (tuntutan diselaraskan dengan kontrak nyata, bukan dilonggarkan):**
+
+| Berkas | Perbaikan |
+| --- | --- |
+| `docs/audit-ui.mjs` | (a) Isian yang sengaja disembunyikan (`visually-hidden`/`sr-only`, mis. `input[type=file]` pengganti tombol "Lampirkan berkas") tidak lagi dihitung sebagai sasaran sentuh — yang diaudit tombolnya. (b) Kotak centang/radio kini diukur lewat **kotak labelnya** (label `for=` atau label pembungkus), sesuai WCAG 2.5.8 "Target Size" — sebelumnya hanya dilewati mentah tanpa diukur, sekarang justru lebih ketat |
+| `docs/smoke-ui-slice03.mjs` | Jumlah soal dibaca dari `meta.total` API (daftar Bank Soal berpaginasi 50/halaman — jumlah baris tabel bukan ukuran bank soal); soal baru juga dipastikan terbaca di halaman pertama + toast "Soal ditambahkan". Kartu kuis tidak lagi menuntut status "Draf" (skrip ini dipakai ulang antar-jalan, jadi status bisa sudah "Sedang berjalan") |
+| `docs/smoke-http-fitur.mjs` | Tujuh penyesuaian assertion agar sesuai kontrak nyata: mode tim butuh pengaturan `mode_tim` dinyalakan dulu; `hadir`/`kejadian` hanya untuk attempt yang masih jalan; ukuran unggahan harus ukuran sebenarnya; berkas hanya keluar lewat URL bertanda tangan; `lapor` avatar hanya untuk murid (kategori turunan server ditolak 422, kategori klien diterima) |
+
+Pint juga menegur satu gaya di test baru (`single_quote` pada `substr_count($csv, ",2,")`); diperbaiki
+menjadi kutip tunggal lalu pint hijau.
+
+### A.19.3 Temuan yang jujur dicatat
+
+- **Skrip smoke UI bergantung data demo.** `smoke-ui-slice03` (dan kuis uji `Latihan Operasi
+  Hitung (draf)`) membutuhkan `php artisan db:seed`; pada basis data yang belum di-seed, uji ini
+  gagal bukan karena aplikasi rusak. Ketergantungan itu dicatat di sini alih-alih disembunyikan.
+- **`Node --watch`/`php artisan serve` tidak tahan pembersihan proses latar.** Dua kali layanan
+  mati setelah perintah lain selesai sehingga `fetch failed`; dijalankan ulang sebagai proses latar
+  yang dipantau (`lsof` diperiksa) sebelum uji diulang. Kegagalan itu kegagalan perkakas, bukan
+  aplikasi.
+- **Chunk build frontend masih 730 kB** (peringatan Vite lama) — belum dipecah; dicatat apa adanya.
+- **Audit UI mengukur menurut tampilan, bukan fungsi.** Semua temuan putaran ini adalah ukuran
+  sasaran sentuh; tidak ada galat konsol React, kontras, overflow, atau isian tanpa nama yang
+  tersisa di 44 tampilan yang diperiksa.
+- **Belum ada deploy publik dan Octane Swoole belum jalan** (ekstensi `swoole` tidak ada di mesin
+  dev) — sama seperti catatan A.18.5.
+
+### A.19.4 Rujukan log mentah & catatan jujur
+- Sesi 9 Oktober 2026 (±10.50–12.20 WIB) melakukan pematangan + pengujian ulang menyeluruh, smoke
+  HTTP/UI, audit UI, dan perbaikan sasaran sentuh.
+- **Log mentah sesi ini BELUM diekspor** ke `docs/log-mentah/`: sesi masih berjalan, jadi berkas
+  `chat-messages.json` sesi belum lengkap. Ekspor menyusul lewat
+  `python3 docs/export-log-sesi.py <dir_sesi> 2026-10-09` + `./docs/export-word.sh` (menulis berkas
+  bertanggal baru `sesi-2026-10-09-*`, tidak menimpa salinan byte-exact 5 Oktober).
+- `docs/word/laporan-pengujian.docx` juga belum diekspor ulang setelah bagian A.19 ini ditulis.
