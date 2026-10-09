@@ -1378,3 +1378,57 @@ I-01..I-06, dan U-01..U-07 — **belum dikerjakan** dan tidak diklaim selesai (l
 - Berkas pra-sesi yang **tidak** termasuk putaran ini dan sengaja tidak dikomit: perubahan
   `PasswordReset*`, `AuthTest`, `AksesMuridBaruTest`, `HalamanAturUlangSandi.jsx`, `sections/auth/api.js`,
   `aturUlang.test.js`, dan migrasi `2026_10_08_000004_buang_unique_nama_users.php`.
+
+## A.21 Putaran Audit 5 Pilar — Performa Jalur Pengerjaan (P-03, P-04) (9 Oktober 2026)
+
+### A.21.1 Permintaan dan cakupan
+Lanjutan dari A.20 mengikuti urutan prioritas `audit.md`: kelompok **2 = P-01 paginasi,
+P-02 presence O(N²), P-03/P-04 beban autosave dan pengumpulan serentak**. Putaran ini
+mengambil **P-03 dan P-04** karena keduanya satu jalur (pengerjaan ujian), saling terkait,
+dan bisa dibuktikan dengan angka — bukan karena kelompoknya sudah selesai.
+
+**P-01 (paginasi) dan P-02 (presence) belum dikerjakan** pada putaran ini; keduanya
+berdampak luas (kontrak respons semua daftar; butuh struktur Redis ZSET/HSET) dan akan
+memecah banyak uji sekaligus bila dikerjakan setengah jalan. Semua temuan lain (K-06..K-14,
+K-16, Q-02..Q-21, P-05..P-09, I-01..I-06, U-01..U-07) juga belum.
+
+### A.21.2 Temuan dan perbaikannya
+
+| ID | Inti temuan (dari `audit.md`) | Perbaikan |
+|---|---|---|
+| P-03 [T] | Setiap autosave memuat seluruh soal kuis beserta konten + kunci (`soalMilikKuis` → `$kuis->load('soal')`), jadi biaya tiap ketukan (~0,8 detik sekali per murid) tumbuh seiring besar bank soal | `soalMilikKuis` sekarang membaca **snapshot attempt** (id soal yang sudah dibekukan saat `mulai`) dan **tidak menyentuh tabel `questions` sama sekali**; tidak ada lagi pemuatan bank soal di jalur simpan jawaban. Attempt lama tanpa snapshot diperiksa lewat satu `EXISTS` ber-indeks pada pivot `quiz_questions`. Snapshot juga lebih benar: itu sumber urutan & skor yang dipakai saat menilai (Q-09), jadi autosave tidak lagi memakai daftar soal hidup yang bisa berubah di tengah ulangan |
+| P-04 [T] | `tutup()` menembak satu `SELECT` + satu `save()` **per soal** di dalam transaksi ber-kunci; N murid mengumpulkan bersamaan di detik deadline = O(N × Q) query, ditambah N job AI | `nilaiSemuaSoal()`: seluruh baris jawaban attempt dibaca **satu query**, dinilai di memori, lalu ditulis **satu `upsert`** yang sekaligus membuat baris kosong untuk soal yang tidak dijawab (perilaku lama dipertahankan). `jawaban` sengaja tidak ikut di-update supaya jawaban murid tidak tersentuh, dan kolom kunci/`dinilai_at` tetap terisi seperti sebelumnya |
+
+### A.21.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah / pengukuran | Hasil |
+| --- | --- |
+| `php artisan test --filter=AttemptTest` | **25 passed (185 assertions)** — termasuk dua uji baru di bawah |
+| `./verify.sh` (dari root repo) | **SEMUA HIJAU** — Pest **220 passed (1769 assertions)** · Pint **314 files PASS** · checkJs **OK** · ESLint **0 error, 2 warning lama** · Vitest **42 berkas / 338 test** · realtime **15 test, 0 gagal** |
+| Uji baru: query DB saat `POST /attempt/{id}/kumpulkan` dihitung lewat `DB::listen` | **11 query untuk kuis 2 soal, 11 query untuk kuis 12 soal** (selisih 0). Pola lama diukur pada data yang sama: **14 vs 34** (selisih 20 = 2 query per soal). Ambang uji `besar ≤ kecil + 4`, jadi regresi ke pola per soal langsung merah |
+| Uji baru: `AttemptService::simpanJawaban` pada kuis berisi **30 soal** | Tidak ada satu pun query bertipe `from "questions"`/``from `questions` `` — jalur autosave tidak lagi menghidrasi bank soal. Bagian kedua uji menutup-uji fallback: attempt lama (`snapshot_soal = null`) tetap menerima soal milik kuis dan menolak soal di luar kuis (422) |
+| `node docs/smoke-http-fitur.mjs` (backend :8000, realtime :4000 hidup) | **240/240 lulus, 0 gagal** (27,1 detik) — termasuk jalur nyata `mulai → jawab → kumpulkan` dan pemeriksaan skor/per-soal |
+
+### A.21.4 Catatan teknis
+- Urutan `upsert` mengandalkan indeks unik `answers (attempt_id, question_id)` yang sudah ada
+  di migrasi; kolom yang di-update sengaja hanya `status`, `benar`, `skor`, `dinilai_at`.
+- Nilai `benar`/`skor` ditulis lewat `upsert` sehingga **tidak** melewati cast model. Nilainya
+  sudah bertipe `bool`/`float`/`null` dari penilai, dan uji lama (skor 10.0, `jumlah_benar` 2,
+  `per_soal` semua `dinilai`) tetap hijau — jadi perilaku tersimpan tidak berubah.
+- `simpanJawaban` masih membaca baris `jawaban` dengan `lockForUpdate`; `tutup()` tidak mengunci
+  baris jawaban, tetapi baris attempt sudah dikunci lebih dulu, jadi tidak ada penulisan bersaing
+  pada attempt yang sama.
+
+### A.21.5 Batasan jujur (yang sengaja belum dikerjakan)
+- **P-01 (paginasi) dan P-02 (presence O(N²)) belum dikerjakan.** Presence masih satu peta per
+  kuis di cache (`Cache::get` + `Cache::put` utuh setiap `tandaiHadir`), dan `.env` dev masih
+  `CACHE_STORE=database`. Perbaikan sebenarnya butuh struktur Redis (HSET/ZSET) — di luar putaran
+  ini dan belum diuji di driver database.
+- Tidak ada perubahan frontend pada putaran ini, jadi **smoke UI (`docs/smoke-ui-cdp.mjs`)
+  tidak dijalankan ulang**; yang diuji lewat antarmuka nyata adalah API pengerjaan yang dipakai
+  halaman ujian.
+- Perombakan UI/UX audit (U-01 modal kumpul, U-02 indikator simpan, U-06 modal hapus) dan sisa
+  kelompok performa (P-05..P-09) masih terbuka.
+- Berkas pra-sesi yang **tidak** termasuk putaran ini dan sengaja tidak dikomit tetap sama seperti
+  catatan A.20.5 (`PasswordReset*`, `AuthTest`, `AksesMuridBaruTest`, `HalamanAturUlangSandi.jsx`,
+  `sections/auth/api.js`, `aturUlang.test.js`, migrasi `2026_10_08_000004_buang_unique_nama_users.php`).

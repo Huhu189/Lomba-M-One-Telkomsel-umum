@@ -27,8 +27,11 @@ Waktu, urutan soal, dan nilai ditentukan server — perangkat tidak bisa memalsu
 ### Manfaat untuk anak SD dan guru
 Anak SD sering salah menekan tombol atau perangkatnya tiba-tiba dipakai bergantian — cadangan jawaban otomatis menyelamatkan kerja mereka. Guru tidak lagi memeriksa kerja dobel atau memperdebatkan "tadi kumpul duluan siapa": server yang mencatat, adil untuk semua.
 
+Kelas besar tetap lancar: setiap ketukan jawaban hanya membaca data yang benar-benar dibutuhkan (bukan seluruh bank soal), dan saat satu kelas menekan "Kumpulkan" hampir bersamaan, seluruh lembar dinilai dari satu bacaan lalu ditulis sekali — jadi tidak ada penumpukan permintaan di detik terakhir.
+
 Status: **sudah bisa dipakai** (slice 04). Menyimpan jawaban otomatis, mengumpulkan dua kali tidak
-digandakan, dan waktu habis dikumpulkan otomatis oleh server.
+digandakan, dan waktu habis dikumpulkan otomatis oleh server. Putaran 9 Oktober 2026 membuat biaya
+menyimpan dan mengumpulkan jawaban tidak lagi tumbuh seiring jumlah soal.
 
 ---
 
