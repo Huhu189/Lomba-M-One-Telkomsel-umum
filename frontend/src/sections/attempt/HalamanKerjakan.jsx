@@ -578,7 +578,10 @@ export default function HalamanKerjakan() {
         </div>
 
         <p className="teks-lembut small mt-3 mb-0">
-          Keluar dari halaman ini tidak menghapus jawaban. <Link to={RUTE.kuis}>Kembali ke daftar</Link>
+          Keluar dari halaman ini tidak menghapus jawaban.{' '}
+          <Link className="tautan-jari" to={RUTE.kuis}>
+            Kembali ke daftar
+          </Link>
         </p>
       </div>
     </div>

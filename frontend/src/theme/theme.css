@@ -122,6 +122,13 @@ a {
   text-underline-offset: 3px;
 }
 
+/* Tautan teks di dalam paragraf: tetap sasaran jari ≥44 px tanpa merusak
+ * alur barisnya (dipakai untuk tautan navigasi singkat di kalimat bantuan). */
+.tautan-jari {
+  display: inline-block;
+  padding-block: 0.65rem;
+}
+
 :focus-visible {
   outline: 3px solid var(--aksen);
   outline-offset: 2px;
@@ -1545,6 +1552,28 @@ a {
 /* Saklar dan kotak centang pengaturan: dibesarkan agar mudah ditekan. */
 .form-check-input {
   border: 2px solid var(--garis-input);
+}
+
+/* Sasaran jari anak SD: kotak centang/saklar beserta labelnya minimal 44 px,
+ * jadi satu baris pilihan bisa ditekan utuh (bukan hanya kotak 15 px-nya). */
+.form-check {
+  min-height: 44px;
+}
+
+.form-check-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Opsi jawaban soal: radio lebih besar + seluruh baris opsi ≥44 px. */
+.soal-opsi .form-check-input {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.soal-opsi .form-check-label {
+  width: 100%;
 }
 
 .form-check-input:checked {
