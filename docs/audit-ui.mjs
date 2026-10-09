@@ -84,13 +84,22 @@ const AUDIT = `window.__audit = function () {
   for (const el of document.querySelectorAll('main a, main button, main input, main select, main textarea, main [role="button"], header a, header button, footer a')) {
     if (!terlihat(el)) continue
     if (el.closest('.sr-saja')) continue
-    // Untuk saklar/kotak centang, area tekan yang sah mencakup labelnya
-    // (WCAG 2.5.8 "Target Size" menghitung label sebagai bagian sasaran).
+    // Isian yang sengaja disembunyikan (file pengganti yang dipicu tombol
+    // "Lampirkan berkas") bukan sasaran sentuh: yang diperiksa tombolnya,
+    // yang sudah ikut diaudit di daftar ini.
+    if (el.classList.contains('visually-hidden') || el.classList.contains('sr-only')) continue
+    // Untuk saklar/kotak centang, area tekan yang sah adalah labelnya
+    // (WCAG 2.5.8 "Target Size" menghitung label sebagai bagian sasaran) — jadi
+    // yang diukur kotak label, bukan kotak input 15 px di dalamnya.
+    let r = el.getBoundingClientRect()
     if (el.type === 'checkbox' || el.type === 'radio') {
-      const punyaLabel = el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]')
-      if (punyaLabel) continue
+      const label =
+        (el.id && document.querySelector('label[for="' + CSS.escape(el.id) + '"]')) || el.closest('label')
+      if (label) {
+        const rl = label.getBoundingClientRect()
+        r = { width: Math.max(r.width, rl.width), height: Math.max(r.height, rl.height) }
+      }
     }
-    const r = el.getBoundingClientRect()
     if (r.height < 43.5 || r.width < 43.5) {
       lapor.targetKecil.push({ el: nama(el), w: Math.round(r.width), h: Math.round(r.height), teks: teksSingkat(el) })
     }
