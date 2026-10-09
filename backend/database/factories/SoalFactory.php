@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\User;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\School\Models\Mapel;
@@ -47,6 +48,12 @@ class SoalFactory extends Factory
             'school_id' => $sekolah->getKey(),
             'subject_id' => $mapel?->getKey() ?? Mapel::factory()->state(['school_id' => $sekolah->getKey()]),
         ]);
+    }
+
+    /** Soal milik guru tertentu (bank soal memuat kunci, batas bacanya = pemilik). */
+    public function milik(User $guru): static
+    {
+        return $this->state(fn (): array => ['dibuat_oleh' => $guru->getKey()]);
     }
 
     /**

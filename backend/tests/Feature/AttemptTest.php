@@ -46,14 +46,17 @@ beforeEach(function (): void {
  */
 function siapkanKuis(object $ctx, array $ubah = []): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-        ...$ubah,
-    ]);
+    // Pemilik = guru yang sedang masuk: sejak K-04 batas baca soal/kuis ikut
+    // pemiliknya, jadi fixture tanpa pemilik ditolak 403 kepada guru mana pun.
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+            ...$ubah,
+        ]);
 
-    $pilihanGanda = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create(['skor' => 5]);
-    $benarSalah = Soal::factory()->benarSalah()->untukSekolah($ctx->sekolah, $ctx->mapel)->create(['skor' => 5]);
+    $pilihanGanda = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create(['skor' => 5]);
+    $benarSalah = Soal::factory()->benarSalah()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create(['skor' => 5]);
 
     $kuis->soal()->attach($pilihanGanda->id, ['urutan' => 1]);
     $kuis->soal()->attach($benarSalah->id, ['urutan' => 2]);

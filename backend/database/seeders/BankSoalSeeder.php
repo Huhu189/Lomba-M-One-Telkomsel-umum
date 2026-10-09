@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
 use App\Sections\Quiz\Enums\StatusKuis;
@@ -31,10 +32,35 @@ class BankSoalSeeder extends Seeder
             return;
         }
 
+        // Pemilik contoh konten: akun guru demo. Sejak K-04 batas baca soal/kuis
+        // mengikuti pemiliknya, jadi soal contoh tanpa pemilik akan tampak kosong
+        // di Bank Soal guru. Admin tetap melihat semuanya.
+        $pemilik = User::query()->where('email', 'guru1@sekolah.test')->value('id')
+            ?? User::query()->where('role', 'admin')->orderBy('id')->value('id');
+
         $tag = Tag::query()->firstOrCreate(
             ['school_id' => $sekolah->id, 'nama' => 'Operasi Hitung'],
             ['deskripsi' => 'Penjumlahan, pengurangan, perkalian, dan pembagian.'],
         );
+
+        // Konten contoh dari seeder lama ber-`dibuat_oleh` NULL (lalu diisi admin
+        // oleh migrasi pengisian pemilik). Karena baris contoh ini memang milik
+        // seeder ini — kuncinya persis judul soal di bawah — pemiliknya
+        // dipastikan kembali ke akun guru demo, supaya demo Bank Soal tetap bisa
+        // dibuka oleh akun guru yang dipakai mendemokan.
+        if ($pemilik !== null) {
+            Kuis::query()
+                ->where('school_id', $sekolah->id)
+                ->whereIn('judul', ['Latihan Operasi Hitung (draf)', 'Ulangan Operasi Hitung'])
+                ->where(fn ($query) => $query->whereNull('dibuat_oleh')->orWhere('dibuat_oleh', '!=', $pemilik))
+                ->update(['dibuat_oleh' => $pemilik]);
+
+            Soal::query()
+                ->where('school_id', $sekolah->id)
+                ->where('tag_id', $tag->id)
+                ->where(fn ($query) => $query->whereNull('dibuat_oleh')->orWhere('dibuat_oleh', '!=', $pemilik))
+                ->update(['dibuat_oleh' => $pemilik]);
+        }
 
         if (Soal::query()->where('school_id', $sekolah->id)->doesntExist()) {
             $daftarSoal = [
@@ -93,6 +119,7 @@ class BankSoalSeeder extends Seeder
                     'tag_id' => $tag->id,
                     'skor' => 1,
                     'aktif' => true,
+                    'dibuat_oleh' => $pemilik,
                 ]);
             }
         }
@@ -105,6 +132,7 @@ class BankSoalSeeder extends Seeder
                 'deskripsi' => 'Contoh kuis draf: bebas diubah untuk demo.',
                 'status' => StatusKuis::Draf,
                 'durasi_menit' => 20,
+                'dibuat_oleh' => $pemilik,
             ],
         );
 
@@ -119,6 +147,7 @@ class BankSoalSeeder extends Seeder
                 'selesai_at' => now()->addHours(2),
                 'publikasi_at' => now()->subMinutes(10),
                 'durasi_menit' => 30,
+                'dibuat_oleh' => $pemilik,
             ],
         );
 

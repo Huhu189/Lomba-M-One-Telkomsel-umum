@@ -77,11 +77,14 @@ function m09Soal(object $ctx, string $tipe = 'uraian'): Soal
 
 function m09Kuis(object $ctx, Soal $soal, int $durasiMenit = 30): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'durasi_menit' => $durasiMenit,
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Kuis milik guru yang sedang masuk (K-04); soalnya dibuat lewat API sebagai
+    // guru itu sendiri, jadi sudah ber-pemilik.
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'durasi_menit' => $durasiMenit,
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     $kuis->soal()->attach($soal->id, ['urutan' => 1]);
 

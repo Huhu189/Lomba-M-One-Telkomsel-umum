@@ -30,14 +30,21 @@ export const skemaResolusiPengaturan = z.object({
  */
 
 /**
- * Ambil pengaturan yang berlaku (opsional untuk kelas tertentu).
+ * Ambil pengaturan yang berlaku (opsional untuk kelas dan/atau kuis tertentu).
+ * Hanya guru/admin — murid menerima saklar proteksinya lewat payload attempt
+ * (K-05), jadi halaman ini tidak pernah dipanggil dari sisi murid.
+ *
  * @param {number|null} [kelasId]
+ * @param {number|null} [kuisId]
  * @returns {Promise<ResolusiPengaturan>}
  */
-export async function ambilPengaturan(kelasId) {
-  const respons = await client.get('/v1/pengaturan', {
-    params: kelasId ? { kelas_id: kelasId } : {},
-  })
+export async function ambilPengaturan(kelasId, kuisId) {
+  /** @type {Record<string, number>} */
+  const params = {}
+  if (kelasId) params.kelas_id = kelasId
+  if (kuisId) params.kuis_id = kuisId
+
+  const respons = await client.get('/v1/pengaturan', { params })
   return skemaResolusiPengaturan.parse(respons.data)
 }
 
@@ -50,6 +57,7 @@ export async function ambilPengaturan(kelasId) {
  *   nilai: boolean | number,
  *   terkunci?: boolean,
  *   kelas_id?: number,
+ *   kuis_id?: number,
  * }} muatan
  * @returns {Promise<ResolusiPengaturan>}
  */

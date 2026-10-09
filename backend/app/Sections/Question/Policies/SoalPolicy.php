@@ -18,9 +18,13 @@ class SoalPolicy
         return $user->isGuru();
     }
 
+    /**
+     * Satu soal memuat kuncinya, jadi batas baca = batas ubah (K-04).
+     * Daftar bank soal di `SoalController::index` disaring dengan aturan yang sama.
+     */
     public function view(User $user, Soal $soal): bool
     {
-        return $user->isGuru();
+        return $user->isGuru() && $user->bolehKelola($soal->dibuat_oleh);
     }
 
     public function create(User $user): bool

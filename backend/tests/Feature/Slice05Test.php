@@ -46,18 +46,20 @@ beforeEach(function (): void {
  */
 function siapkanKuis05(object $ctx, array $ubah = []): array
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-        ...$ubah,
-    ]);
+    // Pemilik = guru yang sedang masuk (K-04: batas baca laporan/nilai ikut pemilik kuis).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+            ...$ubah,
+        ]);
 
     $tag = Tag::factory()->untukSekolah($ctx->sekolah)->create(['nama' => 'Operasi Hitung']);
 
     $pilihanGanda = Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)
-        ->create(['tag_id' => $tag->id, 'skor' => 5]);
+        ->milik($ctx->guru)->create(['tag_id' => $tag->id, 'skor' => 5]);
     $benarSalah = Soal::factory()->benarSalah()->untukSekolah($ctx->sekolah, $ctx->mapel)
-        ->create(['tag_id' => $tag->id, 'skor' => 5]);
+        ->milik($ctx->guru)->create(['tag_id' => $tag->id, 'skor' => 5]);
 
     $kuis->soal()->attach($pilihanGanda->id, ['urutan' => 1]);
     $kuis->soal()->attach($benarSalah->id, ['urutan' => 2]);

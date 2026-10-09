@@ -7,6 +7,7 @@ namespace App\Sections\Attempt\Policies;
 use App\Models\User;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Tim;
+use App\Sections\Quiz\Models\Kuis;
 
 /**
  * Attempt: murid hanya boleh menyentuh attempt miliknya; guru boleh melihat
@@ -19,9 +20,14 @@ class AttemptPolicy
         return true;
     }
 
+    /**
+     * Lembar jawaban + nilainya: milik muridnya sendiri, atau guru pemilik kuis
+     * itu (K-04). Sebelumnya semua guru boleh membuka attempt murid mana pun —
+     * termasuk jawaban dan nilainya, lewat Live Monitor, hasil, dan ekspor.
+     */
     public function view(User $user, Attempt $attempt): bool
     {
-        return $user->isGuru() || $this->milikMurid($user, $attempt);
+        return $this->milikMurid($user, $attempt) || $this->bolehLihatSebagaiGuru($user, $attempt);
     }
 
     public function create(User $user): bool
@@ -70,18 +76,30 @@ class AttemptPolicy
      */
     public function koreksi(User $user, Attempt $attempt): bool
     {
+        return $this->bolehLihatSebagaiGuru($user, $attempt);
+    }
+
+    /**
+     * Guru boleh menyentuh attempt ini bila ia pemilik kuisnya.
+     *
+     * Pemilik dibaca lewat query, bukan relasi `$attempt->kuis`: policy ini
+     * dipanggil dari banyak endpoint (termasuk yang belum memuat relasinya),
+     * sedangkan pemuatan malas sengaja dimatikan di luar produksi.
+     */
+    private function bolehLihatSebagaiGuru(User $user, Attempt $attempt): bool
+    {
         if (! $user->isGuru()) {
             return false;
         }
 
-        $kuis = $attempt->kuis;
+        $pemilik = Kuis::query()->whereKey($attempt->quiz_id)->value('dibuat_oleh');
 
-        return $kuis !== null && $user->bolehKelola($kuis->dibuat_oleh);
+        return $user->bolehKelola($pemilik === null ? null : (int) $pemilik);
     }
 
     public function delete(User $user, Attempt $attempt): bool
     {
-        return $user->isGuru();
+        return $this->bolehLihatSebagaiGuru($user, $attempt);
     }
 
     private function milikMurid(User $user, Attempt $attempt): bool

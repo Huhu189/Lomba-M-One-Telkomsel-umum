@@ -9,15 +9,23 @@ use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Settings\Enums\LingkupPengaturan;
 
 /**
- * Pengaturan: semua boleh membaca (murid melihat aturan yang berlaku);
- * hanya guru/admin boleh mengubah — dan untuk lingkup kuis, hanya pemilik
- * kuisnya (S-05).
+ * Pengaturan: hanya guru/admin yang boleh membacanya (K-05) — murid menerima
+ * saklar proteksi lewat payload attempt, jadi ia tidak perlu tahu proteksi mana
+ * yang menyala. Mengubah lingkup kuis hanya pemilik kuisnya (S-05), dan lingkup
+ * sekolah/kelas hanya admin — satu guru tidak boleh mematikan anti-cheat atau
+ * menaikkan batas percobaan untuk seluruh sekolah.
  */
 class PengaturanPolicy
 {
+    /**
+     * Murid ditolak: dengan membaca `GET /pengaturan?kuis_id=` ia tahu persis
+     * proteksi mana yang aktif dan bisa memetakannya sebelum ulangan (K-05).
+     * Saklar yang memang mengikat murid dikirim bersama attempt (sudah tersaring
+     * per kuis dan per saklar efektif).
+     */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isGuru();
     }
 
     /**
@@ -37,8 +45,10 @@ class PengaturanPolicy
             return $kuis !== null && $user->can('update', $kuis);
         }
 
-        // Lingkup sekolah/kelas tidak punya pemilik per guru di skema ini, jadi
-        // batasnya tetap seperti semula: guru mana pun di sekolahnya.
-        return true;
+        // Lingkup sekolah/kelas berlaku untuk SELURUH sekolah (anti-cheat,
+        // batas percobaan, retry), dan di skema ini tidak ada pemilik per guru
+        // untuk baris pengaturan itu — jadi hanya admin (K-05). Sebelumnya guru
+        // mana pun bisa mengubahnya.
+        return $user->hasRole('admin');
     }
 }

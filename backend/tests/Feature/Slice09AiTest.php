@@ -68,7 +68,7 @@ function ai09Balas(array $penilaian, int $status = 200)
 
 function ai09Soal(object $ctx, float $skor = 4): Soal
 {
-    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create([
+    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create([
         'tipe' => TipeSoal::Uraian,
         'konten' => ['teks' => 'Jelaskan proses fotosintesis.'],
         'kunci' => ['kata_kunci' => [['teks' => 'fotosintesis'], ['teks' => 'klorofil']], 'ambang_lulus' => 0.6],
@@ -81,10 +81,12 @@ function ai09Soal(object $ctx, float $skor = 4): Soal
  */
 function ai09Kuis(object $ctx, array $soal): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Pemilik = guru yang sedang masuk: saran AI hanya untuk pemilik kuisnya (K-04).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach (array_values($soal) as $urutan => $satu) {
         $kuis->soal()->attach($satu->id, ['urutan' => $urutan + 1]);

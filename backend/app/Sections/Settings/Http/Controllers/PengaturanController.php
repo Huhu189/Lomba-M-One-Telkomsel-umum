@@ -16,6 +16,14 @@ use Illuminate\Http\Request;
 
 class PengaturanController extends Controller
 {
+    /**
+     * Aturan yang berlaku di sekolah/kelas/kuis.
+     *
+     * Hanya guru/admin (K-05): murid tidak lagi bisa memetakan proteksi mana
+     * yang aktif lewat `GET /pengaturan?kuis_id=`. Saklar anti-cheat yang
+     * mengikatnya dikirim lewat payload attempt, satu per satu sesuai saklar
+     * efektif kuisnya — tanpa daftar lengkap "apa yang dipasang guru".
+     */
     public function index(
         Request $request,
         SekolahService $sekolah,

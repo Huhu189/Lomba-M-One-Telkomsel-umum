@@ -214,14 +214,15 @@ it('penilai menjodohkan dan mengurutkan menolak jawaban berisi array tanpa melem
 it('publikasi kuis ditolak bila belum lengkap', function (): void {
     Sanctum::actingAs($this->guru);
 
-    $kuis = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->create();
+    // Kuis/soal milik guru yang sedang masuk (K-04).
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->milik($this->guru)->create();
 
     // Belum ada soal dan belum ada jadwal.
     $this->postJson("/api/v1/kuis/{$kuis->id}/publikasi")
         ->assertStatus(422)
         ->assertJsonValidationErrors(['soal', 'jadwal']);
 
-    $soal = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->create();
+    $soal = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
     $this->putJson("/api/v1/kuis/{$kuis->id}/soal", ['soal' => [$soal->id]])->assertOk();
 
     // Sudah ada soal, jadwal masih kurang.
@@ -247,10 +248,10 @@ it('publikasi kuis ditolak bila belum lengkap', function (): void {
 it('soal terkunci saat kuis pemakainya sedang berjalan', function (): void {
     Sanctum::actingAs($this->guru);
 
-    $soalTerpakai = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->create();
-    $soalBebas = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->create();
+    $soalTerpakai = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
+    $soalBebas = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
 
-    $kuis = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->berjalan()->create();
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->milik($this->guru)->berjalan()->create();
     $kuis->soal()->attach($soalTerpakai->id, ['urutan' => 1]);
 
     $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
@@ -301,11 +302,15 @@ it('murid melihat kuis terbit kelasnya tanpa kunci jawaban', function (): void {
         ->and($daftar->json('0.judul'))->toBe($kuis->judul)
         ->and($daftar->json('0.sedang_berjalan'))->toBeTrue();
 
+    // K-02: detail kuis untuk murid TIDAK memuat daftar soal sama sekali.
+    // Sebelumnya konten mentah seluruh soal ikut terkirim begitu kuis terbit,
+    // jadi isi ulangan bisa dibaca jauh sebelum `mulai_at`.
     $detail = $this->getJson("/api/v1/kuis/{$kuis->id}")->assertOk();
-    expect($detail->json('soal.0.konten.teks'))->toBe('Berapa hasil dari 2 + 3?')
-        ->and($detail->json('soal.0'))->not->toHaveKey('kunci')
-        ->and($detail->json('soal.0'))->not->toHaveKey('pembahasan');
-    expect($detail->getContent())->not->toContain('"kunci"');
+    expect($detail->json())->not->toHaveKey('soal')
+        ->and($detail->json('jumlah_soal'))->toBe(1)
+        ->and($detail->json('sedang_berjalan'))->toBeTrue();
+    expect($detail->getContent())->not->toContain('"kunci"')
+        ->and($detail->getContent())->not->toContain('Berapa hasil');
 
     // Bank soal guru tetap tertutup untuk murid.
     $this->getJson('/api/v1/soal')->assertStatus(403);

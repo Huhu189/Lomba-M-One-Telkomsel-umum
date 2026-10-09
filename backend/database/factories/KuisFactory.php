@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\User;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Kelas;
@@ -45,6 +46,19 @@ class KuisFactory extends Factory
             'subject_id' => $mapel?->getKey() ?? Mapel::factory()->state(['school_id' => $sekolah->getKey()]),
             'class_id' => $kelas?->getKey() ?? Kelas::factory()->state(['school_id' => $sekolah->getKey()]),
         ]);
+    }
+
+    /**
+     * Kuis milik guru tertentu.
+     *
+     * Sejak K-04 batas baca ikut kepemilikan, jadi fixture uji yang dibuat tanpa
+     * pemilik akan ditolak 403 saat diakses guru — bukan karena bug, tapi karena
+     * memang bukan milik siapa-siapa. Test yang menguji satu guru cukup memakai
+     * state ini dengan guru yang sedang masuk.
+     */
+    public function milik(User $guru): static
+    {
+        return $this->state(fn (): array => ['dibuat_oleh' => $guru->getKey()]);
     }
 
     /** Kuis terbit dan sedang berjalan (mulai tadi, selesai nanti). */

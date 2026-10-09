@@ -47,7 +47,7 @@ beforeEach(function (): void {
 /** Soal objektif sederhana supaya skor tim jelas. */
 function t09Soal(object $ctx): Soal
 {
-    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create([
+    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create([
         'tipe' => TipeSoal::PilihanGanda,
         'konten' => ['teks' => 'Air membeku pada suhu?', 'opsi' => [['id' => 'a', 'teks' => '0 derajat'], ['id' => 'b', 'teks' => '100 derajat']]],
         'kunci' => ['jawaban' => 'a'],
@@ -60,10 +60,13 @@ function t09Soal(object $ctx): Soal
  */
 function t09Kuis(object $ctx, array $soal): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Pemilik = guru yang sedang masuk: susunan tim, peringkat, dan ekspor
+    // nilainya hanya untuk guru pemilik kuis (K-04).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach (array_values($soal) as $urutan => $satu) {
         $kuis->soal()->attach($satu->id, ['urutan' => $urutan + 1]);

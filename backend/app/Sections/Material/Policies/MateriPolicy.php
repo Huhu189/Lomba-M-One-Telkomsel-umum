@@ -17,10 +17,18 @@ class MateriPolicy
         return true;
     }
 
+    /**
+     * Guru hanya membuka materi buatannya sendiri (K-15); murid melihat materi
+     * terbit kelasnya.
+     *
+     * Materi memuat naskah/blok pelajaran yang belum terbit dan laporan
+     * pengerjaan murid kelas lain, jadi batas bacanya disamakan dengan batas
+     * ubahnya.
+     */
     public function view(User $user, Materi $materi): bool
     {
         if ($user->isGuru()) {
-            return true;
+            return $user->bolehKelola($materi->dibuat_oleh);
         }
 
         if (! $materi->terbit()) {
@@ -39,23 +47,23 @@ class MateriPolicy
 
     public function update(User $user, Materi $materi): bool
     {
-        return $user->isGuru();
+        return $user->isGuru() && $user->bolehKelola($materi->dibuat_oleh);
     }
 
     public function delete(User $user, Materi $materi): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $materi);
     }
 
     public function publikasi(User $user, Materi $materi): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $materi);
     }
 
-    /** Mengunggah/menghapus berkas materi. */
+    /** Mengunggah/menghapus berkas materi — hanya pemilik materinya (K-15). */
     public function berkas(User $user, Materi $materi): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $materi);
     }
 
     /** Laporan materi memuat data seluruh murid kelas: guru saja. */

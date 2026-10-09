@@ -32,6 +32,13 @@ class KuisController extends Controller
         if ($pengguna !== null && $pengguna->isGuru()) {
             $daftar = Kuis::query()
                 ->where('school_id', $sekolah->tunggal()->id)
+                // Daftar guru disaring seperti batas bacanya (K-04): kuis yang
+                // tidak boleh dibuka jangan muncul sebagai tautan mati. Admin
+                // tetap melihat seluruh kuis sekolah.
+                ->when(
+                    ! $pengguna->hasRole('admin'),
+                    fn ($query) => $query->where('dibuat_oleh', $pengguna->getKey()),
+                )
                 ->with($kolom)
                 ->withCount('soal')
                 ->orderByDesc('created_at')
@@ -82,7 +89,10 @@ class KuisController extends Controller
             return new KuisResource($kuis);
         }
 
-        $kuis->load(['mapel', 'kelas', 'soal'])->loadCount('soal');
+        // Murid hanya menerima metadata: daftar soal TIDAK ikut (K-02). Soal
+        // keluar lewat attempt yang sudah dimulai, memakai snapshot + urutan
+        // hasil pengacakan server.
+        $kuis->load(['mapel', 'kelas'])->loadCount('soal');
 
         return new KuisMuridResource($kuis);
     }

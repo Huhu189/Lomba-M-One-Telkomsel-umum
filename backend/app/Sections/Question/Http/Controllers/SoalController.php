@@ -21,8 +21,16 @@ class SoalController extends Controller
     {
         $this->authorize('viewAny', Soal::class);
 
+        $pengguna = $request->user();
+
         $daftar = QueryBuilder::for(Soal::class)
             ->where('school_id', $sekolah->tunggal()->id)
+            // Bank soal memuat kunci jawaban, jadi guru hanya melihat soal
+            // buatannya sendiri; admin melihat semuanya (K-04).
+            ->when(
+                $pengguna !== null && ! $pengguna->hasRole('admin'),
+                fn ($query) => $query->where('dibuat_oleh', $pengguna->getKey()),
+            )
             ->allowedFilters('subject_id', 'tag_id', 'tipe', 'aktif')
             ->allowedSorts('created_at', 'skor')
             ->defaultSort('-created_at')

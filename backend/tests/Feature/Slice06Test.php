@@ -69,10 +69,12 @@ function buatSoal06(object $ctx, string $tipe, array $konten, array $kunci, int 
  */
 function kuisSoal06(object $ctx, array $soal): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Kuis milik guru yang sedang masuk — antrean koreksi hanya untuk pemiliknya (S-05).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach (array_values($soal) as $urutan => $satu) {
         $kuis->soal()->attach($satu->id, ['urutan' => $urutan + 1]);

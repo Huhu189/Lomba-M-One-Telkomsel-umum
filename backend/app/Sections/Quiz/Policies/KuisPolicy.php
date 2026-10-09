@@ -20,11 +20,16 @@ class KuisPolicy
 
     /**
      * Murid hanya boleh melihat kuis yang sudah terbit dan memang kelasnya.
+     *
+     * Guru juga dibatasi (K-04): kuis memuat **kunci jawaban**; kalau semua guru
+     * boleh membacanya, guru mana pun bisa membuka kuis draf guru lain beserta
+     * kuncinya, nilai muridnya, dan Live Monitor-nya. Aksi baca sekarang memakai
+     * batas kepemilikan yang sama seperti aksi ubah (S-04/S-05).
      */
     public function view(User $user, Kuis $kuis): bool
     {
         if ($user->isGuru()) {
-            return true;
+            return $user->bolehKelola($kuis->dibuat_oleh);
         }
 
         if ($kuis->status !== StatusKuis::Publikasi) {
@@ -64,12 +69,13 @@ class KuisPolicy
     }
 
     /**
-     * Laporan pemahaman per tema (slice 05) — hanya guru/admin; laporan memuat
-     * data seluruh murid kelas, jadi murid tidak pernah boleh membukanya.
+     * Laporan pemahaman per tema (slice 05) dan ekspor nilai: memuat data seluruh
+     * murid kelas, jadi murid tidak pernah boleh membukanya — dan guru hanya untuk
+     * kuisnya sendiri (K-04), bukan nilai murid guru lain.
      */
     public function laporan(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $kuis);
     }
 
     /**

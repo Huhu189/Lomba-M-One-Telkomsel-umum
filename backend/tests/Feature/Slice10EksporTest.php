@@ -35,7 +35,7 @@ beforeEach(function (): void {
 
 function e10Soal(object $ctx, string $kunci = 'a'): Soal
 {
-    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->create([
+    return Soal::factory()->untukSekolah($ctx->sekolah, $ctx->mapel)->milik($ctx->guru)->create([
         'tipe' => TipeSoal::PilihanGanda,
         'konten' => ['teks' => 'Hasil 3 + 4?', 'opsi' => [['id' => 'a', 'teks' => '7'], ['id' => 'b', 'teks' => '8']]],
         'kunci' => ['jawaban' => $kunci],
@@ -48,10 +48,12 @@ function e10Soal(object $ctx, string $kunci = 'a'): Soal
  */
 function e10Kuis(object $ctx, array $soal): Kuis
 {
-    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)->berjalan()->create([
-        'acak_soal' => false,
-        'acak_opsi' => false,
-    ]);
+    // Pemilik = guru yang sedang masuk: ekspor nilai kuis ini hanya untuknya (K-04).
+    $kuis = Kuis::factory()->untukSekolah($ctx->sekolah, $ctx->mapel, $ctx->kelas)
+        ->milik($ctx->guru)->berjalan()->create([
+            'acak_soal' => false,
+            'acak_opsi' => false,
+        ]);
 
     foreach (array_values($soal) as $urutan => $satu) {
         $kuis->soal()->attach($satu->id, ['urutan' => $urutan + 1]);

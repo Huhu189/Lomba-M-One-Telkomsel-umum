@@ -1,37 +1,66 @@
 /**
- * Halaman pengaturan tiga lapis (slice 02).
- * Guru/admin memilih lingkup (sekolah atau kelas) lalu mengubah nilai;
- * murid melihat nilai yang berlaku (resolusi kuis > kelas > sekolah).
+ * Halaman pengaturan tiga lapis (slice 02, K-05).
+ *
+ * Siapa yang boleh menyentuh lapis mana diambil server: lingkup sekolah/kelas
+ * hanya admin, lingkup kuis hanya pemilik kuisnya. Pilihan di halaman ini
+ * mengikuti aturan itu supaya guru tidak disuguhi tombol yang pasti ditolak.
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ambilKelas } from '../school/api.js'
+import { ambilKuis } from '../quiz/api.js'
 import { ambilPengaturan, simpanPengaturan } from './api.js'
 import { pesanGalatApi } from '../auth/api.js'
+import { useAuthStore } from '../auth/authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { bacaLingkup, lingkupAwal, pilihanLingkup } from './lingkup.js'
 
 export default function HalamanPengaturan() {
   const queryClient = useQueryClient()
-  const [lingkupKelas, setLingkupKelas] = useState('')
+  const user = useAuthStore((s) => s.user)
+  const sebagaiAdmin = user?.role === 'admin'
+  const [pilihan, setPilihan] = useState('')
   const [angkaDraft, setAngkaDraft] = useState(/** @type {Record<string, string>} */ ({}))
 
-  const kelasId = lingkupKelas ? Number(lingkupKelas) : null
   const daftarKelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
+  const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
+
+  const opsi = pilihanLingkup({
+    sebagaiAdmin,
+    daftarKelas: daftarKelas.data ?? [],
+    daftarKuis: (daftarKuis.data ?? []).map((kuis) => ({ id: kuis.id, judul: kuis.judul })),
+  })
+
+  // Nilai pilihan hanya boleh salah satu dari daftar; sebelum daftarnya tiba,
+  // dipakai lingkup awal (sekolah untuk admin, kuis pertama untuk guru).
+  const aktif = opsi.some((satu) => satu.nilai === pilihan) ? pilihan : lingkupAwal(opsi, sebagaiAdmin)
+  const terpilih = bacaLingkup(aktif)
+
+  const kelasId = terpilih?.kelasId ?? null
+  const kuisId = terpilih?.kuisId ?? null
+
   const resolusi = useQuery({
-    queryKey: ['pengaturan', kelasId],
-    queryFn: () => ambilPengaturan(kelasId),
+    queryKey: ['pengaturan', kelasId, kuisId],
+    queryFn: () => ambilPengaturan(kelasId, kuisId),
+    enabled: terpilih !== null,
   })
 
   const simpan = useMutation({
-    mutationFn: async (/** @type {{ kunci: string, nilai: boolean | number, terkunci: boolean }} */ muatan) =>
-      simpanPengaturan({
-        lingkup: kelasId === null ? 'sekolah' : 'kelas',
-        lingkup_id: kelasId ?? undefined,
+    mutationFn: async (/** @type {{ kunci: string, nilai: boolean | number, terkunci: boolean }} */ muatan) => {
+      if (terpilih === null) throw new Error('Pilih lingkup pengaturan dulu.')
+
+      return simpanPengaturan({
+        lingkup: terpilih.lingkup,
+        lingkup_id: terpilih.lingkupId ?? undefined,
         kunci: muatan.kunci,
         nilai: muatan.nilai,
-        terkunci: kelasId === null ? muatan.terkunci : false,
+        // Kunci hanya berlaku di lapis sekolah — lapis itu yang mengalahkan
+        // lapis bawahnya.
+        terkunci: terpilih.lingkup === 'sekolah' ? muatan.terkunci : false,
         kelas_id: kelasId ?? undefined,
-      }),
+        kuis_id: kuisId ?? undefined,
+      })
+    },
     onSuccess: async () => {
       tampilkanToast('sukses', 'Pengaturan disimpan.')
       await queryClient.invalidateQueries({ queryKey: ['pengaturan'] })
@@ -40,6 +69,7 @@ export default function HalamanPengaturan() {
   })
 
   const data = resolusi.data
+  const adaKuis = (daftarKuis.data ?? []).length > 0
 
   /** @type {Record<string, [string, import('./api.js').NilaiPengaturan][]>} */
   const kelompok = {}
@@ -61,26 +91,42 @@ export default function HalamanPengaturan() {
             mengunci sebuah pengaturan, nilai sekolah menang dan lapis bawah diabaikan.
           </p>
 
-          <div className="mb-4" style={{ maxWidth: '20rem' }}>
+          {!sebagaiAdmin && (
+            <p className="teks-lembut small">
+              Aturan sekolah dan kelas ditetapkan admin. Di sini kamu mengatur aturan{' '}
+              <strong>per kuis</strong> milikmu sendiri.
+            </p>
+          )}
+
+          <div className="mb-4" style={{ maxWidth: '24rem' }}>
             <label className="form-label fw-semibold" htmlFor="lingkup-pengaturan">Lingkup pengaturan</label>
             <select
               id="lingkup-pengaturan"
               className="form-select"
-              value={lingkupKelas}
+              value={aktif}
+              disabled={opsi.length === 0}
               onChange={(e) => {
-                setLingkupKelas(e.target.value)
+                setPilihan(e.target.value)
                 setAngkaDraft({})
               }}
             >
-              <option value="">Sekolah (berlaku umum)</option>
-              {(daftarKelas.data ?? []).map((kelas) => (
-                <option key={kelas.id} value={String(kelas.id)}>Kelas {kelas.nama}</option>
+              {opsi.length === 0 && <option value="">Belum ada lingkup yang bisa diatur</option>}
+              {opsi.map((satu) => (
+                <option key={satu.nilai} value={satu.nilai}>{satu.label}</option>
               ))}
             </select>
           </div>
 
-          {resolusi.isLoading && <p className="text-body-secondary">Memuat pengaturan…</p>}
-          {resolusi.isError && <p className="status-salah">Gagal memuat pengaturan.</p>}
+          {!adaKuis && daftarKuis.isSuccess && (
+            <p className="text-body-secondary">
+              Kamu belum punya kuis untuk diatur. Buat kuis dulu di halaman Kuis.
+            </p>
+          )}
+
+          {resolusi.isLoading && terpilih !== null && <p className="text-body-secondary">Memuat pengaturan…</p>}
+          {resolusi.isError && <p className="status-salah">
+            Gagal memuat pengaturan. Lingkup ini mungkin bukan milikmu.
+          </p>}
 
           {data && Object.entries(kelompok).map(([namaKelompok, daftar]) => (
             <section key={namaKelompok} className="mb-4">
@@ -141,7 +187,7 @@ export default function HalamanPengaturan() {
                     </div>
                   )}
 
-                  {kelasId === null && (
+                  {terpilih?.lingkup === 'sekolah' && (
                     <div className="form-check m-0">
                       <input
                         className="form-check-input"

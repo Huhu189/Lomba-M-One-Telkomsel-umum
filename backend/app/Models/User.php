@@ -86,15 +86,18 @@ class User extends Authenticatable
     }
 
     /**
-     * Boleh mengubah/menghapus baris yang dibuat oleh `$pemilikId`? (S-04/S-05)
+     * Boleh membuka (baca) sekaligus mengubah baris yang dibuat `$pemilikId`?
+     * (S-04/S-05, K-04)
      *
      * Admin boleh semuanya. Guru hanya baris buatannya sendiri — kuis, soal,
-     * pengaturan anti-cheat satu kuis, sampai koreksi nilainya.
+     * materi, pengaturan anti-cheat satu kuis, sampai koreksi nilainya.
      *
-     * Baris tanpa pemilik (`dibuat_oleh` NULL: data lama sebelum kolom itu diisi
-     * konsisten, termasuk hasil impor) dianggap milik bersama. Tanpa pengecualian
-     * ini guru bisa terkunci dari kuis/soalnya sendiri yang dibuat sebelum
-     * kolom pemilik dicatat.
+     * Pengecualian "baris tanpa pemilik dianggap milik bersama" sudah DIBUANG:
+     * dengan pengecualian itu, guru mana pun bisa membaca kunci jawaban, nilai,
+     * dan catatan kecurangan milik guru lain yang datanya belum punya pemilik.
+     * Baris lama yang `dibuat_oleh`-nya NULL sekarang diisi lewat migrasi
+     * pengisian pemilik; sesudah itu baris tanpa pemilik hanya bisa disentuh
+     * admin.
      */
     public function bolehKelola(?int $pemilikId): bool
     {
@@ -106,7 +109,7 @@ class User extends Authenticatable
             return false;
         }
 
-        return $pemilikId === null || (int) $this->getKey() === $pemilikId;
+        return $pemilikId !== null && (int) $this->getKey() === $pemilikId;
     }
 
     /** @return HasOne<Murid, $this> */

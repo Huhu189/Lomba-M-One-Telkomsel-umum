@@ -98,11 +98,17 @@ Aturan aplikasi yang bisa diatur di tingga lapis: sekolah, kelas, lalu kuis. Mis
 ### Cara kerjanya
 Kuis yang lebih spesifik menang dibanding kelas, kelas menang dibanding sekolah — kecuali sekolah mengunci aturan tertentu (locked), dan kunci itu tidak bisa dibongkar di bawahnya. Contoh: sekolah menetapkan retry maksimal 2 dan menguncinya; guru kelas 4 boleh menyalakan ranking untuk kuis pecahan saja, tapi tidak bisa melonggarkan batas retry.
 
+Lapis sekolah dan kelas menetapkan aturan untuk **seluruh sekolah**, jadi hanya admin yang boleh
+mengubahnya. Guru mengatur **per kuis miliknya sendiri** — di halaman Pengaturan ia memilih kuisnya,
+lalu menyalakan proteksi atau aturan yang relevan untuk ulangan itu.
+
 ### Mengapa aman
-Perubahan pengaturan lewat server, dengan izin dan pencatatan. Perangkat murid tidak bisa mengubah aturan ulangan yang sedang berjalan.
+Perubahan pengaturan lewat server, dengan izin dan pencatatan. Perangkat murid tidak bisa mengubah
+aturan ulangan yang sedang berjalan, dan tidak bisa membaca daftar proteksi yang dipasang guru —
+saklar yang mengikatnya dikirim satu per satu lewat data ulangan, bukan sebagai peta lengkap.
 
 ### Manfaat untuk anak SD dan guru
-Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil. Anak SD di semua kelas mendapat aturan yang konsisten.
+Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil pada ulangannya sendiri. Anak SD di semua kelas mendapat aturan yang konsisten.
 
 Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07). Saklar anti-cheat juga memakai mekanisme
 yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik.
