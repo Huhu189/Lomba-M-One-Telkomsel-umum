@@ -147,7 +147,13 @@ async function main() {
 
   // ---------- 3. Soal baru lewat editor ----------
   await buka('/bank-soal')
-  const soalLama = await evalJs(`document.querySelectorAll('table tbody tr').length`)
+  // Daftar soal berpaginasi 50 per halaman, jadi "jumlah baris tabel" bukan
+  // ukuran bank soal. Total diambil dari meta API supaya uji tidak salah baca.
+  const totalSoal = () =>
+    evalJs(
+      `fetch('/api/v1/soal?per_page=1', { credentials: 'include', headers: { Accept: 'application/json' } })\n        .then((r) => r.json()).then((d) => d.meta?.total ?? (d.data ?? []).length)`,
+    )
+  const soalLama = await totalSoal()
   await evalJs(`__alat.klikTeks('Tambah soal')`)
   await sleep(600)
   const mapelId = await evalJs(
@@ -161,14 +167,28 @@ async function main() {
   await evalJs(`__alat.isi('#soal-skor', '4')`)
   await evalJs(`__alat.klikTeks('Simpan soal')`)
   await sleep(2600)
-  const soalTersimpan = await evalJs(`__alat.ada('1/2 + 1/4')`)
-  const jumlahSoal = await evalJs(`document.querySelectorAll('table tbody tr').length`)
-  catat('guru membuat soal pilihan ganda lewat editor', soalTersimpan && jumlahSoal === soalLama + 1, `baris ${soalLama} → ${jumlahSoal}`)
+  const adaToast = await evalJs(`(document.body.innerText ?? '').includes('Soal ditambahkan')`)
+  const soalTersimpan = await evalJs(
+    `fetch('/api/v1/soal?per_page=50', { credentials: 'include', headers: { Accept: 'application/json' } })\n      .then((r) => r.json())\n      .then((d) => (d.data ?? []).some((s) => s.konten?.teks === 'Berapa hasil dari 1/2 + 1/4?'))`,
+  )
+  const soalBaru = await totalSoal()
+  catat(
+    'guru membuat soal pilihan ganda lewat editor',
+    adaToast && soalTersimpan && soalBaru === soalLama + 1,
+    `total ${soalLama} → ${soalBaru} · soal baru terbaca di halaman pertama: ${soalTersimpan}`,
+  )
 
   // ---------- 4. Kuis: jadwal, susun soal, terbitkan ----------
   await buka('/kuis')
+  // Kuis ini dipakai ulang antar-jalan smoke, jadi statusnya bisa masih "Draf"
+  // atau sudah "Sedang berjalan" dari jalan sebelumnya. Yang diperiksa: kartu
+  // benar-benar terender lengkap dengan jumlah soal & statusnya.
   const kartuDraf = await evalJs(`__alat.teksKartu('Latihan Operasi Hitung (draf)')`)
-  catat('halaman kuis guru menampilkan kuis draf + jumlah soal', kartuDraf !== null && kartuDraf.includes('Draf'), kartuDraf ?? 'kartu tidak ditemukan')
+  catat(
+    'halaman kuis guru menampilkan kartu kuis + jumlah soal',
+    kartuDraf !== null && /\d+\s*soal/.test(kartuDraf) && /(Draf|Sedang berjalan|Berakhir|Arsip)/.test(kartuDraf),
+    kartuDraf ?? 'kartu tidak ditemukan',
+  )
 
   await evalJs(`[...document.querySelectorAll('.kartu-soal')].find((k) => k.innerText.includes('Latihan Operasi Hitung (draf)')).querySelector('button').click()`)
   await sleep(800)
