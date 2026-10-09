@@ -17,7 +17,7 @@
  *   # layanan: backend (:8000), frontend (:5173), realtime (:4000)
  *   node docs/smoke-http-fitur.mjs
  *
- * Akun: admin@sekolah.test (SANDI_ADMIN), guru1@gmail.com + guru2@sekolah.test
+ * Akun: admin@sekolah.test (SANDI_ADMIN), guru1@sekolah.test + guru2@sekolah.test
  * (SANDI_GURU/SANDI_GURU2) — ketiganya dibuat `RolesAndAdminSeeder` dan sudah
  * terverifikasi email, jadi skrip ini portabel di DB yang baru di-seed. Skrip
  * membuat datanya sendiri (kelas/mapel/soal/kuis/murid bertanda waktu) sehingga
@@ -34,7 +34,7 @@ const API = process.env.API ?? 'http://localhost:8000'
 const RT = process.env.RT ?? 'http://127.0.0.1:4000'
 const ORIGIN = process.env.ORIGIN ?? 'http://localhost:5173'
 const ADMIN = { email: process.env.EMAIL_ADMIN ?? 'admin@sekolah.test', password: process.env.SANDI_ADMIN ?? 'Passw0rd!Aman' }
-const GURU = { email: process.env.EMAIL_GURU ?? 'guru1@gmail.com', password: process.env.SANDI_GURU ?? 'password12' }
+const GURU = { email: process.env.EMAIL_GURU ?? 'guru1@sekolah.test', password: process.env.SANDI_GURU ?? 'password12' }
 const GURU2 = { email: process.env.EMAIL_GURU2 ?? 'guru2@sekolah.test', password: process.env.SANDI_GURU2 ?? 'password12' }
 
 const TANDA = Date.now().toString(36)
@@ -599,6 +599,11 @@ async function utama() {
   cek('guru membaca peringkat kuis → 200', (await guru.get(`/api/v1/kuis/${kuisId}/ranking`)).status === 200, '')
   cek('guru membaca laporan per tema → 200', (await guru.get(`/api/v1/kuis/${kuisId}/laporan`)).status === 200, '')
   cek('murid ditolak membaca laporan guru (403)', (await murid.get(`/api/v1/kuis/${kuisId}/laporan`)).status === 403, '')
+  // K-02: detail kuis untuk murid hanya metadata — isi soal baru keluar lewat
+  // attempt yang sudah dimulai, dalam urutan hasil pengacakan server.
+  const detailMurid = await murid.get(`/api/v1/kuis/${kuisId}`)
+  cek('murid membaca detail kuis tanpa daftar soal (K-02)', detailMurid.status === 200 && detailMurid.data?.soal === undefined, `status=${detailMurid.status} soal=${Array.isArray(detailMurid.data?.soal) ? detailMurid.data.soal.length : 'tidak ada'}`)
+  cek('detail kuis murid tidak memuat kunci/pembahasan', !/"(kunci|pembahasan)"/.test(JSON.stringify(detailMurid.data ?? {})), '')
 
   const badgeGet = await murid.get('/api/v1/badge/saya')
   const badgePost = await murid.post('/api/v1/badge/saya')
@@ -859,6 +864,14 @@ async function utama() {
   const tiketMuridOlehGuru = await guru.post(`/api/v1/kuis/${kuisJagaId}/sse-tiket-murid`, {})
   cek('tiket layar murid ditolak untuk sesi guru (403)', tiketMuridOlehGuru.status === 403, `status=${tiketMuridOlehGuru.status}`)
 
+  // K-03: kanal dipisah per peran, jadi tiket murid tidak sah untuk aliran guru
+  // (sebelumnya tiket murid bisa mendengarkan siaran guru: attempt_id kecurangan).
+  const nilaiTiketMurid = tiketMurid.data?.tiket ?? tiketMurid.data?.token
+  if (typeof nilaiTiketMurid === 'string') {
+    const muridKeMonitor = await fetch(`${RT}/sse/monitor?tiket=${encodeURIComponent(nilaiTiketMurid)}`, { headers: { Origin: ORIGIN } })
+    cek('tiket murid ditolak di aliran guru (403 peran)', muridKeMonitor.status === 403, `status=${muridKeMonitor.status}`)
+  }
+
   const tiket = await guru.post(`/api/v1/kuis/${kuisJagaId}/sse-tiket`, {})
   const nilaiTiket = tiket.data?.tiket ?? tiket.data?.token
   cek('guru mendapat tiket SSE sekali pakai', [200, 201].includes(tiket.status) && typeof nilaiTiket === 'string', `status=${tiket.status}`)
@@ -883,6 +896,14 @@ async function utama() {
   }
   const tanpaTiket = await fetch(`${RT}/sse/monitor`, { headers: { Origin: ORIGIN } })
   cek('SSE tanpa tiket ditolak 400', tanpaTiket.status === 400, `status=${tanpaTiket.status}`)
+
+  // Arah sebaliknya: tiket guru tidak boleh memakai aliran perangkat murid.
+  const tiketGuruLagi = await guru.post(`/api/v1/kuis/${kuisJagaId}/sse-tiket`, {})
+  const nilaiTiketGuruLagi = tiketGuruLagi.data?.tiket ?? tiketGuruLagi.data?.token
+  if (typeof nilaiTiketGuruLagi === 'string') {
+    const guruKeMurid = await fetch(`${RT}/sse/kuis?tiket=${encodeURIComponent(nilaiTiketGuruLagi)}`, { headers: { Origin: ORIGIN } })
+    cek('tiket guru ditolak di aliran murid (403 peran)', guruKeMurid.status === 403, `status=${guruKeMurid.status}`)
+  }
 
   // ---------- L. Lampiran jawaban ----------
   judul('L. Unggahan lampiran jawaban murid')
@@ -1000,17 +1021,23 @@ async function utama() {
   judul('N. Pengaturan tiga lapis + cache')
   const pengaturan = await guru.get('/api/v1/pengaturan')
   cek('guru membaca pengaturan (nilai + sumbernya)', pengaturan.status === 200 && pengaturan.data?.pengaturan !== undefined, `status=${pengaturan.status}`)
-  const setSekolah = await guru.put('/api/v1/pengaturan', { lingkup: 'sekolah', kunci: 'retry', nilai: false })
-  cek('guru menyetel pengaturan lingkup sekolah', setSekolah.status === 200 && setSekolah.data?.pengaturan?.retry?.nilai === false, `status=${setSekolah.status}`)
-  const setKelas = await guru.put('/api/v1/pengaturan', { lingkup: 'kelas', lingkup_id: kelasId, kunci: 'retry', nilai: true })
-  cek('guru menyetel pengaturan lingkup kelas', setKelas.status === 200, `status=${setKelas.status}`)
+  // K-05: lingkup sekolah/kelas hanya admin; jalur baca ditutup untuk murid.
+  cek('murid ditolak membaca pengaturan (403)', (await murid.get('/api/v1/pengaturan')).status === 403, '')
+  const sekolahGuru = await guru.put('/api/v1/pengaturan', { lingkup: 'sekolah', kunci: 'retry', nilai: false })
+  cek('guru ditolak menyetel pengaturan lingkup sekolah (403)', sekolahGuru.status === 403, `status=${sekolahGuru.status}`)
+  const kelasGuru = await guru.put('/api/v1/pengaturan', { lingkup: 'kelas', lingkup_id: kelasId, kunci: 'retry', nilai: true })
+  cek('guru ditolak menyetel pengaturan lingkup kelas (403)', kelasGuru.status === 403, `status=${kelasGuru.status}`)
+  const setSekolah = await admin.put('/api/v1/pengaturan', { lingkup: 'sekolah', kunci: 'retry', nilai: false })
+  cek('admin menyetel pengaturan lingkup sekolah', setSekolah.status === 200 && setSekolah.data?.pengaturan?.retry?.nilai === false, `status=${setSekolah.status}`)
+  const setKelas = await admin.put('/api/v1/pengaturan', { lingkup: 'kelas', lingkup_id: kelasId, kunci: 'retry', nilai: true })
+  cek('admin menyetel pengaturan lingkup kelas', setKelas.status === 200, `status=${setKelas.status}`)
   const bacaKelas = await guru.get(`/api/v1/pengaturan?kelas_id=${kelasId}`)
   cek('kelas menimpa sekolah (resolusi tiga lapis)', bacaKelas.data?.pengaturan?.retry?.nilai === true && bacaKelas.data?.pengaturan?.retry?.sumber === 'kelas', `nilai=${bacaKelas.data?.pengaturan?.retry?.nilai} sumber=${bacaKelas.data?.pengaturan?.retry?.sumber}`)
   const setKuis = await guru.put('/api/v1/pengaturan', { lingkup: 'kuis', lingkup_id: kuisId, kunci: 'retry', nilai: false })
   cek('kuis menimpa kelas untuk kuis miliknya sendiri', setKuis.status === 200, `status=${setKuis.status} ${galatRingkas(setKuis.data)}`)
-  const bacaKuis = await murid.get(`/api/v1/pengaturan?kuis_id=${kuisId}`)
-  cek('murid membaca pengaturan efektif kuis', bacaKuis.status === 200 && bacaKuis.data?.pengaturan?.retry?.sumber === 'kuis', `sumber=${bacaKuis.data?.pengaturan?.retry?.sumber}`)
-  const ubahLagi = await guru.put('/api/v1/pengaturan', { lingkup: 'sekolah', kunci: 'retry', nilai: true })
+  const bacaKuis = await guru.get(`/api/v1/pengaturan?kuis_id=${kuisId}`)
+  cek('guru membaca pengaturan efektif kuisnya (sumber kuis)', bacaKuis.status === 200 && bacaKuis.data?.pengaturan?.retry?.sumber === 'kuis', `sumber=${bacaKuis.data?.pengaturan?.retry?.sumber}`)
+  const ubahLagi = await admin.put('/api/v1/pengaturan', { lingkup: 'sekolah', kunci: 'retry', nilai: true })
   cek('invalidasi cache: perubahan langsung terbaca tanpa menunggu TTL', ubahLagi.status === 200 && ubahLagi.data?.pengaturan?.retry?.nilai === true, `nilai=${ubahLagi.data?.pengaturan?.retry?.nilai}`)
   const setKuisLain = await guru2.put('/api/v1/pengaturan', { lingkup: 'kuis', lingkup_id: kuisId, kunci: 'retry', nilai: false })
   cek('guru lain ditolak mengubah pengaturan kuis orang (403)', setKuisLain.status === 403, `status=${setKuisLain.status}`)
@@ -1025,9 +1052,13 @@ async function utama() {
     kunci: { jawaban: 'A' },
   })
   cek('guru lain tidak boleh mengubah soal orang (403)', ubahSoalGuruLain.status === 403, `status=${ubahSoalGuruLain.status}`)
-  // Aturan yang disepakati: yang dibatasi ke pemilik adalah MENGUBAH (kuis, soal,
-  // nilai, pengaturan). Membaca nilai rekan sekerja tetap boleh.
-  cek('guru lain boleh membaca ekspor nilai (aturan: baca boleh, ubah tidak)', (await guru2.unduh(`/api/v1/kuis/${kuisId}/ekspor-nilai`)).status === 200, '')
+  // K-04: batas baca = batas ubah. Kunci jawaban, nilai, ekspor, monitor, dan
+  // catatan kecurangan tidak lagi terbuka untuk guru lain.
+  cek('guru lain ditolak membaca ekspor nilai (403)', (await guru2.unduh(`/api/v1/kuis/${kuisId}/ekspor-nilai`)).status === 403, '')
+  cek('guru lain ditolak membuka Live Monitor (403)', (await guru2.get(`/api/v1/kuis/${kuisId}/monitor`)).status === 403, '')
+  cek('guru lain ditolak membuka laporan per tema (403)', (await guru2.get(`/api/v1/kuis/${kuisId}/laporan`)).status === 403, '')
+  cek('guru lain ditolak membuka catatan kecurangan (403)', (await guru2.get(`/api/v1/kuis/${kuisId}/kejadian`)).status === 403, '')
+  cek('pemilik boleh membuka Live Monitor kuisnya', (await guru.get(`/api/v1/kuis/${kuisId}/monitor`)).status === 200, '')
   cek('guru lain tidak boleh menghapus soal orang (403)', (await guru2.del(`/api/v1/soal/${idPg}`)).status === 403, '')
   cek('pemilik tetap boleh mengubah kuisnya sendiri', (await guru.put(`/api/v1/kuis/${kuisId}`, {
     judul: `Ulangan Smoke ${TANDA}`, subject_id: mapelId, class_id: kelasId, durasi_menit: 30,
@@ -1047,7 +1078,7 @@ async function utama() {
   const muridEkspor = await murid.unduh('/api/v1/murid/ekspor')
   cek('murid boleh mengunduh CSV murid (policy: baca saja)', muridEkspor.status === 200, `status=${muridEkspor.status}`)
   cek('murid tidak boleh mengimpor murid (403)', (await murid.kirim('POST', '/api/v1/murid/impor', berkas('murid.csv', 'nama,email,kelas\nX,x@x.test,Y', 'text/csv'))).status === 403, '')
-  cek('guru tidak boleh menyetel pengaturan lingkup sekolah milik admin? (boleh: guru mengelola sekolahnya)', [200, 403].includes((await guru.get('/api/v1/pengaturan')).status), '')
+  cek('guru tetap boleh membaca pengaturan sekolah (baca saja)', (await guru.get('/api/v1/pengaturan')).status === 200, '')
 
   // ---------- P. Arsip, penjagaan bentuk, rute tidak ada ----------
   judul('P. Arsip, penjagaan bentuk & rute tidak ada')

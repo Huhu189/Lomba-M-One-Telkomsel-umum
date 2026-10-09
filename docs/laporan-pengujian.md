@@ -1288,3 +1288,93 @@ menjadi kutip tunggal lalu pint hijau.
   (termasuk bagian A.19) pada pukul ±15.10 WIB.
 - Deploy publik & Octane Swoole tetap belum ada (lihat A.19.3); itu bukan kekurangan putaran ini,
   melainkan ditunda dengan sadar.
+
+## A.20 Putaran Audit 5 Pilar — Kelompok Prioritas 1 & Otorisasi Lintas Guru (9 Oktober 2026)
+
+### A.20.1 Permintaan dan cakupan
+Pengguna melampirkan hasil audit statis baru (`audit.md`, 5 pilar: Keamanan, QA, Performa,
+Integrasi, UI/UX; penomoran K-01..K-16, Q-01..Q-21, P-01..P-09, I-01..I-06, U-01..U-07) dengan
+pertanyaan "ini sudah di fix?" lalu instruksi "lanjutkan". Audit itu **tidak dijalankan di sandbox
+mana pun** (PHP tidak tersedia di sana), jadi setiap temuan diperiksa ulang terhadap kode sekarang
+sebelum dikerjakan — termasuk temuan yang ternyata sudah beres dari putaran sebelumnya.
+
+Yang dikerjakan pada putaran ini mengikuti urutan prioritas audit (kelompok 1–3):
+**K-01** (kredensial seeder), **K-02** (soal bocor sebelum `mulai_at`), **K-03** (kanal SSE bersama
+guru+murid), **K-04** (BOLA baca lintas guru), **K-05** (pengaturan sekolah/kelas + bacanya oleh
+murid), dan **K-15** (mutasi materi lintas guru). Temuan lain — termasuk P-01..P-09, Q-02..Q-21,
+I-01..I-06, dan U-01..U-07 — **belum dikerjakan** dan tidak diklaim selesai (lihat A.20.5).
+
+### A.20.2 Temuan dan perbaikannya
+
+| ID | Inti temuan (dari `audit.md`) | Perbaikan |
+|---|---|---|
+| K-01 [T] | Sandi demo tertulis di seeder tanpa penjagaan environment | `RolesAndAdminSeeder` **berhenti total di produksi** (peringatan, tanpa membuat akun), sandi bisa ditimpa lewat `SEEDER_SANDI_ADMIN`/`SEEDER_SANDI_GURU`, email contoh dipindah ke domain `.test`, dan migrasi baru mengganti email akun demo lama `guru1@gmail.com` (hanya bila email tujuan belum dipakai dan barisnya memang akun guru demo) |
+| K-02 [T] | `KuisMuridResource` mengirim seluruh soal + `konten` mentah begitu kuis terbit | Daftar `soal` **dibuang** dari resource murid (metadata saja); halaman detail murid ikut menjelaskan bahwa soal muncul lewat attempt; uji Pest + smoke HTTP menegaskan tidak ada `soal`/`kunci`/`pembahasan` di respons murid |
+| K-03 [T] | Guru dan murid berbagi kanal `ulangan:kuis:{id}`; `peran` tiket tidak pernah diperiksa | Kanal dipisah `:guru` dan `:murid` (`PenyiarRealtime::kanalGuru/kanalMurid`); kejadian kecurangan (memuat `attempt_id`) hanya ke kanal guru, layar kelas hanya ke kanal murid; service Node punya `PERAN_JALUR`, **menolak tiket yang perannya tidak cocok** (403) dan menandai peran di event `siap` |
+| K-04 [S/T] | Batas kepemilikan hanya pada mutasi; guru A bisa **membaca** kuis draf, kunci jawaban, nilai, ekspor CSV, monitor, dan catatan kecurangan guru B; baris `dibuat_oleh = NULL` dianggap milik bersama | `bolehKelola` dipakai untuk aksi **baca** juga (`KuisPolicy::view/laporan/koreksi/layar`, `SoalPolicy::view`, `AttemptPolicy::view/hasil/koreksi`, daftar kuis & bank soal disaring di controller); pengecualian baris-NULL **dihapus**, pemilik baris lama diisi migrasi baru, dan seeder contoh mengembalikan kepemilikan konten demonya ke akun guru demo |
+| K-05 [S] | Lingkup sekolah/kelas bisa diubah guru mana pun; murid bisa membaca saklar proteksi | `PengaturanPolicy::update` = admin untuk sekolah/kelas, pemilik kuis untuk lingkup kuis; `viewAny` **khusus guru** (murid ditolak 403); halaman pengaturan menyusun pilihan sesuai peran (admin: sekolah/kelas/kuis, guru: kuis miliknya) lewat modul murni `lingkup.js` |
+| K-15 [S] | Mutasi materi (ubah/hapus/terbitkan/unggah berkas) hanya memeriksa `isGuru()` | `MateriPolicy` memakai `bolehKelola` untuk `view/update/delete/publikasi/berkas` (kolom `dibuat_oleh` materi sudah ada) |
+
+**Berkas aplikasi yang diubah/dibuat pada putaran ini (lengkap):**
+
+- Backend, kebijakan & controller: `app/Models/User.php`,
+  `app/Sections/Quiz/Policies/KuisPolicy.php`, `app/Sections/Quiz/Http/Controllers/KuisController.php`,
+  `app/Sections/Quiz/Http/Resources/KuisMuridResource.php`,
+  `app/Sections/Question/Policies/SoalPolicy.php`,
+  `app/Sections/Question/Http/Controllers/SoalController.php`,
+  `app/Sections/Attempt/Policies/AttemptPolicy.php`,
+  `app/Sections/Material/Policies/MateriPolicy.php`,
+  `app/Sections/Settings/Policies/PengaturanPolicy.php`,
+  `app/Sections/Settings/Http/Controllers/PengaturanController.php`,
+  `app/Sections/Presence/Services/PenyiarRealtime.php`,
+  `app/Sections/Presence/Services/LayarService.php`,
+  `app/Sections/Cheat/Http/Controllers/KecuranganController.php`.
+- Backend, basis data: migrasi baru `2026_10_09_000001_isi_pemilik_baris_tanpa_pemilik.php` dan
+  `2026_10_09_000002_ganti_email_demo_ke_domain_test.php`; seeder `RolesAndAdminSeeder.php` dan
+  `BankSoalSeeder.php`; factory `KuisFactory.php` + `SoalFactory.php` (state `milik()`).
+- Frontend: `sections/quiz/HalamanKuisDetail.jsx`, `sections/quiz/HalamanKuisMurid.jsx`,
+  `sections/quiz/api.js` (komentar kontrak), `sections/settings/lingkup.js` (baru),
+  `sections/settings/HalamanPengaturan.jsx`, `sections/settings/api.js` (parameter `kuis_id`).
+- Realtime: `realtime/src/server.js`.
+- Uji: `tests/Feature/OtorisasiPemilikTest.php`, `BankSoalTest.php`, `AttemptTest.php`,
+  `PengaturanTest.php`, `Slice05Test.php`, `Slice06Test.php`, `Slice07Test.php`,
+  `Slice09AiTest.php`, `Slice09TimTest.php`, `Slice09UploadTest.php`, `Slice10EksporTest.php`,
+  `Slice10LayarTest.php`, `realtime/test/sse.test.js`,
+  `frontend/src/__tests__/sections/settings/lingkup.test.js` (baru).
+- Skrip uji manual: `docs/smoke-http-fitur.mjs`.
+
+### A.20.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` | **SEMUA HIJAU** — Pest **218 passed (1744 assertions)** · Pint **314 files PASS** · checkJs **OK** · ESLint **0 error, 2 warning lama** (`watch()` RHF) · Vitest **42 berkas / 338 test** · realtime **15 test, 0 gagal** |
+| `php artisan migrate --force` (dev) | dua migrasi baru `DONE`; sesudahnya `questions`/`quizzes`/`materials` **0 baris tanpa pemilik** (69/36/11 baris) |
+| `php artisan db:seed --force` | idempoten; akun guru demo kini `guru1@sekolah.test` dan konten contoh (`Latihan Operasi Hitung (draf)`, `Ulangan Operasi Hitung`) kembali ber-pemilik akun guru demo |
+| `node docs/smoke-http-fitur.mjs` (layanan hidup: backend :8000, realtime :4000) | **240/240 lulus, 0 gagal** (25,9 detik) — termasuk bukti baru: detail kuis murid tanpa daftar soal (K-02), `event: siap` memuat `peran`, tiket murid ditolak di aliran guru & sebaliknya (K-03), guru ditolak menyetel pengaturan sekolah/kelas dan murid ditolak membacanya (K-05), guru lain ditolak membaca ekspor/monitor/laporan/kejadian (K-04) |
+| `node docs/smoke-ui-cdp.mjs` (Chrome headless CDP :9333, vite :5173) | login admin 200 dan lima halaman (`/kelas`, `/mapel`, `/murid`, `/murid/impor`, `/pengaturan`) terender; halaman Pengaturan menampilkan pemilih lingkup dan daftar saklar tanpa galat di layar |
+| Pemeriksaan tambahan lewat CDP (skrip sekali pakai di luar repo) | login **guru** → `/pengaturan` hanya menawarkan lingkup **kuis miliknya** (tidak ada opsi sekolah/kelas), opsi pertama terpilih otomatis, daftar saklar terender, tanpa pesan galat |
+
+### A.20.4 Catatan teknis yang perlu dibaca berikutnya
+- **Klaim kepemilikan fixture uji.** Sejak K-04 batas baca mengikuti pemilik, fixture uji yang
+  dibuat tanpa pemilik akan ditolak 403 kepada guru. Semua test yang menguji satu guru kini memakai
+  state factory `milik($guru)`; test yang menguji guru lain sengaja tetap `null`/berbeda pemilik.
+  Perubahan ini membuat **43 test lama merah** lebih dulu, lalu hijau setelah fixture dan harapan
+  kontraknya diselaraskan — bukan setelah assertion dilonggarkan.
+- **Pemilik baris lama diisi admin lebih dulu, guru kedua sebagai cadangan** (migrasi
+  `2026_10_09_000001`). Untuk basis data yang belum pernah di-seed sama sekali, migrasi itu tidak
+  mengisi apa pun (tidak ada pengguna), sehingga baris tanpa pemilik hanya bisa disentuh admin.
+- **Tiket SSE yang salah jalur sudah terpakai.** Pemeriksaan peran terjadi setelah tiket diambil
+  atomik (`GETDEL`), jadi klien yang salah jalur harus meminta tiket baru. Ini disebut inheren pada
+  desain "tiket sekali pakai" dan bukan celah tambahan (tiket itu tetap tidak bisa dipakai ulang).
+
+### A.20.5 Batasan jujur (yang sengaja belum dikerjakan)
+- **Sisanya belum dikerjakan**: K-06..K-14, K-16, Q-02..Q-21, P-01..P-09 (paginasi, presence
+  O(N^2), beban autosave/submit), I-01..I-06, U-01..U-07. Tidak ada satu pun yang diklaim selesai.
+- Anti-cheat per kuis kini **wajib lewat halaman pengaturan** (pemilih kuis); belum ada pintasan
+  dari halaman kuis itu sendiri — dicatat sebagai kekurangan UX, bukan bug keamanan.
+- Perombakan UI/UX yang diminta audit (modal kumpul menggantikan `window.confirm`, indikator simpan,
+  pesan ramah anak) belum dikerjakan.
+- Deploy publik dan Octane Swoole masih belum ada, sama seperti catatan sebelumnya.
+- Berkas pra-sesi yang **tidak** termasuk putaran ini dan sengaja tidak dikomit: perubahan
+  `PasswordReset*`, `AuthTest`, `AksesMuridBaruTest`, `HalamanAturUlangSandi.jsx`, `sections/auth/api.js`,
+  `aturUlang.test.js`, dan migrasi `2026_10_08_000004_buang_unique_nama_users.php`.
