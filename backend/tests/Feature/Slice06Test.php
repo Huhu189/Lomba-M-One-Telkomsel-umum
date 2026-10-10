@@ -266,6 +266,44 @@ it('letak kata dan hubung kata dinilai lewat registry', function (): void {
         ->and(RegistryTipeSoal::nilai(TipeSoal::HubungKata, [], $kunciHubung, ['a' => 'y', 'b' => 'y']))->toBeFalse();
 });
 
+it('layar murid menerima daftar yang dibutuhkan tiap tipe soal baru', function (): void {
+    // Q-19: payload soal untuk layar pengerjaan adalah daftar putih kolom, dan
+    // daftar itu sempat hanya memuat opsi/kiri/kanan/item. Akibatnya soal letak
+    // kata sampai ke perangkat murid TANPA "kata" dan "posisi": anak melihat
+    // soal kosong yang mustahil dikerjakan (penilaian lewat API tetap jalan,
+    // jadi tes penilaian tidak menangkapnya). Penjaga ini memastikan tiap tipe
+    // membawa daftar yang dipakai renderer-nya, tanpa kunci jawaban.
+    $letak = buatSoal06($this, 'letak_kata', [
+        'teks' => 'Letakkan kata pada kolom yang tepat.',
+        'kata' => [['id' => 'k1', 'teks' => 'Ibu'], ['id' => 'k2', 'teks' => 'memasak']],
+        'posisi' => [['id' => 'p1', 'teks' => 'Subjek'], ['id' => 'p2', 'teks' => 'Predikat']],
+    ], ['penempatan' => ['k1' => 'p1', 'k2' => 'p2']]);
+    $hubung = buatSoal06($this, 'hubung_kata', [
+        'teks' => 'Hubungkan kata dengan pasangannya.',
+        'kiri' => [['id' => 'a', 'teks' => 'Besar'], ['id' => 'b', 'teks' => 'Panas']],
+        'kanan' => [['id' => 'x', 'teks' => 'Kecil'], ['id' => 'y', 'teks' => 'Dingin']],
+    ], ['sambungan' => ['a' => 'x', 'b' => 'y']]);
+    $isian = buatSoal06($this, 'isian_singkat', ['teks' => 'Ibu kota Indonesia?'], ['jawaban_baku' => ['Jakarta']]);
+
+    $kuis = kuisSoal06($this, [$letak, $hubung, $isian]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated();
+    /** @var array<string, array<string, mixed>> $soal */
+    $soal = collect($mulai->json('soal'))->keyBy('tipe')->all();
+
+    expect($soal['letak_kata']['konten'])->toHaveKeys(['teks', 'kata', 'posisi'])
+        ->and($soal['hubung_kata']['konten'])->toHaveKeys(['teks', 'kiri', 'kanan'])
+        ->and($soal['isian_singkat']['konten'])->toHaveKeys(['teks'])
+        ->and(collect($soal['letak_kata']['konten']['kata'])->pluck('id')->sort()->values()->all())->toBe(['k1', 'k2'])
+        ->and(collect($soal['letak_kata']['konten']['posisi'])->pluck('id')->sort()->values()->all())->toBe(['p1', 'p2'])
+        // Layar murid tidak pernah membawa kunci jawaban.
+        ->and($soal['letak_kata'])->not->toHaveKey('kunci')
+        ->and($soal['hubung_kata'])->not->toHaveKey('kunci');
+});
+
 it('ulangan bertingkat menilai otomatis dan menandai yang perlu ditinjau', function (): void {
     $isian = buatSoal06($this, 'isian_singkat', ['teks' => 'Ibu kota Indonesia?'], ['jawaban_baku' => ['Jakarta']], 2);
     $uraian = buatSoal06($this, 'uraian', ['teks' => 'Jelaskan fotosintesis.'], [
