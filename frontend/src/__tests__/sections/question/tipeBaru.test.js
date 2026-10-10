@@ -7,8 +7,10 @@ import {
   stateSoalKosong,
 } from '../../../sections/question/tipeSoal.js'
 import {
+  skemaBacaJamKunci,
   skemaBenarSalahMajemukKunci,
   skemaGarisBilanganKunci,
+  skemaHotspotGambarKunci,
   skemaIsianAngkaKunci,
   skemaIsianRumpangKunci,
   skemaKlasifikasiKunci,
@@ -16,6 +18,8 @@ import {
   skemaPilihanGandaKompleksKunci,
   skemaSusunHurufKunci,
   skemaTabelIsianKunci,
+  skemaTekaSilangMiniKunci,
+  skemaTugasUnggahKunci,
   skemaUrutGambarKunci,
   validasiSoal,
 } from '../../../sections/question/validasi.js'
@@ -563,6 +567,264 @@ describe('garis bilangan', () => {
     expect(state.garisLangkah).toBe('2')
     expect(state.garisNilai).toBe('12')
     expect(state.garisToleransi).toBe('0.5')
+    expect(validasiSoal(state)).toEqual([])
+  })
+})
+
+describe('hotspot gambar', () => {
+  /** @param {ReturnType<typeof dasar>} state */
+  function isiHotspot(state) {
+    state.teks = 'Ketuk gambar lingkaran.'
+    state.media = '/media/bentuk.png'
+    state.areaHotspot = [
+      { id: 'A1', x: '5', y: '10', w: '20', h: '30' },
+      { id: 'A2', x: '40', y: '10', w: '20', h: '30' },
+    ]
+    state.benarHotspot = ['A2']
+    return state
+  }
+
+  it('mengubah persen editor menjadi koordinat 0–1', () => {
+    const state = isiHotspot(dasar(TIPE.hotspotGambar))
+
+    expect(kontenDariState(state).area).toEqual([
+      { id: 'A1', x: 0.05, y: 0.1, w: 0.2, h: 0.3 },
+      { id: 'A2', x: 0.4, y: 0.1, w: 0.2, h: 0.3 },
+    ])
+    expect(kunciDariState(state)).toEqual({ area_benar: ['A2'] })
+    expect(validasiSoal(state)).toEqual([])
+    expect(skemaHotspotGambarKunci.safeParse(kunciDariState(state)).success).toBe(true)
+  })
+
+  it('menolak hotspot tanpa gambar, area keluar bidang, dan tanpa kunci', () => {
+    const tanpaGambar = isiHotspot(dasar(TIPE.hotspotGambar))
+    tanpaGambar.media = ''
+    expect(validasiSoal(tanpaGambar).length).toBeGreaterThan(0)
+
+    const keluar = isiHotspot(dasar(TIPE.hotspotGambar))
+    keluar.areaHotspot = [{ id: 'A1', x: '90', y: '10', w: '30', h: '30' }]
+    keluar.benarHotspot = ['A1']
+    expect(validasiSoal(keluar).length).toBeGreaterThan(0)
+
+    const tanpaKunci = isiHotspot(dasar(TIPE.hotspotGambar))
+    tanpaKunci.benarHotspot = []
+    expect(validasiSoal(tanpaKunci).length).toBeGreaterThan(0)
+    expect(skemaHotspotGambarKunci.safeParse({ area_benar: [] }).success).toBe(false)
+  })
+
+  it('membuka kembali area dan kunci dari soal tersimpan', () => {
+    const state = stateDariSoal({
+      id: 40,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'hotspot_gambar',
+      konten: {
+        teks: 'Ketuk.',
+        media: '/media/bentuk.png',
+        area: [{ id: 'a1', x: 0.25, y: 0.5, w: 0.1, h: 0.1 }],
+      },
+      kunci: { area_benar: ['a1'] },
+      pembahasan: null,
+      skor: 4,
+      aktif: true,
+    })
+
+    expect(state.areaHotspot).toEqual([{ id: 'a1', x: '25', y: '50', w: '10', h: '10' }])
+    expect(state.benarHotspot).toEqual(['a1'])
+    expect(validasiSoal(state)).toEqual([])
+  })
+})
+
+describe('baca jam', () => {
+  it('menyusun kunci jam dan menit sebagai angka', () => {
+    const state = dasar(TIPE.bacaJam)
+    state.teks = 'Tunjukkan pukul setengah delapan.'
+    state.jamJam = '7'
+    state.jamMenit = '30'
+
+    expect(kontenDariState(state).teks).toBe('Tunjukkan pukul setengah delapan.')
+    expect(kontenDariState(state)).not.toHaveProperty('jam')
+    expect(kunciDariState(state)).toEqual({ jam: 7, menit: 30 })
+    expect(validasiSoal(state)).toEqual([])
+  })
+
+  it('menolak jam di luar 0–11 dan menit di luar 0–59', () => {
+    const state = dasar(TIPE.bacaJam)
+    state.teks = 'Tunjukkan pukul berapa.'
+    state.jamJam = '12'
+    expect(validasiSoal(state).length).toBeGreaterThan(0)
+
+    state.jamJam = '7'
+    state.jamMenit = '60'
+    expect(validasiSoal(state).length).toBeGreaterThan(0)
+
+    expect(skemaBacaJamKunci.safeParse({ jam: 7, menit: 30 }).success).toBe(true)
+    expect(skemaBacaJamKunci.safeParse({ jam: 7, menit: 30.5 }).success).toBe(false)
+    expect(skemaBacaJamKunci.safeParse({ jam: 13, menit: 0 }).success).toBe(false)
+  })
+
+  it('membuka kembali waktu dari soal tersimpan', () => {
+    const state = stateDariSoal({
+      id: 41,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'baca_jam',
+      konten: { teks: 'Tunjukkan pukul berapa.' },
+      kunci: { jam: 0, menit: 15 },
+      pembahasan: null,
+      skor: 4,
+      aktif: true,
+    })
+
+    expect(state.jamJam).toBe('0')
+    expect(state.jamMenit).toBe('15')
+    expect(validasiSoal(state)).toEqual([])
+  })
+})
+
+describe('tugas unggah', () => {
+  it('menyusun konten jenis berkas dan kunci rubrik bernilai angka', () => {
+    const state = dasar(TIPE.tugasUnggah)
+    state.teks = 'Unggah foto pekerjaanmu.'
+    state.jenisBerkas = 'Foto JPG atau PNG'
+    state.rubrik = [
+      { butir: 'Langkah lengkap', poin: '3' },
+      { butir: 'Hasil benar', poin: '2' },
+    ]
+
+    expect(kontenDariState(state).jenis_berkas).toBe('Foto JPG atau PNG')
+    expect(kunciDariState(state)).toEqual({
+      rubrik: [
+        { butir: 'Langkah lengkap', poin: 3 },
+        { butir: 'Hasil benar', poin: 2 },
+      ],
+    })
+    expect(validasiSoal(state)).toEqual([])
+  })
+
+  it('menolak jenis berkas kosong dan poin rubrik nol', () => {
+    const state = dasar(TIPE.tugasUnggah)
+    state.teks = 'Unggah foto.'
+    state.jenisBerkas = ''
+    expect(validasiSoal(state).length).toBeGreaterThan(0)
+
+    state.jenisBerkas = 'Foto'
+    state.rubrik = [{ butir: 'Rapi', poin: '0' }]
+    expect(validasiSoal(state).length).toBeGreaterThan(0)
+
+    expect(skemaTugasUnggahKunci.safeParse({ rubrik: [{ butir: 'Rapi', poin: 0 }] }).success).toBe(false)
+    expect(skemaTugasUnggahKunci.safeParse({ rubrik: [{ butir: 'Rapi', poin: 1 }] }).success).toBe(true)
+  })
+
+  it('membuka kembali rubrik dari soal tersimpan', () => {
+    const state = stateDariSoal({
+      id: 42,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'tugas_unggah',
+      konten: { teks: 'Unggah foto.', jenis_berkas: 'Foto JPG' },
+      kunci: { rubrik: [{ butir: 'Langkah lengkap', poin: 3 }] },
+      pembahasan: null,
+      skor: 4,
+      aktif: true,
+    })
+
+    expect(state.jenisBerkas).toBe('Foto JPG')
+    expect(state.rubrik).toEqual([{ butir: 'Langkah lengkap', poin: '3' }])
+    expect(validasiSoal(state)).toEqual([])
+  })
+})
+
+describe('teka silang mini', () => {
+  /** @param {ReturnType<typeof dasar>} state */
+  function isiSilang(state) {
+    state.teks = 'Isi teka silang berikut.'
+    state.gridSilang = 'kat\n#i#'
+    state.petunjukSilang = [
+      { arah: 'mendatar', nomor: '1', teks: 'Nama hewan mengeong.', mulai: '0,0', panjang: '3' },
+      { arah: 'menurun', nomor: '2', teks: 'Ada di tengah.', mulai: '0,1', panjang: '2' },
+    ]
+    return state
+  }
+
+  it('memisahkan bentuk grid dari huruf jawaban', () => {
+    const state = isiSilang(dasar(TIPE.tekaSilangMini))
+    const konten = kontenDariState(state)
+
+    expect(konten.grid).toEqual([['', '', ''], ['#', '', '#']])
+    expect(konten.mendatar).toEqual([
+      { nomor: 1, teks: 'Nama hewan mengeong.', sel: ['0,0', '0,1', '0,2'] },
+    ])
+    expect(konten.menurun).toEqual([{ nomor: 2, teks: 'Ada di tengah.', sel: ['0,1', '1,1'] }])
+    // Bentuk kotak tidak memuat satu huruf jawaban pun.
+    expect(JSON.stringify(konten.grid)).toBe('[["","",""],["#","","#"]]')
+    expect(kunciDariState(state)).toEqual({
+      sel: { '0,0': 'k', '0,1': 'a', '0,2': 't', '1,1': 'i' },
+    })
+    expect(validasiSoal(state)).toEqual([])
+  })
+
+  it('menolak grid tak rata dan kotak yang belum diberi huruf', () => {
+    const takRata = isiSilang(dasar(TIPE.tekaSilangMini))
+    takRata.gridSilang = 'kat\n#i'
+    expect(validasiSoal(takRata).length).toBeGreaterThan(0)
+
+    const belumDiisi = isiSilang(dasar(TIPE.tekaSilangMini))
+    belumDiisi.gridSilang = 'ka.\n#i#'
+    expect(validasiSoal(belumDiisi).length).toBeGreaterThan(0)
+
+    const hurufAsing = isiSilang(dasar(TIPE.tekaSilangMini))
+    hurufAsing.gridSilang = 'ka1\n#i#'
+    expect(validasiSoal(hurufAsing).length).toBeGreaterThan(0)
+  })
+
+  it('menolak petunjuk yang keluar grid, melewati kotak hitam, atau kembar nomornya', () => {
+    const keluar = isiSilang(dasar(TIPE.tekaSilangMini))
+    keluar.petunjukSilang = [
+      { arah: 'mendatar', nomor: '1', teks: 'Terlalu panjang.', mulai: '0,0', panjang: '4' },
+    ]
+    expect(validasiSoal(keluar).length).toBeGreaterThan(0)
+
+    const kotakHitam = isiSilang(dasar(TIPE.tekaSilangMini))
+    kotakHitam.petunjukSilang = [
+      { arah: 'menurun', nomor: '1', teks: 'Melewati kotak hitam.', mulai: '0,0', panjang: '2' },
+    ]
+    expect(validasiSoal(kotakHitam).length).toBeGreaterThan(0)
+
+    const kembar = isiSilang(dasar(TIPE.tekaSilangMini))
+    kembar.petunjukSilang = [
+      { arah: 'mendatar', nomor: '1', teks: 'Pertama.', mulai: '0,0', panjang: '3' },
+      { arah: 'mendatar', nomor: '1', teks: 'Kedua.', mulai: '1,1', panjang: '1' },
+    ]
+    expect(validasiSoal(kembar).length).toBeGreaterThan(0)
+
+    expect(skemaTekaSilangMiniKunci.safeParse({ sel: { '0,0': 'k' } }).success).toBe(true)
+    expect(skemaTekaSilangMiniKunci.safeParse({ sel: { '0,0': 'kk' } }).success).toBe(false)
+  })
+
+  it('membuka kembali grid berisi huruf, petunjuk, dan kuncinya', () => {
+    const state = stateDariSoal({
+      id: 43,
+      subject_id: 3,
+      tag_id: null,
+      tipe: 'teka_silang_mini',
+      konten: {
+        teks: 'Isi teka silang.',
+        grid: [['', '', ''], ['#', '', '#']],
+        mendatar: [{ nomor: 1, teks: 'Nama hewan mengeong.', sel: ['0,0', '0,1', '0,2'] }],
+        menurun: [{ nomor: 2, teks: 'Tengah.', sel: ['0,1', '1,1'] }],
+      },
+      kunci: { sel: { '0,0': 'k', '0,1': 'a', '0,2': 't', '1,1': 'i' } },
+      pembahasan: null,
+      skor: 4,
+      aktif: true,
+    })
+
+    expect(state.gridSilang).toBe('kat\n#i#')
+    expect(state.petunjukSilang).toEqual([
+      { arah: 'mendatar', nomor: '1', teks: 'Nama hewan mengeong.', mulai: '0,0', panjang: '3' },
+      { arah: 'menurun', nomor: '2', teks: 'Tengah.', mulai: '0,1', panjang: '2' },
+    ])
     expect(validasiSoal(state)).toEqual([])
   })
 })

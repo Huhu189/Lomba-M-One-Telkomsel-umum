@@ -64,6 +64,10 @@ final class RegistryTipeSoal
             TipeSoal::Klasifikasi => new PenanganKlasifikasi,
             TipeSoal::TabelIsian => new PenanganTabelIsian,
             TipeSoal::GarisBilangan => new PenanganGarisBilangan,
+            TipeSoal::HotspotGambar => new PenanganHotspotGambar,
+            TipeSoal::BacaJam => new PenanganBacaJam,
+            TipeSoal::TugasUnggah => new PenanganTugasUnggah,
+            TipeSoal::TekaSilangMini => new PenanganTekaSilangMini,
         };
     }
 

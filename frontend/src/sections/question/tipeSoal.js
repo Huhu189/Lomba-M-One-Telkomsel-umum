@@ -28,6 +28,10 @@ export const TIPE = {
   klasifikasi: 'klasifikasi',
   tabelIsian: 'tabel_isian',
   garisBilangan: 'garis_bilangan',
+  hotspotGambar: 'hotspot_gambar',
+  bacaJam: 'baca_jam',
+  tugasUnggah: 'tugas_unggah',
+  tekaSilangMini: 'teka_silang_mini',
 }
 
 /** @type {Record<string, string>} */
@@ -50,6 +54,10 @@ export const LABEL_TIPE = {
   [TIPE.klasifikasi]: 'Klasifikasi',
   [TIPE.tabelIsian]: 'Tabel isian',
   [TIPE.garisBilangan]: 'Garis bilangan',
+  [TIPE.hotspotGambar]: 'Hotspot gambar',
+  [TIPE.bacaJam]: 'Baca jam',
+  [TIPE.tugasUnggah]: 'Tugas unggah',
+  [TIPE.tekaSilangMini]: 'Teka silang mini',
 }
 
 /** Tipe yang dinilai pasti (soal objektif) — cermin TipeSoal::objektif(). */
@@ -70,10 +78,13 @@ export const TIPE_OBJEKTIF = [
   TIPE.klasifikasi,
   TIPE.tabelIsian,
   TIPE.garisBilangan,
+  TIPE.hotspotGambar,
+  TIPE.bacaJam,
+  TIPE.tekaSilangMini,
 ]
 
 /** Tipe bertingkat: dinilai kata kunci, sisanya menunggu koreksi guru. */
-export const TIPE_BERTINGKAT = [TIPE.isianSingkat, TIPE.uraian]
+export const TIPE_BERTINGKAT = [TIPE.isianSingkat, TIPE.uraian, TIPE.tugasUnggah]
 
 /**
  * Tipe yang pertanyaannya bukan `konten.teks` (gambar, atau petunjuk susun
@@ -119,6 +130,13 @@ export const MIN_KOTAK = 2
 export const MAKS_KOTAK = 6
 export const MAKS_SEL = 40
 export const MAKS_RENTANG_GARIS = 1000
+
+/** Batas hotspot gambar, baca jam, tugas unggah, dan teka silang mini. */
+export const MAKS_AREA_HOTSPOT = 12
+export const MAKS_BUTIR_RUBRIK = 10
+export const MAKS_SISI_SILANG = 12
+export const MAKS_PETUNJUK_SILANG = 12
+export const MIN_HURUF_SILANG = 2
 
 /** Batas panjang teks MathML (cermin BantuanKonten::galatMatematika). */
 export const MAKS_MATEMATIKA = 2000
@@ -241,6 +259,116 @@ export function rekamanDaftarTeks(nilai) {
     hasil[kunci] = daftarTeks(Array.isArray(isi) ? isi : [isi]).filter((satu) => satu !== '')
   }
   return hasil
+}
+
+/**
+ * Persen (0–100) dari editor → pecahan 0–1 yang dikirim ke server.
+ * Nilai di luar rentang dijepit supaya gambar tidak pernah "bocor" keluar bidang.
+ * @param {unknown} nilai
+ * @returns {number}
+ */
+export function persenKePecahan(nilai) {
+  const angka = Number(nilai)
+
+  if (!Number.isFinite(angka)) return 0
+
+  return Math.min(1, Math.max(0, angka / 100))
+}
+
+/**
+ * Kebalikannya: pecahan 0–1 dari server → persen untuk editor.
+ * @param {unknown} nilai
+ * @returns {string}
+ */
+export function pecahanKePersen(nilai) {
+  const angka = Number(nilai)
+
+  if (!Number.isFinite(angka)) return ''
+
+  return String(Math.round(Math.min(1, Math.max(0, angka)) * 100))
+}
+
+/**
+ * Baris grid teka silang dari kotak teks editor: tiap baris satu baris grid,
+ * tanpa baris kosong dan tanpa spasi.
+ * @param {string} teks
+ * @returns {string[]}
+ */
+export function barisSilang(teks) {
+  return teks
+    .split('\n')
+    .map((satu) => satu.replace(/\s+/g, ''))
+    .filter((satu) => satu !== '')
+}
+
+/**
+ * Kode sel teka silang: "baris,kolom".
+ * @param {number} baris @param {number} kolom
+ * @returns {string}
+ */
+export function kodeSilang(baris, kolom) {
+  return `${baris},${kolom}`
+}
+
+/**
+ * Huruf jawaban dari grid editor: huruf pada kotak yang diisi murid
+ * (`#` = kotak hitam, titik/karakter lain = kotak yang belum diberi huruf).
+ * @param {string} teks
+ * @returns {Record<string, string>}
+ */
+export function selSilangDariGrid(teks) {
+  /** @type {Record<string, string>} */
+  const sel = {}
+
+  barisSilang(teks).forEach((baris, r) => {
+    ;[...baris].forEach((huruf, c) => {
+      if (huruf !== '#' && /[a-zA-Z]/.test(huruf)) sel[kodeSilang(r, c)] = huruf
+    })
+  })
+
+  return sel
+}
+
+/**
+ * Daftar kode sel sebuah petunjuk dari sel awal + panjangnya.
+ * @param {string} mulai kode sel awal ("baris,kolom")
+ * @param {unknown} panjang
+ * @param {string} arah 'mendatar'|'menurun'
+ * @returns {string[]}
+ */
+export function selDariPetunjuk(mulai, panjang, arah) {
+  const bagian = mulai.split(',')
+  const baris = Number(bagian[0])
+  const kolom = Number(bagian[1])
+  const jumlah = Number(panjang)
+
+  if (!Number.isInteger(baris) || !Number.isInteger(kolom) || !Number.isInteger(jumlah) || jumlah < 1) {
+    return []
+  }
+
+  const sel = []
+
+  for (let urut = 0; urut < jumlah; urut += 1) {
+    sel.push(arah === 'menurun' ? kodeSilang(baris + urut, kolom) : kodeSilang(baris, kolom + urut))
+  }
+
+  return sel
+}
+
+/**
+ * Peta kode sel awal → nomor petunjuk (untuk menulis nomor di kotak pertama).
+ * @param {{ nomor: string, mulai: string }[]} petunjuk
+ * @returns {Record<string, string>}
+ */
+export function nomorPetaSilang(petunjuk) {
+  /** @type {Record<string, string>} */
+  const peta = {}
+
+  for (const satu of petunjuk) {
+    if (satu.mulai !== '' && satu.nomor !== '') peta[satu.mulai] = satu.nomor
+  }
+
+  return peta
 }
 
 /**
@@ -369,6 +497,14 @@ export function idBerikut(prefix, daftar) {
  *   garisLangkah: string,
  *   garisNilai: string,
  *   garisToleransi: string,
+ *   areaHotspot: ({ id: string, x: string, y: string, w: string, h: string })[],
+ *   benarHotspot: string[],
+ *   jamJam: string,
+ *   jamMenit: string,
+ *   jenisBerkas: string,
+ *   rubrik: ({ butir: string, poin: string })[],
+ *   gridSilang: string,
+ *   petunjukSilang: ({ arah: string, nomor: string, teks: string, mulai: string, panjang: string })[],
  *   pembahasan: string,
  *   skor: string,
  *   aktif: boolean,
@@ -482,6 +618,17 @@ export function stateSoalKosong() {
     garisLangkah: '1',
     garisNilai: '',
     garisToleransi: '0',
+    areaHotspot: [
+      { id: 'A1', x: '10', y: '20', w: '20', h: '20' },
+      { id: 'A2', x: '40', y: '20', w: '20', h: '20' },
+    ],
+    benarHotspot: [],
+    jamJam: '7',
+    jamMenit: '0',
+    jenisBerkas: '',
+    rubrik: [{ butir: '', poin: '1' }],
+    gridSilang: '...\n...\n...',
+    petunjukSilang: [{ arah: 'mendatar', nomor: '1', teks: '', mulai: '0,0', panjang: '3' }],
     pembahasan: '',
     skor: '10',
     aktif: true,
@@ -572,6 +719,42 @@ export function kontenDariState(state) {
     konten.langkah = Number(state.garisLangkah)
   }
 
+  if (state.tipe === TIPE.hotspotGambar) {
+    // Editor memakai persen supaya guru tidak menghitung pecahan; server tetap
+    // menerima koordinat ternormalisasi 0–1.
+    konten.area = state.areaHotspot.map((satu) => ({
+      id: satu.id,
+      x: persenKePecahan(satu.x),
+      y: persenKePecahan(satu.y),
+      w: persenKePecahan(satu.w),
+      h: persenKePecahan(satu.h),
+    }))
+  }
+
+  if (state.tipe === TIPE.tugasUnggah) {
+    konten.jenis_berkas = state.jenisBerkas.trim()
+  }
+
+  if (state.tipe === TIPE.tekaSilangMini) {
+    // konten hanya membawa bentuk kotak; huruf jawabannya ada di kunci.sel.
+    konten.grid = barisSilang(state.gridSilang).map((baris) =>
+      [...baris].map((huruf) => (huruf === '#' ? '#' : '')),
+    )
+
+    /** @param {string} arah */
+    const petunjuk = (arah) =>
+      state.petunjukSilang
+        .filter((satu) => satu.arah === arah)
+        .map((satu) => ({
+          nomor: Number(satu.nomor),
+          teks: satu.teks.trim(),
+          sel: selDariPetunjuk(satu.mulai, satu.panjang, arah),
+        }))
+
+    konten.mendatar = petunjuk('mendatar')
+    konten.menurun = petunjuk('menurun')
+  }
+
   return konten
 }
 
@@ -618,6 +801,14 @@ export function kunciDariState(state) {
   if (state.tipe === TIPE.garisBilangan) {
     return { nilai: Number(state.garisNilai), toleransi: Number(state.garisToleransi || 0) }
   }
+  if (state.tipe === TIPE.hotspotGambar) return { area_benar: [...state.benarHotspot] }
+  if (state.tipe === TIPE.bacaJam) return { jam: Number(state.jamJam), menit: Number(state.jamMenit) }
+  if (state.tipe === TIPE.tugasUnggah) {
+    return {
+      rubrik: state.rubrik.map((satu) => ({ butir: satu.butir.trim(), poin: Number(satu.poin) })),
+    }
+  }
+  if (state.tipe === TIPE.tekaSilangMini) return { sel: selSilangDariGrid(state.gridSilang) }
   return { jawaban: state.jawaban }
 }
 
@@ -914,6 +1105,89 @@ export function stateDariSoal(soal) {
     }
 
     state.kunciSel = kunciSel
+  }
+
+  if (soal.tipe === TIPE.hotspotGambar) {
+    const area = Array.isArray(konten.area) ? konten.area : []
+
+    if (area.length > 0) {
+      state.areaHotspot = area
+        .filter((satu) => satu !== null && typeof satu === 'object')
+        .map((satu) => {
+          const rekaman = /** @type {Record<string, unknown>} */ (satu)
+          return {
+            id: teksAman(rekaman.id),
+            x: pecahanKePersen(rekaman.x),
+            y: pecahanKePersen(rekaman.y),
+            w: pecahanKePersen(rekaman.w),
+            h: pecahanKePersen(rekaman.h),
+          }
+        })
+    }
+
+    state.benarHotspot = daftarTeks(kunci.area_benar)
+  }
+
+  if (soal.tipe === TIPE.bacaJam) {
+    state.jamJam = kunci.jam === undefined || kunci.jam === null ? '0' : String(kunci.jam)
+    state.jamMenit = kunci.menit === undefined || kunci.menit === null ? '0' : String(kunci.menit)
+  }
+
+  if (soal.tipe === TIPE.tugasUnggah) {
+    state.jenisBerkas = teksAman(konten.jenis_berkas)
+
+    const rubrik = Array.isArray(kunci.rubrik) ? kunci.rubrik : []
+    const barisRubrik = rubrik
+      .filter((satu) => satu !== null && typeof satu === 'object')
+      .map((satu) => {
+        const rekaman = /** @type {Record<string, unknown>} */ (satu)
+        return {
+          butir: teksAman(rekaman.butir),
+          poin: rekaman.poin === undefined || rekaman.poin === null ? '' : String(rekaman.poin),
+        }
+      })
+
+    if (barisRubrik.length > 0) state.rubrik = barisRubrik
+  }
+
+  if (soal.tipe === TIPE.tekaSilangMini) {
+    const grid = Array.isArray(konten.grid) ? konten.grid : []
+    const huruf = rekamanTeks(kunci.sel)
+
+    if (grid.length > 0) {
+      state.gridSilang = grid
+        .map((baris, r) =>
+          Array.isArray(baris)
+            ? baris
+                .map((kotak, c) => (kotak === '#' ? '#' : (huruf[kodeSilang(r, c)] ?? '.')))
+                .join('')
+            : '',
+        )
+        .join('\n')
+    }
+
+    /** @type {{ arah: string, nomor: string, teks: string, mulai: string, panjang: string }[]} */
+    const petunjuk = []
+
+    for (const [arah, nama] of [['mendatar', 'mendatar'], ['menurun', 'menurun']]) {
+      const daftar = Array.isArray(konten[nama]) ? konten[nama] : []
+
+      for (const satu of daftar) {
+        if (satu === null || typeof satu !== 'object') continue
+        const rekaman = /** @type {Record<string, unknown>} */ (satu)
+        const sel = daftarTeks(rekaman.sel)
+
+        petunjuk.push({
+          arah,
+          nomor: rekaman.nomor === undefined || rekaman.nomor === null ? '' : String(rekaman.nomor),
+          teks: teksAman(rekaman.teks),
+          mulai: sel[0] ?? '',
+          panjang: String(sel.length),
+        })
+      }
+    }
+
+    if (petunjuk.length > 0) state.petunjukSilang = petunjuk
   }
 
   if (soal.tipe === TIPE.garisBilangan) {

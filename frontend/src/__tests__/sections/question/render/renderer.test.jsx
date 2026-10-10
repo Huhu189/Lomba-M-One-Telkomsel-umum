@@ -36,6 +36,20 @@ import SoalTabelIsian, {
 import SoalGarisBilangan, {
   titikGaris,
 } from '../../../../sections/question/render/SoalGarisBilangan.jsx'
+import SoalHotspotGambar, {
+  areaHotspot,
+} from '../../../../sections/question/render/SoalHotspotGambar.jsx'
+import SoalBacaJam, {
+  angkaJam,
+  ujungJarum,
+} from '../../../../sections/question/render/SoalBacaJam.jsx'
+import SoalTugasUnggah, {
+  rubrikPenilaian,
+} from '../../../../sections/question/render/SoalTugasUnggah.jsx'
+import SoalTekaSilangMini, {
+  gridSilang,
+  petunjukSilang,
+} from '../../../../sections/question/render/SoalTekaSilangMini.jsx'
 
 const kontenPg = {
   teks: 'Berapa hasil 4 + 5?',
@@ -560,5 +574,124 @@ describe('renderer tipe baru (gelombang 2)', () => {
     expect(html).toContain('aria-label="Tandai 2"')
     expect(html).toContain('aria-pressed="true"')
     expect(html).not.toContain('badge-kunci')
+  })
+})
+
+describe('renderer tipe baru (gelombang 3)', () => {
+  const kontenHotspot = {
+    teks: 'Ketuk lingkaran.',
+    media: '/media/bentuk.png',
+    area: [
+      { id: 'a1', x: 0.05, y: 0.2, w: 0.25, h: 0.5 },
+      { id: 'a2', x: 0.4, y: 0.2, w: 0.25, h: 0.5 },
+    ],
+  }
+
+  it('hotspot gambar menyediakan satu area yang bisa diketuk per kotak', () => {
+    expect(areaHotspot(kontenHotspot.area)).toEqual(kontenHotspot.area)
+    // Nilai di luar 0–1 dijepit dan data kotor dibuang.
+    expect(areaHotspot([{ id: 'x', x: 2, y: -1, w: 0.5, h: 0.5 }, null])).toEqual([
+      { id: 'x', x: 1, y: 0, w: 0.5, h: 0.5 },
+    ])
+
+    const html = renderToStaticMarkup(
+      <SoalHotspotGambar konten={kontenHotspot} kunci={{ area_benar: ['a2'] }} />,
+    )
+
+    expect(html).toContain('src="/media/bentuk.png"')
+    expect(html.match(/role="button"/g)).toHaveLength(2)
+    expect(html).toContain('aria-label="Ketuk area a2"')
+    expect(html).not.toContain('badge-kunci')
+    expect(html).not.toContain('kunci"')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalHotspotGambar
+        konten={kontenHotspot}
+        kunci={{ area_benar: ['a2'] }}
+        nilai={{ x: 0.1, y: 0.4 }}
+        tampilkanKunci
+      />,
+    )
+    // a1 terpilih (jawaban murid), a2 jadi jawaban benar — dua penanda berbeda.
+    expect(denganKunci.match(/hotspot-area terpilih"/g)).toHaveLength(1)
+    expect(denganKunci.match(/hotspot-area kunci"/g)).toHaveLength(1)
+  })
+
+  it('baca jam menggambar jarum dari pilihan murid', () => {
+    expect(angkaJam('7', 0, 11)).toBe(7)
+    expect(angkaJam(12, 0, 11)).toBeNull()
+    expect(angkaJam(7.5, 0, 11)).toBeNull()
+
+    const pukulTiga = ujungJarum(0, 10)
+    expect(Math.round(pukulTiga.x)).toBe(100)
+
+    const html = renderToStaticMarkup(
+      <SoalBacaJam
+        konten={{ teks: 'Tunjukkan pukul setengah delapan.' }}
+        kunci={{ jam: 7, menit: 30 }}
+        nilai={{ jam: 3, menit: 15 }}
+        nama="s7"
+      />,
+    )
+
+    expect(html).toContain('Tunjukkan pukul setengah delapan.')
+    expect(html).toContain('value="3"')
+    expect(html).toContain('value="15"')
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalBacaJam konten={{ teks: 'Tunjukkan.' }} kunci={{ jam: 7, menit: 30 }} tampilkanKunci />,
+    )
+    expect(denganKunci).toContain('badge-kunci')
+    expect(denganKunci).toContain('7:30')
+  })
+
+  it('tugas unggah menyebut jenis berkas dan menyembunyikan rubrik dari murid', () => {
+    const konten = { teks: 'Unggah foto pekerjaanmu.', jenis_berkas: 'Foto JPG' }
+    const kunci = { rubrik: [{ butir: 'Langkah lengkap', poin: 3 }] }
+
+    expect(rubrikPenilaian(kunci.rubrik)).toEqual([{ butir: 'Langkah lengkap', poin: '3' }])
+
+    const html = renderToStaticMarkup(<SoalTugasUnggah konten={konten} kunci={kunci} nama="s8" />)
+
+    expect(html).toContain('Foto JPG')
+    expect(html).toContain('<textarea')
+    expect(html).toContain('id="s8-catatan"')
+    expect(html).not.toContain('Langkah lengkap')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalTugasUnggah konten={konten} kunci={kunci} tampilkanKunci />,
+    )
+    expect(denganKunci).toContain('Langkah lengkap')
+    expect(denganKunci).toContain('badge-kunci')
+  })
+
+  it('teka silang mengisi hanya kotak yang diisi murid', () => {
+    const grid = [['', '', ''], ['#', '', '#']]
+    const konten = {
+      teks: 'Isi teka silang.',
+      grid,
+      mendatar: [{ nomor: 1, teks: 'Nama hewan mengeong.', sel: ['0,0', '0,1', '0,2'] }],
+      menurun: [{ nomor: 2, teks: 'Tengah.', sel: ['0,1', '1,1'] }],
+    }
+
+    expect(gridSilang(grid)).toEqual(grid)
+    expect(petunjukSilang(konten.mendatar)).toEqual([
+      { nomor: '1', teks: 'Nama hewan mengeong.', sel: ['0,0', '0,1', '0,2'] },
+    ])
+
+    const html = renderToStaticMarkup(<SoalTekaSilangMini konten={konten} nama="s9" />)
+
+    expect(html.match(/class="silang-isian"/g)).toHaveLength(4)
+    expect(html.match(/silang-hitam/g)).toHaveLength(2)
+    expect(html).toContain('aria-label="Huruf kotak 0,0"')
+    expect(html).toContain('1.</strong> Nama hewan mengeong.')
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalTekaSilangMini konten={konten} kunci={{ sel: { '0,0': 'k' } }} tampilkanKunci />,
+    )
+    expect(denganKunci).toContain('badge-kunci')
+    expect(denganKunci).toContain('>k<')
   })
 })

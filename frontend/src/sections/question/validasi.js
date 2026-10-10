@@ -30,8 +30,17 @@ import {
   MAKS_KOTAK,
   MAKS_SEL,
   MAKS_RENTANG_GARIS,
+  MAKS_AREA_HOTSPOT,
+  MAKS_BUTIR_RUBRIK,
+  MAKS_SISI_SILANG,
+  MAKS_PETUNJUK_SILANG,
+  MIN_HURUF_SILANG,
   TIPE_TANPA_TEKS,
+  barisSilang,
+  kodeSilang,
   nomorLubangDariTeks,
+  selDariPetunjuk,
+  selSilangDariGrid,
   petaJawabanDariRekaman,
   urutanDariItem,
   urutanDariItemGambar,
@@ -109,6 +118,10 @@ export function validasiSoal(state) {
   if (state.tipe === TIPE.klasifikasi) galat.push(...validasiKlasifikasi(state))
   if (state.tipe === TIPE.tabelIsian) galat.push(...validasiTabelIsian(state))
   if (state.tipe === TIPE.garisBilangan) galat.push(...validasiGarisBilangan(state))
+  if (state.tipe === TIPE.hotspotGambar) galat.push(...validasiHotspotGambar(state))
+  if (state.tipe === TIPE.bacaJam) galat.push(...validasiBacaJam(state))
+  if (state.tipe === TIPE.tugasUnggah) galat.push(...validasiTugasUnggah(state))
+  if (state.tipe === TIPE.tekaSilangMini) galat.push(...validasiTekaSilangMini(state))
 
   return galat
 }
@@ -124,6 +137,35 @@ export const skemaTabelIsianKunci = z.object({ sel: z.record(z.string(), z.array
 
 export const skemaGarisBilanganKunci = z
   .object({ nilai: z.number(), toleransi: z.number().min(0, 'Toleransi tidak boleh negatif.') })
+  .strict()
+
+/** Skema Zod kunci tipe gelombang 3. */
+export const skemaHotspotGambarKunci = z
+  .object({ area_benar: z.array(z.string().min(1)).min(1, 'Pilih minimal satu area benar.') })
+  .strict()
+
+export const skemaBacaJamKunci = z
+  .object({
+    jam: z.number().int().min(0, 'Jam 0 sampai 11.').max(11, 'Jam 0 sampai 11.'),
+    menit: z.number().int().min(0, 'Menit 0 sampai 59.').max(59, 'Menit 0 sampai 59.'),
+  })
+  .strict()
+
+export const skemaTugasUnggahKunci = z
+  .object({
+    rubrik: z
+      .array(
+        z.object({
+          butir: z.string().min(1, 'Setiap butir rubrik wajib diisi.'),
+          poin: z.number().positive('Poin rubrik wajib lebih dari 0.'),
+        }),
+      )
+      .min(1, 'Rubrik wajib punya minimal satu butir.'),
+  })
+  .strict()
+
+export const skemaTekaSilangMiniKunci = z
+  .object({ sel: z.record(z.string(), z.string().regex(/^[a-zA-Z]$/, 'Kunci sel wajib satu huruf.')) })
   .strict()
 
 /**
@@ -271,6 +313,205 @@ function validasiGarisBilangan(state) {
   else if (Number.isFinite(min) && Number.isFinite(max) && (nilai < min || nilai > max)) {
     galat.push('Nilai kunci wajib berada di antara min dan max.')
   }
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiHotspotGambar(state) {
+  const galat = []
+
+  if (state.media.trim() === '') {
+    galat.push('Hotspot gambar wajib punya alamat gambar (isi bidang Media).')
+  }
+
+  const area = state.areaHotspot
+
+  if (area.length === 0) galat.push('Hotspot gambar wajib punya minimal satu area.')
+  if (area.length > MAKS_AREA_HOTSPOT) galat.push(`Hotspot gambar maksimal ${MAKS_AREA_HOTSPOT} area.`)
+
+  const id = area.map((satu) => satu.id)
+  if (new Set(id).size !== id.length) galat.push('Id area tidak boleh duplikat.')
+
+  for (const satu of area) {
+    const angka = [Number(satu.x), Number(satu.y), Number(satu.w), Number(satu.h)]
+    const wajar = angka.every((nilai) => Number.isFinite(nilai) && nilai >= 0 && nilai <= 100)
+
+    if (!wajar || angka[2] <= 0 || angka[3] <= 0) {
+      galat.push('Setiap area wajib punya x, y, w, h angka 0–100 dengan lebar/tinggi lebih dari 0.')
+      break
+    }
+  }
+
+  if (area.some((satu) => Number(satu.x) + Number(satu.w) > 100 || Number(satu.y) + Number(satu.h) > 100)) {
+    galat.push('Area tidak boleh keluar dari gambar (x + w dan y + h maksimal 100).')
+  }
+
+  if (state.benarHotspot.length === 0) galat.push('Tandai minimal satu area sebagai kunci jawaban.')
+  else if (state.benarHotspot.some((satu) => !id.includes(satu))) {
+    galat.push('Ada area kunci yang tidak dikenal.')
+  }
+
+  const hasil = skemaHotspotGambarKunci.safeParse({ area_benar: state.benarHotspot })
+  if (!hasil.success) galat.push('Kunci hotspot gambar belum lengkap.')
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiBacaJam(state) {
+  const galat = []
+  const jam = Number(state.jamJam)
+  const menit = Number(state.jamMenit)
+
+  const hasil = skemaBacaJamKunci.safeParse({ jam, menit })
+
+  if (!hasil.success || !Number.isInteger(jam) || !Number.isInteger(menit)) {
+    galat.push('Kunci baca jam wajib jam 0–11 dan menit 0–59 (bilangan bulat).')
+  }
+
+  return galat
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiTugasUnggah(state) {
+  const galat = []
+
+  if (state.jenisBerkas.trim() === '') {
+    galat.push('Tugas unggah wajib menyebut jenis berkas yang boleh diunggah.')
+  } else if (state.jenisBerkas.trim().length > 120) {
+    galat.push('Jenis berkas maksimal 120 karakter.')
+  }
+
+  if (state.rubrik.length === 0) galat.push('Tugas unggah wajib punya minimal satu butir rubrik.')
+  if (state.rubrik.length > MAKS_BUTIR_RUBRIK) {
+    galat.push(`Rubrik maksimal ${MAKS_BUTIR_RUBRIK} butir.`)
+  }
+
+  if (state.rubrik.some((satu) => satu.butir.trim() === '')) {
+    galat.push('Setiap butir rubrik wajib diisi.')
+  }
+
+  if (state.rubrik.some((satu) => !(Number(satu.poin) > 0))) {
+    galat.push('Poin setiap butir rubrik wajib lebih dari 0.')
+  }
+
+  const hasil = skemaTugasUnggahKunci.safeParse({
+    rubrik: state.rubrik.map((satu) => ({ butir: satu.butir.trim(), poin: Number(satu.poin) })),
+  })
+  if (!hasil.success) galat.push('Rubrik tugas unggah belum lengkap.')
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiTekaSilangMini(state) {
+  const galat = []
+  const baris = barisSilang(state.gridSilang)
+
+  if (baris.length < 2) galat.push('Teka silang wajib punya minimal 2 baris.')
+  if (baris.length > MAKS_SISI_SILANG) galat.push(`Teka silang maksimal ${MAKS_SISI_SILANG} baris.`)
+
+  const lebar = baris[0]?.length ?? 0
+
+  if (lebar < 2) galat.push('Teka silang wajib punya minimal 2 kolom.')
+  if (lebar > MAKS_SISI_SILANG) galat.push(`Teka silang maksimal ${MAKS_SISI_SILANG} kolom.`)
+  if (baris.some((satu) => satu.length !== lebar)) galat.push('Setiap baris teka silang wajib sama panjang.')
+  if (baris.some((satu) => /[^a-zA-Z#.]/.test(satu))) {
+    galat.push('Kotak teka silang hanya boleh huruf jawaban, # (kotak hitam), atau . (belum diisi).')
+  }
+
+  if (baris.every((satu) => [...satu].every((kotak) => kotak === '#'))) {
+    galat.push('Teka silang wajib punya minimal satu kotak yang diisi murid.')
+  }
+
+  if (baris.some((satu) => /[.]/.test(satu))) {
+    galat.push('Setiap kotak yang diisi murid wajib punya huruf jawaban (ganti titik dengan huruf).')
+  }
+
+  const kodeKosong = new Set()
+  baris.forEach((satu, r) => {
+    ;[...satu].forEach((kotak, c) => {
+      if (kotak !== '#') kodeKosong.add(kodeSilang(r, c))
+    })
+  })
+
+  const huruf = selSilangDariGrid(state.gridSilang)
+
+  for (const kode of kodeKosong) {
+    if (huruf[kode] === undefined) galat.push('Setiap kotak yang diisi murid wajib punya huruf jawaban.')
+  }
+
+  /** @type {{ mendatar: number[], menurun: number[] }} */
+  const nomor = { mendatar: [], menurun: [] }
+
+  for (const petunjuk of state.petunjukSilang) {
+    const arah = petunjuk.arah === 'menurun' ? 'menurun' : 'mendatar'
+    const nomorBulat = Number(petunjuk.nomor)
+    const panjang = Number(petunjuk.panjang)
+
+    if (!Number.isInteger(nomorBulat) || nomorBulat < 1) {
+      galat.push(`Setiap petunjuk ${arah} wajib punya nomor bulat minimal 1.`)
+    } else {
+      nomor[arah].push(nomorBulat)
+    }
+
+    if (petunjuk.teks.trim() === '') galat.push(`Setiap petunjuk ${arah} wajib diisi teksnya.`)
+    if (!Number.isInteger(panjang) || panjang < MIN_HURUF_SILANG) {
+      galat.push(`Setiap petunjuk ${arah} wajib punya panjang minimal ${MIN_HURUF_SILANG} huruf.`)
+      continue
+    }
+
+    const sel = selDariPetunjuk(petunjuk.mulai, panjang, arah)
+
+    if (sel.length === 0) {
+      galat.push(`Sel awal petunjuk ${arah} wajib ditulis "baris,kolom" (mis. 0,0).`)
+      continue
+    }
+
+    for (const kode of sel) {
+      const bagian = kode.split(',')
+      const r = Number(bagian[0])
+      const c = Number(bagian[1])
+      const isi = baris[r]?.[c]
+
+      if (isi === undefined) {
+        galat.push(`Petunjuk ${arah} keluar dari grid teka silang (${kode}).`)
+        break
+      }
+
+      if (isi === '#') {
+        galat.push(`Petunjuk ${arah} melewati kotak hitam (${kode}).`)
+        break
+      }
+    }
+  }
+
+  /** @type {('mendatar'|'menurun')[]} */
+  const arahPetunjuk = ['mendatar', 'menurun']
+
+  for (const arah of arahPetunjuk) {
+    const daftar = nomor[arah]
+    if (new Set(daftar).size !== daftar.length) galat.push(`Nomor petunjuk ${arah} tidak boleh kembar.`)
+    if (daftar.length > MAKS_PETUNJUK_SILANG) {
+      galat.push(`Petunjuk ${arah} maksimal ${MAKS_PETUNJUK_SILANG} kata.`)
+    }
+  }
+
+  const hasil = skemaTekaSilangMiniKunci.safeParse({ sel: huruf })
+  if (!hasil.success) galat.push('Kunci teka silang wajib satu huruf per kotak.')
 
   return [...new Set(galat)]
 }
@@ -748,6 +989,34 @@ export function kelengkapanSoal(state) {
     daftar.push({
       ok: validasiGarisBilangan(state).length === 0,
       teks: 'Rentang, langkah, dan nilai kunci wajar',
+    })
+  }
+
+  if (state.tipe === TIPE.hotspotGambar) {
+    daftar.push({
+      ok: validasiHotspotGambar(state).length === 0,
+      teks: 'Gambar, area yang bisa diketuk, dan area kunci lengkap',
+    })
+  }
+
+  if (state.tipe === TIPE.bacaJam) {
+    daftar.push({
+      ok: validasiBacaJam(state).length === 0,
+      teks: 'Jam 0–11 dan menit 0–59 sudah diisi',
+    })
+  }
+
+  if (state.tipe === TIPE.tugasUnggah) {
+    daftar.push({
+      ok: validasiTugasUnggah(state).length === 0,
+      teks: 'Jenis berkas dan rubrik penilaian terisi',
+    })
+  }
+
+  if (state.tipe === TIPE.tekaSilangMini) {
+    daftar.push({
+      ok: validasiTekaSilangMini(state).length === 0,
+      teks: 'Grid, huruf jawaban, dan petunjuk teka silang lengkap',
     })
   }
 

@@ -727,7 +727,7 @@ class AttemptService
             // kata memakai `kata` + `posisi`, dan keduanya sempat tidak ikut
             // sehingga soal letak kata tampil kosong di layar anak. Tipe baru
             // menambah `pernyataan` (benar/salah majemuk) dan `item` (urut/klasifikasi).
-            foreach (['opsi', 'kiri', 'kanan', 'item', 'kata', 'posisi', 'pernyataan', 'kotak', 'baris'] as $namaDaftar) {
+            foreach (['opsi', 'kiri', 'kanan', 'item', 'kata', 'posisi', 'pernyataan', 'kotak', 'baris', 'area'] as $namaDaftar) {
                 $daftar = $konten[$namaDaftar] ?? null;
 
                 if (! is_array($daftar)) {
@@ -739,10 +739,33 @@ class AttemptService
                 $bersih[$namaDaftar] = Pengacakan::urutOpsi($baris, (int) $attempt->seed, (int) $soal->getKey(), $this->acakOpsi($attempt));
             }
 
+            // Bentuk papan teka silang beserta petunjuknya TIDAK diacak: urutan
+            // baris adalah bagian dari teka-tekinya, dan nomor petunjuk sudah
+            // menempel pada kotaknya.
+            foreach (['grid', 'mendatar', 'menurun'] as $namaPapan) {
+                $papan = $konten[$namaPapan] ?? null;
+
+                if (! is_array($papan)) {
+                    continue;
+                }
+
+                $bersih[$namaPapan] = $namaPapan === 'grid'
+                    ? array_values(array_map(
+                        static fn (mixed $baris): array => is_array($baris)
+                            ? array_values(array_map(
+                                static fn (mixed $kotak): string => is_scalar($kotak) ? (string) $kotak : '',
+                                $baris,
+                            ))
+                            : [],
+                        $papan,
+                    ))
+                    : array_values(array_filter($papan, static fn (mixed $satu): bool => is_array($satu)));
+            }
+
             // Kolom teks pendukung tipe baru (isian angka: satuan; susun huruf:
-            // petunjuk; garis bilangan: min/max/langkah). Bukan daftar, jadi tidak
-            // lewat pengacakan.
-            foreach (['satuan', 'petunjuk'] as $namaTeks) {
+            // petunjuk; tugas unggah: jenis_berkas; garis bilangan: min/max/langkah).
+            // Bukan daftar, jadi tidak lewat pengacakan.
+            foreach (['satuan', 'petunjuk', 'jenis_berkas'] as $namaTeks) {
                 if (isset($konten[$namaTeks]) && is_string($konten[$namaTeks])) {
                     $bersih[$namaTeks] = $konten[$namaTeks];
                 }

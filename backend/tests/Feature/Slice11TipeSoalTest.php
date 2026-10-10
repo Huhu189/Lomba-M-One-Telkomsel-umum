@@ -10,6 +10,8 @@ use App\Sections\Attempt\Services\Pengacakan;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Registry\RegistryTipeSoal;
+use App\Sections\Scoring\Enums\StatusPenilaian;
+use App\Sections\Scoring\Services\PenilaiSoal;
 use Database\Seeders\BankSoalSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\RolesAndAdminSeeder;
@@ -90,6 +92,9 @@ it('mengenal semua tipe baru sebagai objektif', function (): void {
         TipeSoal::Klasifikasi,
         TipeSoal::TabelIsian,
         TipeSoal::GarisBilangan,
+        TipeSoal::HotspotGambar,
+        TipeSoal::BacaJam,
+        TipeSoal::TekaSilangMini,
     ];
 
     foreach ($tipe as $satu) {
@@ -320,6 +325,169 @@ it('menilai garis bilangan dengan toleransi dan menolak rentang terbalik', funct
         ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, 8))->toBe(0.0)
         ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, ['nilai' => 6.5, 'toleransi' => 0.5], '6,5'))->toBe(1.0)
         ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, null))->toBe(0.0);
+});
+
+it('menilai hotspot gambar dari titik yang diketuk murid', function (): void {
+    $konten = [
+        'teks' => 'Ketuk lingkaran.',
+        'media' => '/media/bentuk.png',
+        'area' => [
+            ['id' => 'a1', 'x' => 0.0, 'y' => 0.0, 'w' => 0.3, 'h' => 0.3],
+            ['id' => 'a2', 'x' => 0.5, 'y' => 0.5, 'w' => 0.2, 'h' => 0.2],
+        ],
+    ];
+    $kunci = ['area_benar' => ['a2']];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::HotspotGambar, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::HotspotGambar, ['teks' => 'x', 'area' => $konten['area']], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::HotspotGambar, $konten, ['area_benar' => ['a9']]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::HotspotGambar, [
+            'teks' => 'x',
+            'media' => '/media/a.png',
+            'area' => [['id' => 'a1', 'x' => 0.9, 'y' => 0.0, 'w' => 0.3, 'h' => 0.3]],
+        ], ['area_benar' => ['a1']]))->not->toBe([]);
+
+    // Titik di dalam area benar = 1.0; di luar (termasuk area yang salah) = 0.0.
+    expect(RegistryTipeSoal::bobot(TipeSoal::HotspotGambar, $konten, $kunci, ['x' => 0.6, 'y' => 0.6]))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::HotspotGambar, $konten, $kunci, ['x' => 0.1, 'y' => 0.1]))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::HotspotGambar, $konten, $kunci, null))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::HotspotGambar, $konten, $kunci, ['x' => 2, 'y' => 2]))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::HotspotGambar, $konten, $kunci, ['x' => 'a', 'y' => 0.6]))->toBe(0.0)
+        ->and(RegistryTipeSoal::nilai(TipeSoal::HotspotGambar, $konten, $kunci, ['x' => 0.55, 'y' => 0.55]))->toBeTrue();
+});
+
+it('menilai baca jam persis dan menolak kunci di luar rentang', function (): void {
+    $konten = ['teks' => 'Tunjukkan pukul setengah delapan.'];
+    $kunci = ['jam' => 7, 'menit' => 30];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::BacaJam, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::BacaJam, $konten, ['jam' => 12, 'menit' => 30]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::BacaJam, $konten, ['jam' => 7, 'menit' => 60]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::BacaJam, ['teks' => ''], $kunci))->not->toBe([]);
+
+    expect(RegistryTipeSoal::bobot(TipeSoal::BacaJam, $konten, $kunci, ['jam' => 7, 'menit' => 30]))->toBe(1.0)
+        // "07" dari input teks tetap dibaca sebagai 7.
+        ->and(RegistryTipeSoal::bobot(TipeSoal::BacaJam, $konten, $kunci, ['jam' => '07', 'menit' => '30']))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::BacaJam, $konten, $kunci, ['jam' => 7, 'menit' => 0]))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::BacaJam, $konten, $kunci, ['jam' => 19, 'menit' => 30]))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::BacaJam, $konten, $kunci, null))->toBe(0.0);
+});
+
+it('menjadikan tugas unggah soal non-objektif yang menunggu guru', function (): void {
+    $konten = ['teks' => 'Unggah foto pekerjaanmu.', 'jenis_berkas' => 'Foto JPG atau PNG'];
+    $kunci = ['rubrik' => [['butir' => 'Langkah lengkap', 'poin' => 3], ['butir' => 'Hasil benar', 'poin' => 2]]];
+
+    expect(TipeSoal::TugasUnggah->objektif())->toBeFalse()
+        ->and(TipeSoal::TugasUnggah->bertingkat())->toBeTrue()
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TugasUnggah, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TugasUnggah, ['teks' => 'x', 'jenis_berkas' => ''], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TugasUnggah, $konten, ['rubrik' => []]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TugasUnggah, $konten, ['rubrik' => [['butir' => 'x', 'poin' => 0]]]))->not->toBe([])
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TugasUnggah, $konten, $kunci, 'jawaban apa pun'))->toBe(0.0)
+        ->and(RegistryTipeSoal::nilai(TipeSoal::TugasUnggah, $konten, $kunci, 'jawaban apa pun'))->toBeFalse();
+
+    // Tanpa jalur khusus, jawaban berupa teks (mis. path berkas) bisa dicocokkan
+    // PenilaianTeks dan murid mendapat 0 padahal belum dinilai guru.
+    $soal = new Soal;
+    $soal->forceFill([
+        'school_id' => 1,
+        'subject_id' => 1,
+        'tipe' => 'tugas_unggah',
+        'konten' => $konten,
+        'kunci' => $kunci,
+        'skor' => 5,
+    ]);
+
+    $hasil = app(PenilaiSoal::class)->nilai($soal, 'attempt/1/jawaban/lampiran.jpg');
+
+    expect($hasil['status'])->toBe(StatusPenilaian::PerluTinjau)
+        ->and($hasil['benar'])->toBeNull()
+        ->and($hasil['skor'])->toBe(0.0);
+});
+
+it('menilai teka silang mini per kata dan menolak bentuk tak sah', function (): void {
+    $konten = [
+        'grid' => [
+            ['', '', ''],
+            ['#', '', '#'],
+        ],
+        'mendatar' => [['nomor' => 1, 'teks' => 'Nama hewan mengeong.', 'sel' => ['0,0', '0,1', '0,2']]],
+        'menurun' => [['nomor' => 2, 'teks' => 'Di tengah baris kedua.', 'sel' => ['0,1', '1,1']]],
+    ];
+    $kunci = ['sel' => ['0,0' => 'k', '0,1' => 'a', '0,2' => 't', '1,1' => 'i']];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::TekaSilangMini, $konten, $kunci))->toBe([])
+        // Tanpa satu huruf pun, kotak kosong belum bisa dinilai.
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TekaSilangMini, $konten, ['sel' => ['0,0' => 'k']]))->not->toBe([])
+        // Kotak hitam tidak boleh punya huruf.
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TekaSilangMini, $konten, ['sel' => [...$kunci['sel'], '1,0' => 'x']]))->not->toBe([])
+        // Kata mendatar wajib satu baris dan berurutan.
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TekaSilangMini, [
+            ...$konten,
+            'mendatar' => [['nomor' => 1, 'teks' => 'x', 'sel' => ['0,0', '0,2']]],
+        ], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TekaSilangMini, [
+            'grid' => [['', ''], ['', 'x']],
+            'mendatar' => [],
+            'menurun' => [],
+        ], $kunci))->not->toBe([]);
+
+    // Dua kata dinilai: satu benar (mendatar) = 0.5.
+    expect(RegistryTipeSoal::bobot(TipeSoal::TekaSilangMini, $konten, $kunci, ['0,0' => 'k', '0,1' => 'a', '0,2' => 't', '1,1' => 'u']))->toBe(0.5)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TekaSilangMini, $konten, $kunci, ['0,0' => 'K', '0,1' => 'A', '0,2' => 'T', '1,1' => 'i']))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TekaSilangMini, $konten, $kunci, []))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TekaSilangMini, $konten, $kunci, null))->toBe(0.0)
+        ->and(RegistryTipeSoal::nilai(TipeSoal::TekaSilangMini, $konten, $kunci, ['0,0' => 'k']))->toBeFalse();
+});
+
+it('payload murid gelombang 3 tidak memuat kunci dan menjaga bentuk papan', function (): void {
+    $muatan = muatan11([
+        [
+            'id' => 31,
+            'tipe' => 'hotspot_gambar',
+            'konten' => [
+                'teks' => 'Ketuk lingkaran.',
+                'media' => '/media/bentuk.png',
+                'area' => [['id' => 'a1', 'x' => 0.1, 'y' => 0.1, 'w' => 0.2, 'h' => 0.2]],
+            ],
+            'kunci' => ['area_benar' => ['a1']],
+            'skor' => 4,
+        ],
+        [
+            'id' => 32,
+            'tipe' => 'tugas_unggah',
+            'konten' => ['teks' => 'Unggah fotonya.', 'jenis_berkas' => 'Foto JPG'],
+            'kunci' => ['rubrik' => [['butir' => 'Rapi', 'poin' => 1]]],
+            'skor' => 4,
+        ],
+        [
+            'id' => 33,
+            'tipe' => 'teka_silang_mini',
+            'konten' => [
+                'grid' => [['', '', ''], ['#', '', '#']],
+                'mendatar' => [['nomor' => 1, 'teks' => 'Nama hewan mengeong.', 'sel' => ['0,0', '0,1', '0,2']]],
+                'menurun' => [['nomor' => 2, 'teks' => 'Tengah baris kedua.', 'sel' => ['0,1', '1,1']]],
+            ],
+            'kunci' => ['sel' => ['0,0' => 'k', '0,1' => 'a', '0,2' => 't', '1,1' => 'i']],
+            'skor' => 4,
+        ],
+    ], acakOpsi: true);
+
+    // Hotspot: gambar + kotak yang bisa diketuk, tanpa penanda mana yang benar.
+    expect($muatan[0]['konten']['media'])->toBe('/media/bentuk.png')
+        ->and($muatan[0]['konten']['area'])->toHaveCount(1)
+        ->and($muatan[0]['konten'])->not->toHaveKey('area_benar')
+        ->and($muatan[0]['konten'])->not->toHaveKey('kunci');
+
+    // Tugas unggah: jenis berkas ikut, rubrik tidak.
+    expect($muatan[1]['konten']['jenis_berkas'])->toBe('Foto JPG')
+        ->and($muatan[1]['konten'])->not->toHaveKey('rubrik');
+
+    // Teka silang: bentuk papan tetap urut dan huruf jawaban tidak ikut.
+    expect($muatan[2]['konten']['grid'])->toBe([['', '', ''], ['#', '', '#']])
+        ->and($muatan[2]['konten']['mendatar'])->toHaveCount(1)
+        ->and($muatan[2]['konten']['menurun'])->toHaveCount(1)
+        ->and($muatan[2]['konten'])->not->toHaveKey('sel');
 });
 
 it('payload murid tidak memuat kunci dan menyembunyikan huruf kata', function (): void {

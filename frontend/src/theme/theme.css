@@ -1617,6 +1617,321 @@ a {
   cursor: default;
 }
 
+/* ---------- Tipe soal baru (Objektif 1, gelombang 2) ---------- */
+
+/* Isian rumpang: kotak isian kecil yang mengalir di dalam kalimat. */
+.rumpang-teks {
+  line-height: 2.4;
+}
+
+.rumpang-kotak {
+  display: inline-block;
+  width: 8rem;
+  min-height: 44px;
+  margin: 0 0.25rem;
+  vertical-align: middle;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Tabel isian: gulir mendatar di ponsel, sel besar agar mudah ditekan. */
+.tabel-isian-bungkus {
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.tabel-isian {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 20rem;
+}
+
+.tabel-isian th,
+.tabel-isian td {
+  border: 1px solid var(--garis, #cbd5e1);
+  padding: 0.5rem;
+  vertical-align: middle;
+}
+
+.tabel-isian th {
+  background-color: var(--sorot-lembut, #f1f5f9);
+  font-weight: 700;
+  text-align: left;
+}
+
+.tabel-isian .form-control {
+  min-height: 44px;
+}
+
+/* Garis bilangan: SVG buatan sendiri, tiap tick bisa diketuk/dijangkau keyboard. */
+.garis-bilangan {
+  display: block;
+  width: 100%;
+  max-width: 40rem;
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+.garis-bilangan-sumbu {
+  stroke: var(--teks, #0f172a);
+  stroke-width: 2;
+}
+
+.garis-bilangan-tick {
+  cursor: pointer;
+}
+
+.garis-bilangan-tick:focus-visible .garis-bilangan-coret,
+.garis-bilangan-tick:focus-visible .garis-bilangan-titik {
+  outline: none;
+  stroke: var(--aksen, #2563eb);
+  stroke-width: 4;
+}
+
+.garis-bilangan-coret {
+  stroke: var(--teks-lembut, #475569);
+  stroke-width: 2;
+}
+
+.garis-bilangan-titik {
+  fill: var(--kartu, #fff);
+  stroke: var(--teks-lembut, #475569);
+  stroke-width: 2;
+}
+
+.garis-bilangan-tick.terpilih .garis-bilangan-titik {
+  fill: var(--aksen, #2563eb);
+  stroke: var(--aksen, #2563eb);
+}
+
+.garis-bilangan-tick.kunci .garis-bilangan-coret {
+  stroke: var(--sorot-hangat, #f59e0b);
+  stroke-width: 4;
+}
+
+.garis-bilangan-label {
+  font-size: 12px;
+  fill: var(--teks, #0f172a);
+}
+
+/* ---------- Tipe soal baru (Objektif 1, gelombang 3) ---------- */
+
+/* Hotspot gambar: lapisan area ditarik tepat di atas gambar. */
+.hotspot-bidang {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius-kecil);
+  overflow: hidden;
+}
+
+.hotspot-media {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hotspot-lapisan {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hotspot-area {
+  cursor: pointer;
+}
+
+.hotspot-area rect {
+  fill: rgba(37, 99, 235, 0.12);
+  stroke: rgba(37, 99, 235, 0.55);
+  stroke-width: 0.6;
+}
+
+.hotspot-area:focus-visible rect {
+  fill: rgba(37, 99, 235, 0.28);
+  stroke-width: 1.6;
+}
+
+.hotspot-area.terpilih rect {
+  fill: rgba(37, 99, 235, 0.35);
+}
+
+.hotspot-area.kunci rect {
+  stroke: var(--sorot-hangat, #f59e0b);
+  stroke-dasharray: 3 2;
+  stroke-width: 1.6;
+}
+
+.hotspot-titik {
+  fill: var(--sorot-hangat, #f59e0b);
+  stroke: var(--teks-di-aksen, #fff);
+  stroke-width: 1;
+}
+
+/* Baca jam: jam analog + dua kotak angka besar. */
+.baca-jam {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-bottom: 0.75rem;
+}
+
+.baca-jam-analog {
+  width: 11rem;
+  max-width: 100%;
+  height: auto;
+}
+
+.baca-jam-badan {
+  fill: var(--kartu, #fff);
+  stroke: var(--teks, #0f172a);
+  stroke-width: 3;
+}
+
+.baca-jam-pusat {
+  fill: var(--teks, #0f172a);
+}
+
+.baca-jam-jarum {
+  stroke: var(--teks, #0f172a);
+  stroke-linecap: round;
+}
+
+.baca-jam-jarum.menit {
+  stroke-width: 5;
+}
+
+.baca-jam-jarum.jam {
+  stroke-width: 8;
+}
+
+.baca-jam-angka {
+  font-size: 16px;
+  font-weight: 700;
+  fill: var(--teks, #0f172a);
+}
+
+.baca-jam-pilih {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.baca-jam-pilih .form-control {
+  max-width: 8rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Teka silang mini: kotak huruf besar + daftar petunjuk. */
+.silang-bungkus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}
+
+.silang-grid {
+  border-collapse: collapse;
+}
+
+.silang-kotak,
+.silang-hitam {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  position: relative;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.silang-kotak {
+  border: 2px solid var(--teks, #0f172a);
+  background-color: var(--kartu, #fff);
+}
+
+.silang-hitam {
+  border: 2px solid transparent;
+  background-color: var(--teks, #0f172a);
+}
+
+.silang-isian {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: none;
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.silang-isian:focus-visible {
+  outline: 3px solid var(--aksen, #2563eb);
+  outline-offset: -3px;
+}
+
+.silang-nomor {
+  position: absolute;
+  top: 0;
+  left: 0.15rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--teks-lembut, #475569);
+}
+
+.silang-kunci {
+  position: absolute;
+  right: -0.4rem;
+  bottom: -0.4rem;
+  font-size: 0.6rem;
+  padding: 0 0.25rem;
+}
+
+.silang-petunjuk {
+  min-width: 12rem;
+  max-width: 24rem;
+}
+
+/* Editor tipe gelombang 3: kotak angka pendek agar satu baris tetap rapi. */
+.hotspot-bidang-input {
+  max-width: 4.5rem;
+}
+
+.rubrik-poin {
+  max-width: 5rem;
+}
+
+.silang-grid-teks {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 1.2rem;
+  letter-spacing: 0.35em;
+}
+
+.silang-nomor-input {
+  max-width: 4.5rem;
+}
+
+.silang-sel-input {
+  max-width: 5.5rem;
+}
+
+.silang-panjang-input {
+  max-width: 4.5rem;
+}
+
+/* Tugas unggah: pengingat jenis berkas. */
+.tugas-unggah-jenis {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--aksen, #2563eb);
+  background-color: var(--sorot-lembut, #f1f5f9);
+  border-radius: var(--radius-kecil);
+}
+
 /* ---------- Pengerjaan ulangan (slice 04) ---------- */
 
 .timer-ulangan {

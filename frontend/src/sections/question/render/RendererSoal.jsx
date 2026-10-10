@@ -3,9 +3,11 @@
  * Tipe yang belum didukung tetap ditampilkan sebagai keterangan, bukan crash.
  */
 import { TIPE } from '../tipeSoal.js'
+import SoalBacaJam from './SoalBacaJam.jsx'
 import SoalBenarSalah from './SoalBenarSalah.jsx'
 import SoalBenarSalahMajemuk from './SoalBenarSalahMajemuk.jsx'
 import SoalGarisBilangan from './SoalGarisBilangan.jsx'
+import SoalHotspotGambar from './SoalHotspotGambar.jsx'
 import SoalHubungKata from './SoalHubungKata.jsx'
 import SoalIsianAngka from './SoalIsianAngka.jsx'
 import SoalIsianRumpang from './SoalIsianRumpang.jsx'
@@ -19,6 +21,8 @@ import SoalPilihanGanda from './SoalPilihanGanda.jsx'
 import SoalPilihanGandaKompleks from './SoalPilihanGandaKompleks.jsx'
 import SoalSusunHuruf from './SoalSusunHuruf.jsx'
 import SoalTabelIsian from './SoalTabelIsian.jsx'
+import SoalTekaSilangMini from './SoalTekaSilangMini.jsx'
+import SoalTugasUnggah from './SoalTugasUnggah.jsx'
 import SoalUraian from './SoalUraian.jsx'
 import SoalUrutGambar from './SoalUrutGambar.jsx'
 
@@ -42,6 +46,10 @@ const PETA_RENDERER = {
   [TIPE.klasifikasi]: SoalKlasifikasi,
   [TIPE.tabelIsian]: SoalTabelIsian,
   [TIPE.garisBilangan]: SoalGarisBilangan,
+  [TIPE.hotspotGambar]: SoalHotspotGambar,
+  [TIPE.bacaJam]: SoalBacaJam,
+  [TIPE.tugasUnggah]: SoalTugasUnggah,
+  [TIPE.tekaSilangMini]: SoalTekaSilangMini,
 }
 
 /** @param {import('./props.js').PropsSoal & { tipe: string }} props */

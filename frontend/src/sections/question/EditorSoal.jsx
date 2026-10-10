@@ -15,6 +15,8 @@ import { IkonTambah, IkonTongSampah } from '../../icons.jsx'
 import RendererSoal from './render/RendererSoal.jsx'
 import {
   DAFTAR_TIPE,
+  MAKS_AREA_HOTSPOT,
+  MAKS_BUTIR_RUBRIK,
   MAKS_GAMBAR,
   MAKS_HURUF,
   MAKS_ITEM_KLASIFIKASI,
@@ -26,9 +28,12 @@ import {
   MAKS_PERNYATAAN,
   MAKS_PETUNJUK,
   MAKS_RENTANG_GARIS,
+  MAKS_PETUNJUK_SILANG,
   MAKS_SEL,
+  MAKS_SISI_SILANG,
   MIN_GAMBAR,
   MIN_HURUF,
+  MIN_HURUF_SILANG,
   MIN_ITEM,
   MIN_KOTAK,
   MIN_OPSI,
@@ -40,6 +45,7 @@ import {
   muatanDariState,
   nomorLubangDariTeks,
   pisahKata,
+  selDariPetunjuk,
   stateDariSoal,
   stateSoalKosong,
 } from './tipeSoal.js'
@@ -570,6 +576,124 @@ export default function EditorSoal({
   function ubahKunciSel(kode, teks) {
     ubah({ kunciSel: { ...state.kunciSel, [kode]: teks } })
   }
+
+  /**
+   * Hotspot gambar: area yang bisa diketuk (persen dari gambar).
+   * @param {number} index @param {'x'|'y'|'w'|'h'} bidang @param {string} nilai
+   */
+  function ubahAreaHotspot(index, bidang, nilai) {
+    ubah({
+      areaHotspot: state.areaHotspot.map((satu, nomor) => {
+        if (nomor !== index) return satu
+
+        return bidang === 'x'
+          ? { ...satu, x: nilai }
+          : bidang === 'y'
+            ? { ...satu, y: nilai }
+            : bidang === 'w'
+              ? { ...satu, w: nilai }
+              : { ...satu, h: nilai }
+      }),
+    })
+  }
+
+  function tambahAreaHotspot() {
+    ubah({
+      areaHotspot: [
+        ...state.areaHotspot,
+        { id: idBerikut('A', state.areaHotspot), x: '10', y: '10', w: '20', h: '20' },
+      ],
+    })
+  }
+
+  /** @param {number} index */
+  function hapusAreaHotspot(index) {
+    const dibuang = state.areaHotspot[index]
+
+    ubah({
+      areaHotspot: state.areaHotspot.filter((_, posisi) => posisi !== index),
+      benarHotspot: state.benarHotspot.filter((satu) => satu !== dibuang.id),
+    })
+  }
+
+  /** @param {string} id @param {boolean} dicentang */
+  function tohAreaBenar(id, dicentang) {
+    ubah({
+      benarHotspot: dicentang
+        ? [...state.benarHotspot.filter((satu) => satu !== id), id]
+        : state.benarHotspot.filter((satu) => satu !== id),
+    })
+  }
+
+  /**
+   * Tugas unggah: butir rubrik penilaian yang dipakai guru saat mengoreksi.
+   * @param {number} index @param {'butir'|'poin'} bidang @param {string} nilai
+   */
+  function ubahRubrik(index, bidang, nilai) {
+    ubah({
+      rubrik: state.rubrik.map((satu, nomor) =>
+        nomor === index
+          ? bidang === 'butir'
+            ? { ...satu, butir: nilai }
+            : { ...satu, poin: nilai }
+          : satu,
+      ),
+    })
+  }
+
+  function tambahRubrik() {
+    ubah({ rubrik: [...state.rubrik, { butir: '', poin: '1' }] })
+  }
+
+  /** @param {number} index */
+  function hapusRubrik(index) {
+    if (state.rubrik.length <= 1) return
+
+    ubah({ rubrik: state.rubrik.filter((_, posisi) => posisi !== index) })
+  }
+
+  /**
+   * Teka silang: satu petunjuk (nomor, teks, sel awal, dan panjangnya).
+   * @param {number} index @param {'nomor'|'teks'|'mulai'|'panjang'} bidang @param {string} nilai
+   */
+  function ubahPetunjukSilang(index, bidang, nilai) {
+    ubah({
+      petunjukSilang: state.petunjukSilang.map((satu, nomor) => {
+        if (nomor !== index) return satu
+
+        return bidang === 'nomor'
+          ? { ...satu, nomor: nilai }
+          : bidang === 'teks'
+            ? { ...satu, teks: nilai }
+            : bidang === 'mulai'
+              ? { ...satu, mulai: nilai }
+              : { ...satu, panjang: nilai }
+      }),
+    })
+  }
+
+  /** @param {'mendatar'|'menurun'} arah */
+  function tambahPetunjukSilang(arah) {
+    const dalamArah = state.petunjukSilang.filter((satu) => satu.arah === arah)
+
+    ubah({
+      petunjukSilang: [
+        ...state.petunjukSilang,
+        { arah, nomor: String(dalamArah.length + 1), teks: '', mulai: '0,0', panjang: '3' },
+      ],
+    })
+  }
+
+  /** @param {number} index */
+  function hapusPetunjukSilang(index) {
+    ubah({ petunjukSilang: state.petunjukSilang.filter((_, posisi) => posisi !== index) })
+  }
+
+  /** @type {('x'|'y'|'w'|'h')[]} */
+  const bidangArea = ['x', 'y', 'w', 'h']
+
+  /** @type {('mendatar'|'menurun')[]} */
+  const arahSilang = ['mendatar', 'menurun']
 
   const kelengkapan = kelengkapanSoal(state)
   const siap = siapSoal(kelengkapan)
@@ -1664,6 +1788,258 @@ export default function EditorSoal({
                 </div>
               </fieldset>
             )}
+
+            {state.tipe === TIPE.hotspotGambar && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Area yang bisa diketuk (maksimal {MAKS_AREA_HOTSPOT})
+                </legend>
+                <p className="teks-lembut small">
+                  Isi x, y, w, h dalam persen (0–100) dari lebar/tinggi gambar. Kotak pertama gambar ada di
+                  kiri atas. Tandai area yang benar dengan kotak centang Kunci.
+                </p>
+
+                {state.areaHotspot.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                    {bidangArea.map((bidang) => (
+                      <input
+                        key={bidang}
+                        className="form-control form-control-sm hotspot-bidang-input"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        aria-label={`${bidang.toUpperCase()} area ${satu.id}`}
+                        value={satu[bidang]}
+                        onChange={(e) => ubahAreaHotspot(index, bidang, e.target.value)}
+                        placeholder={bidang}
+                      />
+                    ))}
+                    <label className="label-kunci" htmlFor={`kunci-area-${satu.id}`}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`kunci-area-${satu.id}`}
+                        checked={state.benarHotspot.includes(satu.id)}
+                        onChange={(e) => tohAreaBenar(satu.id, e.target.checked)}
+                      />
+                      Kunci
+                    </label>
+                    <TombolIkon
+                      label={`Hapus area ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.areaHotspot.length <= 1}
+                      onClick={() => hapusAreaHotspot(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.areaHotspot.length >= MAKS_AREA_HOTSPOT}
+                  onClick={tambahAreaHotspot}
+                >
+                  Tambah area
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.bacaJam && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Waktu yang benar</legend>
+                <p className="teks-lembut small">
+                  Waktu ini hanya dipakai server untuk menilai; murid tidak menerimanya, jadi tulis
+                  perintahnya di isi soal (mis. “Tunjukkan pukul setengah delapan”).
+                </p>
+                <div className="row g-3">
+                  <div className="col-sm-6">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="baca-jam-jam-kunci">Jam (0–11)</label>
+                      <input
+                        id="baca-jam-jam-kunci"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        max={11}
+                        value={state.jamJam}
+                        onChange={(e) => ubah({ jamJam: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="baca-jam-menit-kunci">Menit (0–59)</label>
+                      <input
+                        id="baca-jam-menit-kunci"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={state.jamMenit}
+                        onChange={(e) => ubah({ jamMenit: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.tugasUnggah && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Berkas dan rubrik penilaian</legend>
+
+                <div className="bidang">
+                  <label className="form-label" htmlFor="tugas-jenis">Jenis berkas yang boleh diunggah</label>
+                  <input
+                    id="tugas-jenis"
+                    className="form-control"
+                    maxLength={120}
+                    value={state.jenisBerkas}
+                    onChange={(e) => ubah({ jenisBerkas: e.target.value })}
+                    placeholder="Foto JPG atau PNG"
+                  />
+                </div>
+
+                <p className="teks-lembut small mt-3">
+                  Rubrik dipakai guru saat mengoreksi (maksimal {MAKS_BUTIR_RUBRIK} butir). Tugas unggah tidak
+                  pernah dinilai otomatis; jawabannya menunggu tinjauan guru.
+                </p>
+
+                {state.rubrik.map((satu, index) => (
+                  <div key={`rubrik-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Butir rubrik ${index + 1}`}
+                      value={satu.butir}
+                      onChange={(e) => ubahRubrik(index, 'butir', e.target.value)}
+                      placeholder="Contoh: langkah pengerjaan lengkap"
+                    />
+                    <input
+                      className="form-control form-control-sm rubrik-poin"
+                      type="number"
+                      min={1}
+                      step={1}
+                      aria-label={`Poin rubrik ${index + 1}`}
+                      value={satu.poin}
+                      onChange={(e) => ubahRubrik(index, 'poin', e.target.value)}
+                    />
+                    <TombolIkon
+                      label={`Hapus butir rubrik ${index + 1}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.rubrik.length <= 1}
+                      onClick={() => hapusRubrik(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.rubrik.length >= MAKS_BUTIR_RUBRIK}
+                  onClick={tambahRubrik}
+                >
+                  Tambah butir rubrik
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.tekaSilangMini && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Grid teka silang</legend>
+                <div className="bidang">
+                  <label className="form-label" htmlFor="silang-grid">
+                    Satu baris per baris kotak
+                  </label>
+                  <textarea
+                    id="silang-grid"
+                    className="form-control silang-grid-teks"
+                    rows={4}
+                    value={state.gridSilang}
+                    onChange={(e) => ubah({ gridSilang: e.target.value })}
+                    placeholder={'kucing\n#n#i#t'}
+                  />
+                  <span className="teks-lembut small">
+                    Tulis huruf jawaban untuk kotak yang diisi murid dan tanda # untuk kotak hitam (maksimal{' '}
+                    {MAKS_SISI_SILANG} × {MAKS_SISI_SILANG}). Huruf jawaban tidak dikirim ke perangkat murid.
+                  </span>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.tekaSilangMini &&
+              arahSilang.map((arah) => (
+                <fieldset key={arah} className="mt-3">
+                  <legend className="fw-bold fs-6">
+                    Petunjuk {arah === 'mendatar' ? 'mendatar' : 'menurun'} (maksimal{' '}
+                    {MAKS_PETUNJUK_SILANG})
+                  </legend>
+
+                  {state.petunjukSilang.map((satu, index) =>
+                    satu.arah === arah ? (
+                      <div key={`${arah}-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <input
+                          className="form-control form-control-sm silang-nomor-input"
+                          type="number"
+                          min={1}
+                          aria-label={`Nomor petunjuk ${arah} ${index + 1}`}
+                          value={satu.nomor}
+                          onChange={(e) => ubahPetunjukSilang(index, 'nomor', e.target.value)}
+                        />
+                        <input
+                          className="form-control flex-grow-1"
+                          aria-label={`Teks petunjuk ${arah} ${index + 1}`}
+                          value={satu.teks}
+                          onChange={(e) => ubahPetunjukSilang(index, 'teks', e.target.value)}
+                          placeholder="Contoh: nama hewan mengeong"
+                        />
+                        <input
+                          className="form-control form-control-sm silang-sel-input"
+                          aria-label={`Sel awal petunjuk ${arah} ${index + 1}`}
+                          value={satu.mulai}
+                          onChange={(e) => ubahPetunjukSilang(index, 'mulai', e.target.value)}
+                          placeholder="0,0"
+                        />
+                        <input
+                          className="form-control form-control-sm silang-panjang-input"
+                          type="number"
+                          min={MIN_HURUF_SILANG}
+                          aria-label={`Panjang petunjuk ${arah} ${index + 1}`}
+                          value={satu.panjang}
+                          onChange={(e) => ubahPetunjukSilang(index, 'panjang', e.target.value)}
+                        />
+                        <span className="teks-lembut small">
+                          {selDariPetunjuk(satu.mulai, satu.panjang, arah).join(' → ')}
+                        </span>
+                        <TombolIkon
+                          label={`Hapus petunjuk ${arah} ${index + 1}`}
+                          ikon={IkonTongSampah}
+                          varian="bahaya"
+                          onClick={() => hapusPetunjukSilang(index)}
+                        />
+                      </div>
+                    ) : null,
+                  )}
+
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    ikon={IkonTambah}
+                    disabled={
+                      state.petunjukSilang.filter((satu) => satu.arah === arah).length >=
+                      MAKS_PETUNJUK_SILANG
+                    }
+                    onClick={() => tambahPetunjukSilang(arah)}
+                  >
+                    Tambah petunjuk {arah}
+                  </Tombol>
+                </fieldset>
+              ))}
           </section>
 
           <section className="kartu-soft p-4" aria-labelledby="soal-judul-3">

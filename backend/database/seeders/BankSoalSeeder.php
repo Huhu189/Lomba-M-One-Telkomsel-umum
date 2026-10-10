@@ -22,8 +22,8 @@ use Illuminate\Database\Seeder;
 class BankSoalSeeder extends Seeder
 {
     /**
-     * Contoh soal tipe baru gelombang 1 dan 2 (Objektif 1B) untuk demo editor
-     * dan layar murid. Tiap contoh dibuat sekali (idempoten) lewat `run()`.
+     * Contoh soal tipe baru gelombang 1–3 (Objektif 1B) untuk demo editor dan
+     * layar murid. Tiap contoh dibuat sekali (idempoten) lewat `run()`.
      *
      * @return array<int, array{tipe: string, konten: array<string, mixed>, kunci: array<string, mixed>}>
      */
@@ -131,6 +131,61 @@ class BankSoalSeeder extends Seeder
                     'langkah' => 1,
                 ],
                 'kunci' => ['nilai' => 7, 'toleransi' => 0],
+            ],
+            [
+                'tipe' => 'hotspot_gambar',
+                'konten' => [
+                    'teks' => 'Ketuk gambar lingkaran.',
+                    'media' => '/media/bentuk.png',
+                    'area' => [
+                        ['id' => 'a1', 'x' => 0.05, 'y' => 0.2, 'w' => 0.25, 'h' => 0.5],
+                        ['id' => 'a2', 'x' => 0.4, 'y' => 0.2, 'w' => 0.25, 'h' => 0.5],
+                        ['id' => 'a3', 'x' => 0.7, 'y' => 0.2, 'w' => 0.25, 'h' => 0.5],
+                    ],
+                ],
+                'kunci' => ['area_benar' => ['a2']],
+            ],
+            [
+                'tipe' => 'baca_jam',
+                'konten' => ['teks' => 'Tunjukkan pukul setengah delapan.'],
+                'kunci' => ['jam' => 7, 'menit' => 30],
+            ],
+            [
+                'tipe' => 'tugas_unggah',
+                'konten' => [
+                    'teks' => 'Tulis caramu menghitung 25 + 17 di kertas, lalu unggah fotonya.',
+                    'jenis_berkas' => 'Foto JPG atau PNG',
+                ],
+                'kunci' => [
+                    'rubrik' => [
+                        ['butir' => 'Menuliskan kedua bilangan dengan benar', 'poin' => 2],
+                        ['butir' => 'Menuliskan langkah penjumlahan bersusun', 'poin' => 2],
+                        ['butir' => 'Hasil akhir 42', 'poin' => 1],
+                    ],
+                ],
+            ],
+            [
+                'tipe' => 'teka_silang_mini',
+                'konten' => [
+                    'grid' => [
+                        ['', '', ''],
+                        ['#', '', '#'],
+                    ],
+                    'mendatar' => [
+                        ['nomor' => 1, 'teks' => 'Nama hewan mengeong.', 'sel' => ['0,0', '0,1', '0,2']],
+                    ],
+                    'menurun' => [
+                        ['nomor' => 2, 'teks' => 'Bagian tengah baris kedua.', 'sel' => ['0,1', '1,1']],
+                    ],
+                ],
+                'kunci' => [
+                    'sel' => [
+                        '0,0' => 'k',
+                        '0,1' => 'a',
+                        '0,2' => 't',
+                        '1,1' => 'i',
+                    ],
+                ],
             ],
         ];
     }

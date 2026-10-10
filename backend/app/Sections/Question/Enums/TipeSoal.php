@@ -38,6 +38,12 @@ enum TipeSoal: string
     case TabelIsian = 'tabel_isian';
     case GarisBilangan = 'garis_bilangan';
 
+    // Gelombang 3 (Objektif 1B): tipe 8, 12, 13, 14.
+    case HotspotGambar = 'hotspot_gambar';
+    case BacaJam = 'baca_jam';
+    case TugasUnggah = 'tugas_unggah';
+    case TekaSilangMini = 'teka_silang_mini';
+
     /**
      * Soal objektif = dinilai pasti tanpa toleransi/tafsir; koreksi guru tidak
      * diperlukan. Isian singkat dan uraian bukan objektif (lihat `bertingkat()`).
@@ -50,7 +56,10 @@ enum TipeSoal: string
             self::PilihanGandaKompleks, self::BenarSalahMajemuk, self::IsianAngka,
             self::PilihanGambar, self::UrutGambar, self::SusunHuruf,
             self::IsianRumpang, self::Klasifikasi, self::TabelIsian,
-            self::GarisBilangan => true,
+            self::GarisBilangan, self::HotspotGambar, self::BacaJam,
+            self::TekaSilangMini => true,
+            // Tugas unggah tidak pernah dinilai mesin: guru menilai berkasnya
+            // lewat rubrik di antrean koreksi.
             default => false,
         };
     }
@@ -85,6 +94,10 @@ enum TipeSoal: string
             self::Klasifikasi => 'Klasifikasi',
             self::TabelIsian => 'Tabel isian',
             self::GarisBilangan => 'Garis bilangan',
+            self::HotspotGambar => 'Hotspot gambar',
+            self::BacaJam => 'Baca jam',
+            self::TugasUnggah => 'Tugas unggah',
+            self::TekaSilangMini => 'Teka silang mini',
         };
     }
 }

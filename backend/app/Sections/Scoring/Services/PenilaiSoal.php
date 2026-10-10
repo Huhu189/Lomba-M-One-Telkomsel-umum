@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sections\Scoring\Services;
 
+use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Scoring\Enums\StatusPenilaian;
 
@@ -14,6 +15,8 @@ use App\Sections\Scoring\Enums\StatusPenilaian;
  *   letak kata, hubung kata) → `PenilaianObjektif` (benar/salah pasti).
  * - Soal bertingkat (isian singkat, uraian) → `PenilaianTeks` (kata kunci,
  *   boleh skor parsial, boleh `perlu_tinjau` untuk guru).
+ * - Tugas unggah selalu `perlu_tinjau`: berkasnya dinilai guru lewat rubrik,
+ *   jadi tidak boleh jatuh ke pencocokan kata kunci `PenilaianTeks`.
  *
  * Kontraknya tetap sama untuk pemanggil: selalu mengembalikan array status +
  * benar + skor, tidak pernah melempar exception.
@@ -34,6 +37,10 @@ final class PenilaiSoal
 
         if ($tipe === null) {
             return ['status' => StatusPenilaian::Gagal, 'benar' => null, 'skor' => 0.0];
+        }
+
+        if ($tipe === TipeSoal::TugasUnggah) {
+            return ['status' => StatusPenilaian::PerluTinjau, 'benar' => null, 'skor' => 0.0];
         }
 
         if ($tipe->objektif()) {
