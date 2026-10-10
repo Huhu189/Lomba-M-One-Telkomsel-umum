@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { jawabanTeks, kelasStatus, ringkasKunci, saranAiTeks } from '../../../sections/scoring/tampilan.js'
+import {
+  jawabanTeks,
+  kelasStatus,
+  langkahKoreksi,
+  ringkasKunci,
+  saranAiTeks,
+} from '../../../sections/scoring/tampilan.js'
 
 describe('jawabanTeks', () => {
   it('menandai jawaban yang belum dijawab atau hanya berisi spasi', () => {
@@ -63,5 +69,22 @@ describe('kelasStatus', () => {
     expect(kelasStatus('gagal')).toBe('badge-status salah')
     expect(kelasStatus('dinilai')).toBe('badge-status lembut')
     expect(kelasStatus('')).toBe('badge-status lembut')
+  })
+})
+
+describe('langkahKoreksi', () => {
+  it('mulai dari langkah 1 selama token belum terbit', () => {
+    expect(langkahKoreksi({})).toBe(1)
+    expect(langkahKoreksi({ punyaToken: false })).toBe(1)
+    expect(langkahKoreksi({ punyaToken: false, tersimpan: false })).toBe(1)
+  })
+
+  it('pindah ke langkah 2 setelah token terbit, lalu langkah 3 setelah tersimpan', () => {
+    expect(langkahKoreksi({ punyaToken: true })).toBe(2)
+    expect(langkahKoreksi({ punyaToken: true, tersimpan: true })).toBe(3)
+  })
+
+  it('tersimpan menang atas token (mis. token masih terisi setelah simpan)', () => {
+    expect(langkahKoreksi({ tersimpan: true })).toBe(3)
   })
 })

@@ -57,6 +57,24 @@ export function saranAiTeks(item) {
 }
 
 /**
+ * Langkah koreksi yang sedang berjalan (papan 8: stepper "skor & alasan → token
+ * konfirmasi → tersimpan").
+ *
+ * Angkanya murni turunan dari keadaan form: belum ada token berarti guru masih
+ * di langkah 1, token sudah terbit berarti langkah 2, dan setelah tersimpan
+ * langkah 3 yang ditandai. Dipakai supaya penunjuk langkah tidak pernah berbeda
+ * pendapat dengan tombol yang aktif.
+ *
+ * @param {{ tersimpan?: boolean, punyaToken?: boolean }} keadaan
+ * @returns {1|2|3} nomor langkah (1-based)
+ */
+export function langkahKoreksi(keadaan) {
+  if (keadaan.tersimpan === true) return 3
+
+  return keadaan.punyaToken === true ? 2 : 1
+}
+
+/**
  * Kelas lencana status penilaian (perlu ditinjau vs gagal).
  * @param {string} status
  * @returns {string}

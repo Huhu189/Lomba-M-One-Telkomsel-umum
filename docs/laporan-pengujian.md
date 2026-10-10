@@ -1,7 +1,7 @@
 # Laporan Pengujian
 
-Diperbarui: 9 Oktober 2026 (sesi pematangan + pengujian ulang menyeluruh — lihat A.19).
-Bagian A.1–A.18 adalah catatan apa adanya dari sesi-sesinya masing-masing; status terkini ada di A.19.
+Diperbarui: 10 Oktober 2026 (putaran editor materi gaya video editor — A.31 — dan penunjuk langkah koreksi manual — A.32).
+Bagian A.1–A.30 adalah catatan apa adanya dari sesi-sesinya masing-masing; status terkini ada di A.31 dan A.32.
 
 > **Catatan revisi dokumentasi (7 Oktober 2026):** tata letak dokumen dirapikan atas permintaan
 > pengguna. Ringkasan prompt kini ada di `docs/word/AGENT.md` + `AGENT.docx` (bukan lagi dump prompt
@@ -2319,3 +2319,137 @@ Frontend (diubah): `sections/question/tipeSoal.js`, `validasi.js`, `EditorSoal.j
   total setelah 2A: `php artisan test` **253 passed (2256 assertions)**, `npx vitest run` **54 berkas / 484 test**.
 - Belum: pengirim sisi klien untuk dua kategori baru, denyut ber-nonce, `SapuPresence`, dan pemeriksaan
   integritas fungsi proteksi (bagian 2B–2D).
+
+---
+
+## A.31 Putaran Editor Materi Gaya Video Editor + Kuis Sisipan di Dalam Klip (10 Oktober 2026)
+
+Permintaan pengguna: menerapkan paket perubahan eksternal (`files (67).zip` — dua patch
+`editor-video-backend.patch` + `editor-video-frontend.patch`, plus `file-berubah.zip` berisi 17 berkas
+utuh) ke repo ini, dengan izin "boleh langsung apply atau boleh modif".
+
+### A.31.1 Cakupan paket dan cara penerapannya
+
+- Kedua patch diterapkan dengan `git apply` dan **apply bersih** — 8 berkas backend, 9 berkas frontend.
+- Hasil penerapan dicocokkan dengan isi `file-berubah.zip` memakai `diff -rq`: **identik**, kecuali
+  `frontend/src/theme/theme.css`. Basis zip itu 438 baris lebih tua (belum memuat CSS "tipe soal baru"),
+  jadi versi proyek yang memuat keduanya dipertahankan; patch melaporkan **offset 438 pada kelima hunk**
+  `theme.css`, bukti bahwa yang ditambahkan memang blok fitur ini dan bukan CSS fitur lain.
+- Isi fitur: kolom `materials.rasio` (`16:9`/`9:16`/`1:1`/`4:3`); pengaturan tampilan per klip di dalam
+  kolom JSON `isi` (`tampilan`: media `fit`/`fokus_x`/`fokus_y`/`zoom`; kuis `mode`/`tata`);
+  `MateriService::validasiTampilan()` menormalkan nilai dan menolak nilai di luar daftar;
+  `ProgresMateriService` mengurutkan bagian menurut timeline, menghitung `host_id` (kuis yang titik
+  mulainya jatuh di dalam jendela klip media berputar) dan `boleh_dibuka`, serta `pastikanSisipanSelesai()`
+  yang menahan penutupan video selama kuis wajib di dalamnya belum selesai; di frontend ada
+  `PemutarMateri.jsx` + `pemutarMateri.js` (kapan kuis muncul saat video berjalan) dan editor bergaya
+  video editor dengan bingkai rasio terkunci.
+
+### A.31.2 Modifikasi yang saya lakukan (dan alasannya)
+
+Patch itu apa adanya **tidak lolos pagar mutu repo ini**. Yang saya ubah adalah penyebabnya, bukan
+menurunkan pagar mutu:
+
+| Temuan | Sifat | Perbaikan |
+| --- | --- | --- |
+| `z.record(z.union([z.string(), z.number()]))` ×3 di `sections/material/api.js` | **bug nyata**, bukan sekadar tipe | Di Zod 4, satu argumen di `z.record()` diperlakukan sebagai **tipe kunci** dan nilainya menjadi `unknown` — jadi skema `tampilan` tidak memvalidasi nilainya sama sekali. Ditulis `z.record(z.string(), z.union([z.string(), z.number()]))`, sama dengan konvensi berkas lain (`scoring/api.js`, `report/api.js`, `settings/api.js`, dst.) |
+| `style={{ '--r': … }}` di `EditorMateri.jsx` + `PemutarMateri.jsx` | tipe | Custom property CSS tidak ada di tipe `CSSProperties` React; diberi cast `/** @type {import('react').CSSProperties} */` |
+| `gayaMedia()` menerima `BarisBlok` penuh padahal hanya membaca `tipe` + `tampilan` | tipe | Param dilonggarkan ke bentuk yang benar-benar dipakai (`Pick<BarisBlok,'tipe'> & { tampilan? }`) alih-alih cast di pemanggil, supaya pemanggil yang mengirim objek ringkas tetap benar |
+| `tertutupRef` dibaca **saat render** (`sisaWajib(sisipan, tertutupRef.current)`) | ESLint `react-hooks/refs` | Diganti state `tertutup`; penjagaan agar kuis yang sama tidak terpicu ulang tetap ada di `kuisJatuhTempo` |
+| Efek "bersihkan keadaan saat blok berganti" memanggil `setState` sinkron di dalam `useEffect` | ESLint `react-hooks/set-state-in-effect` | Efek dihapus, perilakunya diganti `key={blokAktif.block_id}` di `HalamanMateriMurid.jsx`: pindah klip = komponen dipasang ulang, keadaan kuis bersih tanpa render berantai |
+| Parameter implisit `any` di 2 berkas tes baru | tipe | Diberi anotasi JSDoc |
+
+### A.31.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `git apply --check` kedua patch | lolos (backend 8 berkas, frontend 9 berkas) |
+| `diff -rq file-berubah.zip` vs proyek | hanya `theme.css` berbeda; selisihnya 438 baris CSS fitur lain yang memang sudah ada di proyek (lihat A.31.1) |
+| `php artisan test --filter=Slice08Test` | **12 passed (172 assertions)** — termasuk 3 tes baru dari paket (`jumlah_blok` tanpa lazy loading, rasio + normalisasi tampilan, kuis di dalam video yang tidak mengunci dirinya) |
+| `npx vitest run src/__tests__/sections/material` | **54 passed** (4 berkas) |
+| `./verify.sh` (root) | **SEMUA HIJAU exit 0** — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs **OK** · ESLint **0 error, 2 warning lama** (React Hook Form) · Vitest **56 berkas / 505 test** · realtime **15 test** |
+| Migrasi `2026_10_10_000001_tambah_rasio_materi.php` | ikut terjalankan tiap suite (RefreshDatabase, sqlite `:memory:`); kolom `rasio` diuji lewat endpoint, bukan hanya dibaca |
+| `docs/jalankan-smoke-materi.sh` → `docs/smoke-ui-materi.mjs` (backend :8000, vite :5173, Chrome CDP :9333) | **22/22 lulus, exit 0** — guru menyusun materi (rasio 9:16 + pengaturan tampilan klip + kuis sisipan di detik 20) lalu menerbitkannya; murid membuka materinya dan: urutan bagian mengikuti timeline (`[video, kuis, teks]`), kuis ber-`host_id` = klip videonya dan **tidak** mengunci dirinya, bagian setelah video masih terkunci (422 saat ditutup), bingkai memakai `--r = 0.5625` (9:16), gaya media `object-fit: cover` + `object-position: 20% 80%` + `scale(1.5)`, video termuat (`readyState ≥ 1`), dan **panel kuis muncul sendiri** (`.pm-kuis`) berisi soal latihan dari bank soal dengan video **paused** (mode _jeda_); server tetap menolak menutup video (422) sebelum kuis wajibnya selesai. Harness adalah baru dan **mandiri** — soal + kuis + materi ujinya dibuat dan dihapus lagi di blok `finally` (`materi 23 · kuis 114 · soal 212` → baca ulang 404) |
+
+`verify.sh` **pertama** memang gagal (checkJs 12 error, ESLint 2 error) — semuanya berasal dari baris di
+A.31.2. Sesudah penyebabnya diperbaiki, `verify.sh` berikutnya hijau, dan pemeriksaan itu **tidak** diulang
+lagi setelah commit karena berkas ujinya tidak berubah.
+
+### A.31.4 Keputusan teknis (satu kalimat per keputusan)
+
+- `rasio` dikunci **per materi** (bukan per klip) supaya bingkai pratinjau dan pemutar tidak berubah di tengah materi.
+- Nilai `tampilan` dinormalkan **server**; nilai di luar daftar ditolak 422 di request, bukan diam-diam diganti.
+- Blok teks tidak punya pengaturan tampilan: kiriman `tampilan` untuk teks diabaikan (dan itu diuji).
+- Kuis di dalam video **tidak** mensyaratkan videonya selesai (kalau tidak, deadlock); sebaliknya video menunggu kuis wajibnya.
+- Jendela kuis dihitung dari klip media ber-`mime` video/audio saja; materi lama tanpa durasi tidak berubah perilakunya.
+- Pindah klip di pemutar memakai `key` React (pasang ulang), bukan efek pembersih.
+- Frontend tetap memakai pagar yang sama: kuis sisipan memakai attempt **latihan** dari jalur yang sudah ada (`bukaBlok`/`selesaikanBlok`), jadi tidak ada endpoint baru untuk menjawab latihan.
+
+### A.31.5 Batasan jujur (yang belum selesai)
+
+- **Smoke UI pemutar sudah dijalankan (22/22)** — jadi celah bukti terbesarnya sudah tertutup; yang masih
+  terbatas: harness baru menguji satu jalur (kuis mode _jeda_ di dalam video), belum mode _berjalan_ dan
+  belum tata panel horizontal lewat layar sungguhan (keduanya sudah diuji di Pest/Vitest), dan harness tidak
+  menutup kasus video yang gagal dimuat.
+- **`docs/export-word.sh` belum dijalankan utuh.** Yang dijalankan hanya langkah konversi Word
+  (`python3 docs/export_docx.py`) untuk berkas yang berubah; langkah penyegaran log mentah
+  (`docs/export-log-sesi.py`, butuh snapshot sesi chat) sengaja dilewati supaya transkrip byte-exact yang
+  sudah tercatat (beserta angka md5 di kepalanya) tidak berubah tanpa alasan.
+- Editor materi masih terbukti dengan **satu berkas MP4 dev** (5,4 MB), bukan semua kodek — batasan lama yang belum berubah.
+- Paket eksternal tidak menyertakan dokumentasi, jadi bagian ini disusun dari pembacaan kode hasil penerapan,
+  bukan dari catatan penulis paket.
+
+### A.31.6 Berkas yang dibuat/diubah
+
+Backend (diubah): `Material/Http/Controllers/MateriController.php`,
+`Material/Http/Requests/SinkronBlokRequest.php`, `Material/Http/Resources/BlokResource.php`,
+`Material/Http/Resources/MateriResource.php`, `Material/Services/MateriService.php`,
+`Material/Services/ProgresMateriService.php`, `tests/Feature/Slice08Test.php`.
+Backend (dibuat): `database/migrations/2026_10_10_000001_tambah_rasio_materi.php`.
+Frontend (diubah): `sections/material/EditorMateri.jsx`, `sections/material/HalamanMateriMurid.jsx`,
+`sections/material/api.js`, `sections/material/editorMateri.js`, `theme/theme.css`.
+Frontend (dibuat): `sections/material/PemutarMateri.jsx`, `sections/material/pemutarMateri.js`,
+`__tests__/sections/material/editorMateriBingkai.test.js`, `__tests__/sections/material/pemutarMateri.test.js`.
+Dokumentasi (diubah): `laporan-pengujian.md` (bagian ini), `handoff-sesi.md`, `jurnal-prompt.md`,
+`penjelasan-fitur.md` (bagian 6 + daftar batasan), `word/*.docx` (tiga berkas yang sumbernya berubah).
+Dokumentasi (dibuat): `docs/smoke-ui-materi.mjs`, `docs/jalankan-smoke-materi.sh`.
+
+Di-commit: backend + frontend + tes sebagai `a859f78`; dokumen & harness menyusul pada commit berikutnya.
+
+---
+
+## A.32 Papan 8 — Penunjuk Langkah di Koreksi Manual + Sisa Tombol Bootstrap (10 Oktober 2026)
+
+Lanjutan utang "papan 8 (Koreksi) masih sebagian" dari A.27.6/A.31.5. Putaran ini mengambil bagian yang
+bisa dikerjakan **tanpa mengubah makna token** (perubahan alur token menyentuh harness smoke slice 06,
+jadi butuh keputusan tersendiri).
+
+### A.32.1 Yang dikerjakan
+
+- **Penunjuk langkah koreksi** di dalam form setiap baris antrean: `1 Skor & alasan → 2 Token konfirmasi
+  → 3 Tersimpan`, memakai komponen `Langkah` yang sudah ada (punya `aria-current="step"`, bukan hanya
+  warna). Nomor langkahnya dihitung pembantu murni `langkahKoreksi()` di `sections/scoring/tampilan.js`,
+  jadi penunjuk tidak bisa berbeda pendapat dengan keadaan tombol.
+- **Sisa tombol Bootstrap dibersihkan**: dua `<button className="btn btn-tepi btn-sedang">` di
+  `FormKoreksi` (tombol "Pakai saran AI"/"Minta saran AI") diganti `Tombol varian="tepi"`. Salah satu di
+  antaranya bahkan menempel tanpa spasi (`type="button"className=…`) — ikut hilang.
+
+### A.32.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/sections/scoring` | **19 passed** (2 berkas; 3 tes baru untuk `langkahKoreksi`) |
+| `npx eslint src/sections/scoring src/__tests__/sections/scoring` | 0 masalah |
+| `npm run check` (checkJs) | OK |
+| `docs/jalankan-smoke-ui.sh slice06` (backend+vite+realtime+Chrome) | **27/27 lulus, exit 0** — halaman koreksi tetap menampilkan form ber-token, token terbit, koreksi tersimpan, dan nilai naik lewat UI |
+| `./verify.sh` (root) | **SEMUA HIJAU exit 0** — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint 0 error (2 warning lama) · Vitest **56 berkas / 505 test** · realtime 15 test |
+
+### A.32.3 Batasan jujur (yang belum selesai)
+
+- **Susunan dua kolom "antrean kiri + detail kanan" belum**: halaman masih satu kolom berisi daftar kartu.
+  Rencananya butuh satu keputusan tambahan: baris antrean mana yang otomatis terpilih, karena harness
+  smoke slice 06 mengisi form baris uraian lewat id `#skor-<attempt>-<soal>` — kalau hanya baris TERPILIH
+  yang dirender, pemilihan bawaan harus dijamin tepat supaya harness tetap sahih.
+- **Token masih terisi otomatis** dari respons "minta token" (belum ada langkah mengetik token seperti di
+  papan desain). Ini memang perilaku lama; mengubahnya berarti mengubah makna langkah konfirmasi dan
+  harus disertai keputusan apakah token ditampilkan ke guru atau dikirim lewat jalur lain.
+- Uji regresi visual/screenshot tetap belum ada; bukti tata letak dari DOM/CDP.

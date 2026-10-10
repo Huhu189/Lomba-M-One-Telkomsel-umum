@@ -279,3 +279,52 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   **242/242**, dan slice04/slice05 diulang berturut-turut tetap penuh (harness mandiri memang bisa
   dijalankan berulang). Batasan di A.29.7: papan 8 (Koreksi) masih sebagian, tanpa uji visual, smoke UI
   butuh empat layanan hidup.
+
+- **Putaran 22 tipe soal — objektif 1 tuntas + objektif 2A (10 Oktober 2026)**: prompt eksternal di luar
+  repo meminta dua objektif — menambah tipe soal dari 8 menjadi **22** beserta penilaian parsial, dan
+  deteksi extension. Objektif 1 dikerjakan tiga gelombang sampai tuntas (kontrak `bobot()` 0.0–1.0,
+  delapan tipe lama tetap biner lewat trait `BobotBiner`, empat belas tipe baru, payload murid dijaga
+  tidak pernah memuat kunci), sedangkan objektif 2 baru sebagian (**2A**: `tamper_suspected` pindah ke
+  kelompok turunan server supaya murid tidak bisa menulis "dugaan gangguan proteksi", klien hanya boleh
+  `dom_injection` + `extension_detected`). Dua bug nyata tertangkap tes baru: kotak klasifikasi tersimpan
+  tanpa label, dan daftar jawaban diterima tidak muncul di pratinjau guru. Verifikasi: `./verify.sh`
+  **SEMUA HIJAU**, Pest **253 passed (2256 assertions)**, Vitest **54 berkas/484 test**, `Slice07Test`
+  16 passed. Rincian di `laporan-pengujian.md` A.30.
+
+- **Putaran editor materi gaya video editor + kuis sisipan di dalam klip (10 Oktober 2026)**: pengguna
+  menyerahkan paket perubahan eksternal `files (67).zip` (dua patch + 17 berkas utuh) dengan izin
+  "boleh langsung apply atau boleh modif". Kedua patch **apply bersih**, lalu hasilnya dicocokkan dengan
+  `file-berubah.zip` lewat `diff -rq`: identik kecuali `theme.css` yang basisnya 438 baris lebih tua
+  (patch melaporkan offset 438 di kelima hunk-nya). Isi fitur: rasio bingkai materi
+  (16:9/9:16/1:1/4:3), timeline klip dengan pengaturan tampilan per klip (media utuh/penuhi bingkai +
+  titik fokus + zoom; kuis video jeda/berjalan + tata panel), urutan bagian murid mengikuti **timeline**,
+  dan pemutar murid yang memunculkan kuis tepat pada detiknya sementara server menahan penutupan video
+  sampai kuis wajib di dalamnya selesai. Patch itu **apa adanya tidak lolos pagar mutu repo**, jadi yang
+  saya perbaiki adalah penyebabnya: `z.record()` satu-argumen (di Zod 4 argumen itu dibaca sebagai tipe
+  kunci, sehingga nilai `tampilan` tidak tervalidasi sama sekali) ditulis dua-argumen sesuai konvensi
+  berkas lain, custom property `--r` diberi cast `CSSProperties`, param `gayaMedia` dilonggarkan ke bentuk
+  yang benar-benar dipakainya, ref yang dibaca saat render diganti state, dan efek `setState` sinkron
+  diganti `key={blokAktif.block_id}`. Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest **256 passed
+  (2304 assertions)**, Pint 335 berkas, checkJs OK, ESLint 0 error, Vitest **56 berkas/505 test**,
+  realtime 15 test; `Slice08Test` 12 passed (172 assertions). Di-commit sebagai `a859f78`.
+  **Bukti layar sungguhan menyusul di putaran yang sama**: harness baru `docs/smoke-ui-materi.mjs`
+  (dijalankan lewat `docs/jalankan-smoke-materi.sh`, backend+vite+Chrome sendiri, **tanpa** unggah berkas)
+  lulus **22/22** — guru menyusun materi ber-rasio 9:16 dengan kuis sisipan di detik 20, murid membuka
+  materinya, urutan bagian mengikuti timeline, bingkai `--r = 0.5625`, gaya media `object-fit: cover` +
+  `object-position: 20% 80%` + `scale(1.5)`, lalu **panel kuis muncul sendiri** saat video mencapai
+  detiknya dengan video **paused** (mode jeda) sementara server tetap menolak menutup video (422).
+  Batasan di A.31.5: harness baru mencakup satu jalur (mode _berjalan_ dan tata horizontal baru diuji
+  Pest/Vitest), pemutaran masih satu MP4 dev (5,4 MB), dan langkah penyegaran log mentah di
+  `export-word.sh` sengaja belum dijalankan.
+
+- **Putaran papan 8 — penunjuk langkah koreksi manual (10 Oktober 2026)**: lanjutan utang A.27.6/A.31.5
+  yang tidak mengubah makna token. Form koreksi setiap baris antrean kini memakai penunjuk langkah
+  `1 Skor & alasan → 2 Token konfirmasi → 3 Tersimpan` (komponen `Langkah`, `aria-current="step"`), dan
+  nomor langkahnya dihitung pembantu murni `langkahKoreksi()` di `sections/scoring/tampilan.js` supaya
+  penunjuk tidak pernah berbeda pendapat dengan keadaan tombol. Dua sisa tombol Bootstrap di `FormKoreksi`
+  (salah satunya menempel tanpa spasi: `type="button"className=…`) diganti `Tombol varian="tepi"`.
+  Verifikasi: Vitest scoring **19 passed** (3 tes baru), ESLint 0 masalah, checkJs OK, dan alur koreksi
+  lewat layar sungguhan diulang lewat runner baru `docs/jalankan-smoke-ui.sh slice06` — **27/27 lulus**;
+  `./verify.sh` **SEMUA HIJAU exit 0**. Batasan di A.32.3: susunan dua kolom "antrean kiri + detail kanan"
+  belum (butuh keputusan baris mana yang otomatis terpilih agar harness slice 06 tetap sahih), dan token
+  masih terisi otomatis dari respons server, belum diketik seperti di papan desain.

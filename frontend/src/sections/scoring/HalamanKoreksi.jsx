@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
+import Langkah from '../../shared/ui/Langkah.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
@@ -19,7 +20,10 @@ import { IkonCentang } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
-import { jawabanTeks, kelasStatus, ringkasKunci, saranAiTeks } from './tampilan.js'
+import { jawabanTeks, kelasStatus, langkahKoreksi, ringkasKunci, saranAiTeks } from './tampilan.js'
+
+/** Nama ketiga langkah koreksi — dipakai penunjuk langkah di dalam form. */
+const LANGKAH_KOREKSI = ['Skor & alasan', 'Token konfirmasi', 'Tersimpan']
 
 /**
  * Form koreksi satu baris: skor, alasan, lalu token konfirmasi.
@@ -40,6 +44,7 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
   const [alasan, setAlasan] = useState('')
   const [token, setToken] = useState('')
   const [tokenKedaluwarsa, setTokenKedaluwarsa] = useState(/** @type {string|null} */ (null))
+  const [tersimpan, setTersimpan] = useState(false)
 
   const mintaToken = useMutation({
     mutationFn: () => mintaTokenKoreksi(item.attempt_id, item.question_id, alasan.trim()),
@@ -60,6 +65,7 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
         token: token.trim(),
       }),
     onSuccess: (hasil) => {
+      setTersimpan(true)
       tampilkanToast('sukses', `${hasil.message} Total skor attempt: ${hasil.total_skor}.`)
       onSelesai()
     },
@@ -89,20 +95,20 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
           <span className="badge-status info">AI</span>
           <span className="small mb-0">{saranAi}</span>
           {adaSaranAi && (
-            <button type="button"className="btn btn-tepi btn-sedang"
-        onClick={() => setSkor(String(item.saran_ai))}>
+            <Tombol varian="tepi" onClick={() => setSkor(String(item.saran_ai))}>
               Pakai saran AI
-            </button>
+            </Tombol>
           )}
           {aiAktif && (
-            <button
-              type="button"
-              className="btn btn-tepi btn-sedang ms-auto"
-              disabled={mintaAi.isPending}
+            <Tombol
+              varian="tepi"
+              className="ms-auto"
+              memuat={mintaAi.isPending}
+              teksMemuat="Meminta saran…"
               onClick={() => mintaAi.mutate()}
             >
-              {mintaAi.isPending ? 'Meminta saran…' : 'Minta saran AI'}
-            </button>
+              Minta saran AI
+            </Tombol>
           )}
         </div>
       )}
@@ -115,16 +121,21 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
 
       {saranAi === null && aiAktif && (
         <div className="d-flex justify-content-end mb-2">
-          <button
-            type="button"
-            className="btn btn-tepi btn-sedang"
-            disabled={mintaAi.isPending}
+          <Tombol
+            varian="tepi"
+            memuat={mintaAi.isPending}
+            teksMemuat="Meminta saran…"
             onClick={() => mintaAi.mutate()}
           >
-            {mintaAi.isPending ? 'Meminta saran…' : 'Minta saran AI'}
-          </button>
+            Minta saran AI
+          </Tombol>
         </div>
       )}
+
+      <Langkah
+        langkah={LANGKAH_KOREKSI}
+        sekarang={langkahKoreksi({ tersimpan, punyaToken: token.trim() !== '' }) - 1}
+      />
 
       <div className="row g-2 align-items-end mb-2">
         <div className="col-sm-4 col-lg-3">

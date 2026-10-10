@@ -3,15 +3,21 @@
 Catatan ini untuk melanjutkan pekerjaan **setelah context di-compact**. Isinya sengaja
 padat: status terakhir, apa yang sudah/belum, dan cara mengulang verifikasi.
 
-Terakhir diperbarui: 2026-10-10 (putaran A.29 — smoke UI mandiri slice 04–07 + bug payload soal letak kata).
+Terakhir diperbarui: 2026-10-10 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
+A.31 — editor materi gaya video editor + kuis sisipan di dalam klip, dan A.32 — penunjuk langkah
+koreksi manual).
 
 ## 1. Status verifikasi terakhir
 
 | Perintah | Hasil |
 | --- | --- |
-| `./verify.sh` (root) | HIJAU — Pest **228 passed (1833 assertions)** · Pint OK · checkJs OK · ESLint 0 error (2 warning lama) · Vitest **53 berkas / 428 test** · realtime 15 test |
-| Seluruh smoke UI satu tarikan (`nav`→`susun`→`03`→`04`→`05`→`06`→`07`) | **148 pemeriksaan lulus**: 14/14 · 40/40 · 9/9 · 18/18 · 20/20 · 27/27 · 20/20 (semua exit 0) |
-| `node docs/smoke-http-fitur.mjs` | dijalankan lewat backend+realtime hidup (hasil pada laporan A.29) |
+| `./verify.sh` (root) | HIJAU (exit 0) — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **56 berkas / 505 test** · realtime 15 test |
+| `php artisan test --filter=Slice08Test` | 12 passed (172 assertions) — termasuk 3 tes rasio/tampilan/kuis-sisipan |
+| `npx vitest run src/__tests__/sections/material` | 54 passed (4 berkas) |
+| Seluruh smoke UI satu tarikan (`nav`→`susun`→`03`→`04`→`05`→`06`→`07`) | **148 pemeriksaan lulus**: 14/14 · 40/40 · 9/9 · 18/18 · 20/20 · 27/27 · 20/20 (semua exit 0) — **terakhir dijalankan putaran A.29**, belum diulang sesudah A.30/A.31 |
+| `docs/jalankan-smoke-materi.sh` (pemutar materi + kuis sisipan, putaran A.31) | **22/22 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu) |
+| `docs/jalankan-smoke-ui.sh slice06` (ulang setelah perubahan papan 8, putaran A.32) | **27/27 lulus, exit 0** — backend+vite+realtime+Chrome |
+| `node docs/smoke-http-fitur.mjs` | **242/242 lulus** (butuh backend + realtime hidup) — juga dari putaran A.29 |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
 
@@ -30,44 +36,61 @@ SYNC) — shell perintah dibersihkan setelah selesai dan anak prosesnya ikut mat
 Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Aman` (lihat
 `RolesAndAdminSeeder`). Throttle masuk 5 percobaan/menit per akun — harness sudah menunggu + mencoba lagi.
 
-## 2. Yang selesai di putaran A.29
+## 2. Yang selesai di putaran A.30 dan A.31
 
-- **Smoke slice 04–07 kini mandiri**: tiap harness membuat soal + ulangan (+ tag untuk slice 05) di kelas
-  murid uji sendiri, memeriksa lewat layar sungguhan, lalu menghapus semuanya di blok `finally` dan
-  memulihkan pengaturan yang diubah.
-- **Bug nyata diperbaiki (Q-19)**: `AttemptService::payloadSoal()` hanya menyalin `opsi/kiri/kanan/item`,
-  sehingga soal **letak kata** sampai ke murid **tanpa `kata` dan `posisi`** — soal tampil kosong dan
-  mustahil dijawab dari layar. Ditambah `kata` + `posisi`, plus tes penjaga di `Slice06Test` yang sudah
-  dibuktikan gagal bila perbaikannya dibalik.
-- **Harness tidak lagi rapuh**: tahan 429 (tunggu 20 detik lalu coba lagi), menutup tab Chrome sendiri,
-  `/v1/murid?per_page=100`, dan mengikuti teks UI baru (satu soal per layar, "x dari N terjawab",
-  "Selesai" → "Kumpulkan", panel "Catatan untuk ditinjau").
-- **Salah tulis seeder dipulihkan** (`UserStatus` → sempat `Usa_erStatus`) yang membuat 213 tes backend
-  gagal; `verify.sh` menangkapnya.
-- Papan 10 & 11 + sistem tombol (putaran A.28) tidak disentuh lagi.
+- **A.30 — 22 tipe soal (objektif 1) tuntas**: kontrak `PenanganTipeSoal::bobot()` untuk penilaian
+  parsial (8 tipe lama tetap biner lewat trait `BobotBiner`), 14 tipe baru (`pilihan_ganda_kompleks`,
+  `benar_salah_majemuk`, `isian_angka`, `pilihan_gambar`, `urut_gambar`, `susun_huruf`, `isian_rumpang`,
+  `klasifikasi`, `tabel_isian`, `garis_bilangan`, `hotspot_gambar`, `baca_jam`, `tugas_unggah`,
+  `teka_silang_mini`), payload murid dijaga tidak pernah memuat kunci. Objektif 2 baru sebagian (**2A**):
+  `tamper_suspected` jadi kategori turunan server, klien hanya boleh `dom_injection` + `extension_detected`.
+- **A.31 — editor materi gaya video editor**: kolom `materials.rasio` dikunci per materi, pengaturan
+  tampilan per klip (`fit`/fokus/zoom untuk media; `mode`/`tata` untuk kuis), urutan bagian murid
+  mengikuti **timeline**, `host_id` + `boleh_dibuka` dihitung server, dan pemutar murid baru yang
+  memunculkan kuis saat video mencapai detiknya (video wajib menunggu kuis wajib di dalamnya).
+  Dokumentasi putaran ini ada di `laporan-pengujian.md` A.31 (termasuk daftar modifikasi yang saya
+  lakukan terhadap paket eksternal dan alasan tiap modifikasi).
+- **A.32 — penunjuk langkah koreksi manual (papan 8, sebagian)**: `Langkah` + pembantu murni
+  `langkahKoreksi()` di `sections/scoring/tampilan.js` (3 tes baru), dan dua sisa tombol Bootstrap di
+  `FormKoreksi` diganti `Tombol`. Verifikasi: Vitest scoring 19 passed, checkJs OK, ESLint 0 masalah,
+  smoke slice 06 **27/27**, `./verify.sh` SEMUA HIJAU.
+- **Runner smoke generik (A.32): `docs/jalankan-smoke-ui.sh <nama-harness>`** — menyalakan backend + vite +
+  realtime + queue worker + Chrome dalam satu proses shell lalu mematikannya lagi, supaya harness lama
+  (slice06/slice07, dsb.) bisa dijalankan sebagai satu perintah tanpa meninggalkan proses latar.
+- **Harness smoke baru (A.31): `docs/smoke-ui-materi.mjs` + `docs/jalankan-smoke-materi.sh`** — mandiri
+  (membuat soal + kuis + materi uji, lalu menghapusnya di blok `finally`), memakai berkas video yang
+  sudah ada di DB dev (`XZhNi…`, 5,4 MB) dan **tidak** mengunggah apa pun. Runner-nya menyalakan backend +
+  vite + Chrome dalam satu proses shell (migrasi dijalankan lebih dulu) dan mematikannya lagi saat selesai.
 
-## 3. Perubahan yang belum dikomit (kondisi `git status`)
+## 3. Kondisi git (`git status`)
 
-Modifikasi tracked (di luar berkas putaran sebelumnya yang juga belum dikomit):
-
-- Backend: `app/Sections/Attempt/Services/AttemptService.php` (daftar putih kolom),
-  `tests/Feature/Slice06Test.php` (+1 tes), `database/seeders/RolesAndAdminSeeder.php` (pulihkan `UserStatus`).
-- Docs: `laporan-pengujian.md` (A.29), `handoff-sesi.md`, `smoke-ui-slice03/04/05/06/07.mjs`,
-  `smoke-ui-nav.mjs`, `smoke-ui-susun.mjs`.
-- Frontend dari putaran A.28 (bank soal, kuis tiga langkah, editor soal, tombol) masih belum dikomit juga.
-
-Untracked baru dari putaran sebelumnya: `src/shared/ui/LangkahPil.jsx`, `src/sections/quiz/susunKuis.js`,
-`src/__tests__/sistemTombol.test.js`, `docs/smoke-ui-susun.mjs`, `docs/handoff-sesi.md`, `docs/desain/`.
-Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/` — jangan ikut dikomit.
+- `HEAD` = **`a859f78`** — "Jadikan materi bergaya video editor dengan kuis sisipan di dalam klip"
+  (17 berkas: 13 modifikasi + `PemutarMateri.jsx`, `pemutarMateri.js`, migrasi `rasio`, 2 tes baru).
+- Belum dikomit dan **sengaja ditinggalkan**: `docs/log-mentah/log-claude-eksternal.md` dan
+  `docs/log-mentah/prompt-claude-eksternal.md` (catatan mentah eksternal, bukan bagian kode fitur).
+- Tidak ada berkas lain yang kotor. **Tidak** ada `git push` untuk commit ini.
+- Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
 
 ## 4. Batasan jujur (yang belum selesai)
 
-- **Papan 8 (halaman Koreksi) masih sebagian**: susunan "antrean kiri + detail kanan + stepper skor" belum;
-  alur koreksinya sendiri sudah terbukti jalan (smoke slice 06).
+- **Objektif 2B–2D (deteksi tamper/extension sisi klien) belum**: MutationObserver + pemindai berkala,
+  pemeriksaan integritas fungsi proteksi, endpoint denyut ber-nonce, `SapuPresence` yang mengubah denyut
+  berhenti menjadi `tamper_suspected`, dan pengirim sisi klien untuk dua kategori baru.
+- **Papan 8 (halaman Koreksi) masih sebagian**: penunjuk langkah ("Skor & alasan → Token konfirmasi →
+  Tersimpan") dan sisa tombol Bootstrap sudah beres di A.32, tetapi **susunan dua kolom "antrean kiri +
+  detail kanan" belum** dan **token masih terisi otomatis** (belum ada langkah mengetik token seperti
+  papan desain). Alur koreksinya sendiri sudah terbukti jalan (smoke slice 06, 27/27).
+- **Papan 12 sudah jadi dan smoke UI-nya sudah lulus 22/22**, tetapi harness itu masih satu jalur:
+  kuis mode _jeda_ di dalam video (mode _berjalan_ dan tata panel horizontal baru diuji Pest/Vitest), dan
+  pemutaran masih terbukti dengan **satu MP4 dev** (5,4 MB), bukan semua kodek.
+- **P-01 paginasi baru sebagian**: hanya `SoalController` dan `MuridController` memakai `paginate()`;
+  kuis, materi, koreksi, peringkat, ekspor, monitor, dan kecurangan masih memuat semua baris.
 - Tidak ada uji regresi visual/screenshot; bukti tata letak dari geometri DOM/CDP.
-- Smoke UI butuh empat layanan hidup, jadi tidak ikut `verify.sh`; aturan yang sama juga dijaga Pest/Vitest.
-- Editor materi terbukti dengan satu MP4 dev, bukan semua kodek.
-- Belum ada `git commit` / `git push` / deploy (tidak diminta).
+- Tidak ada uji beban dengan ribuan murid; yang dibuktikan bentuk kontrak + pemangkasan `per_page`.
+- **Smoke UI tidak ikut `verify.sh`** (butuh empat layanan hidup).
+- **`docs/word/` disegarkan sebagian**: tiga berkas yang sumbernya berubah (laporan-pengujian, penjelasan-fitur, jurnal-prompt) sudah diekspor ulang lewat `python3 docs/export_docx.py`. Langkah penyegaran log mentah di dalam `export-word.sh` (`docs/export-log-sesi.py`, butuh snapshot sesi chat) **belum** dijalankan supaya transkrip byte-exact tidak berubah tanpa alasan; `log-mentah.docx` dan `catatan-demo.docx` karenanya masih dari ekspor sebelumnya (sumbernya memang tidak berubah).
+- **Belum ada deploy publik dan Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan).
+- Lima soal sisa `SMOKE-` (id 57–60, 150) masih tertahan di bank soal dev karena sudah dipakai/dijawab.
 
 ## 5. Cara melanjutkan
 
@@ -77,9 +100,12 @@ cd "folder tanpa judul 2/lomba_m"
 npm --prefix frontend run build              # build produksi
 # hidupkan 4 layanan (lihat bagian 1), lalu:
 for s in nav susun slice03 slice04 slice05 slice06 slice07; do node docs/smoke-ui-$s.mjs; done
+docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
+docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
 node docs/smoke-http-fitur.mjs               # butuh backend + realtime
 ./docs/export-word.sh                        # segarkan 6 .docx + log mentah
+python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx   # konversi Word saja (tanpa log mentah)
 ```
 
-Langkah berikutnya yang masuk akal: tata ulang **papan 8** (halaman Koreksi: antrean kiri + detail kanan +
-stepper skor), lalu sisa halaman yang belum sepenuhnya ikut sistem komponen.
+Langkah berikutnya yang masuk akal: **smoke UI pemutar materi** (menutup celah bukti A.31), lalu tata ulang
+**papan 8** (halaman Koreksi), lalu **deteksi tamper sisi klien (2B–2D)**.

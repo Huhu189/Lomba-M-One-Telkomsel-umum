@@ -133,7 +133,9 @@ yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik.
 Materi pelajaran disusun seperti perjalanan: blok teks, blok gambar/video, dan blok kuis kecil di tengahnya. Ditambah fitur layar guru: tampilan yang guru buka bisa muncul di perangkat murid — yang disinkronkan **kontennya**, bukan layar penuh seperti aplikasi rapat.
 
 ### Cara kerjanya
-Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar pizza terbagi → kuis latihan 3 soal → video → kuis latihan lagi. Kuis sisipannya memakai soal dari bank soal yang sudah ada (tidak ada jenis soal baru) dan bertipe **latihan**: skornya masuk laporan tema, tidak masuk ranking, bukan nilai asli ulangan. Guru menandai blok wajib atau opsional; server yang memastikan urutannya ditempuh — murid tidak bisa melompat ke blok akhir. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
+Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar pizza terbagi → kuis latihan 3 soal → video → kuis latihan lagi. Kuis sisipannya memakai soal dari bank soal yang sudah ada (tidak ada jenis soal baru) dan bertipe **latihan**: skornya masuk laporan tema, tidak masuk ranking, bukan nilai asli ulangan. Guru menandai blok wajib atau opsional; server yang memastikan urutannya ditempuh — murid tidak bisa melompat ke blok akhir.
+
+Sejak 10 Oktober 2026 editor materi bergaya **video editor**: guru memilih rasio bingkai materi (16:9, 9:16, 1:1, atau 4:3), menempatkan tiap klip di track dan detik tertentu, dan mengatur tampilan tiap klip — media: **utuh** di dalam bingkai atau **penuhi bingkai** berikut titik fokus dan zoom; kuis: video **berhenti** sampai kuis dijawab atau tetap berjalan, dengan panel di bawah atau di samping. Urutan bagian yang dilihat murid mengikuti **timeline** (detik mulai, lalu urutan simpan), bukan urutan klip dibuat. Kuis yang titik mulainya jatuh di dalam sebuah video kini muncul dari **pemutar video itu sendiri**, dan server menolak menutup video selama kuis wajib di dalamnya belum selesai — menarik slider ke ujung tidak mem-bypass urutan wajib. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
 
 ### Mengapa aman
 Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewat tautan bertanda tangan yang kedaluwarsa, bukan folder terbuka. Layar guru hanya mengirim instruksi konten — murid tidak bisa mengirim layar palsu ke guru.
@@ -141,12 +143,13 @@ Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewa
 ### Manfaat untuk anak SD dan guru
 Materi jadi hidup: anak membaca sebentar, mencoba kuis kecil, lalu lanjut — cocok untuk rentang perhatian anak SD, dan anak yang salah di tengah materi langsung berlatih sebelum lanjut. Guru tidak perlu berteriak "lihat soal nomor 4": semua perangkat murid bisa diminta menampilkan hal yang sama sekaligus (bagian 15), hemat waktu kelas.
 
-Status: **sudah bisa dipakai** (slice 08 + 10). Materi berblok dengan kuis sisipan latihan,
+Status: **sudah bisa dipakai** (slice 08 + 10, editor video-editor 10 Oktober 2026). Materi berblok dengan kuis sisipan latihan,
 penerbitan materi, berkas aman (kategori ditentukan dari isi berkas, disajikan lewat tautan
-bertanda tangan), laporan tema per murid, dan **layar guru ke perangkat murid (bagian 15)** sudah
-jalan serta diuji. Yang **belum** dikerjakan dan kami sebutkan apa adanya: mengikuti halaman/blok
-materi yang sedang dibuka guru secara otomatis — yang ada adalah guru memilih apa yang tampil di
-perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
+bertanda tangan), laporan tema per murid, editor bergaya video editor (rasio bingkai, timeline,
+tampilan per klip, kuis tersemat pada detik video) beserta pemutar muridnya, dan **layar guru ke
+perangkat murid (bagian 15)** sudah jalan serta diuji. Yang **belum** dikerjakan dan kami sebutkan apa
+adanya: mengikuti halaman/blok materi yang sedang dibuka guru secara otomatis — yang ada adalah guru
+memilih apa yang tampil di perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
 
 ---
 
@@ -431,7 +434,7 @@ Status: **perbaikan 8 Oktober 2026** — bawaannya menyala, tanpa pengaturan tam
 
 **Yang sengaja TIDAK kami lakukan:**
 - Tanpa share layar WebRTC — layar guru hanya menyinkronkan **konten**, bukan salinan layar penuh.
-- Tanpa kuis di detik tertentu dalam video — kuis sisipan hanya blok setelah/selama materi, bukan tersemat pada detik video.
+- Editor bergaya video editor (rasio bingkai, timeline, kuis **tersemat pada detik** di dalam video) sejak 10 Oktober 2026 **sudah ada** dan teruji; yang masih terbatas adalah cakupan kodek videonya — bukti pemutaran kami masih pada satu berkas MP4 di basis data pengembangan, bukan seluruh format yang mungkin diunggah guru.
 - Tanpa multi-tenant — satu instalasi untuk satu sekolah.
 - Anti-cheat **tidak menjamin 100%** — semua deteksi di browser bisa diakali; catatannya adalah bahan tinjauan guru, bukan vonis.
 
