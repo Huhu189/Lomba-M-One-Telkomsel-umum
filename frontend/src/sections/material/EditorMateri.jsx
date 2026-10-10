@@ -14,9 +14,12 @@
  * untuk timeline/inspector supaya guru tetap leluasa menyusun.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
+import TabelData from '../../shared/ui/TabelData.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonPanahKiri } from '../../icons.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
@@ -40,6 +43,7 @@ import {
   formatWaktu,
   klipPada,
   muatanBlok,
+  offsetMedia,
   setMulai,
   sisipBlok,
   susunTrack,
@@ -49,14 +53,103 @@ import {
 const LANGKAH_WAKTU = 0.5
 
 /**
+ * Posisi aman: tidak pernah negatif dan tidak melewati durasi media (bila sudah
+ * diketahui). Metadata media baru siap setelah `loadedmetadata`; sebelum itu
+ * `duration` bernilai NaN dan target dipakai apa adanya.
+ * @param {HTMLMediaElement} el
+ * @param {number} target
+ */
+function posisiTujuan(el, target) {
+  const batas = Number.isFinite(el.duration) ? el.duration : target
+  return Math.max(0, Math.min(target, batas))
+}
+
+/**
+ * Media klip yang ikut jam timeline editor.
+ *
+ * Memakai elemen media NATIVE (`<video>`/`<audio>`) supaya kontrol, subtitle,
+ * dan aksesibilitas bawaan browser tetap utuh. Yang ditambahkan hanya sinkron
+ * waktu: saat timeline diputar, media mulai dari offset klip; saat timeline
+ * dijeda atau digeser, posisi media mengikuti playhead.
+ *
+ * @param {{
+ *   berkas: import('./api.js').DataUnggahan,
+ *   klip: import('./editorMateri.js').BarisBlok,
+ *   bermain: boolean,
+ *   detik: number,
+ * }} props
+ */
+function MediaTersinkron({ berkas, klip, bermain, detik }) {
+  const elemen = useRef(/** @type {HTMLMediaElement|null} */ (null))
+  // Offset berjalan dibaca lewat ref supaya efek putar/jeda tidak ikut jalan
+  // setiap detik (itu akan menghentikan-ulang pemutaran tiap detak).
+  const offsetRef = useRef(0)
+
+  /** @param {HTMLMediaElement} el @param {number} target */
+  const geser = (el, target) => {
+    try {
+      el.currentTime = posisiTujuan(el, target)
+    } catch {
+      // Metadata belum siap; `onLoadedMetadata` akan menyejajarkan lagi.
+    }
+  }
+
+  // Selaraskan offset sebelum efek putar/scrub di bawah (efek berjalan berurutan).
+  useEffect(() => {
+    offsetRef.current = offsetMedia(detik, klip.mulai_detik, klip.durasi_detik)
+  }, [detik, klip.mulai_detik, klip.durasi_detik])
+
+  // Putar/jeda mengikuti timeline. Hanya bergantung `bermain` agar pemutaran
+  // media tidak di-restitusi tiap playhead bergerak.
+  useEffect(() => {
+    const el = elemen.current
+    if (!el) return
+
+    if (bermain) {
+      geser(el, offsetRef.current)
+      const janji = el.play?.()
+      if (janji && typeof janji.catch === 'function') janji.catch(() => {})
+    } else {
+      el.pause?.()
+    }
+  }, [bermain])
+
+  // Scrub saat timeline dijeda: playhead memindahkan posisi media.
+  useEffect(() => {
+    const el = elemen.current
+    if (!el || bermain) return
+    geser(el, offsetRef.current)
+  }, [detik, bermain])
+
+  /** @type {Record<string, unknown>} */
+  const properti = {
+    ref: elemen,
+    src: berkas.url ?? undefined,
+    controls: true,
+    playsInline: true,
+    preload: 'metadata',
+    className: 'w-100 rounded-3',
+    onLoadedMetadata: (/** @type {import('react').SyntheticEvent<HTMLMediaElement>} */ e) => {
+      geser(e.currentTarget, offsetRef.current)
+    },
+  }
+
+  if (berkas.mime?.startsWith('audio/')) return <audio {...properti} />
+
+  return <video {...properti} />
+}
+
+/**
  * Pratinjau isi satu klip seperti yang dilihat murid.
  * @param {{
  *   satu: import('./editorMateri.js').BarisBlok,
  *   cariUnggahan: (kode: string) => import('./api.js').DataUnggahan | undefined,
  *   daftarKuis: import('../quiz/api.js').DataKuis[],
+ *   bermain: boolean,
+ *   detik: number,
  * }} props
  */
-function IsiKlip({ satu, cariUnggahan, daftarKuis }) {
+function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
   if (satu.tipe === 'teks') {
     return satu.teks === '' ? (
       <p className="teks-lembut mb-0">(Teks klip ini belum ditulis.)</p>
@@ -84,12 +177,16 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis }) {
             style={{ maxHeight: '60vh' }}
           />
         )}
-        {berkas.tampil_langsung && berkas.mime?.startsWith('video/') && (
-          <video src={berkas.url ?? undefined} controls className="w-100 rounded-3" />
-        )}
-        {berkas.tampil_langsung && berkas.mime?.startsWith('audio/') && (
-          <audio src={berkas.url ?? undefined} controls className="w-100" />
-        )}
+        {berkas.tampil_langsung &&
+          (berkas.mime?.startsWith('video/') || berkas.mime?.startsWith('audio/')) && (
+            <MediaTersinkron
+              key={berkas.kode}
+              berkas={berkas}
+              klip={satu}
+              bermain={bermain}
+              detik={detik}
+            />
+          )}
         {berkas.tampil_langsung && berkas.mime === 'application/pdf' && (
           <a href={berkas.url ?? undefined} target="_blank" rel="noreferrer">
             Buka dokumen PDF
@@ -338,9 +435,9 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
       {/* ===== Sidebar: tools + template ===== */}
       <aside className="nle-sidebar">
         <div className="mb-3">
-          <Link className="btn btn-sm btn-tepi mb-2" to={RUTE.materi}>
-            ← Daftar materi
-          </Link>
+          <TombolTaut varian="tepi" ikon={IkonPanahKiri} className="mb-2" to={RUTE.materi}>
+            Daftar materi
+          </TombolTaut>
           <h1 className="h6 fw-bold mb-0">{materi.judul}</h1>
           <p className="small teks-lembut mb-1">
             {materi.mapel_nama ?? '—'} · {materi.kelas_nama ?? '—'}
@@ -416,7 +513,13 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
         <div className="nle-canvas" aria-label="Pratinjau hasil">
           <div className="nle-canvas-isi">
             {klipTampil ? (
-              <IsiKlip satu={klipTampil} cariUnggahan={cariUnggahan} daftarKuis={daftarKuis} />
+              <IsiKlip
+                satu={klipTampil}
+                cariUnggahan={cariUnggahan}
+                daftarKuis={daftarKuis}
+                bermain={bermain}
+                detik={detik}
+              />
             ) : (
               <p className="teks-lembut mb-0 text-center">
                 Tidak ada klip pada detik {formatWaktu(detik)}. Geser playhead atau tambah elemen.
@@ -588,13 +691,13 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                 />
                 wajib
               </label>
-              <button
-                type="button"
-                className="btn btn-teks btn-sm"
+              <Tombol
+                varian="teks"
+                ukuran="sedang"
                 onClick={() => setBlok((sebelum) => sebelum.filter((_, urutan) => urutan !== aktif))}
               >
-                Hapus
-              </button>
+                Hapus klip
+              </Tombol>
             </div>
 
             <div className="row g-2 mb-2">
@@ -648,20 +751,20 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                 </select>
               </div>
               <div className="col-6 col-lg-3 d-flex align-items-end gap-1">
-                <button
-                  type="button"
-                  className="btn btn-tepi btn-sm"
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
                   onClick={() => setBlok(setMulai(blok, aktif, klipAktif.mulai_detik - LANGKAH_WAKTU))}
                 >
                   ⟵ maju
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-tepi btn-sm"
+                </Tombol>
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
                   onClick={() => setBlok(setMulai(blok, aktif, klipAktif.mulai_detik + LANGKAH_WAKTU))}
                 >
                   mundur ⟶
-                </button>
+                </Tombol>
               </div>
             </div>
 
@@ -735,13 +838,14 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                   <span className="small">
                     {satu.nama_asli} · {satu.ukuran_manusia} · {satu.kategori_label}
                   </span>
-                  <button
-                    type="button"
-                    className="btn btn-teks btn-sm ms-auto"
+                  <Tombol
+                    varian="teks"
+                    ukuran="sedang"
+                    className="ms-auto"
                     onClick={() => tambahBlok('media', { unggahan_kode: satu.kode })}
                   >
-                    + Sisipkan
-                  </button>
+                    Sisipkan
+                  </Tombol>
                 </li>
               ))}
             </ul>
@@ -754,36 +858,32 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             <p className="small teks-lembut">
               Skor latihan masuk laporan tema materi ini dan tidak menghitung ranking.
             </p>
-            <div className="table-responsive">
-              <table className="table table-sm align-middle">
-                <thead>
-                  <tr>
-                    <th scope="col">Murid</th>
-                    <th scope="col">Blok selesai</th>
-                    <th scope="col">Skor latihan</th>
-                    <th scope="col">Tema terlemah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {laporan.data.murid.map((satu) => (
-                    <tr key={satu.murid_id}>
-                      <td>{satu.nama ?? 'Tanpa nama'}</td>
-                      <td>
-                        {satu.blok_selesai}/{satu.jumlah_blok}
-                      </td>
-                      <td>
-                        {satu.skor_latihan}/{satu.skor_latihan_maksimal}
-                      </td>
-                      <td>
-                        {satu.tema.length === 0
-                          ? '—'
-                          : `${satu.tema[0].tag_nama} (${satu.tema[0].persen}%)`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TabelData
+              label="Hasil murid pada materi ini"
+              baris={laporan.data.murid}
+              kunciBaris={(satu) => satu.murid_id}
+              kolom={[
+                { kunci: 'nama', judul: 'Murid', sel: (satu) => satu.nama ?? 'Tanpa nama' },
+                {
+                  kunci: 'blok_selesai',
+                  judul: 'Blok selesai',
+                  sel: (satu) => `${satu.blok_selesai}/${satu.jumlah_blok}`,
+                },
+                {
+                  kunci: 'skor_latihan',
+                  judul: 'Skor latihan',
+                  sel: (satu) => `${satu.skor_latihan}/${satu.skor_latihan_maksimal}`,
+                },
+                {
+                  kunci: 'tema',
+                  judul: 'Tema terlemah',
+                  sel: (satu) =>
+                    satu.tema.length === 0
+                      ? '—'
+                      : `${satu.tema[0].tag_nama} (${satu.tema[0].persen}%)`,
+                },
+              ]}
+            />
           </div>
         )}
       </div>

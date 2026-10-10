@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
@@ -160,9 +161,7 @@ export default function HalamanMateri() {
                         {satu.kelas_nama ?? '-'} · {satu.jumlah_blok ?? 0} blok · {satu.status_label}
                       </span>
                     </div>
-                    <Link className="btn btn-sm btn-tepi" to={ruteMateriEditor(satu.id)}>
-                      Buka editor
-                    </Link>
+                    <TombolTaut varian="tepi" to={ruteMateriEditor(satu.id)}>Buka editor</TombolTaut>
                   </div>
                 </li>
               ))}

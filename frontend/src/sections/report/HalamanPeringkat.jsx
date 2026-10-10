@@ -8,6 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
+import TabelData from '../../shared/ui/TabelData.jsx'
 import { RUTE } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
 import { ambilPeringkat } from './api.js'
@@ -77,47 +78,47 @@ export default function HalamanPeringkat() {
           )}
 
           {data.peringkat.length > 0 && (
-            <div className="table-responsive">
-              <table className="table align-middle">
-                <thead>
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">{data.mode_tim ? 'Tim' : 'Nama'}</th>
-                    <th scope="col" className="text-end">
-                      Skor
-                    </th>
-                    <th scope="col" className="text-end">
-                      Benar
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.peringkat.map((baris) => {
+            <TabelData
+              label="Peringkat ulangan"
+              baris={data.peringkat}
+              kunciBaris={(baris) => baris.attempt_id}
+              // Baris milik murid sendiri tetap disorot seperti sebelumnya.
+              kelasBaris={(baris) =>
+                barisMilikSaya(baris, data.peringkat_saya, data.mode_tim) ? 'sorot-hangat' : undefined
+              }
+              kolom={[
+                { kunci: 'peringkat', judul: '#', sel: (baris) => <strong>{baris.peringkat}</strong> },
+                {
+                  kunci: 'nama',
+                  judul: data.mode_tim ? 'Tim' : 'Nama',
+                  sel: (baris) => {
                     const milikku = barisMilikSaya(baris, data.peringkat_saya, data.mode_tim)
-
                     return (
-                      <tr key={baris.attempt_id} className={milikku ? 'sorot-hangat' : undefined}>
-                        <td className="fw-bold">{baris.peringkat}</td>
-                        <td>
-                          {baris.nama}
-                          {data.mode_tim && <span className="badge-status lembut ms-2">tim</span>}
-                          {milikku && <span className="small ms-2">(kamu)</span>}
-                          {baris.anggota.length > 0 && (
-                            <div className="teks-lembut small">{baris.anggota.join(', ')}</div>
-                          )}
-                        </td>
-                        <td className="text-end">
-                          {baris.skor} / {baris.skor_maksimal} ({baris.persen}%)
-                        </td>
-                        <td className="text-end">
-                          {baris.jumlah_benar} / {baris.jumlah_soal}
-                        </td>
-                      </tr>
+                      <>
+                        {baris.nama}
+                        {data.mode_tim && <span className="badge-status lembut ms-2">tim</span>}
+                        {milikku && <span className="small ms-2">(kamu)</span>}
+                        {baris.anggota.length > 0 && (
+                          <div className="teks-lembut small">{baris.anggota.join(', ')}</div>
+                        )}
+                      </>
                     )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  },
+                },
+                {
+                  kunci: 'skor',
+                  judul: 'Skor',
+                  kelas: 'text-end',
+                  sel: (baris) => `${baris.skor} / ${baris.skor_maksimal} (${baris.persen}%)`,
+                },
+                {
+                  kunci: 'benar',
+                  judul: 'Benar',
+                  kelas: 'text-end',
+                  sel: (baris) => `${baris.jumlah_benar} / ${baris.jumlah_soal}`,
+                },
+              ]}
+            />
           )}
 
           {data.tampil && data.peringkat_saya === null && !sebagaiGuru && (

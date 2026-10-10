@@ -14,12 +14,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
+import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
+import KosongData from '../../shared/ui/KosongData.jsx'
+import Skeleton from '../../shared/ui/Skeleton.jsx'
+import TabelData from '../../shared/ui/TabelData.jsx'
 import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { IkonCentang, IkonPerisai } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
 import { urlSse } from '../../shared/api/realtime.js'
 import { ambilKejadian, ambilMonitor, terbitkanTiketSse, tinjauKejadian } from './api.js'
+import { formatDetikTerakhir, ringkasMonitor } from './ringkasMonitor.js'
 
 /** Selang polling saat SSE tidak tersedia (ms). */
 const POLLING_CEPAT = 5000
@@ -134,7 +140,7 @@ export default function HalamanMonitor() {
   }
 
   if (monitor.isLoading) {
-    return <p className="text-body-secondary">Memuat Live Monitor…</p>
+    return <Skeleton judul baris={5} label="Memuat Live Monitor…" />
   }
 
   if (monitor.isError || data === undefined) {
@@ -157,18 +163,24 @@ export default function HalamanMonitor() {
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <div className="me-auto">
-          <h1 className="h4 fw-bold mb-0">Live Monitor</h1>
-          <p className="teks-lembut small mb-0">
-            {data.kuis.judul} · {data.kuis.kelas_nama ?? '—'} · {data.jumlah_online} dari {data.murid.length} murid
-            sedang aktif
-          </p>
-        </div>
+      <HeaderHalaman
+        judul={`${data.kuis.judul} · Live Monitor`}
+        jejak="Kuis / Live Monitor"
+        deskripsi={`${data.kuis.kelas_nama ?? '—'} · ${data.jumlah_online} dari ${data.murid.length} murid sedang aktif`}
+      >
         <span className={`badge-status ${lencanaSse.kelas}`}>{lencanaSse.teks}</span>
-        <TombolTaut to={ruteKuisDetail(idKuis)} varian="tepi" className="btn-sm">
+        <TombolTaut to={ruteKuisDetail(idKuis)} varian="tepi" ukuran="sedang">
           Detail kuis
         </TombolTaut>
+      </HeaderHalaman>
+
+      <div className="d-flex flex-wrap gap-3 mb-4">
+        {ringkasMonitor(data.murid).map((satu) => (
+          <div key={satu.label} className="kartu-soft px-3 py-2">
+            <span className="teks-lembut small d-block">{satu.label}</span>
+            <strong className="h4 fw-bold mb-0">{satu.nilai}</strong>
+          </div>
+        ))}
       </div>
 
       {tertinggi.length > 0 && tertinggi[0].kecurangan.skor_tertinggi > 0 && (
@@ -183,90 +195,110 @@ export default function HalamanMonitor() {
         </Banner>
       )}
 
-      <div className="kartu-soal p-0 mb-4 table-responsive">
-        <table className="table align-middle mb-0">
-          <caption className="px-3 small teks-lembut">
-            Progres dan kehadiran diperbarui dari aktivitas murid; tab yang disembunyikan tetap dihitung hadir.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Murid</th>
-              <th scope="col">Kehadiran</th>
-              <th scope="col">Progres</th>
-              <th scope="col">Status</th>
-              <th scope="col">Catatan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.murid.length === 0 && (
-              <tr>
-                <td colSpan={5} className="teks-lembut">
-                  Belum ada murid yang membuka kuis ini.
-                </td>
-              </tr>
-            )}
-
-            {data.murid.map((baris) => (
-              <tr key={baris.attempt_id}>
-                <td>
-                  <span className="fw-semibold">{baris.nama ?? 'Murid'}</span>
-                  <span className="teks-lembut small d-block">Percobaan ke-{baris.attempt_no}</span>
-                </td>
-                <td>
+      {data.murid.length === 0 ? (
+        <KosongData judul="Belum ada murid yang membuka kuis ini" ikon={IkonPerisai}>
+          Live Monitor akan terisi begitu murid pertama membuka kuis dan mengirim denyut kehadiran.
+        </KosongData>
+      ) : (
+        <div className="kartu-soft p-0 mb-4">
+          <TabelData
+            label="Progres murid"
+            caption="Progres dan kehadiran diperbarui dari aktivitas murid; tab yang disembunyikan tetap dihitung hadir."
+            baris={data.murid}
+            kunciBaris={(baris) => baris.attempt_id}
+            kolom={[
+              {
+                kunci: 'nama',
+                judul: 'Murid',
+                sel: (baris) => (
+                  <>
+                    <strong className="d-block">{baris.nama ?? 'Murid'}</strong>
+                    <span className="teks-lembut small">Percobaan ke-{baris.attempt_no}</span>
+                  </>
+                ),
+              },
+              {
+                kunci: 'online',
+                judul: 'Kehadiran',
+                sel: (baris) => (
                   <span className={`badge-status ${baris.online ? 'sukses' : 'lembut'}`}>
                     {baris.online ? 'Hadir' : 'Belum aktif'}
                   </span>
-                </td>
-                <td style={{ minWidth: '9rem' }}>
-                  <div className="progress" style={{ height: '0.6rem' }} role="presentation">
-                    <div
-                      className="progress-bar"
-                      style={{ width: `${baris.persen}%` }}
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <span className="teks-lembut small">
-                    {baris.dijawab} / {baris.jumlah_soal} soal terjawab
-                  </span>
-                </td>
-                <td className="small">{baris.status_label}</td>
-                <td>
-                  {baris.kecurangan.jumlah === 0 ? (
-                    <span className="teks-lembut small">—</span>
+                ),
+              },
+              {
+                kunci: 'persen',
+                judul: 'Progres',
+                kelas: 'kolom-progres',
+                sel: (baris) => (
+                  <>
+                    <div className="progress" style={{ height: '0.6rem' }} role="presentation">
+                      <div
+                        className="progress-bar"
+                        style={{ width: `${baris.persen}%` }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <span className="teks-lembut small">
+                      {baris.dijawab} / {baris.jumlah_soal} soal terjawab
+                    </span>
+                  </>
+                ),
+              },
+              {
+                kunci: 'detik_terakhir',
+                judul: 'Terakhir aktif',
+                sel: (baris) => formatDetikTerakhir(baris.detik_terakhir),
+              },
+              { kunci: 'status_label', judul: 'Status' },
+              {
+                kunci: 'kecurangan',
+                judul: 'Catatan',
+                sel: (baris) =>
+                  baris.kecurangan.jumlah === 0 ? (
+                    <span className="teks-lembut">—</span>
                   ) : (
-                    <span className={`badge-status ${tingkatRisiko(baris.kecurangan.skor_tertinggi).kelas}`}>
+                    <span
+                      className={`badge-status ${tingkatRisiko(baris.kecurangan.skor_tertinggi).kelas}`}
+                    >
                       {baris.kecurangan.jumlah} catatan
                     </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  ),
+              },
+            ]}
+          />
+        </div>
+      )}
+
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h2 className="judul-bagian mb-0 me-auto">Catatan untuk ditinjau</h2>
+        {/** @type {Array<[''|'menunggu'|'valid'|'tidak_valid', string]>} */ ([
+          ['', 'Semua'],
+          ['menunggu', 'Belum ditinjau'],
+          ['valid', 'Dinilai valid'],
+          ['tidak_valid', 'Dinilai tidak valid'],
+        ]).map(([nilai, label]) => (
+          <button
+            key={nilai || 'semua'}
+            type="button"
+            className="pil-saring"
+            aria-pressed={saring === nilai}
+            onClick={() => setSaring(nilai)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <h2 className="h6 fw-bold mb-0 me-auto">Catatan kejadian</h2>
-        <label className="small teks-lembut" htmlFor="saring-status">
-          Saring
-        </label>
-        <select
-          id="saring-status"
-          className="form-select form-select-sm w-auto"
-          value={saring}
-          onChange={(e) => setSaring(e.target.value)}
-        >
-          <option value="">Semua</option>
-          <option value="menunggu">Menunggu tinjauan</option>
-          <option value="valid">Valid</option>
-          <option value="tidak_valid">Tidak valid</option>
-        </select>
-      </div>
+      <p className="teks-lembut small">
+        Catatan adalah bahan tinjauan, bukan vonis. Beberapa deteksi bisa keliru, misalnya alat
+        pengembang yang terdeteksi dari ukuran jendela.
+      </p>
 
       {(kejadian.data ?? []).length === 0 ? (
-        <p className="teks-lembut small">
-          Belum ada kejadian tercatat. Ulangan berjalan tanpa gangguan — itu kabar baik.
-        </p>
+        <KosongData judul="Tidak ada catatan pada saringan ini" ikon={IkonCentang}>
+          Ulangan berjalan tanpa catatan yang perlu ditinjau — itu kabar baik.
+        </KosongData>
       ) : (
         <div className="d-flex flex-column gap-2">
           {(kejadian.data ?? []).map((satu) => {
@@ -293,7 +325,7 @@ export default function HalamanMonitor() {
                   <div className="d-flex gap-2">
                     <Tombol
                       varian="tepi"
-                      className="btn-sm"
+                      ukuran="sedang"
                       memuat={sedangTinjau === satu.id}
                       teksMemuat="Menyimpan…"
                       onClick={() => void tinjau(satu.id, 'tidak_valid')}
@@ -301,7 +333,7 @@ export default function HalamanMonitor() {
                       Tidak valid
                     </Tombol>
                     <Tombol
-                      className="btn-sm"
+                      ukuran="sedang"
                       memuat={sedangTinjau === satu.id}
                       teksMemuat="Menyimpan…"
                       onClick={() => void tinjau(satu.id, 'valid')}

@@ -17,6 +17,7 @@ import {
   klipPada,
   muatanBlok,
   pindahBlok,
+  offsetMedia,
   setMulai,
   sisipBlok,
   susunTrack,
@@ -61,6 +62,19 @@ describe('klip', () => {
     ])
 
     expect(dariServer(undefined)).toEqual([])
+  })
+
+  it('memberi durasi bawaan untuk klip berdurasi nol/negatif (media tak terlihat)', () => {
+    // Klip durasi 0 tidak pernah aktif di timeline, jadi pratinjau video tak
+    // pernah muncul. Data lama seperti ini harus tetap bisa diputar.
+    const hasil = dariServer([
+      { tipe: 'media', durasi_detik: 0, mulai_detik: 0 },
+      { tipe: 'media', durasi_detik: -5 },
+    ])
+
+    expect(hasil[0].durasi_detik).toBe(DURASI_BAWAAN)
+    expect(hasil[0].mulai_detik).toBe(0)
+    expect(hasil[1].durasi_detik).toBe(DURASI_BAWAAN)
   })
 })
 
@@ -151,6 +165,32 @@ describe('timeline', () => {
   it('memformat detik jadi mm:ss', () => {
     expect(formatWaktu(0)).toBe('00:00')
     expect(formatWaktu(75)).toBe('01:15')
+  })
+})
+
+describe('sinkron media dengan timeline', () => {
+  it('memetakan playhead global jadi offset di dalam klip', () => {
+    // Klip mulai detik 5; media mulai dari 0 saat playhead menyentuh 5.
+    expect(offsetMedia(5, 5, 10)).toBe(0)
+    expect(offsetMedia(8, 5, 10)).toBe(3)
+  })
+
+  it('menghentikan offset di durasi klip, bukan menembus klip berikutnya', () => {
+    expect(offsetMedia(100, 5, 10)).toBe(10)
+  })
+
+  it('tidak pernah negatif walau playhead sebelum klip', () => {
+    expect(offsetMedia(1, 5, 10)).toBe(0)
+    expect(offsetMedia(-2, 5, 10)).toBe(0)
+  })
+
+  it('memperlakukan titik mulai negatif seolah 0', () => {
+    expect(offsetMedia(2, -3, 10)).toBe(2)
+  })
+
+  it('tanpa durasi klip (<= 0) tidak menjepit offset', () => {
+    expect(offsetMedia(30, 5, 0)).toBe(25)
+    expect(offsetMedia(30, 5, Number.NaN)).toBe(25)
   })
 })
 

@@ -80,17 +80,24 @@ export function blokBaru(tipe, isi) {
  * @returns {BarisBlok[]}
  */
 export function dariServer(blok) {
-  return (blok ?? []).map((satu, indeks) => ({
-    tipe: /** @type {TipeBlok} */ (String(satu.tipe ?? 'teks')),
-    wajib: Boolean(satu.wajib),
-    teks: typeof satu.teks === 'string' ? satu.teks : '',
-    keterangan: typeof satu.keterangan === 'string' ? satu.keterangan : '',
-    unggahan_kode: typeof satu.unggahan_kode === 'string' ? satu.unggahan_kode : '',
-    quiz_id: typeof satu.quiz_id === 'number' ? satu.quiz_id : '',
-    track: typeof satu.track === 'number' ? satu.track : 0,
-    mulai_detik: typeof satu.mulai_detik === 'number' ? satu.mulai_detik : indeks * DURASI_BAWAAN,
-    durasi_detik: typeof satu.durasi_detik === 'number' ? satu.durasi_detik : DURASI_BAWAAN,
-  }))
+  return (blok ?? []).map((satu, indeks) => {
+    // Durasi nol/negatif berarti klip tak pernah aktif di timeline (jendelanya
+    // kosong), sehingga pratinjau media tak pernah muncul — persis keluhan
+    // "video tidak jalan". Perlakukan seperti durasi bawaan.
+    const durasi = typeof satu.durasi_detik === 'number' && satu.durasi_detik > 0 ? satu.durasi_detik : DURASI_BAWAAN
+
+    return {
+      tipe: /** @type {TipeBlok} */ (String(satu.tipe ?? 'teks')),
+      wajib: Boolean(satu.wajib),
+      teks: typeof satu.teks === 'string' ? satu.teks : '',
+      keterangan: typeof satu.keterangan === 'string' ? satu.keterangan : '',
+      unggahan_kode: typeof satu.unggahan_kode === 'string' ? satu.unggahan_kode : '',
+      quiz_id: typeof satu.quiz_id === 'number' ? satu.quiz_id : '',
+      track: typeof satu.track === 'number' ? satu.track : 0,
+      mulai_detik: typeof satu.mulai_detik === 'number' ? satu.mulai_detik : indeks * DURASI_BAWAAN,
+      durasi_detik: durasi,
+    }
+  })
 }
 
 /**
@@ -254,4 +261,24 @@ export function formatWaktu(detik) {
   const sisa = total % 60
 
   return `${String(menit).padStart(2, '0')}:${String(sisa).padStart(2, '0')}`
+}
+
+/**
+ * Posisi media (detik) untuk satu klip pada playhead global.
+ *
+ * Dipakai pratinjau editor supaya media native ikut jam timeline: media mulai
+ * dari 0 saat playhead menyentuh awal klip, dan tidak melampaui durasi klip.
+ * Sebelum akhir klip, playhead di luar jendela klip, jadi offset dijepit ke
+ * rentang [0, durasi].
+ *
+ * @param {number} detik posisi playhead global (detik)
+ * @param {number} mulai detik awal klip
+ * @param {number} durasi durasi klip (detik); <= 0 berarti tanpa batas
+ * @returns {number}
+ */
+export function offsetMedia(detik, mulai, durasi) {
+  const mulaiAman = Number.isFinite(mulai) ? Math.max(0, mulai) : 0
+  const mentah = Math.max(0, detik - mulaiAman)
+
+  return Number.isFinite(durasi) && durasi > 0 ? Math.min(mentah, durasi) : mentah
 }

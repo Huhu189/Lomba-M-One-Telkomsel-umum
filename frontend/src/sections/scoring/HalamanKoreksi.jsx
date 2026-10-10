@@ -10,8 +10,12 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
-import { Tombol } from '../../shared/ui/Tombol.jsx'
+import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
+import KosongData from '../../shared/ui/KosongData.jsx'
+import Skeleton from '../../shared/ui/Skeleton.jsx'
+import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { IkonCentang } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
@@ -85,14 +89,15 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
           <span className="badge-status info">AI</span>
           <span className="small mb-0">{saranAi}</span>
           {adaSaranAi && (
-            <button type="button" className="btn btn-sm btn-tepi" onClick={() => setSkor(String(item.saran_ai))}>
+            <button type="button"className="btn btn-tepi btn-sedang"
+        onClick={() => setSkor(String(item.saran_ai))}>
               Pakai saran AI
             </button>
           )}
           {aiAktif && (
             <button
               type="button"
-              className="btn btn-sm btn-tepi ms-auto"
+              className="btn btn-tepi btn-sedang ms-auto"
               disabled={mintaAi.isPending}
               onClick={() => mintaAi.mutate()}
             >
@@ -112,7 +117,7 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
         <div className="d-flex justify-content-end mb-2">
           <button
             type="button"
-            className="btn btn-sm btn-tepi"
+            className="btn btn-tepi btn-sedang"
             disabled={mintaAi.isPending}
             onClick={() => mintaAi.mutate()}
           >
@@ -202,7 +207,7 @@ export default function HalamanKoreksi() {
   const data = antrean.data
 
   if (antrean.isLoading) {
-    return <p className="text-body-secondary">Menyusun antrean koreksi…</p>
+    return <Skeleton judul baris={4} label="Menyusun antrean koreksi…" />
   }
 
   if (antrean.isError || data === undefined) {
@@ -217,15 +222,11 @@ export default function HalamanKoreksi() {
     <div className="row justify-content-center">
       <div className="col-lg-10">
         <div className="kartu-soft p-4 p-md-5">
-          <Link className="btn btn-sm btn-tepi mb-3" to={ruteKuisDetail(data.kuis_id)}>
-            ← Kembali ke detail kuis
-          </Link>
-
-          <h1 className="h5 fw-bold mb-1">Koreksi manual · {data.judul_kuis}</h1>
-          <p className="teks-lembut small mb-3">
-            {data.mapel_nama ?? '—'} · {data.kelas_nama ?? '—'} · {data.jumlah} jawaban menunggu tinjauan.
-            Setiap koreksi memakai token sekali pakai dan tercatat di audit.
-          </p>
+          <HeaderHalaman
+            judul={`Koreksi manual · ${data.judul_kuis}`}
+            jejak={<Link to={ruteKuisDetail(data.kuis_id)}>Kuis / {data.judul_kuis}</Link>}
+            deskripsi={`${data.mapel_nama ?? '—'} · ${data.kelas_nama ?? '—'} · ${data.jumlah} jawaban menunggu tinjauan. Setiap koreksi memakai token sekali pakai dan tercatat di audit.`}
+          />
 
           <p className="teks-lembut small mb-3">
             {data.ai_aktif
@@ -234,9 +235,18 @@ export default function HalamanKoreksi() {
           </p>
 
           {data.jumlah === 0 && (
-            <p className="text-body-secondary">
-              Tidak ada yang perlu dikoreksi. Semua jawaban sudah dinilai mesin.
-            </p>
+            <KosongData
+              judul="Tidak ada yang perlu dikoreksi"
+              ikon={IkonCentang}
+              aksi={
+                <TombolTaut to={ruteKuisDetail(data.kuis_id)} varian="tepi">
+                  Kembali ke detail kuis
+                </TombolTaut>
+              }
+            >
+              Semua jawaban sudah dinilai mesin. Nilai per soal tetap bisa diubah kapan saja bila
+              hasilnya perlu ditinjau ulang.
+            </KosongData>
           )}
 
           <div className="d-flex flex-column gap-3">

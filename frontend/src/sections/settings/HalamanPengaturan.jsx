@@ -13,6 +13,7 @@ import { ambilPengaturan, simpanPengaturan } from './api.js'
 import { pesanGalatApi } from '../auth/api.js'
 import { useAuthStore } from '../auth/authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { bacaLingkup, lingkupAwal, pilihanLingkup } from './lingkup.js'
 
 export default function HalamanPengaturan() {
@@ -172,10 +173,9 @@ export default function HalamanPengaturan() {
                         disabled={simpan.isPending}
                         onChange={(e) => setAngkaDraft({ ...angkaDraft, [kunci]: e.target.value })}
                       />
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary"
-                        disabled={simpan.isPending}
+                      <Tombol
+                        ukuran="sedang"
+                        memuat={simpan.isPending}
                         onClick={() => simpan.mutate({
                           kunci,
                           nilai: Number(angkaDraft[kunci] ?? info.nilai),
@@ -183,7 +183,7 @@ export default function HalamanPengaturan() {
                         })}
                       >
                         Simpan
-                      </button>
+                      </Tombol>
                     </div>
                   )}
 
