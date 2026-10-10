@@ -20,3 +20,12 @@ coverage/
 .phpunit.result.cache
 .phpunit.cache/
 /storage/pail/
+
+# Arsip & patch lokal (salinan kerja, bukan bagian aplikasi)
+*.zip
+*.patch
+
+# Perkakas agen lokal
+.agents/
+.claude/
+skills-lock.json
