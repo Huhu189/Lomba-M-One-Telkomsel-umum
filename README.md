@@ -20,7 +20,7 @@
 
 <strong><p style="font-size:20px">source Enterprise-Grade</p></strong>
 <ul>
-  <li><strong>Skalabilitas Tinggi dan kode optimal: </strong> Sanggup menampung ribuan peserta ujian secara bersamaan tanpa kendala latensi atau server down.</li>
+  <li><strong>Skalabilitas Tinggi dan kode optimal: </strong> Sanggup menampung ribuan peserta ujian secara bersamaan tanpa kendala latensi atau server down dengan laravel octane.</li>
   <li><strong>Keamanan Data Maksimal:</strong> Enkripsi data end-to-end untuk melindungi privasi pengguna dan kerahasiaan dokumen ujian.</li>
   <li><strong>Memiliki akses data ketat</strong> Memiliki akses data role yang sanagt ketat di implementasikan </li>
 </ul>
@@ -28,7 +28,7 @@
 <h1>Kelebihan</h1>
 <strong><p style="font-size:20px">Kemudahan guru</p></strong>
 <ul>
-  <li><strong>Skalabilitas pembuatan ulangan/ujian: </strong> guru dapat membuat soal ujian/ulangan dll dengan aman dan ceapt yang sudha di lengkapi pertahanan cheat.</li>
+  <li><strong>Skalabilitas pembuatan ulangan/ujian: </strong> guru dapat membuat soal ujian/ulangan dll dengan aman dan cepat yang sudha di lengkapi pertahanan cheat.</li>
   <li><strong>Penyebaran materi:</strong> Guru dapat mudah membuat materi berbaisi media lebih mudah di pahamai secara efektif dan motivatif oleh anak SD.</li>
 
 
