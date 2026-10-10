@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use ReflectionProperty;
 
@@ -413,4 +414,30 @@ it('kolom role dan role Spatie selalu sinkron di semua jalur pembuatan user', fu
 
     expect($daftar->role)->toBe('murid')
         ->and($daftar->getRoleNames()->all())->toBe(['murid']);
+});
+
+it('dua murid boleh memakai nama yang sama', function (): void {
+    // Nama anak TIDAK unik di sekolah: di satu kelas bisa ada dua "Ahmad".
+    // Yang unik hanya email. Dulu tabel `users` membawa indeks unik sisa
+    // scaffold (name, guard_name) — kolom `guard_name` bahkan tidak ada di
+    // `users` — sehingga pendaftaran murid kedua meledak jadi 500.
+    $this->postJson('/api/v1/auth/daftar', [
+        'name' => 'Ahmad',
+        'email' => 'ahmad.satu@murid.test',
+        'password' => 'kata-sandi-aman-10',
+        'password_confirmation' => 'kata-sandi-aman-10',
+    ])->assertCreated();
+
+    auth()->forgetGuards();
+
+    $this->postJson('/api/v1/auth/daftar', [
+        'name' => 'Ahmad',
+        'email' => 'ahmad.dua@murid.test',
+        'password' => 'kata-sandi-aman-10',
+        'password_confirmation' => 'kata-sandi-aman-10',
+    ])->assertCreated();
+
+    expect(User::query()->where('name', 'Ahmad')->count())->toBe(2)
+        ->and(User::query()->where('email', 'ahmad.dua@murid.test')->exists())->toBeTrue()
+        ->and(Schema::hasIndex('users', 'users_name_guard_name_unique'))->toBeFalse();
 });
