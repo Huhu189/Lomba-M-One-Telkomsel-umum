@@ -10,6 +10,14 @@ import { DAFTAR_TIPE, teksAman } from './tipeSoal.js'
 import EditorSoal from './EditorSoal.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import Banner from '../../shared/ui/Banner.jsx'
+import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
+import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
+import KosongData from '../../shared/ui/KosongData.jsx'
+import Skeleton from '../../shared/ui/Skeleton.jsx'
+import TabelData from '../../shared/ui/TabelData.jsx'
+import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
+import { IkonPanahKiri, IkonPapan, IkonPensil, IkonTambah, IkonTongSampah } from '../../icons.jsx'
 
 /** @param {string} teks */
 function ringkas(teks) {
@@ -25,6 +33,7 @@ export default function HalamanBankSoal() {
   const [halaman, setHalaman] = useState(1)
   const [modeEditor, setModeEditor] = useState(false)
   const [soalDiubah, setSoalDiubah] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
+  const [soalDihapus, setSoalDihapus] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
 
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
   const tag = useQuery({ queryKey: ['tag'], queryFn: ambilTag })
@@ -56,10 +65,14 @@ export default function HalamanBankSoal() {
     mutationFn: async (/** @type {number} */ id) => hapusSoal(id),
     onSuccess: async () => {
       tampilkanToast('info', 'Soal dihapus.')
+      setSoalDihapus(null)
       await queryClient.invalidateQueries({ queryKey: ['soal'] })
       await queryClient.invalidateQueries({ queryKey: ['tag'] })
     },
-    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+    onError: (galat) => {
+      tampilkanToast('salah', pesanGalatApi(galat))
+      setSoalDihapus(null)
+    },
   })
 
   const daftar = bankSoal.data?.data ?? []
@@ -82,9 +95,19 @@ export default function HalamanBankSoal() {
   }
 
   return (
-    <div className="row g-4">
-      <div className="col-12">
-        {modeEditor ? (
+    <>
+      {modeEditor ? (
+        <>
+          <HeaderHalaman
+            jejak={
+              <Tombol varian="teks" ikon={IkonPanahKiri} onClick={tutupEditor}>
+                Bank soal
+              </Tombol>
+            }
+            judul={soalDiubah === null ? 'Tambah soal' : `Ubah soal #${soalDiubah.id}`}
+            deskripsi="Soal yang lengkap bisa langsung dipakai menyusun kuis."
+          />
+
           <EditorSoal
             key={soalDiubah === null ? 'baru' : String(soalDiubah.id)}
             soal={soalDiubah}
@@ -94,17 +117,21 @@ export default function HalamanBankSoal() {
             onSimpan={(muatan) => simpan.mutate(muatan)}
             onBatal={tutupEditor}
           />
-        ) : (
+        </>
+      ) : (
+        <>
+          {/* Daftar memakai lebar penuh; formulirnya pindah ke halaman editor. */}
+          <HeaderHalaman
+            judul="Bank soal"
+            jejak="Soal / Bank soal"
+            deskripsi="Hanya soal objektif (pilihan ganda, benar/salah, menjodohkan, mengurutkan) yang siap dipakai kuis."
+          >
+            <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
+              Tambah soal
+            </Tombol>
+          </HeaderHalaman>
+
           <div className="kartu-soft p-4">
-            <div className="d-flex flex-wrap align-items-baseline gap-2 mb-3">
-              <h1 className="h5 fw-bold mb-0">Bank Soal</h1>
-              <span className="teks-lembut small">
-                Hanya soal objektif (pilihan ganda, benar/salah, menjodohkan, mengurutkan) yang siap dipakai kuis.
-              </span>
-              <button type="button" className="btn btn-aksen btn-sm ms-auto" onClick={mulaiTambah}>
-                Tambah soal
-              </button>
-            </div>
 
             <div className="row g-2 mb-3">
               <div className="col-sm-4">
@@ -162,99 +189,121 @@ export default function HalamanBankSoal() {
               </div>
             </div>
 
-            {bankSoal.isLoading && <p className="text-body-secondary">Memuat soal…</p>}
-            {bankSoal.isError && <p className="status-salah">Gagal memuat bank soal.</p>}
+            {bankSoal.isPending && <Skeleton judul baris={4} label="Memuat soal…" />}
 
-            {meta && (
-              <p className="teks-lembut small mb-2">
-                Menampilkan {daftar.length} dari {meta.total} soal.
-              </p>
+            {bankSoal.isError && (
+              <Banner jenis="salah" judul="Gagal memuat bank soal">
+                <p className="mb-2">Periksa koneksi, lalu coba lagi.</p>
+                <Tombol varian="tepi" onClick={() => bankSoal.refetch()}>
+                  Coba lagi
+                </Tombol>
+              </Banner>
             )}
 
-            {!bankSoal.isLoading && daftar.length === 0 && (
-              <p className="text-body-secondary">
-                Belum ada soal yang cocok. Tekan <strong>Tambah soal</strong> untuk mulai mengisi bank soal.
-              </p>
+            {bankSoal.isSuccess && daftar.length === 0 && (
+              <KosongData
+                judul="Belum ada soal yang cocok"
+                ikon={IkonPapan}
+                aksi={
+                  <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
+                    Tambah soal
+                  </Tombol>
+                }
+              >
+                Longgarkan saringan di atas, atau tambahkan soal baru ke bank soal.
+              </KosongData>
             )}
 
             {daftar.length > 0 && (
-              <div className="table-responsive">
-                <table className="table align-middle">
-                  <thead>
-                    <tr>
-                      <th scope="col">Soal</th>
-                      <th scope="col">Tipe</th>
-                      <th scope="col">Mapel</th>
-                      <th scope="col">Tag</th>
-                      <th scope="col">Skor</th>
-                      <th scope="col" className="text-end">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {daftar.map((soal) => (
-                      <tr key={soal.id}>
-                        <td>
-                          <span className="fw-semibold d-block">{ringkas(teksAman(soal.konten.teks))}</span>
-                          <span className="teks-lembut small">
-                            Kunci: {ringkasKunci(soal)}
-                            {soal.aktif ? '' : ' · nonaktif'}
-                          </span>
-                        </td>
-                        <td>{soal.tipe_label}</td>
-                        <td>{soal.mapel_nama ?? '—'}</td>
-                        <td>{soal.tag_nama ?? '—'}</td>
-                        <td>{soal.skor}</td>
-                        <td className="text-end">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary me-2"
-                            onClick={() => mulaiUbah(soal)}
-                          >
-                            Ubah
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            disabled={hapus.isPending}
-                            onClick={() => {
-                              if (window.confirm('Hapus soal ini dari bank soal?')) hapus.mutate(soal.id)
-                            }}
-                          >
-                            Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <TabelData
+                label="Daftar soal"
+                caption={meta ? `Menampilkan ${daftar.length} dari ${meta.total} soal` : undefined}
+                kolom={[
+                  {
+                    kunci: 'teks',
+                    judul: 'Soal',
+                    sel: (soal) => (
+                      <>
+                        <strong className="d-block">{ringkas(teksAman(soal.konten.teks))}</strong>
+                        <span className="teks-lembut small">
+                          Kunci: {ringkasKunci(soal)}
+                          {soal.aktif ? '' : ' · nonaktif'}
+                        </span>
+                      </>
+                    ),
+                  },
+                  { kunci: 'tipe_label', judul: 'Tipe' },
+                  { kunci: 'mapel_nama', judul: 'Mapel', sel: (soal) => soal.mapel_nama ?? '—' },
+                  { kunci: 'tag_nama', judul: 'Tag', sel: (soal) => soal.tag_nama ?? '—' },
+                  { kunci: 'skor', judul: 'Skor' },
+                  {
+                    kunci: 'aksi',
+                    judul: 'Aksi',
+                    aksi: true,
+                    sel: (soal) => (
+                      <div className="aksi-baris">
+                        <TombolIkon
+                          label={`Ubah soal: ${ringkas(teksAman(soal.konten.teks))}`}
+                          ikon={IkonPensil}
+                          onClick={() => mulaiUbah(soal)}
+                        />
+                        <TombolIkon
+                          label={`Hapus soal: ${ringkas(teksAman(soal.konten.teks))}`}
+                          ikon={IkonTongSampah}
+                          varian="bahaya"
+                          onClick={() => setSoalDihapus(soal)}
+                        />
+                      </div>
+                    ),
+                  },
+                ]}
+                baris={daftar}
+                kunciBaris={(soal) => soal.id}
+              />
             )}
 
             {meta && meta.last_page > 1 && (
-              <div className="d-flex align-items-center gap-2">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
+              <nav className="d-flex flex-wrap align-items-center gap-3 mt-3" aria-label="Navigasi halaman">
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
                   disabled={halaman <= 1}
                   onClick={() => setHalaman(halaman - 1)}
                 >
                   Sebelumnya
-                </button>
-                <span className="teks-lembut small">Halaman {meta.current_page} dari {meta.last_page}</span>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
+                </Tombol>
+                <span className="teks-lembut">
+                  Halaman {meta.current_page} dari {meta.last_page}
+                </span>
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
                   disabled={halaman >= meta.last_page}
                   onClick={() => setHalaman(halaman + 1)}
                 >
                   Berikutnya
-                </button>
-              </div>
+                </Tombol>
+              </nav>
             )}
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+
+      <DialogKonfirmasi
+        buka={soalDihapus !== null}
+        judul="Hapus soal ini dari bank soal?"
+        labelYa="Hapus soal"
+        bahaya
+        memuat={hapus.isPending}
+        onYa={() => {
+          if (soalDihapus !== null) hapus.mutate(soalDihapus.id)
+        }}
+        onBatal={() => setSoalDihapus(null)}
+      >
+        Soal ini tidak lagi bisa dipakai menyusun kuis. Kuis yang sudah terlanjur memakainya tetap
+        menyimpan susunannya. Tindakan ini tidak bisa dibatalkan.
+      </DialogKonfirmasi>
+    </>
   )
 }
 

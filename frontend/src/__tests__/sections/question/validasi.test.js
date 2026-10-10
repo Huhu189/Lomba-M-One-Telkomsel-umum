@@ -10,7 +10,22 @@ import {
   teksDariSinonimUraian,
   urutanDariItem,
 } from '../../../sections/question/tipeSoal.js'
-import { skemaTagForm, validasiSoal } from '../../../sections/question/validasi.js'
+import {
+  kelengkapanSoal,
+  siapSoal,
+  skemaTagForm,
+  validasiSoal,
+} from '../../../sections/question/validasi.js'
+
+/** State benar/salah valid. */
+function stateBenarSalah() {
+  const state = stateSoalKosong()
+  state.subject_id = '3'
+  state.tipe = TIPE.benarSalah
+  state.teks = 'Paru-paru berada di rongga dada.'
+  state.benar = true
+  return state
+}
 
 /** State pilihan ganda valid. */
 function statePilihanGanda() {
@@ -455,6 +470,91 @@ describe('stateDariSoal', () => {
 
     expect(hubung.kanan).toEqual([{ id: 'N1', teks: 'kecil' }])
     expect(hubung.sambungan).toEqual({ K1: 'N1' })
+  })
+})
+
+describe('kelengkapanSoal (papan 11)', () => {
+  /** @type {[string, () => import('../../../sections/question/tipeSoal.js').StateSoal][]} */
+  const lengkap = [
+    ['pilihan ganda', statePilihanGanda],
+    ['benar/salah', stateBenarSalah],
+    ['menjodohkan', stateMenjodohkan],
+    ['mengurutkan', stateMengurutkan],
+    ['letak kata', stateLetakKata],
+    ['hubung kata', stateHubungKata],
+    ['isian singkat', stateIsianSingkat],
+    ['uraian', stateUraian],
+  ]
+
+  it.each(lengkap)('menyatakan soal %s lengkap dan siap dikirim', (_nama, buat) => {
+    const state = buat()
+
+    expect(validasiSoal(state)).toEqual([])
+    expect(siapSoal(kelengkapanSoal(state))).toBe(true)
+  })
+
+  it('menandai soal kosong sebagai belum siap', () => {
+    const butir = kelengkapanSoal(stateSoalKosong())
+
+    expect(siapSoal(butir)).toBe(false)
+    expect(butir.filter((satu) => !satu.ok).map((satu) => satu.teks)).toEqual([
+      'Mapel dipilih',
+      'Isi soal terisi',
+      'Pilihan jawaban terisi (minimal 2) dan satu kunci dipilih',
+    ])
+    // Skor bawaan 10 dan MathML kosong sudah wajar, jadi tidak ikut ditandai.
+    expect(butir.find((satu) => satu.teks === 'Skor angka 1 sampai 100')?.ok).toBe(true)
+  })
+
+  it('butirnya tidak berbeda pendapat dengan validasiSoal saat ada yang rusak', () => {
+    /** State valid yang sengaja dirusak satu bidang. */
+    const dirusak = [
+      () => ({ ...statePilihanGanda(), opsi: [{ id: 'A', teks: '' }, { id: 'B', teks: '9' }] }),
+      () => {
+        const state = stateIsianSingkat()
+        state.ambang = '5'
+        return state
+      },
+      () => {
+        const state = stateUraian()
+        state.kataKunci = [{ teks: 'fotosintesis', bobot: '0' }]
+        return state
+      },
+      () => {
+        const state = stateMengurutkan()
+        state.item = state.item.map(() => ({ id: 'I1', teks: 'sama', posisi: '1' }))
+        return state
+      },
+      () => {
+        const state = stateLetakKata()
+        state.penempatan = {}
+        return state
+      },
+      () => {
+        const state = stateMenjodohkan()
+        state.pasangan = {}
+        return state
+      },
+      () => ({ ...statePilihanGanda(), skor: '0' }),
+      () => ({ ...statePilihanGanda(), matematika: 'x'.repeat(2500) }),
+    ]
+
+    for (const buat of dirusak) {
+      const state = buat()
+      const adaGalat = validasiSoal(state).length > 0
+      const butirKurang = !siapSoal(kelengkapanSoal(state))
+
+      // Daftar periksa hanya berguna kalau tidak pernah bilang "siap" untuk
+      // soal yang pasti ditolak validasiSoal() (dan sebaliknya).
+      expect(butirKurang).toBe(adaGalat)
+    }
+  })
+
+  it('setiap butir punya teks unik supaya tidak ada baris kembar di daftar', () => {
+    const teks = kelengkapanSoal(statePilihanGanda()).map((satu) => satu.teks)
+
+    expect(new Set(teks).size).toBe(teks.length)
+    expect(teks.length).toBeGreaterThan(3)
   })
 })
 

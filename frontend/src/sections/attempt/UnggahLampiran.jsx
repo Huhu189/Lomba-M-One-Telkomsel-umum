@@ -287,14 +287,15 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
                   Lihat
                 </a>
               )}
-              <button
-                type="button"
-                className="btn btn-teks btn-sm"
-                disabled={mati || buang.isPending}
+              <Tombol
+                varian="teks"
+                ukuran="sedang"
+                disabled={mati}
+                memuat={buang.isPending}
                 onClick={() => buang.mutate(satu.kode)}
               >
                 Buang
-              </button>
+              </Tombol>
             </li>
           ))}
         </ul>

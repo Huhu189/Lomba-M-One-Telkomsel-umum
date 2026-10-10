@@ -3,7 +3,7 @@
  * melihat soal — server memang tidak pernah mengirimkan kuncinya.
  */
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   RUTE,
   ruteKerjakanKuis,
@@ -15,6 +15,7 @@ import {
   rutePeringkat,
 } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
+import { IkonPanahKiri } from '../../icons.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import { ambilKuisDetail } from './api.js'
@@ -40,9 +41,9 @@ export default function HalamanKuisDetail() {
     <div className="row justify-content-center">
       <div className="col-lg-9">
         <div className="kartu-soft p-4 p-md-5">
-          <Link className="btn btn-sm btn-tepi mb-3" to={RUTE.kuis}>
-            ← Kembali ke daftar kuis
-          </Link>
+          <TombolTaut varian="tepi" ikon={IkonPanahKiri} className="mb-3" to={RUTE.kuis}>
+            Kembali ke daftar kuis
+          </TombolTaut>
 
           {kuis.isLoading && <p className="text-body-secondary">Memuat kuis…</p>}
 
@@ -82,38 +83,26 @@ export default function HalamanKuisDetail() {
               )}
 
               <div className="d-flex flex-wrap gap-2 my-3">
-                <Link className="btn btn-sm btn-tepi" to={rutePeringkat(data.id)}>
-                  Peringkat
-                </Link>
+                <TombolTaut varian="tepi" to={rutePeringkat(data.id)}>Peringkat</TombolTaut>
                 {sebagaiGuru && (
-                  <Link className="btn btn-sm btn-tepi" to={ruteLaporanKuis(data.id)}>
-                    Laporan per tema
-                  </Link>
+                  <TombolTaut varian="tepi" to={ruteLaporanKuis(data.id)}>Laporan per tema</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <a className="btn btn-sm btn-tepi" href={urlEksporNilai(data.id)}>
+                  <a className="btn btn-tepi btn-sedang" href={urlEksporNilai(data.id)}>
                     Unduh nilai (CSV)
                   </a>
                 )}
                 {sebagaiGuru && (
-                  <Link className="btn btn-sm btn-tepi" to={ruteKoreksiKuis(data.id)}>
-                    Koreksi manual
-                  </Link>
+                  <TombolTaut varian="tepi" to={ruteKoreksiKuis(data.id)}>Koreksi manual</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <Link className="btn btn-sm btn-tepi" to={ruteMonitorKuis(data.id)}>
-                    Live Monitor
-                  </Link>
+                  <TombolTaut varian="tepi" to={ruteMonitorKuis(data.id)}>Live Monitor</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <Link className="btn btn-sm btn-tepi" to={ruteTimKuis(data.id)}>
-                    Kelola tim
-                  </Link>
+                  <TombolTaut varian="tepi" to={ruteTimKuis(data.id)}>Kelola tim</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <Link className="btn btn-sm btn-tepi" to={ruteLayarKuis(data.id)}>
-                    Layar kelas
-                  </Link>
+                  <TombolTaut varian="tepi" to={ruteLayarKuis(data.id)}>Layar kelas</TombolTaut>
                 )}
               </div>
 

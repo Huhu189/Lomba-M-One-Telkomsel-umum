@@ -10,6 +10,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonPanahKiri } from '../../icons.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
@@ -184,9 +186,14 @@ export default function HalamanTim() {
     <div className="row justify-content-center">
       <div className="col-lg-10">
         <div className="kartu-soft p-4 p-md-5">
-          <Link className="btn btn-sm btn-tepi mb-3" to={ruteKuisDetail(data.kuis_id)}>
-            ← Kembali ke detail kuis
-          </Link>
+          <TombolTaut
+            varian="tepi"
+            ikon={IkonPanahKiri}
+            className="mb-3"
+            to={ruteKuisDetail(data.kuis_id)}
+          >
+            Kembali ke detail kuis
+          </TombolTaut>
 
           <h1 className="h5 fw-bold mb-1">Kelola tim · {data.judul_kuis}</h1>
           <p className="teks-lembut small mb-3">
@@ -268,22 +275,23 @@ export default function HalamanTim() {
                   <span className="fw-semibold">{tim.nama}</span>
                   <span className="badge-status lembut">{tim.jumlah_anggota} anggota</span>
                   <div className="ms-auto d-flex gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-tepi"
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
                       disabled={data.ada_attempt}
                       onClick={() => setTimDiedit(tim)}
                     >
                       Ubah anggota
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-tepi"
-                      disabled={data.ada_attempt || buang.isPending}
+                    </Tombol>
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      disabled={data.ada_attempt}
+                      memuat={buang.isPending}
                       onClick={() => buang.mutate(tim.id)}
                     >
-                      Hapus
-                    </button>
+                      Hapus tim
+                    </Tombol>
                   </div>
                 </div>
                 <p className="teks-lembut small mb-0 mt-2">{ringkasAnggotaTim(tim)}</p>
@@ -317,9 +325,7 @@ export default function HalamanTim() {
           )}
 
           <div className="d-flex flex-wrap gap-2 mt-4">
-            <Link className="btn btn-tepi" to={RUTE.kuis}>
-              Daftar kuis
-            </Link>
+            <TombolTaut varian="tepi" to={RUTE.kuis}>Daftar kuis</TombolTaut>
           </div>
         </div>
       </div>

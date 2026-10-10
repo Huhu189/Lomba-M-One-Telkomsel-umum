@@ -18,8 +18,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
+import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
+import NavigatorSoal from '../../shared/ui/NavigatorSoal.jsx'
 import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { IkonBendera, IkonPanahKiri } from '../../icons.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import UnggahLampiran from './UnggahLampiran.jsx'
 import PanelLayarMurid from '../presence/PanelLayarMurid.jsx'
@@ -36,7 +39,7 @@ import {
   kembalikan,
 } from './antreanJawaban.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
-import { hitungTerjawab } from './ringkasanJawaban.js'
+import { pesanKumpul, ringkasProgres } from './navigatorSoal.js'
 import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
 import { pesanMulaiGagal, retryMulai } from './pesanMulai.js'
 import useExamSecurity from '../../security/useExamSecurity.js'
@@ -147,6 +150,15 @@ export default function HalamanKerjakan() {
   const [sudahKumpul, setSudahKumpul] = useState(false)
   const [sudahSetujuProteksi, setSudahSetujuProteksi] = useState(false)
   const [autoMandek, setAutoMandek] = useState(false)
+  // Papan 4: satu soal per layar, dengan penanda ragu dan ringkasan sebelum kumpul.
+  const [soalAktif, setSoalAktif] = useState(0)
+  const [ragu, setRagu] = useState(/** @type {Record<string, boolean>} */ ({}))
+  const [dialogKumpul, setDialogKumpul] = useState(false)
+  const [daring, setDaring] = useState(
+    () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  )
+  const kartuSoalRef = useRef(/** @type {HTMLElement|null} */ (null))
+  const pindahPertama = useRef(true)
   const percobaanAuto = useRef(0)
 
   // Antrean ber-nomor urut (Q-02). Semua pengiriman lewat satu pengirim tunggal
@@ -343,6 +355,29 @@ export default function HalamanKerjakan() {
     }
   }, [terkunci])
 
+  // Keadaan jaringan: murid perlu tahu jawabannya masih aman saat koneksi putus.
+  useEffect(() => {
+    const naik = () => setDaring(true)
+    const turun = () => setDaring(false)
+    window.addEventListener('online', naik)
+    window.addEventListener('offline', turun)
+    return () => {
+      window.removeEventListener('online', naik)
+      window.removeEventListener('offline', turun)
+    }
+  }, [])
+
+  // Pindah soal: fokus dipindah ke kartu soal dan halaman digulir ke atas supaya
+  // pembaca layar membacakan soal yang baru (bukan diam-diam berubah).
+  useEffect(() => {
+    if (pindahPertama.current) {
+      pindahPertama.current = false
+      return
+    }
+    kartuSoalRef.current?.focus()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [soalAktif])
+
   /**
    * Simpan jawaban lokal + jadwalkan autosave.
    * @param {number} soalId
@@ -417,10 +452,29 @@ export default function HalamanKerjakan() {
   }
 
   const waktuHabis = detik === 0
-  const terjawab = hitungTerjawab(attempt.soal, jawaban)
   const tingkat = tingkatWaktu(detik)
+  const ringkas = ringkasProgres(attempt.soal, jawaban, ragu)
+  // Panjang daftar disalin ke variabel biasa supaya fungsi di bawah tidak
+  // bergantung pada penyempitan tipe `attempt` yang hilang di dalam closure.
+  const jumlahSoal = attempt.soal.length
+  const indeksAktif = Math.min(soalAktif, Math.max(0, jumlahSoal - 1))
+  const soalSekarang = attempt.soal[indeksAktif]
+  const soalTerakhir = indeksAktif >= jumlahSoal - 1
+  const soalRagu = soalSekarang !== undefined && Boolean(ragu[String(soalSekarang.id)])
+  const persen = ringkas.total === 0 ? 0 : Math.round((ringkas.terjawab / ringkas.total) * 100)
+
+  /** @param {number} indeks */
+  function pindahSoal(indeks) {
+    setSoalAktif(Math.max(0, Math.min(indeks, jumlahSoal - 1)))
+  }
+
+  /** @param {number} soalId */
+  function tohRagu(soalId) {
+    setRagu((lama) => ({ ...lama, [String(soalId)]: !lama[String(soalId)] }))
+  }
+
   return (
-    <div className="row justify-content-center">
+    <div className="layar-murid row g-4 justify-content-center">
       {adaProteksi && !sudahSetujuProteksi && (
         <ModalProteksi daftar={daftarSaklar} onTutup={() => setSudahSetujuProteksi(true)} />
       )}
@@ -457,37 +511,57 @@ export default function HalamanKerjakan() {
         </div>
       )}
 
-      <div className="col-lg-9" inert={terkunci}>
-        <div className="kartu-soal p-3 p-md-4 mb-3">
-          <div className="d-flex flex-wrap align-items-center gap-3">
-            <div className="me-auto teks-patah">
-              <h1 className="h5 fw-bold mb-0 teks-patah">{attempt.judul_kuis ?? 'Ulangan'}</h1>
-              <p className="teks-lembut small mb-0">
-                {attempt.mapel_nama ?? '—'} · {attempt.kelas_nama ?? '—'} · {attempt.jumlah_soal} soal
-              </p>
-            </div>
-            <div className="text-end">
-              <span className="teks-lembut small d-block">Sisa waktu</span>
-              <span className={`timer-ulangan ${tingkat}`} role="timer">
-                {formatSisa(detik)}
-              </span>
-            </div>
-            <div className="text-end">
-              <span className="teks-lembut small d-block">Terjawab</span>
-              <span className="h5 fw-bold mb-0">
-                {terjawab} / {attempt.soal.length}
-              </span>
-            </div>
-            {adaProteksi && (
-              <div className="text-end">
-                <span className="teks-lembut small d-block">Pengaman</span>
-                <span className="badge-status lembut">
-                  aktif{jumlahKejadian > 0 ? ` · ${jumlahKejadian} catatan` : ''}
-                </span>
-              </div>
-            )}
+      <div className="col-lg-8 col-xl-9" inert={terkunci}>
+        {!daring && (
+          <Banner jenis="peringatan" judul="Koneksi putus">
+            <p className="mb-0">
+              Jawabanmu aman di sini dan akan terkirim sendiri begitu koneksi kembali. Jangan tutup
+              halaman ini.
+            </p>
+          </Banner>
+        )}
+
+        <header className="kepala-ulangan">
+          <div className="me-auto teks-patah">
+            <h1 className="kepala-ulangan-judul teks-patah">{attempt.judul_kuis ?? 'Ulangan'}</h1>
+            <p className="teks-lembut small mb-0">
+              {attempt.kelas_nama ?? '—'} · {ringkas.total} soal
+            </p>
           </div>
-        </div>
+
+          {adaProteksi && (
+            <span className="badge-status lembut">
+              Pengaman aktif{jumlahKejadian > 0 ? ` · ${jumlahKejadian} catatan` : ''}
+            </span>
+          )}
+
+          <div className="kepala-ulangan-progres">
+            <span className="teks-lembut small d-block">
+              {ringkas.terjawab} dari {ringkas.total} terjawab
+            </span>
+            <div
+              className="kepala-ulangan-batang"
+              role="progressbar"
+              aria-label="Progres menjawab"
+              aria-valuemin={0}
+              aria-valuemax={ringkas.total}
+              aria-valuenow={ringkas.terjawab}
+            >
+              <span style={{ width: `${persen}%` }} />
+            </div>
+          </div>
+
+          <div className="text-end">
+            <span className="teks-lembut small d-block">Sisa waktu</span>
+            <span className={`timer-ulangan ${tingkat}`} role="timer">
+              {formatSisa(detik)}
+            </span>
+          </div>
+
+          <Tombol varian="tepi" disabled={waktuHabis} onClick={() => setDialogKumpul(true)}>
+            Selesai
+          </Tombol>
+        </header>
 
         {(attempt.tim ?? null) !== null && (
           <Banner jenis="info" judul={`Mengerjakan sebagai ${attempt.tim?.nama ?? 'tim'}`}>
@@ -531,59 +605,129 @@ export default function HalamanKerjakan() {
         {/* Layar kelas (slice 10): mengikuti guru tanpa memuat ulang halaman. */}
         <PanelLayarMurid kuisId={attempt.quiz_id} />
 
-        <div className="d-flex flex-column gap-3 mb-4">
-          {attempt.soal.map((soal) => (
-            <section key={soal.id} className="kartu-soft p-3 p-md-4" aria-label={`Soal nomor ${soal.nomor}`}>
-              <div className="d-flex align-items-baseline gap-2 mb-2">
-                <h2 className="h6 fw-bold mb-0">Soal {soal.nomor}</h2>
-                <span className="badge-status lembut">{soal.tipe_label}</span>
-                <span className="teks-lembut small ms-auto">{soal.skor} poin</span>
-              </div>
+        <section
+          ref={kartuSoalRef}
+          className="kartu-ulangan mb-4"
+          tabIndex={-1}
+          aria-label={`Soal nomor ${soalSekarang?.nomor ?? 1}`}
+        >
+          <div className="d-flex flex-wrap align-items-baseline gap-2 mb-3">
+            <h2 className="judul-bagian mb-0">Soal {soalSekarang?.nomor ?? 1}</h2>
+            <span className="badge-status lembut">{soalSekarang?.tipe_label}</span>
+            <span className="teks-lembut ms-auto">{soalSekarang?.skor} poin</span>
+          </div>
 
+          {soalSekarang && (
+            <>
               <RendererSoal
-                tipe={soal.tipe}
-                konten={soal.konten}
-                nilai={jawaban[String(soal.id)]}
-                onUbah={(nilai) => ubahJawaban(soal.id, nilai)}
+                tipe={soalSekarang.tipe}
+                konten={soalSekarang.konten}
+                nilai={jawaban[String(soalSekarang.id)]}
+                onUbah={(nilai) => ubahJawaban(soalSekarang.id, nilai)}
                 dinonaktifkan={waktuHabis}
-                nama={`attempt-${attempt.id}-soal-${soal.id}`}
+                nama={`attempt-${attempt.id}-soal-${soalSekarang.id}`}
               />
 
               <UnggahLampiran
                 attemptId={attempt.id}
-                soalId={soal.id}
+                soalId={soalSekarang.id}
                 nonaktif={waktuHabis}
                 sisaDetik={detik}
               />
-            </section>
-          ))}
-        </div>
+            </>
+          )}
 
-        <div className="kartu-soal p-3 d-flex flex-wrap align-items-center gap-3">
-          <span className="teks-lembut small me-auto">
-            Jawaban tersimpan otomatis. Tekan kumpulkan bila sudah selesai.
-          </span>
-          <Tombol
-            memuat={sedangKirim}
-            teksMemuat="Mengumpulkan…"
-            disabled={waktuHabis}
-            onClick={() => {
-              if (window.confirm('Kumpulkan jawaban sekarang? Kamu tidak bisa mengubahnya lagi.')) {
-                void kumpulkan(false)
-              }
-            }}
-          >
-            Kumpulkan jawaban
-          </Tombol>
-        </div>
+          <div className="d-flex flex-wrap align-items-center gap-2 mt-4">
+            <Tombol
+              varian="tepi"
+              ikon={IkonPanahKiri}
+              disabled={indeksAktif === 0}
+              onClick={() => pindahSoal(indeksAktif - 1)}
+            >
+              Sebelumnya
+            </Tombol>
+            <Tombol
+              varian="tepi"
+              className="btn-ragu"
+              ikon={IkonBendera}
+              aria-pressed={soalRagu}
+              disabled={soalSekarang === undefined}
+              onClick={() => soalSekarang && tohRagu(soalSekarang.id)}
+            >
+              {soalRagu ? 'Hapus tanda ragu' : 'Tandai ragu-ragu'}
+            </Tombol>
+            <Tombol
+              className="ms-auto"
+              onClick={() => (soalTerakhir ? setDialogKumpul(true) : pindahSoal(indeksAktif + 1))}
+            >
+              {soalTerakhir ? 'Periksa & kumpulkan' : 'Selanjutnya'}
+            </Tombol>
+          </div>
+        </section>
 
-        <p className="teks-lembut small mt-3 mb-0">
+        <p className="teks-lembut mb-4" role="status">
+          Jawabanmu tersimpan otomatis.
+        </p>
+
+        <details className="navigator-lipat kartu-soft p-3 mb-4 d-lg-none">
+          <summary className="fw-bold">Daftar soal</summary>
+          <NavigatorSoal
+            className="mt-3"
+            soal={attempt.soal}
+            jawaban={jawaban}
+            ragu={ragu}
+            aktif={indeksAktif}
+            onPilih={pindahSoal}
+          />
+        </details>
+
+        <p className="teks-lembut small mb-0">
           Keluar dari halaman ini tidak menghapus jawaban.{' '}
           <Link className="tautan-jari" to={RUTE.kuis}>
             Kembali ke daftar
           </Link>
         </p>
       </div>
+
+      <aside className="col-lg-4 col-xl-3 d-none d-lg-block" inert={terkunci}>
+        <div className="navigator-tempel">
+          <NavigatorSoal
+            soal={attempt.soal}
+            jawaban={jawaban}
+            ragu={ragu}
+            aktif={indeksAktif}
+            onPilih={pindahSoal}
+          />
+        </div>
+      </aside>
+
+      <DialogKonfirmasi
+        buka={dialogKumpul}
+        judul="Sudah selesai mengerjakan?"
+        labelYa={sedangKirim ? 'Mengumpulkan…' : 'Kumpulkan'}
+        memuat={sedangKirim}
+        onYa={() => {
+          setDialogKumpul(false)
+          void kumpulkan(false)
+        }}
+        onBatal={() => setDialogKumpul(false)}
+      >
+        <div className="dialog-ringkas">
+          <div>
+            <strong>{ringkas.terjawab}</strong>
+            terjawab
+          </div>
+          <div>
+            <strong>{ringkas.ragu}</strong>
+            ragu-ragu
+          </div>
+          <div>
+            <strong>{ringkas.kosong}</strong>
+            belum dijawab
+          </div>
+        </div>
+        <p className="mb-0">{pesanKumpul(ringkas)}</p>
+      </DialogKonfirmasi>
     </div>
   )
 }

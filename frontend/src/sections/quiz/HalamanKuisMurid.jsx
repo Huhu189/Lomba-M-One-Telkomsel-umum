@@ -3,8 +3,8 @@
  * dikirim server, tanpa kunci jawaban dan tanpa daftar soal (K-02).
  */
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { RUTE, ruteKerjakanKuis, rutePeringkat } from '../../routes.js'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { ambilKuis } from './api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
 
@@ -54,16 +54,12 @@ export default function HalamanKuisMurid() {
 
                   <div className="d-flex flex-wrap gap-2">
                     {kuis.sedang_berjalan && (
-                      <Link className="btn btn-sm btn-aksen" to={ruteKerjakanKuis(kuis.id)}>
-                        Kerjakan sekarang
-                      </Link>
+                      <TombolTaut to={ruteKerjakanKuis(kuis.id)}>Kerjakan sekarang</TombolTaut>
                     )}
-                    <Link className="btn btn-sm btn-tepi" to={`${RUTE.kuis}/${kuis.id}`}>
+                    <TombolTaut varian="tepi" to={`${RUTE.kuis}/${kuis.id}`}>
                       Lihat detail
-                    </Link>
-                    <Link className="btn btn-sm btn-teks" to={rutePeringkat(kuis.id)}>
-                      Peringkat
-                    </Link>
+                    </TombolTaut>
+                    <TombolTaut varian="teks" to={rutePeringkat(kuis.id)}>Peringkat</TombolTaut>
                   </div>
                 </div>
               )
