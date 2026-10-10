@@ -17,6 +17,8 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { IkonPanahKiri } from '../../icons.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
@@ -112,9 +114,14 @@ export default function HalamanLayar() {
     <div className="row justify-content-center">
       <div className="col-lg-10">
         <div className="kartu-soft p-4 p-md-5">
-          <Link className="btn btn-sm btn-tepi mb-3" to={ruteKuisDetail(data.kuis_id)}>
-            ← Kembali ke detail kuis
-          </Link>
+          <TombolTaut
+            varian="tepi"
+            ikon={IkonPanahKiri}
+            className="mb-3"
+            to={ruteKuisDetail(data.kuis_id)}
+          >
+            Kembali ke detail kuis
+          </TombolTaut>
 
           <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
             <div className="me-auto">
@@ -289,9 +296,9 @@ export default function HalamanLayar() {
                 menyusul lewat pembaruan berkala.
               </p>
 
-              <Link className="btn btn-sm btn-tepi mt-3" to={ruteMonitorKuis(data.kuis_id)}>
+              <TombolTaut varian="tepi" className="mt-3" to={ruteMonitorKuis(data.kuis_id)}>
                 Buka Live Monitor
-              </Link>
+              </TombolTaut>
             </div>
           </div>
         </div>

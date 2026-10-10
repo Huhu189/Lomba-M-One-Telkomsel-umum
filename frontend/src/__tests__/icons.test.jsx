@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { IkonCentang, IkonBuku, daftarIkon } from '../icons.jsx'
+import { IkonCentang, IkonBuku, IkonMenu, daftarIkon } from '../icons.jsx'
 
 describe('icons.jsx', () => {
   it('ikon ter-render sebagai <svg> dengan viewBox 24', () => {
@@ -30,5 +30,32 @@ describe('icons.jsx', () => {
         'bulan',
       ]),
     )
+  })
+
+  it('ikon navigasi & aksi tersedia untuk shell dan kartu', () => {
+    // Ikon ini dipakai menu (hamburger + tautan bagian) dan tombol aksi kartu.
+    expect(Object.keys(daftarIkon)).toEqual(
+      expect.arrayContaining([
+        'menu',
+        'pensil',
+        'tongSampah',
+        'tambah',
+        'simpan',
+        'kisi',
+        'lapis',
+        'tanda',
+        'papan',
+        'gear',
+        'grafik',
+        'putar',
+        'jeda',
+      ]),
+    )
+  })
+
+  it('ikon menu (hamburger) ter-render sebagai tiga garis', () => {
+    const html = renderToStaticMarkup(<IkonMenu size={22} label="Buka menu" />)
+    expect(html).toContain('aria-label="Buka menu"')
+    expect(html).toContain('width="22"')
   })
 })

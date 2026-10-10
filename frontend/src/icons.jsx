@@ -245,8 +245,186 @@ export function IkonPanahKiri(props) {
   )
 }
 
+/** Ikon menu (hamburger) — membuka laci navigasi di layar kecil. @param {PropsIkon} props */
+export function IkonMenu(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 6h18" />
+      <path d="M3 12h18" />
+      <path d="M3 18h18" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon pensil (ubah). @param {PropsIkon} props */
+export function IkonPensil(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon tempat sampah (hapus). @param {PropsIkon} props */
+export function IkonTongSampah(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon tambah (plus). @param {PropsIkon} props */
+export function IkonTambah(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon simpan (disket). @param {PropsIkon} props */
+export function IkonSimpan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M17 21v-8H7v8" />
+      <path d="M7 3v5h8" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon kisi (kelas). @param {PropsIkon} props */
+export function IkonKisi(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon lapis (mapel). @param {PropsIkon} props */
+export function IkonLapis(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 13 9 5 9-5" />
+      <path d="m3 17 9 5 9-5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon tanda (tag). @param {PropsIkon} props */
+export function IkonTanda(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M20.6 13.4 12 22l-8.6-8.6A2 2 0 0 1 3 12V4a1 1 0 0 1 1-1h8a2 2 0 0 1 1.4.6l7.2 7.2a1.9 1.9 0 0 1 0 2.6Z" />
+      <circle cx="7.5" cy="7.5" r="1.2" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon papan klip (kuis). @param {PropsIkon} props */
+export function IkonPapan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="4" y="4" width="16" height="17" rx="2" />
+      <path d="M9 4V3h6v1" />
+      <path d="m9 13 2 2 4-4" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon roda gigi (pengaturan). @param {PropsIkon} props */
+export function IkonGear(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3.2 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.2a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 20.8 11a2 2 0 1 1 0 4Z" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon grafik batang (progres tema). @param {PropsIkon} props */
+export function IkonGrafik(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 3v18h18" />
+      <rect x="7" y="11" width="3" height="7" rx="1" />
+      <rect x="12" y="7" width="3" height="11" rx="1" />
+      <rect x="17" y="13" width="3" height="5" rx="1" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon segitiga putar. @param {PropsIkon} props */
+export function IkonPutar(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="m6 4 14 8-14 8V4Z" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon jeda (dua batang). @param {PropsIkon} props */
+export function IkonJeda(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="7" y="4" width="3.5" height="16" rx="1" />
+      <rect x="13.5" y="4" width="3.5" height="16" rx="1" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon rumah (Beranda guru/murid). @param {PropsIkon} props */
+export function IkonRumah(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 11l9-8 9 8" />
+      <path d="M5 10v10h14V10" />
+    </KerangkaIkon>
+  )
+}
+
+/**
+ * Ikon lembar soal bercentang (menu Kuis). Sengaja berbeda dari IkonPapan
+ * (Bank Soal) supaya dua menu tidak memakai ikon yang sama — temuan 07.
+ * @param {PropsIkon} props
+ */
+export function IkonLembarSoal(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M9 4h6v3H9z" />
+      <path d="M7 5H5v16h14V5h-2" />
+      <path d="M9 12h6M9 16h4" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon bendera (tanda ragu-ragu pada soal ulangan). @param {PropsIkon} props */
+export function IkonBendera(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M5 21V4" />
+      <path d="M5 4h11l-1.6 4L16 12H5" />
+    </KerangkaIkon>
+  )
+}
+
 /** Peta nama ikon untuk demo dan pemakaian dinamis. */
 export const daftarIkon = {
+  rumah: IkonRumah,
+  lembarSoal: IkonLembarSoal,
+  bendera: IkonBendera,
   centang: IkonCentang,
   silang: IkonSilang,
   peringatan: IkonPeringatan,
@@ -267,4 +445,17 @@ export const daftarIkon = {
   keluar: IkonKeluar,
   bintang: IkonBintang,
   panahKiri: IkonPanahKiri,
+  menu: IkonMenu,
+  pensil: IkonPensil,
+  tongSampah: IkonTongSampah,
+  tambah: IkonTambah,
+  simpan: IkonSimpan,
+  kisi: IkonKisi,
+  lapis: IkonLapis,
+  tanda: IkonTanda,
+  papan: IkonPapan,
+  gear: IkonGear,
+  grafik: IkonGrafik,
+  putar: IkonPutar,
+  jeda: IkonJeda,
 }
