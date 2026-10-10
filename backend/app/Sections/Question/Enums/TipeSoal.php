@@ -32,6 +32,12 @@ enum TipeSoal: string
     case UrutGambar = 'urut_gambar';
     case SusunHuruf = 'susun_huruf';
 
+    // Gelombang 2 (Objektif 1B): tipe 4, 5, 10, 11.
+    case IsianRumpang = 'isian_rumpang';
+    case Klasifikasi = 'klasifikasi';
+    case TabelIsian = 'tabel_isian';
+    case GarisBilangan = 'garis_bilangan';
+
     /**
      * Soal objektif = dinilai pasti tanpa toleransi/tafsir; koreksi guru tidak
      * diperlukan. Isian singkat dan uraian bukan objektif (lihat `bertingkat()`).
@@ -42,7 +48,9 @@ enum TipeSoal: string
             self::PilihanGanda, self::BenarSalah, self::Menjodohkan, self::Mengurutkan,
             self::LetakKata, self::HubungKata,
             self::PilihanGandaKompleks, self::BenarSalahMajemuk, self::IsianAngka,
-            self::PilihanGambar, self::UrutGambar, self::SusunHuruf => true,
+            self::PilihanGambar, self::UrutGambar, self::SusunHuruf,
+            self::IsianRumpang, self::Klasifikasi, self::TabelIsian,
+            self::GarisBilangan => true,
             default => false,
         };
     }
@@ -73,6 +81,10 @@ enum TipeSoal: string
             self::PilihanGambar => 'Pilihan gambar',
             self::UrutGambar => 'Urut gambar',
             self::SusunHuruf => 'Susun huruf',
+            self::IsianRumpang => 'Isian rumpang',
+            self::Klasifikasi => 'Klasifikasi',
+            self::TabelIsian => 'Tabel isian',
+            self::GarisBilangan => 'Garis bilangan',
         };
     }
 }

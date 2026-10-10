@@ -17,14 +17,20 @@ import {
   DAFTAR_TIPE,
   MAKS_GAMBAR,
   MAKS_HURUF,
+  MAKS_ITEM_KLASIFIKASI,
+  MAKS_KOTAK,
+  MAKS_LUBANG,
   MAKS_MATEMATIKA,
   MAKS_OPSI,
   MAKS_OPSI_KOMPLEKS,
   MAKS_PERNYATAAN,
   MAKS_PETUNJUK,
+  MAKS_RENTANG_GARIS,
+  MAKS_SEL,
   MIN_GAMBAR,
   MIN_HURUF,
   MIN_ITEM,
+  MIN_KOTAK,
   MIN_OPSI,
   MIN_OPSI_KOMPLEKS,
   MIN_PERNYATAAN,
@@ -32,6 +38,8 @@ import {
   TIPE_TANPA_TEKS,
   idBerikut,
   muatanDariState,
+  nomorLubangDariTeks,
+  pisahKata,
   stateDariSoal,
   stateSoalKosong,
 } from './tipeSoal.js'
@@ -402,6 +410,165 @@ export default function EditorSoal({
         ? [...state.benarKompleks.filter((satu) => satu !== id), id]
         : state.benarKompleks.filter((satu) => satu !== id),
     })
+  }
+
+  /**
+   * Isian rumpang: jawaban diterima per penanda `{{n}}` di isi soal.
+   * @param {number} nomor @param {string} teks
+   */
+  function ubahLubang(nomor, teks) {
+    ubah({ lubang: { ...state.lubang, [String(nomor)]: teks } })
+  }
+
+  function tambahLubang() {
+    const nomor = nomorLubangDariTeks(state.teks)
+    if (nomor.length >= MAKS_LUBANG) return
+
+    const berikut = String(nomor.length + 1)
+    const teks = state.teks.trim()
+    ubah({
+      teks: teks === '' ? `{{${berikut}}}` : `${teks} {{${berikut}}}`,
+      lubang: { ...state.lubang, [berikut]: '' },
+    })
+  }
+
+  /**
+   * Klasifikasi: daftar item, daftar kotak, dan peta item → kotak.
+   * @param {number} index @param {string} teks
+   */
+  function ubahItemKlasifikasi(index, teks) {
+    ubah({
+      itemKlasifikasi: state.itemKlasifikasi.map((satu, nomor) =>
+        nomor === index ? { ...satu, teks } : satu,
+      ),
+    })
+  }
+
+  function tambahItemKlasifikasi() {
+    ubah({
+      itemKlasifikasi: [...state.itemKlasifikasi, { id: idBerikut('I', state.itemKlasifikasi), teks: '' }],
+    })
+  }
+
+  /** @param {number} index */
+  function hapusItemKlasifikasi(index) {
+    if (state.itemKlasifikasi.length <= MIN_ITEM) return
+
+    const dibuang = state.itemKlasifikasi[index]
+    const peta = { ...state.petaKlasifikasi }
+    delete peta[dibuang.id]
+    ubah({
+      itemKlasifikasi: state.itemKlasifikasi.filter((_, posisi) => posisi !== index),
+      petaKlasifikasi: peta,
+    })
+  }
+
+  /** @param {number} index @param {string} teks */
+  function ubahKotak(index, teks) {
+    ubah({ kotak: state.kotak.map((satu, nomor) => (nomor === index ? { ...satu, teks } : satu)) })
+  }
+
+  function tambahKotak() {
+    ubah({ kotak: [...state.kotak, { id: idBerikut('K', state.kotak), teks: '' }] })
+  }
+
+  /** @param {number} index */
+  function hapusKotak(index) {
+    if (state.kotak.length <= MIN_KOTAK) return
+
+    const dibuang = state.kotak[index]
+    const peta = Object.fromEntries(
+      Object.entries(state.petaKlasifikasi).filter(([, ke]) => ke !== dibuang.id),
+    )
+    ubah({ kotak: state.kotak.filter((_, posisi) => posisi !== index), petaKlasifikasi: peta })
+  }
+
+  /** Jumlah kolom tabel dari teks kolom yang dipisah koma. */
+  function jumlahKolomTabel() {
+    return pisahKata(state.kolom).length
+  }
+
+  /**
+   * Ubah daftar nama kolom; kolom baru langsung disiapkan sebagai sel kosong di
+   * tiap baris supaya guru tidak menambah sel satu per satu.
+   * @param {string} teks
+   */
+  function ubahKolom(teks) {
+    const jumlah = pisahKata(teks).length
+    const perluTambah = jumlah > 0 && state.barisTabel.some((baris) => baris.sel.length < jumlah)
+
+    if (!perluTambah) {
+      ubah({ kolom: teks })
+      return
+    }
+
+    const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+    const barisTabel = state.barisTabel.map((baris) => {
+      const sel = [...baris.sel]
+
+      for (let posisi = sel.length; posisi < jumlah; posisi += 1) {
+        let nomor = 1
+        while (dipakai.has(`r${nomor}c${posisi + 1}`)) nomor += 1
+        const kode = `r${nomor}c${posisi + 1}`
+        dipakai.add(kode)
+        sel.push({ kode, teks: '' })
+      }
+
+      return { ...baris, sel }
+    })
+
+    ubah({ kolom: teks, barisTabel })
+  }
+
+  function tambahBarisTabel() {
+    const jumlah = jumlahKolomTabel()
+    const totalSel = state.barisTabel.reduce((jumlahSel, baris) => jumlahSel + baris.sel.length, 0)
+    if (jumlah === 0 || totalSel + jumlah > MAKS_SEL) return
+
+    const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+    let nomor = 1
+    while ([...Array(jumlah)].some((_, kolom) => dipakai.has(`r${nomor}c${kolom + 1}`))) nomor += 1
+
+    ubah({
+      barisTabel: [
+        ...state.barisTabel,
+        {
+          id: idBerikut('R', state.barisTabel),
+          sel: [...Array(jumlah)].map((_, kolom) => ({ kode: `r${nomor}c${kolom + 1}`, teks: '' })),
+        },
+      ],
+    })
+  }
+
+  /** @param {number} index */
+  function hapusBarisTabel(index) {
+    if (state.barisTabel.length <= 1) return
+
+    const sisa = state.barisTabel.filter((_, posisi) => posisi !== index)
+    const kode = new Set(sisa.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+    const kunciSel = Object.fromEntries(
+      Object.entries(state.kunciSel).filter(([kodeSel]) => kode.has(kodeSel)),
+    )
+    ubah({ barisTabel: sisa, kunciSel })
+  }
+
+  /**
+   * Teks satu sel tabel; sel tanpa teks dinilai murid.
+   * @param {number} baris @param {number} kolom @param {string} teks
+   */
+  function ubahSelTabel(baris, kolom, teks) {
+    ubah({
+      barisTabel: state.barisTabel.map((satu, nomor) =>
+        nomor === baris
+          ? { ...satu, sel: satu.sel.map((sel, posisi) => (posisi === kolom ? { ...sel, teks } : sel)) }
+          : satu,
+      ),
+    })
+  }
+
+  /** @param {string} kode @param {string} teks */
+  function ubahKunciSel(kode, teks) {
+    ubah({ kunciSel: { ...state.kunciSel, [kode]: teks } })
   }
 
   const kelengkapan = kelengkapanSoal(state)
@@ -1199,6 +1366,301 @@ export default function EditorSoal({
                   <span className="teks-lembut small">
                     Huruf akan diacak server; murid menyusunnya kembali menjadi kata ini.
                   </span>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.isianRumpang && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Lubang dan jawaban diterima (maksimal {MAKS_LUBANG})
+                </legend>
+                <p className="teks-lembut small">
+                  Tulis penanda {'{{1}}'}, {'{{2}}'}, … di isi soal, lalu isi jawaban yang diterima
+                  untuk tiap lubang. Beberapa jawaban dipisah koma.
+                </p>
+
+                {nomorLubangDariTeks(state.teks).map((nomor) => (
+                  <div key={nomor} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{`{{${nomor}}}`}</span>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Jawaban diterima lubang ${nomor}`}
+                      value={state.lubang[String(nomor)] ?? ''}
+                      onChange={(e) => ubahLubang(nomor, e.target.value)}
+                      placeholder="Jakarta, DKI Jakarta"
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={nomorLubangDariTeks(state.teks).length >= MAKS_LUBANG}
+                  onClick={tambahLubang}
+                >
+                  Tambah lubang
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.klasifikasi && (
+              <>
+                <fieldset className="mt-3">
+                  <legend className="fw-bold fs-6">
+                    Item dan kotaknya ({MIN_ITEM}–{MAKS_ITEM_KLASIFIKASI} item)
+                  </legend>
+
+                  {state.itemKlasifikasi.map((satu, index) => (
+                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                      <input
+                        className="form-control flex-grow-1"
+                        aria-label={`Teks item ${satu.id}`}
+                        value={satu.teks}
+                        onChange={(e) => ubahItemKlasifikasi(index, e.target.value)}
+                        placeholder="Contoh: kucing"
+                      />
+                      <select
+                        className="form-select jodoh-pilih"
+                        aria-label={`Kotak untuk item ${satu.id}`}
+                        value={state.petaKlasifikasi[satu.id] ?? ''}
+                        onChange={(e) =>
+                          ubah({
+                            petaKlasifikasi: { ...state.petaKlasifikasi, [satu.id]: e.target.value },
+                          })
+                        }
+                      >
+                        <option value="">Kotak…</option>
+                        {state.kotak.map((kotak) => (
+                          <option key={kotak.id} value={kotak.id}>
+                            {kotak.id} — {kotak.teks || '(belum diisi)'}
+                          </option>
+                        ))}
+                      </select>
+                      <TombolIkon
+                        label={`Hapus item ${satu.id}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        disabled={state.itemKlasifikasi.length <= MIN_ITEM}
+                        onClick={() => hapusItemKlasifikasi(index)}
+                      />
+                    </div>
+                  ))}
+
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    ikon={IkonTambah}
+                    disabled={state.itemKlasifikasi.length >= MAKS_ITEM_KLASIFIKASI}
+                    onClick={tambahItemKlasifikasi}
+                  >
+                    Tambah item
+                  </Tombol>
+                </fieldset>
+
+                <fieldset className="mt-3">
+                  <legend className="fw-bold fs-6">
+                    Kotak / kategori ({MIN_KOTAK}–{MAKS_KOTAK})
+                  </legend>
+
+                  {state.kotak.map((satu, index) => (
+                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                      <input
+                        className="form-control flex-grow-1"
+                        aria-label={`Label kotak ${satu.id}`}
+                        value={satu.teks}
+                        onChange={(e) => ubahKotak(index, e.target.value)}
+                        placeholder="Contoh: Mamalia"
+                      />
+                      <TombolIkon
+                        label={`Hapus kotak ${satu.id}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        disabled={state.kotak.length <= MIN_KOTAK}
+                        onClick={() => hapusKotak(index)}
+                      />
+                    </div>
+                  ))}
+
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    ikon={IkonTambah}
+                    disabled={state.kotak.length >= MAKS_KOTAK}
+                    onClick={tambahKotak}
+                  >
+                    Tambah kotak
+                  </Tombol>
+                </fieldset>
+              </>
+            )}
+
+            {state.tipe === TIPE.tabelIsian && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Kolom, baris, dan jawaban sel (maksimal {MAKS_SEL} sel)
+                </legend>
+
+                <div className="bidang">
+                  <label className="form-label" htmlFor="tabel-kolom">
+                    Nama kolom (pisahkan dengan koma)
+                  </label>
+                  <input
+                    id="tabel-kolom"
+                    className="form-control"
+                    value={state.kolom}
+                    onChange={(e) => ubahKolom(e.target.value)}
+                    placeholder="Soal, Hasil"
+                  />
+                </div>
+
+                {jumlahKolomTabel() === 0 ? (
+                  <p className="teks-lembut small mt-2">
+                    Isi nama kolom dulu supaya sel tabel muncul.
+                  </p>
+                ) : (
+                  <p className="teks-lembut small mt-2">
+                    Sel yang dibiarkan kosong akan diisi murid; isi jawaban diterimanya (beberapa
+                    jawaban dipisah koma).
+                  </p>
+                )}
+
+                {state.barisTabel.map((baris, index) => (
+                  <div key={baris.id} className="kartu-soft p-3 mt-3">
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <span className="badge-status info">Baris {index + 1}</span>
+                      <TombolIkon
+                        label={`Hapus baris ${index + 1}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        disabled={state.barisTabel.length <= 1}
+                        onClick={() => hapusBarisTabel(index)}
+                      />
+                    </div>
+
+                    <div className="row g-2">
+                      {baris.sel.map((sel, kolom) => (
+                        <div key={sel.kode} className="col-md-6">
+                          <div className="bidang">
+                            <label className="form-label" htmlFor={`tabel-${sel.kode}`}>
+                              {pisahKata(state.kolom)[kolom] ?? `Kolom ${kolom + 1}`}
+                            </label>
+                            <input
+                              id={`tabel-${sel.kode}`}
+                              className="form-control"
+                              value={sel.teks}
+                              onChange={(e) => ubahSelTabel(index, kolom, e.target.value)}
+                              placeholder="Teks tabel (kosongkan agar murid mengisi)"
+                            />
+                            {sel.teks.trim() === '' && (
+                              <input
+                                className="form-control mt-2"
+                                aria-label={`Jawaban diterima sel ${sel.kode}`}
+                                value={state.kunciSel[sel.kode] ?? ''}
+                                onChange={(e) => ubahKunciSel(sel.kode, e.target.value)}
+                                placeholder="Jawaban diterima (pisah koma)"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={
+                    jumlahKolomTabel() === 0 ||
+                    state.barisTabel.reduce((jumlah, baris) => jumlah + baris.sel.length, 0) +
+                      jumlahKolomTabel() >
+                      MAKS_SEL
+                  }
+                  onClick={tambahBarisTabel}
+                >
+                  Tambah baris
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.garisBilangan && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Rentang garis dan kunci nilai (rentang maksimal {MAKS_RENTANG_GARIS})
+                </legend>
+
+                <div className="row g-3">
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="garis-min">Angka terkecil</label>
+                      <input
+                        id="garis-min"
+                        className="form-control"
+                        type="number"
+                        step="any"
+                        value={state.garisMin}
+                        onChange={(e) => ubah({ garisMin: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="garis-max">Angka terbesar</label>
+                      <input
+                        id="garis-max"
+                        className="form-control"
+                        type="number"
+                        step="any"
+                        value={state.garisMax}
+                        onChange={(e) => ubah({ garisMax: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="garis-langkah">Langkah tanda</label>
+                      <input
+                        id="garis-langkah"
+                        className="form-control"
+                        type="number"
+                        step="any"
+                        value={state.garisLangkah}
+                        onChange={(e) => ubah({ garisLangkah: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="garis-nilai">Jawaban benar</label>
+                      <input
+                        id="garis-nilai"
+                        className="form-control"
+                        type="number"
+                        step="any"
+                        value={state.garisNilai}
+                        onChange={(e) => ubah({ garisNilai: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="garis-toleransi">Toleransi (≥ 0)</label>
+                      <input
+                        id="garis-toleransi"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={state.garisToleransi}
+                        onChange={(e) => ubah({ garisToleransi: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </div>
               </fieldset>
             )}

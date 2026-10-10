@@ -60,6 +60,10 @@ final class RegistryTipeSoal
             TipeSoal::PilihanGambar => new PenanganPilihanGambar,
             TipeSoal::UrutGambar => new PenanganUrutGambar,
             TipeSoal::SusunHuruf => new PenanganSusunHuruf,
+            TipeSoal::IsianRumpang => new PenanganIsianRumpang,
+            TipeSoal::Klasifikasi => new PenanganKlasifikasi,
+            TipeSoal::TabelIsian => new PenanganTabelIsian,
+            TipeSoal::GarisBilangan => new PenanganGarisBilangan,
         };
     }
 

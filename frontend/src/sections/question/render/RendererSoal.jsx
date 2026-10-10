@@ -5,9 +5,12 @@
 import { TIPE } from '../tipeSoal.js'
 import SoalBenarSalah from './SoalBenarSalah.jsx'
 import SoalBenarSalahMajemuk from './SoalBenarSalahMajemuk.jsx'
+import SoalGarisBilangan from './SoalGarisBilangan.jsx'
 import SoalHubungKata from './SoalHubungKata.jsx'
 import SoalIsianAngka from './SoalIsianAngka.jsx'
+import SoalIsianRumpang from './SoalIsianRumpang.jsx'
 import SoalIsianSingkat from './SoalIsianSingkat.jsx'
+import SoalKlasifikasi from './SoalKlasifikasi.jsx'
 import SoalLetakKata from './SoalLetakKata.jsx'
 import SoalMenjodohkan from './SoalMenjodohkan.jsx'
 import SoalMengurutkan from './SoalMengurutkan.jsx'
@@ -15,6 +18,7 @@ import SoalPilihanGambar from './SoalPilihanGambar.jsx'
 import SoalPilihanGanda from './SoalPilihanGanda.jsx'
 import SoalPilihanGandaKompleks from './SoalPilihanGandaKompleks.jsx'
 import SoalSusunHuruf from './SoalSusunHuruf.jsx'
+import SoalTabelIsian from './SoalTabelIsian.jsx'
 import SoalUraian from './SoalUraian.jsx'
 import SoalUrutGambar from './SoalUrutGambar.jsx'
 
@@ -34,6 +38,10 @@ const PETA_RENDERER = {
   [TIPE.pilihanGambar]: SoalPilihanGambar,
   [TIPE.urutGambar]: SoalUrutGambar,
   [TIPE.susunHuruf]: SoalSusunHuruf,
+  [TIPE.isianRumpang]: SoalIsianRumpang,
+  [TIPE.klasifikasi]: SoalKlasifikasi,
+  [TIPE.tabelIsian]: SoalTabelIsian,
+  [TIPE.garisBilangan]: SoalGarisBilangan,
 }
 
 /** @param {import('./props.js').PropsSoal & { tipe: string }} props */

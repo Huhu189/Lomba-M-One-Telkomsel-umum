@@ -22,8 +22,8 @@ use Illuminate\Database\Seeder;
 class BankSoalSeeder extends Seeder
 {
     /**
-     * Contoh soal tipe baru gelombang 1 (Objektif 1B) untuk demo editor dan
-     * layar murid. Tiap contoh dibuat sekali (idempoten) lewat `run()`.
+     * Contoh soal tipe baru gelombang 1 dan 2 (Objektif 1B) untuk demo editor
+     * dan layar murid. Tiap contoh dibuat sekali (idempoten) lewat `run()`.
      *
      * @return array<int, array{tipe: string, konten: array<string, mixed>, kunci: array<string, mixed>}>
      */
@@ -88,6 +88,49 @@ class BankSoalSeeder extends Seeder
                 'tipe' => 'susun_huruf',
                 'konten' => ['petunjuk' => 'Nama hewan berkaki empat yang mengeong.'],
                 'kunci' => ['kata' => 'kucing'],
+            ],
+            [
+                'tipe' => 'isian_rumpang',
+                'konten' => ['teks' => 'Ibu kota Indonesia adalah {{1}} dan 6 x 7 = {{2}}.'],
+                'kunci' => ['lubang' => ['1' => ['Jakarta'], '2' => ['42', 'empat puluh dua']]],
+            ],
+            [
+                'tipe' => 'klasifikasi',
+                'konten' => [
+                    'teks' => 'Masukkan setiap hewan ke kotak yang tepat.',
+                    'item' => [
+                        ['id' => 'i1', 'teks' => 'kucing'],
+                        ['id' => 'i2', 'teks' => 'ayam'],
+                        ['id' => 'i3', 'teks' => 'sapi'],
+                    ],
+                    'kotak' => [
+                        ['id' => 'k1', 'label' => 'Mamalia'],
+                        ['id' => 'k2', 'label' => 'Unggas'],
+                    ],
+                ],
+                'kunci' => ['peta' => ['i1' => 'k1', 'i2' => 'k2', 'i3' => 'k1']],
+            ],
+            [
+                'tipe' => 'tabel_isian',
+                'konten' => [
+                    'teks' => 'Isi hasil perkalian pada tabel.',
+                    'kolom' => ['Soal', 'Hasil'],
+                    'baris' => [
+                        ['id' => 'r1', 'sel' => [['kode' => 'r1c1', 'teks' => '3 x 4'], ['kode' => 'r1c2']]],
+                        ['id' => 'r2', 'sel' => [['kode' => 'r2c1', 'teks' => '5 x 5'], ['kode' => 'r2c2']]],
+                    ],
+                ],
+                'kunci' => ['sel' => ['r1c2' => ['12'], 'r2c2' => ['25', 'dua puluh lima']]],
+            ],
+            [
+                'tipe' => 'garis_bilangan',
+                'konten' => [
+                    'teks' => 'Tandai bilangan 7 pada garis bilangan 0 sampai 10.',
+                    'min' => 0,
+                    'max' => 10,
+                    'langkah' => 1,
+                ],
+                'kunci' => ['nilai' => 7, 'toleransi' => 0],
             ],
         ];
     }

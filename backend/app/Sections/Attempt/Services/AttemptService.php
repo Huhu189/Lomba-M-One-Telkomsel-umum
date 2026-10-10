@@ -727,7 +727,7 @@ class AttemptService
             // kata memakai `kata` + `posisi`, dan keduanya sempat tidak ikut
             // sehingga soal letak kata tampil kosong di layar anak. Tipe baru
             // menambah `pernyataan` (benar/salah majemuk) dan `item` (urut/klasifikasi).
-            foreach (['opsi', 'kiri', 'kanan', 'item', 'kata', 'posisi', 'pernyataan'] as $namaDaftar) {
+            foreach (['opsi', 'kiri', 'kanan', 'item', 'kata', 'posisi', 'pernyataan', 'kotak', 'baris'] as $namaDaftar) {
                 $daftar = $konten[$namaDaftar] ?? null;
 
                 if (! is_array($daftar)) {
@@ -740,11 +740,29 @@ class AttemptService
             }
 
             // Kolom teks pendukung tipe baru (isian angka: satuan; susun huruf:
-            // petunjuk). Bukan daftar, jadi tidak lewat pengacakan.
+            // petunjuk; garis bilangan: min/max/langkah). Bukan daftar, jadi tidak
+            // lewat pengacakan.
             foreach (['satuan', 'petunjuk'] as $namaTeks) {
                 if (isset($konten[$namaTeks]) && is_string($konten[$namaTeks])) {
                     $bersih[$namaTeks] = $konten[$namaTeks];
                 }
+            }
+
+            foreach (['min', 'max', 'langkah'] as $namaAngka) {
+                if (isset($konten[$namaAngka]) && (is_int($konten[$namaAngka]) || is_float($konten[$namaAngka]))) {
+                    $bersih[$namaAngka] = $konten[$namaAngka];
+                }
+            }
+
+            // Daftar teks sederhana (tabel isian: kolom) — bukan daftar baris,
+            // jadi tidak ikut pengacakan dan tidak boleh dibuang filter baris.
+            $kolom = $konten['kolom'] ?? null;
+
+            if (is_array($kolom)) {
+                $bersih['kolom'] = array_values(array_map(
+                    static fn (mixed $satu): string => is_scalar($satu) ? (string) $satu : '',
+                    $kolom,
+                ));
             }
 
             // Susun huruf: kunci.kata tidak pernah dikirim; murid hanya menerima

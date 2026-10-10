@@ -24,6 +24,10 @@ export const TIPE = {
   pilihanGambar: 'pilihan_gambar',
   urutGambar: 'urut_gambar',
   susunHuruf: 'susun_huruf',
+  isianRumpang: 'isian_rumpang',
+  klasifikasi: 'klasifikasi',
+  tabelIsian: 'tabel_isian',
+  garisBilangan: 'garis_bilangan',
 }
 
 /** @type {Record<string, string>} */
@@ -42,6 +46,10 @@ export const LABEL_TIPE = {
   [TIPE.pilihanGambar]: 'Pilihan gambar',
   [TIPE.urutGambar]: 'Urut gambar',
   [TIPE.susunHuruf]: 'Susun huruf',
+  [TIPE.isianRumpang]: 'Isian rumpang',
+  [TIPE.klasifikasi]: 'Klasifikasi',
+  [TIPE.tabelIsian]: 'Tabel isian',
+  [TIPE.garisBilangan]: 'Garis bilangan',
 }
 
 /** Tipe yang dinilai pasti (soal objektif) — cermin TipeSoal::objektif(). */
@@ -58,6 +66,10 @@ export const TIPE_OBJEKTIF = [
   TIPE.pilihanGambar,
   TIPE.urutGambar,
   TIPE.susunHuruf,
+  TIPE.isianRumpang,
+  TIPE.klasifikasi,
+  TIPE.tabelIsian,
+  TIPE.garisBilangan,
 ]
 
 /** Tipe bertingkat: dinilai kata kunci, sisanya menunggu koreksi guru. */
@@ -99,6 +111,14 @@ export const MAKS_GAMBAR = 8
 export const MIN_HURUF = 2
 export const MAKS_HURUF = 20
 export const MAKS_PETUNJUK = 500
+
+/** Batas isian rumpang, klasifikasi, tabel isian, garis bilangan. */
+export const MAKS_LUBANG = 10
+export const MAKS_ITEM_KLASIFIKASI = 12
+export const MIN_KOTAK = 2
+export const MAKS_KOTAK = 6
+export const MAKS_SEL = 40
+export const MAKS_RENTANG_GARIS = 1000
 
 /** Batas panjang teks MathML (cermin BantuanKonten::galatMatematika). */
 export const MAKS_MATEMATIKA = 2000
@@ -186,6 +206,53 @@ export function rekamanBoolean(nilai) {
 export function daftarTeks(nilai) {
   if (!Array.isArray(nilai)) return []
   return nilai.map((satu) => (typeof satu === 'string' || typeof satu === 'number' ? String(satu) : ''))
+}
+
+/**
+ * Daftar {id, teks} dari bidang `label` (mis. kotak klasifikasi). Tanpa ini,
+ * kotak berlabel tampil kosong karena isinya bukan `teks`.
+ * @param {unknown} nilai
+ * @returns {{ id: string, teks: string }[]}
+ */
+export function daftarLabel(nilai) {
+  if (!Array.isArray(nilai)) return []
+
+  return nilai
+    .filter((baris) => baris !== null && typeof baris === 'object')
+    .map((baris) => {
+      const rekaman = /** @type {Record<string, unknown>} */ (baris)
+      return { id: teksAman(rekaman.id), teks: teksAman(rekaman.label) }
+    })
+}
+
+/**
+ * Peta id → daftar jawaban diterima (mis. kunci.lubang / kunci.sel yang
+ * nilainya berupa array). `rekamanTeks` tidak bisa dipakai untuk ini karena
+ * membuang nilai non-teks.
+ * @param {unknown} nilai
+ * @returns {Record<string, string[]>}
+ */
+export function rekamanDaftarTeks(nilai) {
+  if (nilai === null || typeof nilai !== 'object' || Array.isArray(nilai)) return {}
+
+  /** @type {Record<string, string[]>} */
+  const hasil = {}
+  for (const [kunci, isi] of Object.entries(/** @type {Record<string, unknown>} */ (nilai))) {
+    hasil[kunci] = daftarTeks(Array.isArray(isi) ? isi : [isi]).filter((satu) => satu !== '')
+  }
+  return hasil
+}
+
+/**
+ * Nomor penanda `{{n}}` pada teks soal, unik dan terurut menaik.
+ * @param {string} teks
+ * @returns {number[]}
+ */
+export function nomorLubangDariTeks(teks) {
+  const cocok = teks.match(/\{\{\s*(\d+)\s*\}\}/g) ?? []
+  const nomor = cocok.map((satu) => Number(satu.replace(/\D/g, '')))
+
+  return [...new Set(nomor)].sort((a, b) => a - b)
 }
 
 /**
@@ -290,6 +357,18 @@ export function idBerikut(prefix, daftar) {
  *   itemGambar: ({ id: string, media: string, posisi: string })[],
  *   petunjuk: string,
  *   kataSusun: string,
+ *   lubang: Record<string, string>,
+ *   itemKlasifikasi: ItemKonten[],
+ *   kotak: ItemKonten[],
+ *   petaKlasifikasi: Record<string, string>,
+ *   kolom: string,
+ *   barisTabel: ({ id: string, sel: ({ kode: string, teks: string })[] })[],
+ *   kunciSel: Record<string, string>,
+ *   garisMin: string,
+ *   garisMax: string,
+ *   garisLangkah: string,
+ *   garisNilai: string,
+ *   garisToleransi: string,
  *   pembahasan: string,
  *   skor: string,
  *   aktif: boolean,
@@ -377,6 +456,32 @@ export function stateSoalKosong() {
     ],
     petunjuk: '',
     kataSusun: '',
+    lubang: { '1': '' },
+    itemKlasifikasi: [
+      { id: 'I1', teks: '' },
+      { id: 'I2', teks: '' },
+    ],
+    kotak: [
+      { id: 'K1', teks: '' },
+      { id: 'K2', teks: '' },
+    ],
+    petaKlasifikasi: {},
+    kolom: '',
+    barisTabel: [
+      {
+        id: 'R1',
+        sel: [
+          { kode: 'r1c1', teks: '' },
+          { kode: 'r1c2', teks: '' },
+        ],
+      },
+    ],
+    kunciSel: {},
+    garisMin: '0',
+    garisMax: '10',
+    garisLangkah: '1',
+    garisNilai: '',
+    garisToleransi: '0',
     pembahasan: '',
     skor: '10',
     aktif: true,
@@ -445,6 +550,28 @@ export function kontenDariState(state) {
     delete konten.teks
   }
 
+  if (state.tipe === TIPE.klasifikasi) {
+    konten.item = state.itemKlasifikasi.map((satu) => ({ id: satu.id, teks: satu.teks.trim() }))
+    konten.kotak = state.kotak.map((satu) => ({ id: satu.id, label: satu.teks.trim() }))
+  }
+
+  if (state.tipe === TIPE.tabelIsian) {
+    konten.kolom = pisahKata(state.kolom)
+    konten.baris = state.barisTabel.map((baris) => ({
+      id: baris.id,
+      sel: baris.sel.map((sel) => {
+        const teks = sel.teks.trim()
+        return teks === '' ? { kode: sel.kode } : { kode: sel.kode, teks }
+      }),
+    }))
+  }
+
+  if (state.tipe === TIPE.garisBilangan) {
+    konten.min = Number(state.garisMin)
+    konten.max = Number(state.garisMax)
+    konten.langkah = Number(state.garisLangkah)
+  }
+
   return konten
 }
 
@@ -469,7 +596,45 @@ export function kunciDariState(state) {
   if (state.tipe === TIPE.pilihanGambar) return { benar: state.jawabanGambar }
   if (state.tipe === TIPE.urutGambar) return { urutan: urutanDariItemGambar(state.itemGambar) }
   if (state.tipe === TIPE.susunHuruf) return { kata: state.kataSusun.trim() }
+  if (state.tipe === TIPE.isianRumpang) {
+    // Penanda yang sudah dihapus dari teks dibuang: server menolak kunci
+    // dengan penanda yang tidak ada di teks.
+    const nomor = nomorLubangDariTeks(state.teks)
+    const dipakai = Object.fromEntries(
+      Object.entries(state.lubang).filter(([kode]) => nomor.includes(Number(kode))),
+    )
+    return { lubang: petaJawabanDariRekaman(dipakai) }
+  }
+  if (state.tipe === TIPE.klasifikasi) return { peta: { ...state.petaKlasifikasi } }
+  if (state.tipe === TIPE.tabelIsian) {
+    // Sama seperti isian rumpang: kunci sel yang sudah tidak ada di tabel
+    // jangan ikut terkirim.
+    const kode = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+    const dipakai = Object.fromEntries(
+      Object.entries(state.kunciSel).filter(([kodeSel]) => kode.has(kodeSel)),
+    )
+    return { sel: petaJawabanDariRekaman(dipakai) }
+  }
+  if (state.tipe === TIPE.garisBilangan) {
+    return { nilai: Number(state.garisNilai), toleransi: Number(state.garisToleransi || 0) }
+  }
   return { jawaban: state.jawaban }
+}
+
+/**
+ * Peta `{kode: "jawaban, alias"}` menjadi `{kode: [jawaban, alias]}`.
+ * @param {Record<string, string>} rekaman
+ * @returns {Record<string, string[]>}
+ */
+export function petaJawabanDariRekaman(rekaman) {
+  /** @type {Record<string, string[]>} */
+  const peta = {}
+
+  for (const [kode, teks] of Object.entries(rekaman)) {
+    peta[kode] = pisahKata(teksAman(teks))
+  }
+
+  return peta
 }
 
 /**
@@ -679,6 +844,86 @@ export function stateDariSoal(soal) {
   if (soal.tipe === TIPE.susunHuruf) {
     state.petunjuk = teksAman(konten.petunjuk)
     state.kataSusun = teksAman(kunci.kata)
+  }
+
+  if (soal.tipe === TIPE.isianRumpang) {
+    /** @type {Record<string, string>} */
+    const lubang = {}
+    const sumber = kunci.lubang
+
+    if (sumber !== null && typeof sumber === 'object' && !Array.isArray(sumber)) {
+      for (const [kode, daftar] of Object.entries(/** @type {Record<string, unknown>} */ (sumber))) {
+        lubang[kode] = daftarTeks(daftar).join(', ')
+      }
+    }
+
+    if (Object.keys(lubang).length > 0) state.lubang = lubang
+  }
+
+  if (soal.tipe === TIPE.klasifikasi) {
+    const item = daftarAman(konten.item)
+    if (item.length > 0) state.itemKlasifikasi = item
+
+    // Kotak memakai `label` di konten (bukan `teks`), jadi tidak bisa lewat
+    // daftarAman: kalau salah baca, label hilang saat soal dibuka lagi.
+    const kotak = Array.isArray(konten.kotak)
+      ? konten.kotak
+          .filter((satu) => satu !== null && typeof satu === 'object')
+          .map((satu) => {
+            const rekaman = /** @type {Record<string, unknown>} */ (satu)
+            return { id: teksAman(rekaman.id), teks: teksAman(rekaman.label) }
+          })
+      : []
+
+    if (kotak.length > 0) state.kotak = kotak
+    state.petaKlasifikasi = rekamanTeks(kunci.peta)
+  }
+
+  if (soal.tipe === TIPE.tabelIsian) {
+    state.kolom = daftarTeks(konten.kolom).join(', ')
+
+    const baris = Array.isArray(konten.baris) ? konten.baris : []
+    /** @type {({ id: string, sel: ({ kode: string, teks: string })[] })[]} */
+    const barisTabel = []
+
+    for (const satu of baris) {
+      if (satu === null || typeof satu !== 'object') continue
+      const rekaman = /** @type {Record<string, unknown>} */ (satu)
+      const sel = Array.isArray(rekaman.sel) ? rekaman.sel : []
+      barisTabel.push({
+        id: teksAman(rekaman.id),
+        sel: sel
+          .filter((isi) => isi !== null && typeof isi === 'object')
+          .map((isi) => {
+            const isiRekaman = /** @type {Record<string, unknown>} */ (isi)
+            return { kode: teksAman(isiRekaman.kode), teks: teksAman(isiRekaman.teks) }
+          }),
+      })
+    }
+
+    if (barisTabel.length > 0) state.barisTabel = barisTabel
+
+    /** @type {Record<string, string>} */
+    const kunciSel = {}
+    const sumberSel = kunci.sel
+
+    if (sumberSel !== null && typeof sumberSel === 'object' && !Array.isArray(sumberSel)) {
+      for (const [kode, daftar] of Object.entries(/** @type {Record<string, unknown>} */ (sumberSel))) {
+        kunciSel[kode] = daftarTeks(daftar).join(', ')
+      }
+    }
+
+    state.kunciSel = kunciSel
+  }
+
+  if (soal.tipe === TIPE.garisBilangan) {
+    state.garisMin = konten.min === undefined || konten.min === null ? state.garisMin : String(konten.min)
+    state.garisMax = konten.max === undefined || konten.max === null ? state.garisMax : String(konten.max)
+    state.garisLangkah =
+      konten.langkah === undefined || konten.langkah === null ? state.garisLangkah : String(konten.langkah)
+    state.garisNilai = kunci.nilai === undefined || kunci.nilai === null ? '' : String(kunci.nilai)
+    state.garisToleransi =
+      kunci.toleransi === undefined || kunci.toleransi === null ? '0' : String(kunci.toleransi)
   }
 
   return state

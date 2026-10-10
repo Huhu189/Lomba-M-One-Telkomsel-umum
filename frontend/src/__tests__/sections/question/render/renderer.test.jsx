@@ -26,6 +26,16 @@ import SoalIsianAngka from '../../../../sections/question/render/SoalIsianAngka.
 import SoalPilihanGambar from '../../../../sections/question/render/SoalPilihanGambar.jsx'
 import SoalUrutGambar from '../../../../sections/question/render/SoalUrutGambar.jsx'
 import SoalSusunHuruf from '../../../../sections/question/render/SoalSusunHuruf.jsx'
+import SoalIsianRumpang, {
+  pecahRumpang,
+} from '../../../../sections/question/render/SoalIsianRumpang.jsx'
+import SoalKlasifikasi from '../../../../sections/question/render/SoalKlasifikasi.jsx'
+import SoalTabelIsian, {
+  barisTabel,
+} from '../../../../sections/question/render/SoalTabelIsian.jsx'
+import SoalGarisBilangan, {
+  titikGaris,
+} from '../../../../sections/question/render/SoalGarisBilangan.jsx'
 
 const kontenPg = {
   teks: 'Berapa hasil 4 + 5?',
@@ -451,5 +461,104 @@ describe('renderer tipe baru (gelombang 1)', () => {
     expect(html).toContain('Nama hewan mengeong.')
     expect(html.match(/susun-huruf-tombol/g)).toHaveLength(6)
     expect(html).not.toContain('kucing')
+  })
+})
+
+describe('renderer tipe baru (gelombang 2)', () => {
+  it('isian rumpang mengubah penanda menjadi kotak isian', () => {
+    expect(pecahRumpang('Hasil {{1}} dan {{2}}.')).toEqual([
+      { jenis: 'teks', isi: 'Hasil ' },
+      { jenis: 'lubang', nomor: '1' },
+      { jenis: 'teks', isi: ' dan ' },
+      { jenis: 'lubang', nomor: '2' },
+      { jenis: 'teks', isi: '.' },
+    ])
+
+    const konten = { teks: 'Ibu kota Indonesia adalah {{1}}.' }
+    const html = renderToStaticMarkup(<SoalIsianRumpang konten={konten} nilai={{ 1: 'Bandung' }} />)
+
+    expect(html.match(/rumpang-kotak/g)).toHaveLength(1)
+    expect(html).toContain('value="Bandung"')
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalIsianRumpang konten={konten} kunci={{ lubang: { 1: ['Jakarta'] } }} tampilkanKunci />,
+    )
+    expect(denganKunci).toContain('badge-kunci')
+    expect(denganKunci).toContain('Jakarta')
+  })
+
+  it('klasifikasi menyediakan satu pilihan kotak per item', () => {
+    const konten = {
+      teks: 'Kelompokkan hewan.',
+      item: [
+        { id: 'i1', teks: 'kucing' },
+        { id: 'i2', teks: 'ayam' },
+      ],
+      kotak: [
+        { id: 'k1', label: 'Mamalia' },
+        { id: 'k2', label: 'Unggas' },
+      ],
+    }
+    const html = renderToStaticMarkup(<SoalKlasifikasi konten={konten} nama="s9" />)
+
+    expect(html.match(/<select/g)).toHaveLength(2)
+    expect(html).toContain('name="s9-i1"')
+    expect(html).toContain('Mamalia')
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalKlasifikasi konten={konten} kunci={{ peta: { i1: 'k1', i2: 'k2' } }} tampilkanKunci />,
+    )
+    expect(denganKunci.match(/badge-kunci/g)).toHaveLength(2)
+    expect(denganKunci).toContain('kunci: Mamalia')
+  })
+
+  it('tabel isian mengisi hanya sel kosong', () => {
+    const konten = {
+      teks: 'Isi tabel.',
+      kolom: ['Soal', 'Hasil'],
+      baris: [
+        { id: 'r1', sel: [{ kode: 'r1c1', teks: '3 x 4' }, { kode: 'r1c2' }] },
+      ],
+    }
+
+    expect(barisTabel(konten.baris)).toEqual([
+      {
+        id: 'r1',
+        sel: [
+          { kode: 'r1c1', teks: '3 x 4' },
+          { kode: 'r1c2', teks: '' },
+        ],
+      },
+    ])
+
+    const html = renderToStaticMarkup(<SoalTabelIsian konten={konten} nilai={{ r1c2: '12' }} />)
+
+    expect(html.match(/<input/g)).toHaveLength(1)
+    expect(html).toContain('aria-label="Isian r1c2"')
+    expect(html).toContain('value="12"')
+    expect(html).toContain('3 x 4')
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalTabelIsian konten={konten} kunci={{ sel: { r1c2: ['12', 'dua belas'] } }} tampilkanKunci />,
+    )
+    expect(denganKunci).toContain('kunci: 12, dua belas')
+  })
+
+  it('garis bilangan menggambar tick yang bisa diketuk dan keyboard', () => {
+    expect(titikGaris(0, 3, 1)).toEqual([0, 1, 2, 3])
+    expect(titikGaris(0, 10, 0)).toEqual([])
+
+    const html = renderToStaticMarkup(
+      <SoalGarisBilangan konten={{ teks: 'Tandai 2.', min: 0, max: 3, langkah: 1 }} nilai={2} />,
+    )
+
+    expect(html).toContain('class="garis-bilangan"')
+    expect(html.match(/role="button"/g)).toHaveLength(4)
+    expect(html).toContain('aria-label="Tandai 2"')
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).not.toContain('badge-kunci')
   })
 })

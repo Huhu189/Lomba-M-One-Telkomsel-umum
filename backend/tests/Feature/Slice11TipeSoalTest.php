@@ -8,7 +8,12 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Services\AttemptService;
 use App\Sections\Attempt\Services\Pengacakan;
 use App\Sections\Question\Enums\TipeSoal;
+use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Registry\RegistryTipeSoal;
+use Database\Seeders\BankSoalSeeder;
+use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\RolesAndAdminSeeder;
+use Database\Seeders\SekolahSeeder;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,7 +48,37 @@ function muatan11(array $soal, bool $acakOpsi = false, int $seed = 20261010): ar
     return app(AttemptService::class)->payloadSoal($attempt);
 }
 
-it('mengenal enam tipe baru gelombang 1 dan menilainya sebagai objektif', function (): void {
+it('menyediakan contoh bank soal yang lolos validasi registry', function (): void {
+    $this->seed(RolesAndAdminSeeder::class);
+    $this->seed(SekolahSeeder::class);
+    $this->seed(MasterDataSeeder::class);
+    $this->seed(BankSoalSeeder::class);
+
+    $soal = Soal::query()->get();
+
+    // Contoh tipe baru wajib benar-benar bisa disimpan: kalau tidak, guru yang
+    // membuka bank soal demo menemukan soal yang ditolak server saat diperbarui.
+    $tipe = $soal->map(fn (Soal $satu): ?string => $satu->tipeAman()?->value)->sort()->values()->all();
+
+    expect($soal)->not->toBeEmpty()
+        ->and($tipe)->toContain(
+            'isian_rumpang',
+            'klasifikasi',
+            'tabel_isian',
+            'garis_bilangan',
+        );
+
+    foreach ($soal as $satu) {
+        $tipe = $satu->tipeAman();
+        $mentah = (string) $satu->getRawOriginal('tipe');
+
+        expect($tipe)->not->toBeNull("Tipe soal contoh '{$mentah}' tak dikenal")
+            ->and(RegistryTipeSoal::validasi($tipe, $satu->kontenSebagaiArray(), $satu->kunciSebagaiArray()))
+            ->toBe([]);
+    }
+});
+
+it('mengenal semua tipe baru sebagai objektif', function (): void {
     $tipe = [
         TipeSoal::PilihanGandaKompleks,
         TipeSoal::BenarSalahMajemuk,
@@ -51,6 +86,10 @@ it('mengenal enam tipe baru gelombang 1 dan menilainya sebagai objektif', functi
         TipeSoal::PilihanGambar,
         TipeSoal::UrutGambar,
         TipeSoal::SusunHuruf,
+        TipeSoal::IsianRumpang,
+        TipeSoal::Klasifikasi,
+        TipeSoal::TabelIsian,
+        TipeSoal::GarisBilangan,
     ];
 
     foreach ($tipe as $satu) {
@@ -203,6 +242,86 @@ it('mengacak huruf susun secara stabil per seed dan bisa diuji', function (): vo
     expect($huruf)->toBe(['c', 'g', 'i', 'k', 'n', 'u']);
 });
 
+it('menilai isian rumpang per lubang dan menolak penanda yang tidak berurutan', function (): void {
+    $konten = ['teks' => 'Ibu kota Indonesia adalah {{1}} dan 6 x 7 = {{2}}.'];
+    $kunci = ['lubang' => ['1' => ['Jakarta'], '2' => ['42', 'empat puluh dua']]];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::IsianRumpang, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::IsianRumpang, ['teks' => 'Tanpa penanda.'], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::IsianRumpang, ['teks' => '{{1}} lalu {{3}}.'], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::IsianRumpang, $konten, ['lubang' => ['1' => ['Jakarta']]]))->not->toBe([]);
+
+    expect(RegistryTipeSoal::bobot(TipeSoal::IsianRumpang, $konten, $kunci, ['1' => 'jakarta', '2' => '42']))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::IsianRumpang, $konten, $kunci, ['1' => ' Jakarta ', '2' => '41']))->toBe(0.5)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::IsianRumpang, $konten, $kunci, ['1' => 'Bandung', '2' => '41']))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::IsianRumpang, $konten, $kunci, []))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::IsianRumpang, $konten, $kunci, null))->toBe(0.0)
+        ->and(RegistryTipeSoal::nilai(TipeSoal::IsianRumpang, $konten, $kunci, ['1' => 'jakarta', '2' => '42']))->toBeTrue();
+});
+
+it('menilai klasifikasi per item dan menolak item tanpa kotak', function (): void {
+    $konten = [
+        'teks' => 'Kelompokkan hewan.',
+        'item' => [
+            ['id' => 'i1', 'teks' => 'kucing'],
+            ['id' => 'i2', 'teks' => 'ayam'],
+            ['id' => 'i3', 'teks' => 'sapi'],
+        ],
+        'kotak' => [['id' => 'k1', 'label' => 'Mamalia'], ['id' => 'k2', 'label' => 'Unggas']],
+    ];
+    $kunci = ['peta' => ['i1' => 'k1', 'i2' => 'k2', 'i3' => 'k1']];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::Klasifikasi, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::Klasifikasi, $konten, ['peta' => ['i1' => 'k1', 'i2' => 'k2']]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::Klasifikasi, $konten, ['peta' => ['i1' => 'k9', 'i2' => 'k2', 'i3' => 'k1']]))->not->toBe([]);
+
+    expect(RegistryTipeSoal::bobot(TipeSoal::Klasifikasi, $konten, $kunci, ['i1' => 'k1', 'i2' => 'k2', 'i3' => 'k1']))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::Klasifikasi, $konten, $kunci, ['i1' => 'k1', 'i2' => 'k1', 'i3' => 'k1']))->toBe(2 / 3)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::Klasifikasi, $konten, $kunci, []))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::Klasifikasi, $konten, $kunci, null))->toBe(0.0);
+});
+
+it('menilai tabel isian per sel dan menolak kode sel duplikat', function (): void {
+    $konten = [
+        'teks' => 'Isi tabel hasil perkalian.',
+        'kolom' => ['Soal', 'Hasil'],
+        'baris' => [
+            ['id' => 'r1', 'sel' => [['kode' => 'r1c1', 'teks' => '3 x 4'], ['kode' => 'r1c2']]],
+            ['id' => 'r2', 'sel' => [['kode' => 'r2c1', 'teks' => '5 x 5'], ['kode' => 'r2c2']]],
+        ],
+    ];
+    $kunci = ['sel' => ['r1c2' => ['12'], 'r2c2' => ['25']]];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::TabelIsian, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TabelIsian, $konten, ['sel' => ['r1c2' => ['12']]]))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::TabelIsian, [
+            'teks' => 'x',
+            'kolom' => ['A'],
+            'baris' => [['id' => 'r1', 'sel' => [['kode' => 's1'], ['kode' => 's1']]]],
+        ], ['sel' => ['s1' => ['a']]]))->not->toBe([]);
+
+    expect(RegistryTipeSoal::bobot(TipeSoal::TabelIsian, $konten, $kunci, ['r1c2' => '12', 'r2c2' => '25']))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TabelIsian, $konten, $kunci, ['r1c2' => '12', 'r2c2' => '26']))->toBe(0.5)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TabelIsian, $konten, $kunci, []))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::TabelIsian, $konten, $kunci, null))->toBe(0.0);
+});
+
+it('menilai garis bilangan dengan toleransi dan menolak rentang terbalik', function (): void {
+    $konten = ['teks' => 'Tandai bilangan yang dimaksud.', 'min' => 0, 'max' => 10, 'langkah' => 1];
+    $kunci = ['nilai' => 7, 'toleransi' => 0];
+
+    expect(RegistryTipeSoal::validasi(TipeSoal::GarisBilangan, $konten, $kunci))->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::GarisBilangan, ['teks' => 'x', 'min' => 10, 'max' => 0, 'langkah' => 1], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::GarisBilangan, ['teks' => 'x', 'min' => 0, 'max' => 10, 'langkah' => 0], $kunci))->not->toBe([])
+        ->and(RegistryTipeSoal::validasi(TipeSoal::GarisBilangan, $konten, ['nilai' => 20, 'toleransi' => 0]))->not->toBe([]);
+
+    expect(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, 7))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, '7'))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, 8))->toBe(0.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, ['nilai' => 6.5, 'toleransi' => 0.5], '6,5'))->toBe(1.0)
+        ->and(RegistryTipeSoal::bobot(TipeSoal::GarisBilangan, $konten, $kunci, null))->toBe(0.0);
+});
+
 it('payload murid tidak memuat kunci dan menyembunyikan huruf kata', function (): void {
     $muatan = muatan11([
         [
@@ -250,4 +369,55 @@ it('payload murid tidak memuat kunci dan menyembunyikan huruf kata', function ()
 
     // Pilihan gambar: daftar gambar dikirim, id kunci tidak ditandai.
     expect($muatan[2]['konten']['opsi'])->toHaveCount(2);
+});
+
+it('payload tipe gelombang 2 membawa data yang dibutuhkan tanpa kunci', function (): void {
+    $muatan = muatan11([
+        [
+            'id' => 12,
+            'tipe' => 'tabel_isian',
+            'konten' => [
+                'teks' => 'Isi tabel.',
+                'kolom' => ['Soal', 'Hasil'],
+                'baris' => [
+                    ['id' => 'r1', 'sel' => [['kode' => 'r1c1', 'teks' => '3 x 4'], ['kode' => 'r1c2']]],
+                ],
+            ],
+            'kunci' => ['sel' => ['r1c2' => ['12']]],
+            'skor' => 4,
+        ],
+        [
+            'id' => 13,
+            'tipe' => 'garis_bilangan',
+            'konten' => ['teks' => 'Tandai.', 'min' => 0, 'max' => 10, 'langkah' => 1],
+            'kunci' => ['nilai' => 7, 'toleransi' => 0],
+            'skor' => 4,
+        ],
+        [
+            'id' => 14,
+            'tipe' => 'klasifikasi',
+            'konten' => [
+                'teks' => 'Kelompokkan.',
+                'item' => [['id' => 'i1', 'teks' => 'kucing'], ['id' => 'i2', 'teks' => 'ayam']],
+                'kotak' => [['id' => 'k1', 'label' => 'Mamalia'], ['id' => 'k2', 'label' => 'Unggas']],
+            ],
+            'kunci' => ['peta' => ['i1' => 'k1', 'i2' => 'k2']],
+            'skor' => 4,
+        ],
+    ]);
+
+    expect($muatan[0]['konten']['kolom'])->toBe(['Soal', 'Hasil'])
+        ->and($muatan[0]['konten']['baris'])->toHaveCount(1)
+        ->and($muatan[1]['konten']['min'])->toBe(0)
+        ->and($muatan[1]['konten']['max'])->toBe(10)
+        ->and($muatan[1]['konten']['langkah'])->toBe(1)
+        ->and($muatan[2]['konten']['kotak'])->toHaveCount(2)
+        ->and($muatan[2]['konten']['item'])->toHaveCount(2);
+
+    foreach ($muatan as $soal) {
+        expect($soal['konten'])->not->toHaveKey('kunci')
+            ->and($soal['konten'])->not->toHaveKey('nilai')
+            ->and($soal['konten'])->not->toHaveKey('peta')
+            ->and($soal['konten'])->not->toHaveKey('sel');
+    }
 });

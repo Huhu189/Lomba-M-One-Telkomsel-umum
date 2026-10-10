@@ -24,7 +24,15 @@ import {
   MIN_HURUF,
   MAKS_HURUF,
   MAKS_PETUNJUK,
+  MAKS_LUBANG,
+  MAKS_ITEM_KLASIFIKASI,
+  MIN_KOTAK,
+  MAKS_KOTAK,
+  MAKS_SEL,
+  MAKS_RENTANG_GARIS,
   TIPE_TANPA_TEKS,
+  nomorLubangDariTeks,
+  petaJawabanDariRekaman,
   urutanDariItem,
   urutanDariItemGambar,
 } from './tipeSoal.js'
@@ -97,8 +105,174 @@ export function validasiSoal(state) {
   if (state.tipe === TIPE.pilihanGambar) galat.push(...validasiPilihanGambar(state))
   if (state.tipe === TIPE.urutGambar) galat.push(...validasiUrutGambar(state))
   if (state.tipe === TIPE.susunHuruf) galat.push(...validasiSusunHuruf(state))
+  if (state.tipe === TIPE.isianRumpang) galat.push(...validasiIsianRumpang(state))
+  if (state.tipe === TIPE.klasifikasi) galat.push(...validasiKlasifikasi(state))
+  if (state.tipe === TIPE.tabelIsian) galat.push(...validasiTabelIsian(state))
+  if (state.tipe === TIPE.garisBilangan) galat.push(...validasiGarisBilangan(state))
 
   return galat
+}
+
+/** Skema Zod kunci tipe gelombang 2. */
+export const skemaIsianRumpangKunci = z
+  .object({ lubang: z.record(z.string(), z.array(z.string().min(1)).min(1)) })
+  .strict()
+
+export const skemaKlasifikasiKunci = z.object({ peta: z.record(z.string(), z.string().min(1)) }).strict()
+
+export const skemaTabelIsianKunci = z.object({ sel: z.record(z.string(), z.array(z.string().min(1)).min(1)) }).strict()
+
+export const skemaGarisBilanganKunci = z
+  .object({ nilai: z.number(), toleransi: z.number().min(0, 'Toleransi tidak boleh negatif.') })
+  .strict()
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiIsianRumpang(state) {
+  const galat = []
+  const nomor = nomorLubangDariTeks(state.teks)
+
+  if (nomor.length === 0) {
+    galat.push('Isian rumpang wajib memuat penanda {{1}}, {{2}}, … pada isi soal.')
+  } else if (nomor.join(',') !== nomor.map((_, indeks) => indeks + 1).join(',')) {
+    galat.push('Penanda isian rumpang wajib berurutan mulai dari {{1}} tanpa lompatan.')
+  } else if (nomor.length > MAKS_LUBANG) {
+    galat.push(`Isian rumpang maksimal ${MAKS_LUBANG} lubang.`)
+  }
+
+  const peta = petaJawabanDariRekaman(state.lubang)
+
+  for (const satu of nomor) {
+    if ((peta[String(satu)] ?? []).length === 0) {
+      galat.push(`Lubang {{${satu}}} wajib punya minimal satu jawaban diterima.`)
+    }
+  }
+
+  const hasil = skemaIsianRumpangKunci.safeParse({ lubang: peta })
+  if (!hasil.success) galat.push('Setiap lubang wajib punya daftar jawaban diterima.')
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiKlasifikasi(state) {
+  const galat = []
+
+  if (state.itemKlasifikasi.length < MIN_ITEM) galat.push(`Klasifikasi wajib punya minimal ${MIN_ITEM} item.`)
+  if (state.itemKlasifikasi.length > MAKS_ITEM_KLASIFIKASI) {
+    galat.push(`Klasifikasi maksimal ${MAKS_ITEM_KLASIFIKASI} item.`)
+  }
+  if (state.kotak.length < MIN_KOTAK) galat.push(`Klasifikasi wajib punya minimal ${MIN_KOTAK} kotak.`)
+  if (state.kotak.length > MAKS_KOTAK) galat.push(`Klasifikasi maksimal ${MAKS_KOTAK} kotak.`)
+
+  if (state.itemKlasifikasi.some((satu) => satu.teks.trim() === '')) {
+    galat.push('Setiap item wajib punya teks.')
+  }
+  if (state.kotak.some((satu) => satu.teks.trim() === '')) galat.push('Setiap kotak wajib punya label.')
+
+  const idItem = state.itemKlasifikasi.map((satu) => satu.id)
+  const idKotak = state.kotak.map((satu) => satu.id)
+
+  if (new Set(idItem).size !== idItem.length) galat.push('Id item tidak boleh duplikat.')
+  if (new Set(idKotak).size !== idKotak.length) galat.push('Id kotak tidak boleh duplikat.')
+
+  const peta = state.petaKlasifikasi
+
+  for (const satu of state.itemKlasifikasi) {
+    const kotak = peta[satu.id] ?? ''
+    if (kotak === '') galat.push('Setiap item wajib punya kotak di kunci.')
+    else if (!idKotak.includes(kotak)) galat.push('Ada item yang menunjuk kotak tak dikenal.')
+  }
+
+  const hasil = skemaKlasifikasiKunci.safeParse({ peta })
+  if (!hasil.success) galat.push('Kunci klasifikasi belum lengkap.')
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiTabelIsian(state) {
+  const galat = []
+
+  const kolom = state.kolom
+    .split(',')
+    .map((satu) => satu.trim())
+    .filter((satu) => satu !== '')
+
+  if (kolom.length === 0) galat.push('Tabel isian wajib punya minimal satu nama kolom.')
+  if (state.barisTabel.length === 0) galat.push('Tabel isian wajib punya minimal satu baris.')
+
+  /** @type {string[]} */
+  const kode = []
+
+  for (const baris of state.barisTabel) {
+    if (baris.sel.length === 0) {
+      galat.push('Setiap baris wajib punya minimal satu sel.')
+      continue
+    }
+
+    for (const sel of baris.sel) {
+      if (sel.kode.trim() === '') galat.push('Setiap sel wajib punya kode.')
+      kode.push(sel.kode)
+    }
+  }
+
+  if (kode.length > MAKS_SEL) galat.push(`Tabel isian maksimal ${MAKS_SEL} sel.`)
+  if (new Set(kode).size !== kode.length) galat.push('Kode sel tidak boleh duplikat.')
+
+  // Hanya sel kosong yang dinilai, jadi hanya sel itu yang wajib punya kunci.
+  const selKosong = state.barisTabel.flatMap((baris) =>
+    baris.sel.filter((sel) => sel.teks.trim() === '').map((sel) => sel.kode),
+  )
+
+  for (const satu of selKosong) {
+    const jawaban = state.kunciSel[satu] ?? ''
+    if (jawaban.trim() === '') galat.push(`Sel ${satu} wajib punya minimal satu jawaban diterima.`)
+  }
+
+  const hasil = skemaTabelIsianKunci.safeParse({ sel: petaJawabanDariRekaman(state.kunciSel) })
+  if (!hasil.success) galat.push('Setiap sel kosong wajib punya daftar jawaban diterima.')
+
+  return [...new Set(galat)]
+}
+
+/**
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function validasiGarisBilangan(state) {
+  const galat = []
+  const min = Number(state.garisMin)
+  const max = Number(state.garisMax)
+  const langkah = Number(state.garisLangkah)
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(langkah)) {
+    galat.push('Garis bilangan wajib punya angka min, max, dan langkah.')
+    return galat
+  }
+
+  if (max <= min) galat.push('Nilai max wajib lebih besar dari min.')
+  if (langkah <= 0) galat.push('Langkah wajib lebih besar dari 0.')
+  if (max - min > MAKS_RENTANG_GARIS) galat.push(`Rentang maksimal ${MAKS_RENTANG_GARIS}.`)
+
+  const nilai = Number(state.garisNilai)
+  const toleransi = Number(state.garisToleransi || 0)
+
+  const hasil = skemaGarisBilanganKunci.safeParse({ nilai, toleransi })
+  if (!hasil.success) galat.push('Kunci garis bilangan wajib angka dengan toleransi tidak negatif.')
+  else if (Number.isFinite(min) && Number.isFinite(max) && (nilai < min || nilai > max)) {
+    galat.push('Nilai kunci wajib berada di antara min dan max.')
+  }
+
+  return [...new Set(galat)]
 }
 
 /**
@@ -546,6 +720,34 @@ export function kelengkapanSoal(state) {
     daftar.push({
       ok: validasiSusunHuruf(state).length === 0,
       teks: `Petunjuk dan kata (${MIN_HURUF}–${MAKS_HURUF} huruf) terisi`,
+    })
+  }
+
+  if (state.tipe === TIPE.isianRumpang) {
+    daftar.push({
+      ok: validasiIsianRumpang(state).length === 0,
+      teks: 'Penanda {{1}}…{{n}} berurutan dan tiap lubang punya jawaban',
+    })
+  }
+
+  if (state.tipe === TIPE.klasifikasi) {
+    daftar.push({
+      ok: validasiKlasifikasi(state).length === 0,
+      teks: `Item (minimal ${MIN_ITEM}), kotak (minimal ${MIN_KOTAK}), dan kunci lengkap`,
+    })
+  }
+
+  if (state.tipe === TIPE.tabelIsian) {
+    daftar.push({
+      ok: validasiTabelIsian(state).length === 0,
+      teks: 'Kolom, baris, dan jawaban tiap sel kosong terisi',
+    })
+  }
+
+  if (state.tipe === TIPE.garisBilangan) {
+    daftar.push({
+      ok: validasiGarisBilangan(state).length === 0,
+      teks: 'Rentang, langkah, dan nilai kunci wajar',
     })
   }
 
