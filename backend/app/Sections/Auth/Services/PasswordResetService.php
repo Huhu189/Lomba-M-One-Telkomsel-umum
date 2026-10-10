@@ -15,6 +15,16 @@ class PasswordResetService
     /** Penanda tautan terakhir gagal karena tokennya sudah pernah dipakai. */
     private bool $tautanTerpakai = false;
 
+    /**
+     * Kata sandi benar-benar terganti pada percobaan terakhir.
+     *
+     * Respons endpoint selalu 200 dengan skema yang sama (anti user-enumeration),
+     * jadi klien butuh penanda eksplisit: tanpa ini UI pernah menampilkan
+     * "kata sandi sudah diganti" untuk token yang tidak valid — padahal sandi
+     * lama tidak berubah sama sekali.
+     */
+    private bool $berhasil = false;
+
     public function __construct(private readonly PengirimEmail $email) {}
 
     /**
@@ -62,6 +72,7 @@ class PasswordResetService
         );
 
         if ($status === Password::PASSWORD_RESET) {
+            $this->berhasil = true;
             // Ingat token yang BARU SAJA dipakai (cukup hash-nya — token mentah
             // tidak pernah disimpan). Bila tautan yang sama dibuka lagi, kita bisa
             // bilang dengan jujur "tautan ini sudah pernah dipakai" alih-alih
@@ -86,6 +97,12 @@ class PasswordResetService
     public function tautanSudahDipakai(): bool
     {
         return $this->tautanTerpakai;
+    }
+
+    /** Kata sandi benar-benar berubah pada percobaan terakhir? */
+    public function berhasil(): bool
+    {
+        return $this->berhasil;
     }
 
     private function kunciTokenDipakai(string $email): string

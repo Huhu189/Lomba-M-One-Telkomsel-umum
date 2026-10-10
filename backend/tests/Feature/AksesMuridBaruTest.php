@@ -159,7 +159,9 @@ it('kata sandi toleran spasi di awal/akhir saat daftar, masuk, dan atur ulang', 
         'email' => 'spasi-tepi@murid.test',
         'password' => '  sandi-baru-88  ',
         'password_confirmation' => '  sandi-baru-88  ',
-    ])->assertOk()->assertJsonPath('tautan_dipakai', false);
+    ])->assertOk()
+        ->assertJsonPath('tautan_dipakai', false)
+        ->assertJsonPath('berhasil', true);
 
     expect(Hash::check('sandi-baru-88', $murid->refresh()->password))->toBeTrue();
 
@@ -184,13 +186,15 @@ it('tautan reset yang sudah dipakai ditandai, token acak tidak', function (): vo
 
     $this->postJson('/api/v1/auth/atur-ulang-sandi', $muatan())
         ->assertOk()
-        ->assertJsonPath('tautan_dipakai', false);
+        ->assertJsonPath('tautan_dipakai', false)
+        ->assertJsonPath('berhasil', true);
 
     // Tautan dipakai lagi — tanpa UI tambahan pun, jawabannya jujur.
     $ulang = $this->postJson('/api/v1/auth/atur-ulang-sandi', $muatan())->assertOk();
 
     expect($ulang->json('message'))->toContain('sudah pernah dipakai')
-        ->and($ulang->json('tautan_dipakai'))->toBeTrue();
+        ->and($ulang->json('tautan_dipakai'))->toBeTrue()
+        ->and($ulang->json('berhasil'))->toBeFalse();
 
     // Token memang tidak pernah ada → bukan "terpakai", cukup "tidak valid".
     $acak = $this->postJson('/api/v1/auth/atur-ulang-sandi', [
@@ -201,5 +205,11 @@ it('tautan reset yang sudah dipakai ditandai, token acak tidak', function (): vo
     ])->assertOk();
 
     expect($acak->json('message'))->toContain('tidak valid atau sudah pernah dipakai')
-        ->and($acak->json('tautan_dipakai'))->toBeFalse();
+        ->and($acak->json('tautan_dipakai'))->toBeFalse()
+        // Penanda jujur untuk UI: respons tetap 200 (skema seragam), tetapi kata
+        // sandi TIDAK berubah — jangan sampai layar berkata "sudah diganti"
+        // padahal masih memakai sandi lama.
+        ->and($acak->json('berhasil'))->toBeFalse();
+
+    expect(Hash::check('sandi-baru-kuat-99', $murid->refresh()->password))->toBeTrue();
 });

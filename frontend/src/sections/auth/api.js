@@ -27,6 +27,10 @@ export const skemaPesan = z.object({ message: z.string() })
 export const skemaResponAturUlang = z.object({
   message: z.string(),
   tautan_dipakai: z.boolean().optional().default(false),
+  // Server selalu menjawab 200 dengan skema sama (anti user-enumeration), jadi
+  // `berhasil` yang menentukan apakah kata sandi benar-benar terganti. Nilai
+  // bawaan false = aman: respons tanpa penanda tidak dianggap sukses.
+  berhasil: z.boolean().optional().default(false),
 })
 
 /** Skema diagnostik /v1/sesi. */

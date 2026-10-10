@@ -59,6 +59,14 @@ export default function HalamanAturUlangSandi() {
         return
       }
 
+      if (!hasil.berhasil) {
+        // Token salah atau kedaluwarsa. Server menjawab 200 agar skema respons
+        // seragam, tetapi kata sandi TIDAK berubah — jangan pernah menampilkan
+        // halaman "kata sandi sudah diganti" untuk kasus ini.
+        setError('root', { message: hasil.message })
+        return
+      }
+
       setBerhasil(true)
       tampilkanToast('sukses', hasil.message)
     } catch (galat) {

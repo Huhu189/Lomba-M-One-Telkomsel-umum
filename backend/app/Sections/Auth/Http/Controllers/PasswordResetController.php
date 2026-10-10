@@ -42,6 +42,10 @@ class PasswordResetController extends Controller
         return response()->json([
             'message' => $pesan,
             'tautan_dipakai' => $reset->tautanSudahDipakai(),
+            // Penanda jujur apakah kata sandi benar-benar berubah: token salah atau
+            // kedaluwarsa tetap dijawab 200 (skema & pesan seragam), tetapi UI
+            // tidak boleh menampilkan "kata sandi sudah diganti".
+            'berhasil' => $reset->berhasil(),
         ]);
     }
 }
