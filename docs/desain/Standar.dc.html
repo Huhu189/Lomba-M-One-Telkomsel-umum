@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Standar Development</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8FAFC;color:#0F172A;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit}
+.kartu{background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:20px 22px}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569}
+.b{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;border:2px solid #0F172A;background:#fff;color:#0F172A;white-space:nowrap}
+.b.u{background:#0EA5E9;box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.b.k{background:#B91C1C;border-color:#7F1111;color:#fff}
+.b.u.h{background:#38BDF8}.b.k.h{background:#991B1B}.b.h:not(.u):not(.k){background:#EEF2F7}
+.b.f{outline:3px solid #1A2F65;outline-offset:2px}
+.b.x{opacity:.55;box-shadow:none}
+.b.m:before{content:"";width:16px;height:16px;border-radius:50%;border:3px solid currentColor;border-right-color:transparent;animation:p .8s linear infinite}
+@keyframes p{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.b.m:before{animation:none}}
+.cincin-lama{outline:3px solid #0EA5E9;outline-offset:2px}
+.cincin-baru{outline:3px solid #1A2F65;outline-offset:2px;box-shadow:0 0 0 2px #fff}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:99px;font-size:14px;font-weight:700;border:1.5px solid}
+pre{margin:0;background:#0F172A;color:#E6EAF5;border-radius:14px;padding:18px 20px;font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto;white-space:pre}
+.ok{color:#15803D;font-weight:700}.no{color:#B91C1C;font-weight:700}
+</style>
+</helmet>
+<div style="max-width:1200px;margin:0 auto;padding:56px 32px 72px;display:flex;flex-direction:column;gap:48px;box-sizing:border-box">
+
+<header style="display:flex;flex-direction:column;gap:10px">
+<span class="lbl">Standar development · berlaku untuk semua halaman</span>
+<h1 style="font-size:40px;line-height:1.1;color:#1A2F65">Satu lembar aturan agar halaman baru otomatis konsisten</h1>
+<p style="max-width:760px;color:#475569;font-size:18px">Palet mengikuti chunk theme: F8FAFC, 0EA5E9, 1A2F65, 95A7D5, dan sorot EEF385. Yang ditambahkan adalah skala, status komponen, token mode gelap, dan daftar periksa untuk review kode.</p>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">1. Warna dan kontras</h2>
+<div class="kartu" style="padding:0;overflow:hidden">
+<sc-for list="{{kontras}}" as="k" hint-placeholder-count="6">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 20px;border-top:1.5px solid #E2E8F0">
+<span style="width:96px;height:44px;border-radius:10px;border:1.5px solid #64748B;background:{{k.bg}};color:{{k.fg}};display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-family:Nunito,sans-serif">Aa</span>
+<div style="flex:1 1 220px"><strong>{{k.nama}}</strong><p style="font-size:13px;color:#475569">{{k.hex}}</p></div>
+<span style="font-family:Nunito,sans-serif;font-weight:800;font-size:20px;min-width:70px;text-align:right">{{k.rasio}}:1</span>
+<span class="{{k.kelas}}" style="min-width:150px;text-align:right">{{k.hasil}}</span>
+</div>
+</sc-for>
+</div>
+<p style="font-size:14px;color:#475569">Batas: teks biasa 4,5:1. Teks besar dan elemen UI (garis input, cincin fokus) 3:1. Rasio dihitung dari nilai hex pada chunk theme.</p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">2. Cincin fokus: sebelum dan sesudah</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+<div class="kartu" style="display:flex;flex-direction:column;gap:14px">
+<span class="lbl">Cincin aksen sky · 2,65:1</span>
+<div style="display:flex;gap:18px;flex-wrap:wrap;padding:8px"><span class="b cincin-lama" style="background:#fff">Tepi</span><span class="b u cincin-lama">Utama</span></div>
+<p style="font-size:14px;color:#475569">Warna sky di atas latar terang nyaris hilang, apalagi saat tombolnya juga sky. Kode saat ini memakai teal #0FA3B8 dengan masalah yang sama (2,70:1).</p>
+</div>
+<div class="kartu" style="display:flex;flex-direction:column;gap:14px;border-color:#15803D">
+<span class="lbl" style="color:#15803D">Usulan cincin indigo · 12,25:1</span>
+<div style="display:flex;gap:18px;flex-wrap:wrap;padding:8px"><span class="b cincin-baru" style="background:#fff">Tepi</span><span class="b u cincin-baru">Utama</span></div>
+<p style="font-size:14px;color:#475569">Indigo 3 px dengan lapisan putih. Terlihat di atas latar, kartu putih, maupun tombol sky. Di mode gelap cincin berganti #38BDF8 (7,28:1).</p>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">3. Tombol: varian dan status</h2>
+<div class="kartu" style="display:flex;flex-direction:column;gap:18px;overflow-x:auto">
+<div style="display:grid;grid-template-columns:90px repeat(5,minmax(130px,1fr));gap:12px;align-items:center;min-width:760px">
+<span></span><span class="lbl">Biasa</span><span class="lbl">Hover</span><span class="lbl">Fokus</span><span class="lbl">Nonaktif</span><span class="lbl">Memuat</span>
+<sc-for list="{{matriks}}" as="r" hint-placeholder-count="3">
+<strong>{{r.nama}}</strong>
+<sc-for list="{{r.sel}}" as="c" hint-placeholder-count="5">
+<span><span class="{{c.kelas}}">{{c.teks}}</span></span>
+</sc-for>
+</sc-for>
+</div>
+</div>
+<p style="font-size:14px;color:#475569">Tinggi minimum 44 px untuk aplikasi umum, 48 px di layar ulangan, 56 px di HP. Tombol bahaya hanya muncul di dalam dialog konfirmasi, tidak langsung di baris tabel.</p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">4. Skala dan status pesan</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+<div class="kartu" style="display:flex;flex-direction:column;gap:12px">
+<span class="lbl">Spasi (kelipatan 4)</span>
+<div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+<sc-for list="{{spasi}}" as="s" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;align-items:center;gap:4px"><span style="width:{{s}}px;height:{{s}}px;background:#0EA5E9;border-radius:3px;display:block"></span><span style="font-size:12px;color:#475569">{{s}}</span></div></sc-for>
+</div>
+<span class="lbl" style="margin-top:6px">Radius</span>
+<div style="display:flex;gap:12px;align-items:center">
+<span style="width:48px;height:48px;border:2px solid #0F172A;border-radius:12px"></span><span style="width:48px;height:48px;border:2px solid #0F172A;border-radius:16px"></span><span style="width:48px;height:48px;border:2px solid #0F172A;border-radius:20px"></span><span style="width:84px;height:36px;border:2px solid #0F172A;border-radius:99px"></span>
+</div>
+<p style="font-size:13px;color:#475569">12 kontrol · 16 kartu · 20 dialog · pil untuk chip</p>
+</div>
+<div class="kartu" style="display:flex;flex-direction:column;gap:10px">
+<span class="lbl">Tipografi</span>
+<sc-for list="{{tipe}}" as="t" hint-placeholder-count="5"><div style="display:flex;align-items:baseline;gap:12px"><span style="width:56px;font-size:12px;color:#475569">{{t.px}} px</span><span style="font-family:{{t.fam}};font-weight:{{t.bobot}};font-size:{{t.px}}px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{t.nama}}</span></div></sc-for>
+</div>
+<div class="kartu" style="display:flex;flex-direction:column;gap:12px">
+<span class="lbl">Status: ikon + teks, bukan warna saja</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<span class="badge" style="background:#DCFCE7;color:#14532D;border-color:#15803D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Selesai</span>
+<span class="badge" style="background:#FDE9C8;color:#6B3500;border-color:#B45309"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>Perlu dicek</span>
+<span class="badge" style="background:#FEE2E2;color:#7F1111;border-color:#B91C1C"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Gagal</span>
+<span class="badge" style="background:#E0F2FE;color:#0C4A6E;border-color:#0369A1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 11v6M12 7h.01"/></svg>Info</span>
+</div>
+<span class="lbl" style="margin-top:6px">Keadaan memuat dan kosong</span>
+<div style="display:flex;flex-direction:column;gap:8px" aria-hidden="true">
+<span style="height:16px;width:70%;border-radius:8px;background:#E2E8F0"></span><span style="height:16px;width:90%;border-radius:8px;background:#EEF2F7"></span><span style="height:16px;width:50%;border-radius:8px;background:#E2E8F0"></span>
+</div>
+<p style="font-size:13px;color:#475569">Skeleton meniru bentuk baris asli. Keadaan kosong wajib punya satu tindakan.</p>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">5. Komponen yang perlu ditambahkan ke shared/ui</h2>
+<p style="color:#475569;max-width:820px">DialogKonfirmasi memakai elemen &lt;dialog&gt; bawaan browser, jadi fokus terkunci dan tombol Esc berfungsi tanpa kode tambahan. Berkas di bawah ini lengkap dan siap disalin ke src/shared/ui/DialogKonfirmasi.jsx. Gaya .dialog ditulis di theme.css memakai token yang sudah ada.</p>
+<pre>{{kodeDialog}}</pre>
+<pre>{{kodePakai}}</pre>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+<sc-for list="{{komponenBaru}}" as="k" hint-placeholder-count="4">
+<div class="kartu" style="display:flex;flex-direction:column;gap:4px"><strong style="font-family:Nunito,sans-serif;font-size:17px">{{k.nama}}</strong><p style="font-size:14px;color:#475569">{{k.isi}}</p></div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">6. Skala universal untuk murid SD (kelas 1–6)</h2>
+<p style="color:#475569;max-width:820px">Satu tampilan untuk semua kelas, dengan ukuran di tengah-tengah: cukup besar untuk kelas 1–3, tidak kekanak-kanakan untuk kelas 6. Tampilan guru tetap lebih rapat.</p>
+<div class="kartu" style="padding:0;overflow:hidden">
+<sc-for list="{{skalaMurid}}" as="r" hint-placeholder-count="7">
+<div style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 20px;border-top:1.5px solid #E2E8F0;align-items:baseline">
+<strong style="flex:1 1 200px">{{r.hal}}</strong>
+<span style="flex:1 1 150px;color:#475569">Guru: {{r.guru}}</span>
+<span style="flex:1 1 200px;font-weight:700">Murid: {{r.murid}}</span>
+</div>
+</sc-for>
+</div>
+<div class="kartu" style="display:flex;flex-direction:column;gap:8px">
+<span class="lbl">Istilah yang dipakai di layar murid</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{istilah}}" as="i" hint-placeholder-count="8"><span style="padding:4px 12px;border-radius:99px;background:#EEF2F7;font-size:15px"><span style="color:#475569;text-decoration:line-through">{{i.lama}}</span> → <strong>{{i.baru}}</strong></span></sc-for>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">7. Token tema (siap tempel ke theme.css)</h2>
+<p style="color:#475569;max-width:820px">Nama variabel tetap seperti di kode sekarang, hanya nilainya yang diselaraskan dengan chunk theme. Satu variabel baru: --cincin-fokus. Hex hanya boleh ada di dua blok ini, seperti yang dijaga tes tema.</p>
+<pre>{{kodeToken}}</pre>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">8. Aturan dari spesifikasi lomba yang berlaku untuk UI</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+<sc-for list="{{aturan}}" as="a" hint-placeholder-count="8">
+<div class="kartu" style="display:flex;flex-direction:column;gap:4px"><strong style="font-family:Nunito,sans-serif;font-size:17px">{{a.judul}}</strong><p style="font-size:14px;color:#475569">{{a.isi}}</p></div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+<h2 style="font-size:26px;color:#1A2F65">9. Definition of Done untuk setiap halaman</h2>
+<div class="kartu" style="display:flex;flex-direction:column;gap:2px;padding:8px 22px">
+<sc-for list="{{dod}}" as="d" hint-placeholder-count="10">
+<div style="display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-top:1.5px solid #E2E8F0">
+<span style="flex:none;width:24px;height:24px;border-radius:7px;border:2px solid #64748B;margin-top:2px"></span>
+<p><strong>{{d.judul}}</strong> <span style="color:#475569">{{d.isi}}</span></p>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const k = (nama, hex, fg, bg, rasio, ok) => ({ nama, hex, fg, bg, rasio, kelas: ok ? 'ok' : 'no', hasil: ok ? 'Lulus' : 'Gagal untuk elemen UI' });
+    const sel = (v) => ['', 'h', 'f', 'x', 'm'].map((st, i) => ({
+      kelas: ('b ' + v + ' ' + st).trim(),
+      teks: i === 4 ? 'Menyimpan' : i === 3 ? 'Nonaktif' : v === 'k' ? 'Hapus' : v === 'u' ? 'Simpan' : 'Batal'
+    }));
+    const dialog = [
+      "import { useEffect, useId, useRef } from 'react'",
+      "import { Tombol } from './Tombol.jsx'",
+      "",
+      "/**",
+      " * Dialog konfirmasi berbasis <dialog> (fokus terkunci, Esc menutup).",
+      " * @param {{",
+      " *   buka: boolean,",
+      " *   judul: string,",
+      " *   labelYa: string,",
+      " *   bahaya?: boolean,",
+      " *   memuat?: boolean,",
+      " *   onYa: () => void,",
+      " *   onBatal: () => void,",
+      " *   children?: import('react').ReactNode,",
+      " * }} props",
+      " */",
+      "export default function DialogKonfirmasi({",
+      "  buka, judul, labelYa, bahaya = false, memuat = false, onYa, onBatal, children,",
+      "}) {",
+      "  const ref = useRef(null)",
+      "  const idJudul = useId()",
+      "  const idIsi = useId()",
+      "",
+      "  useEffect(() => {",
+      "    const d = ref.current",
+      "    if (!d) return",
+      "    if (buka && !d.open) d.showModal()",
+      "    if (!buka && d.open) d.close()",
+      "  }, [buka])",
+      "",
+      "  return (",
+      "    <dialog",
+      "      ref={ref}",
+      "      className={bahaya ? 'dialog dialog-bahaya' : 'dialog'}",
+      "      role=\"alertdialog\"",
+      "      aria-labelledby={idJudul}",
+      "      aria-describedby={idIsi}",
+      "      onCancel={(e) => { e.preventDefault(); if (!memuat) onBatal() }}",
+      "    >",
+      "      <h2 id={idJudul} className=\"h4 fw-bold\">{judul}</h2>",
+      "      <div id={idIsi} className=\"teks-lembut mb-4\">{children}</div>",
+      "      <div className=\"d-flex flex-wrap justify-content-end gap-2\">",
+      "        <Tombol varian=\"tepi\" onClick={onBatal} disabled={memuat} autoFocus>Batal</Tombol>",
+      "        <Tombol varian={bahaya ? 'bahaya' : 'utama'} memuat={memuat} onClick={onYa}>{labelYa}</Tombol>",
+      "      </div>",
+      "    </dialog>",
+      "  )",
+      "}"
+    ].join('\n');
+    const pakai = [
+      "// Mengganti window.confirm di HalamanKelas.jsx",
+      "const [idHapus, setIdHapus] = useState(null)",
+      "const kelasTerpilih = daftarKelas.data?.find((k) => k.id === idHapus)",
+      "",
+      "<DialogKonfirmasi",
+      "  buka={idHapus !== null}",
+      "  judul={`Hapus kelas ${kelasTerpilih?.nama ?? ''}?`}",
+      "  labelYa=\"Hapus kelas\"",
+      "  bahaya",
+      "  memuat={hapus.isPending}",
+      "  onYa={() => hapus.mutate(idHapus, { onSuccess: () => setIdHapus(null) })}",
+      "  onBatal={() => setIdHapus(null)}",
+      ">",
+      "  {kelasTerpilih?.jumlah_murid ?? 0} murid akan dilepas dari kelas ini. Tindakan ini tidak bisa dibatalkan.",
+      "</DialogKonfirmasi>"
+    ].join('\n');
+    return {
+      kontras: [
+        k('Terang · teks di atas latar', '#0F172A di #F8FAFC', '#0F172A', '#F8FAFC', '17,06', true),
+        k('Terang · teks redup di atas latar', '#475569 di #F8FAFC', '#475569', '#F8FAFC', '7,24', true),
+        k('Terang · putih di atas sidebar guru', '#FFFFFF di #1A2F65', '#FFFFFF', '#1A2F65', '12,82', true),
+        k('Terang · teks gelap di tombol utama', '#0F172A di #0EA5E9', '#0F172A', '#0EA5E9', '6,44', true),
+        k('Terang · teks gelap di warna pendukung', '#0F172A di #95A7D5', '#0F172A', '#95A7D5', '7,45', true),
+        k('Terang · teks gelap di sorot hangat', '#0F172A di #EEF385', '#0F172A', '#EEF385', '15,13', true),
+        k('Terang · tautan di atas latar', '#0369A1 di #F8FAFC', '#0369A1', '#F8FAFC', '5,67', true),
+        k('Terang · garis kolom isian di atas putih', '#64748B di #FFFFFF', '#64748B', '#FFFFFF', '4,76', true),
+        k('Terang · benar, salah, peringatan, info', '#15803D, #B91C1C, #B45309, #0369A1 di putih', '#15803D', '#FFFFFF', '5,02 – 6,47', true),
+        k('Gelap · teks di atas kartu', '#F8FAFC di #14214A', '#F8FAFC', '#14214A', '14,91', true),
+        k('Gelap · tautan di atas kartu', '#38BDF8 di #14214A', '#38BDF8', '#14214A', '7,28', true),
+        k('Gelap · teks redup di atas kartu', '#94A3B8 di #14214A', '#94A3B8', '#14214A', '6,08', true),
+        k('Gelap · garis kolom isian di atas kartu', '#64748B di #14214A (lulus 3:1, tipis)', '#64748B', '#14214A', '3,28', true),
+        k('Gelap · benar, salah, peringatan', '#4ADE80, #F87171, #FBBF24 di kartu', '#4ADE80', '#14214A', '5,64 – 9,34', true),
+        k('Aksen #0EA5E9 sebagai cincin fokus di atas latar terang', '#0EA5E9 di #F8FAFC', '#0EA5E9', '#F8FAFC', '2,65', false)
+      ],
+      matriks: [
+        { nama: 'Utama', sel: sel('u') },
+        { nama: 'Tepi', sel: sel('') },
+        { nama: 'Bahaya', sel: sel('k') }
+      ],
+      spasi: [4, 8, 12, 16, 24, 32, 48, 64],
+      tipe: [
+        { px: 44, nama: 'Judul hero', fam: 'Nunito', bobot: 800 },
+        { px: 34, nama: 'Judul halaman (h1)', fam: 'Nunito', bobot: 800 },
+        { px: 22, nama: 'Judul bagian (h2)', fam: 'Nunito', bobot: 700 },
+        { px: 18, nama: 'Teks soal dan pilihan', fam: "'Nunito Sans'", bobot: 600 },
+        { px: 16, nama: 'Teks isi dan formulir', fam: "'Nunito Sans'", bobot: 400 },
+        { px: 14, nama: 'Keterangan dan meta', fam: "'Nunito Sans'", bobot: 400 }
+      ],
+      komponenBaru: [
+        { nama: 'TombolIkon', isi: 'Persegi 44 px, prop label wajib dan menjadi aria-label. Menggantikan btn-sm outline di tabel.' },
+        { nama: 'KosongData', isi: 'Ikon, judul, satu kalimat penjelasan, dan satu tombol tindakan.' },
+        { nama: 'Skeleton', isi: 'Garis dan kartu abu-abu berdenyut pelan, mati jika prefers-reduced-motion.' },
+        { nama: 'HeaderHalaman', isi: 'Jejak, h1, deskripsi satu baris, dan slot tombol utama di kanan.' },
+        { nama: 'TabelData', isi: 'Tabel di desktop, kartu bertumpuk di bawah 700 px, kolom aksi tetap terlihat.' },
+        { nama: 'Navigator soal', isi: 'Kisi nomor dengan status dijawab, ragu, kosong, dan aktif untuk layar ulangan.' }
+      ],
+      skalaMurid: [{"hal": "Huruf isi", "guru": "16 px", "murid": "18 px"}, {"hal": "Teks soal", "guru": "—", "murid": "26 px, tebal"}, {"hal": "Teks pilihan jawaban", "guru": "—", "murid": "20 px"}, {"hal": "Tinggi tombol dan pilihan", "guru": "44 px", "murid": "52 px tombol, 68 px pilihan jawaban"}, {"hal": "Kotak nomor soal", "guru": "—", "murid": "52 px"}, {"hal": "Panjang pesan", "guru": "Boleh 2–3 kalimat", "murid": "Satu atau dua kalimat pendek"}, {"hal": "Penanda status", "guru": "Teks atau ikon", "murid": "Ikon dan teks, selalu bersama"}],
+      istilah: [{"lama": "Skor asli", "baru": "Nilai ulangan"}, {"lama": "Skor ulang", "baru": "Nilai latihan"}, {"lama": "Kumpulkan jawaban", "baru": "Selesai"}, {"lama": "Kembali periksa", "baru": "Periksa lagi"}, {"lama": "Jendela ulangan", "baru": "ulangan"}, {"lama": "Tidak ada koneksi", "baru": "Koneksi putus"}, {"lama": "Mulai mengerjakan", "baru": "Mengerti"}],
+      kodeToken: ":root {\n  --latar: #f8fafc;\n  --kartu: #ffffff;\n  --kartu-lembut: #eef2f7;\n  --garis: #e2e8f0;\n  --garis-input: #64748b;\n  --teks: #0f172a;\n  --teks-lembut: #475569;\n  --aksen: #0ea5e9;\n  --teks-di-aksen: #0f172a;\n  --pendukung: #95a7d5;\n  --sorot-hangat: #eef385; /* selalu dengan garis tepi */\n  --panel: #1a2f65; /* sidebar dan navbar guru */\n  --guru-sidebar: #1a2f65;\n  --teks-di-panel: #f8fafc;\n  --link: #0369a1;\n  --cincin-fokus: #1a2f65;\n  --status-benar: #15803d;\n  --status-salah: #b91c1c;\n  --status-peringatan: #b45309;\n  --status-info: #0369a1;\n}\n\n[data-bs-theme='dark'] {\n  --latar: #0b1530;\n  --kartu: #14214a;\n  --kartu-lembut: #101b3e;\n  --garis: #2a3a6b;\n  --garis-input: #64748b;\n  --teks: #f8fafc;\n  --teks-lembut: #94a3b8;\n  --panel: #14214a;\n  --aktif: #1a2f65;\n  --link: #38bdf8;\n  --cincin-fokus: #38bdf8;\n  --status-benar: #4ade80;\n  --status-salah: #f87171;\n  --status-peringatan: #fbbf24;\n  --status-info: #38bdf8;\n}\n\n:focus-visible {\n  outline: 3px solid var(--cincin-fokus);\n  outline-offset: 2px;\n}\n\n.btn-aksen {\n  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22); /* bayangan halus, bukan timbul keras */\n}",
+      aturan: [{"judul": "Tanpa dependensi baru", "isi": "DialogKonfirmasi memakai elemen dialog bawaan. Skeleton dan KosongData hanya CSS dan SVG. Daftar terlarang tetap: TypeScript, clsx, Lucide, Sonner, KaTeX, Socket.IO."}, {"judul": "Bootstrap hanya CSS", "isi": "Gaya baru lewat variabel tema dan kelas di theme.css. Tidak ada Sass atau plugin JS Bootstrap."}, {"judul": "JSDoc untuk setiap props", "isi": "Komponen baru wajib lulus npm run check (checkJs strict), seperti Tombol dan Banner yang sudah ada."}, {"judul": "Data luar divalidasi Zod", "isi": "Berlaku juga untuk kejadian SSE di Live Monitor dan antrean jawaban offline di layar ulangan."}, {"judul": "Tes untuk setiap komponen", "isi": "Satu tes render dan satu tes keyboard di Vitest. Tes tema tetap menolak hex di berkas JSX."}, {"judul": "verify.sh hijau tiap slice", "isi": "Tidak men-skip tes atau melemahkan assertion demi hijau."}, {"judul": "Status tidak hanya warna", "isi": "Selalu ikon atau teks: Paham, Mulai paham, Belum paham, Belum ditinjau, Dinilai valid."}, {"judul": "Murid tidak melihat kunci", "isi": "Layar murid hanya menampilkan skor dan status. Kunci jawaban dan alasan mentah AI tidak pernah dirender di sana."}],
+      kodeDialog: dialog,
+      kodePakai: pakai,
+      dod: [
+        { judul: 'Kontras.', isi: 'Teks minimal 4,5:1, elemen UI dan cincin fokus minimal 3:1.' },
+        { judul: 'Target sentuh.', isi: 'Minimal 44 px (48 px di layar ulangan, 56 px di HP).' },
+        { judul: 'Aksi merusak.', isi: 'Memakai DialogKonfirmasi yang menyebut dampaknya, tidak memakai window.confirm.' },
+        { judul: 'Empat keadaan data.', isi: 'Memuat (Skeleton), kosong (KosongData + tindakan), galat (Banner + coba lagi), dan berisi.' },
+        { judul: 'Satu sistem tombol.', isi: 'Hanya Tombol dan TombolIkon. Tidak ada kelas btn-outline-* atau btn-sm Bootstrap di JSX (cek dengan grep di CI).' },
+        { judul: 'Tombol ikon.', isi: 'Selalu punya aria-label yang menyebut objeknya, contoh "Hapus kelas 5A".' },
+        { judul: 'Struktur halaman.', isi: 'Satu h1 lewat HeaderHalaman, urutan heading tidak melompat, landmark main dan nav ada.' },
+        { judul: 'Responsif.', isi: 'Diperiksa di 360, 768, dan 1280 px. Tabel berubah jadi kartu di bawah 700 px.' },
+        { judul: 'Tema.', isi: 'Tampil benar di mode terang dan gelap. Tidak ada hex di komponen, tes tema yang ada tetap lulus.' },
+        { judul: 'Keyboard dan gerak.', isi: 'Bisa dioperasikan dengan Tab, Enter, dan Esc. Animasi mati jika prefers-reduced-motion.' },
+        { judul: 'Tes.', isi: 'Komponen baru punya tes render dan satu tes interaksi keyboard di folder __tests__.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

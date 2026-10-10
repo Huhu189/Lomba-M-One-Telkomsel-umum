@@ -1,0 +1,142 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-10T05:50:00Z"
+  },
+  "title": "Audit UI Ulangan Sekolah",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 3300,
+      "title": "1 · Audit, kritik, dan kesesuaian spec",
+      "expand": "fill"
+    },
+    "Dashboard-Guru.dc.html": {
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 900,
+      "title": "2 · Beranda guru (sesudah)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Kelas.dc.html": {
+      "x": 2720,
+      "y": 0,
+      "w": 1280,
+      "h": 980,
+      "title": "3 · Kelola Kelas (sesudah)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Kerjakan.dc.html": {
+      "x": 4080,
+      "y": 0,
+      "w": 1280,
+      "h": 960,
+      "title": "4 · Layar ulangan murid (sesuai spec)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Kerjakan-HP.dc.html": {
+      "x": 5440,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "5 · Ulangan di HP (sesudah)"
+    },
+    "Standar.dc.html": {
+      "x": 5910,
+      "y": 0,
+      "w": 1280,
+      "h": 3200,
+      "title": "6 · Standar development dan token",
+      "expand": "fill"
+    },
+    "Monitor.dc.html": {
+      "x": 7270,
+      "y": 0,
+      "w": 1280,
+      "h": 900,
+      "title": "7 · Live Monitor guru (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Koreksi.dc.html": {
+      "x": 8630,
+      "y": 0,
+      "w": 1280,
+      "h": 980,
+      "title": "8 · Koreksi manual guru (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Progres.dc.html": {
+      "x": 9990,
+      "y": 0,
+      "w": 1280,
+      "h": 1000,
+      "title": "9 · Progres tema murid (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Kuis.dc.html": {
+      "x": 11350,
+      "y": 0,
+      "w": 1280,
+      "h": 960,
+      "title": "10 · Susun kuis, 3 langkah (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "EditorSoal.dc.html": {
+      "x": 12710,
+      "y": 0,
+      "w": 1280,
+      "h": 1000,
+      "title": "11 · Editor soal dengan pratinjau (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "EditorMateri.dc.html": {
+      "x": 14070,
+      "y": 0,
+      "w": 1280,
+      "h": 980,
+      "title": "12 · Editor materi gaya video editor (baru)",
+      "expand": "fill",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Dashboard-Guru.dc.html",
+    "Kelas.dc.html",
+    "Kerjakan.dc.html",
+    "Kerjakan-HP.dc.html",
+    "Standar.dc.html",
+    "Monitor.dc.html",
+    "Koreksi.dc.html",
+    "Progres.dc.html",
+    "Kuis.dc.html",
+    "EditorSoal.dc.html",
+    "EditorMateri.dc.html"
+  ],
+  "notes": {
+    "judul": {
+      "x": 0,
+      "y": -300,
+      "text": "Ulangan Sekolah — audit UI, contoh perbaikan, dan kesesuaian spesifikasi lomba",
+      "kind": "title1",
+      "maxW": 1840
+    }
+  },
+  "designSystems": []
+}

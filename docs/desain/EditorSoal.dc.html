@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Editor Soal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+.app{--latar:#F8FAFC;--kartu:#fff;--lembut:#EEF2F7;--garis:#E2E8F0;--teks:#0F172A;--redup:#475569;--aksen:#0EA5E9;--di-aksen:#0F172A;--sorot:#EEF385;--input:#64748B;--cincin:#1A2F65;--benar:#15803D;--warn:#B45309;--salah:#B91C1C;--bg-benar:#DCFCE7;--tx-benar:#14532D;--bg-warn:#FDE9C8;--tx-warn:#6B3500;--bg-salah:#FEE2E2;--tx-salah:#7F1111;--bg-info:#E0F2FE;--tx-info:#0C4A6E;--sh:0 1px 3px rgba(15,23,42,.1);background:var(--latar);color:var(--teks)}
+.app.gelap{--latar:#0B1530;--kartu:#14214A;--lembut:#101B3E;--garis:#2A3A6B;--teks:#F8FAFC;--redup:#94A3B8;--cincin:#38BDF8;--benar:#4ADE80;--warn:#FBBF24;--salah:#F87171;--bg-benar:rgba(74,222,128,.14);--tx-benar:#BBF7D0;--bg-warn:rgba(251,191,36,.16);--tx-warn:#FDE68A;--bg-salah:rgba(248,113,113,.16);--tx-salah:#FECACA;--bg-info:rgba(56,189,248,.15);--tx-info:#BAE6FD;--sh:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;border:2px solid var(--input);background:var(--kartu);color:var(--teks)}
+.btn:hover{background:var(--lembut);border-color:var(--teks)}
+.btn-utama{background:var(--aksen);color:var(--di-aksen);border-color:var(--di-aksen);box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.app.gelap .btn-utama{border-color:var(--aksen)}
+.btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn:focus-visible,.tipe:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.ikon:focus-visible{outline:3px solid var(--cincin);outline-offset:2px}
+.kartu{background:var(--kartu);border:1.5px solid var(--garis);border-radius:16px;box-shadow:var(--sh)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;border:1.5px solid}
+.p-ok{background:var(--bg-benar);color:var(--tx-benar);border-color:var(--benar)}
+.p-warn{background:var(--bg-warn);color:var(--tx-warn);border-color:var(--warn)}
+.p-info{background:var(--bg-info);color:var(--tx-info);border-color:#0369A1}
+.tipe{min-height:44px;padding:0 16px;border-radius:99px;border:1.5px solid var(--input);background:var(--kartu);color:var(--teks);font-weight:700}
+.tipe.on{background:var(--teks);color:var(--latar);border-color:var(--teks)}
+.fl{display:flex;flex-direction:column;gap:6px}
+.fl label,.fl .l{font-weight:700}
+.fl input,.fl select,.fl textarea{border:2px solid var(--input);border-radius:12px;padding:10px 14px;font:inherit;background:var(--kartu);color:var(--teks);min-height:48px;box-sizing:border-box;width:100%}
+.ikon{width:44px;height:44px;flex:none;border-radius:12px;border:1.5px solid var(--input);background:var(--kartu);color:var(--teks);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ikon[disabled]{opacity:.4;cursor:not-allowed}
+.kunci{display:flex;align-items:center;gap:10px;min-height:48px;cursor:pointer;font-weight:700;white-space:nowrap}
+.kunci input{width:22px;height:22px;accent-color:#15803D}
+.sw{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer}
+.sw input{width:22px;height:22px;accent-color:#0EA5E9}
+.pv{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:2px solid var(--input);background:var(--kartu);min-height:52px}
+.pv.k{background:var(--sorot);border-color:#0F172A;color:#0F172A;font-weight:700}
+.hz{flex:none;width:34px;height:34px;border-radius:9px;border:2px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-family:Nunito,sans-serif;font-weight:800}
+</style>
+</helmet>
+<div class="app {{tema}}" style="min-height:1000px">
+
+<header style="background:#1A2F65;color:#fff;padding:12px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px">
+<a href="#" style="color:#C9D2EC;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Bank soal</a>
+<div style="flex:1 1 260px"><h1 style="font-size:20px;color:#fff">Tambah soal</h1></div>
+<button type="button" class="btn" style="background:transparent;color:#fff;border-color:#95A7D5" aria-pressed="{{gelap}}" onClick="{{ubahGelap}}">Mode gelap</button>
+</header>
+
+<div style="display:flex;flex-wrap:wrap;gap:24px;padding:24px 32px 40px;align-items:flex-start;box-sizing:border-box">
+
+<main style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+<section class="kartu" style="padding:20px 24px;display:flex;flex-direction:column;gap:14px" aria-labelledby="ht">
+<h2 id="ht" style="font-size:18px">1. Pilih jenis soal</h2>
+<div role="radiogroup" aria-label="Jenis soal" style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{tipe}}" as="t" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{t.on}}" class="{{t.kelas}}" onClick="{{t.pilih}}">{{t.nama}}</button></sc-for>
+</div>
+<p style="font-size:13px;color:var(--redup)">Jenis lain (uraian, menjodohkan, mengurutkan, letak kata, hubung kata) memakai pola yang sama: satu kelompok isian, kunci jelas, dan pratinjau di sebelah kanan.</p>
+</section>
+
+<section class="kartu" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px" aria-labelledby="hi">
+<h2 id="hi" style="font-size:18px">2. Tulis soalnya</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+<div class="fl"><label for="mp">Mapel</label><select id="mp"><option>IPA</option><option>Matematika</option></select></div>
+<div class="fl"><label for="tg">Tema (tag) <span style="font-weight:400;color:var(--redup)">opsional</span></label><select id="tg"><option>Alat pernapasan</option><option>Proses bernapas</option><option>Gangguan pernapasan</option></select></div>
+</div>
+<div class="fl"><label for="is">Isi soal</label><textarea id="is" rows="3" value="{{teks}}" onChange="{{ubahTeks}}" placeholder="Tulis pertanyaan dengan kalimat pendek dan jelas"></textarea>
+<span style="font-size:13px;color:var(--redup)">{{hitung}} huruf. Untuk murid SD, usahakan satu kalimat.</span></div>
+
+<sc-if value="{{pg}}" hint-placeholder-val="{{true}}">
+<fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+<legend style="font-weight:800;font-family:Nunito,sans-serif;font-size:17px;padding:0 0 6px">Pilihan jawaban dan kunci</legend>
+<sc-for list="{{opsi}}" as="o" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px">
+<span class="hz" style="color:var(--redup)">{{o.huruf}}</span>
+<div class="fl" style="flex:1"><input aria-label="Pilihan {{o.huruf}}" value="{{o.teks}}" onChange="{{o.ubah}}" placeholder="Tulis pilihan"></div>
+<label class="kunci"><input type="radio" name="kunci" checked="{{o.kunci}}" onChange="{{o.jadi}}">Kunci</label>
+<button type="button" class="ikon" aria-label="Hapus pilihan {{o.huruf}}" disabled="{{o.minimal}}" onClick="{{o.hapus}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+</sc-for>
+<div><button type="button" class="btn" disabled="{{penuh}}" onClick="{{tambahOpsi}}">Tambah pilihan</button> <span style="font-size:13px;color:var(--redup);margin-left:8px">2 sampai 5 pilihan</span></div>
+</fieldset>
+</sc-if>
+
+<sc-if value="{{bs}}" hint-placeholder-val="{{false}}">
+<fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+<legend style="font-weight:800;font-family:Nunito,sans-serif;font-size:17px;padding:0 0 6px">Pernyataan ini …</legend>
+<div role="radiogroup" aria-label="Kunci benar atau salah" style="display:flex;gap:10px"><sc-for list="{{kunciBs}}" as="k" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{k.on}}" class="{{k.kelas}}" onClick="{{k.pilih}}">{{k.nama}}</button></sc-for></div>
+</fieldset>
+</sc-if>
+
+<sc-if value="{{isian}}" hint-placeholder-val="{{false}}">
+<fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:14px">
+<legend style="font-weight:800;font-family:Nunito,sans-serif;font-size:17px;padding:0 0 6px">Jawaban baku dan sinonim</legend>
+<div class="fl"><label for="bk">Jawaban baku</label><input id="bk" value="{{baku}}" onChange="{{ubahBaku}}" placeholder="Contoh: rambut hidung"></div>
+<div class="fl"><label for="sn">Sinonim <span style="font-weight:400;color:var(--redup)">pisahkan dengan koma</span></label><input id="sn" value="{{sinonim}}" onChange="{{ubahSinonim}}" placeholder="Contoh: rambut getar, silia"></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px 28px;align-items:center">
+<label class="sw"><input type="checkbox" checked="{{persis}}" onChange="{{ubahPersis}}">Angka harus persis</label>
+<label class="sw" style="gap:10px">Kemiripan minimal <input type="range" min="60" max="100" value="{{ambang}}" onChange="{{ubahAmbang}}" style="width:140px;accent-color:#0EA5E9"> <strong>{{ambang}}%</strong></label>
+</div>
+<p style="font-size:13px;color:var(--redup)">Typo kecil per kata dimaafkan. Jawaban dengan kemiripan di bawah ambang masuk antrean koreksi guru.</p>
+</fieldset>
+</sc-if>
+</section>
+
+<section class="kartu" style="padding:20px 24px;display:flex;flex-direction:column;gap:14px" aria-labelledby="hp">
+<h2 id="hp" style="font-size:18px">3. Pengaturan soal</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;align-items:end">
+<div class="fl"><label for="sk">Skor</label><input id="sk" type="number" min="1" value="{{skor}}" onChange="{{ubahSkor}}"></div>
+<label class="sw"><input type="checkbox" checked>Soal aktif</label>
+</div>
+<div class="fl"><label for="pb">Pembahasan <span style="font-weight:400;color:var(--redup)">opsional, tampil setelah murid selesai</span></label><textarea id="pb" rows="2" placeholder="Jelaskan jawabannya dengan bahasa sederhana"></textarea></div>
+</section>
+</main>
+
+<aside aria-label="Pratinjau dan kelengkapan" style="flex:1 1 340px;max-width:480px;display:flex;flex-direction:column;gap:16px;position:sticky;top:16px">
+
+<section class="kartu" style="padding:20px;display:flex;flex-direction:column;gap:14px" aria-labelledby="pv">
+<div style="display:flex;align-items:center;gap:10px"><h2 id="pv" style="font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--redup);flex:1">Pratinjau (kunci ditandai)</h2><span class="pill p-info">Sama seperti layar murid</span></div>
+<p style="font-size:22px;font-weight:700;line-height:1.4">{{teksPv}}</p>
+<sc-if value="{{pg}}" hint-placeholder-val="{{true}}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{opsi}}" as="o" hint-placeholder-count="4"><div class="{{o.kelasPv}}"><span class="hz">{{o.huruf}}</span><span style="flex:1">{{o.teksPv}}</span><sc-if value="{{o.kunci}}" hint-placeholder-val="{{false}}"><span style="font-size:13px;font-weight:800">KUNCI</span></sc-if></div></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{bs}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;gap:10px"><sc-for list="{{kunciBs}}" as="k" hint-placeholder-count="2"><div class="{{k.kelasPv}}" style="flex:1;justify-content:center;font-size:18px">{{k.nama}}</div></sc-for></div>
+</sc-if>
+<sc-if value="{{isian}}" hint-placeholder-val="{{false}}">
+<div class="pv" style="color:var(--redup)">Murid mengetik jawaban di sini</div>
+<div style="background:var(--sorot);color:#0F172A;border:2px solid #0F172A;border-radius:14px;padding:10px 14px"><strong>Kunci:</strong> {{baku}}<br><span style="font-size:14px">Sinonim: {{sinonimTampil}} · kemiripan {{ambang}}%{{persisTeks}}</span></div>
+</sc-if>
+</section>
+
+<section class="kartu" style="padding:20px;display:flex;flex-direction:column;gap:10px" aria-labelledby="hk">
+<h2 id="hk" style="font-size:16px">Kelengkapan</h2>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{cek}}" as="c" hint-placeholder-count="3"><li style="display:flex;align-items:center;gap:10px"><span class="{{c.kelas}}" style="min-width:64px;justify-content:center">{{c.status}}</span><span style="font-size:15px">{{c.teks}}</span></li></sc-for>
+</ul>
+<sc-if value="{{tersimpan}}" hint-placeholder-val="{{false}}"><p role="status" class="pill p-ok" style="border-radius:12px;padding:8px 12px;font-weight:700">Soal tersimpan di bank soal.</p></sc-if>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn btn-utama" disabled="{{tidakSiap}}" onClick="{{simpan}}">Simpan soal</button><button type="button" class="btn">Batal</button></div>
+</section>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      gelap: false, tipe: 'pg', teks: 'Alat pernapasan ikan adalah …',
+      opsi: ['Paru-paru', 'Insang', 'Trakea', 'Kulit'], kunci: 1, bs: 'benar',
+      baku: 'rambut hidung', sinonim: 'rambut getar', persis: true, ambang: '80', skor: '10', tersimpan: false
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const H = ['A', 'B', 'C', 'D', 'E'];
+    const set = (o) => this.setState(Object.assign({ tersimpan: false }, o));
+    const ubahOpsi = (i) => (e) => { const a = s.opsi.slice(); a[i] = e.target.value; set({ opsi: a }); };
+    const hapus = (i) => () => { const a = s.opsi.filter((_, k) => k !== i); set({ opsi: a, kunci: s.kunci === i ? 0 : s.kunci > i ? s.kunci - 1 : s.kunci }); };
+    const opsi = s.opsi.map((t, i) => ({
+      huruf: H[i], teks: t, teksPv: t || '(kosong)', kunci: s.kunci === i,
+      kelasPv: s.kunci === i ? 'pv k' : 'pv', minimal: s.opsi.length <= 2,
+      ubah: ubahOpsi(i), jadi: () => set({ kunci: i }), hapus: hapus(i)
+    }));
+    const tipe = [['pg', 'Pilihan ganda'], ['bs', 'Benar / salah'], ['is', 'Isian singkat']].map((t) => ({
+      nama: t[1], on: s.tipe === t[0], kelas: s.tipe === t[0] ? 'tipe on' : 'tipe', pilih: () => set({ tipe: t[0] })
+    }));
+    const kunciBs = [['benar', 'Benar'], ['salah', 'Salah']].map((k) => ({
+      nama: k[1], on: s.bs === k[0], kelas: s.bs === k[0] ? 'tipe on' : 'tipe', kelasPv: s.bs === k[0] ? 'pv k' : 'pv', pilih: () => set({ bs: k[0] })
+    }));
+    const c = (ok, teks) => ({ status: ok ? 'Lengkap' : 'Belum', kelas: ok ? 'pill p-ok' : 'pill p-warn', teks });
+    const teksOk = s.teks.trim().length >= 5;
+    const cek = [c(teksOk, 'Isi soal terisi')];
+    let siap = teksOk;
+    if (s.tipe === 'pg') {
+      const ok = s.opsi.length >= 2 && s.opsi.every((x) => x.trim());
+      cek.push(c(ok, 'Semua pilihan terisi (minimal 2)'), c(true, 'Satu kunci dipilih'));
+      siap = siap && ok;
+    } else if (s.tipe === 'bs') {
+      cek.push(c(true, 'Kunci benar atau salah dipilih'));
+    } else {
+      const ok = s.baku.trim().length > 0;
+      cek.push(c(ok, 'Jawaban baku terisi'));
+      siap = siap && ok;
+    }
+    const skorOk = Number(s.skor) > 0;
+    cek.push(c(skorOk, 'Skor lebih dari 0'));
+    siap = siap && skorOk;
+    return {
+      tema: s.gelap ? 'gelap' : '', gelap: s.gelap, ubahGelap: () => this.setState({ gelap: !s.gelap }),
+      tipe, pg: s.tipe === 'pg', bs: s.tipe === 'bs', isian: s.tipe === 'is',
+      teks: s.teks, teksPv: s.teks || '(isi soal belum ditulis)', hitung: s.teks.length, ubahTeks: (e) => set({ teks: e.target.value }),
+      opsi, penuh: s.opsi.length >= 5, tambahOpsi: () => set({ opsi: s.opsi.concat(['']) }),
+      kunciBs,
+      baku: s.baku, sinonim: s.sinonim, ambang: s.ambang, persis: s.persis,
+      sinonimTampil: s.sinonim.trim() || 'tidak ada', persisTeks: s.persis ? ' · angka harus persis' : '',
+      ubahBaku: (e) => set({ baku: e.target.value }), ubahSinonim: (e) => set({ sinonim: e.target.value }),
+      ubahPersis: () => set({ persis: !s.persis }), ubahAmbang: (e) => set({ ambang: e.target.value }),
+      skor: s.skor, ubahSkor: (e) => set({ skor: e.target.value }),
+      cek, tidakSiap: !siap, tersimpan: s.tersimpan, simpan: () => this.setState({ tersimpan: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

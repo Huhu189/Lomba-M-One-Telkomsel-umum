@@ -851,6 +851,13 @@ async function utama() {
   cek('guru membuka monitor kuis (berisi walau realtime mati)', monitor.status === 200, `status=${monitor.status}`)
   cek('monitor memuat murid yang sedang mengerjakan', JSON.stringify(monitor.data ?? {}).includes(`Murid A ${TANDA}`), '')
 
+  // P-02: kehadiran lahir dari request yang memang sudah terjadi (di sini
+  // `mulai` dan ping `/hadir`), dan guru membacanya dari satu round-trip.
+  const barisMonitor = daftar(monitor.data?.murid ?? [])
+  const muridJaga = barisMonitor.find((satu) => Number(satu.attempt_id) === Number(attemptJaga))
+  cek('presence: murid yang mengerjakan terlihat online di Live Monitor', muridJaga?.online === true, `online=${muridJaga?.online} jumlah_online=${monitor.data?.jumlah_online}`)
+  cek('presence: ambang kesegaran dikirim ke guru', monitor.data?.ambang_segar_detik === 45, `ambang=${monitor.data?.ambang_segar_detik}`)
+
   const simpanLayar = await guru.put(`/api/v1/kuis/${kuisJagaId}/layar`, { mode: 'soal', judul: 'Bahas nomor 1', question_id: idPg })
   cek('guru mengirim layar ke perangkat murid', simpanLayar.status === 200, `status=${simpanLayar.status} versi=${simpanLayar.data?.versi}`)
   const bacaLayar = await murid.get(`/api/v1/kuis/${kuisJagaId}/layar`)

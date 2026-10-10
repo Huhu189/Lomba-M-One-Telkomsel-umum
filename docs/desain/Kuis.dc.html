@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Susun Kuis</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+.app{--latar:#F8FAFC;--kartu:#fff;--lembut:#EEF2F7;--garis:#E2E8F0;--teks:#0F172A;--redup:#475569;--aksen:#0EA5E9;--di-aksen:#0F172A;--sorot:#EEF385;--input:#64748B;--cincin:#1A2F65;--benar:#15803D;--warn:#B45309;--salah:#B91C1C;--bg-benar:#DCFCE7;--tx-benar:#14532D;--bg-warn:#FDE9C8;--tx-warn:#6B3500;--bg-salah:#FEE2E2;--tx-salah:#7F1111;--bg-info:#E0F2FE;--tx-info:#0C4A6E;--sh:0 1px 3px rgba(15,23,42,.1);background:var(--latar);color:var(--teks)}
+.app.gelap{--latar:#0B1530;--kartu:#14214A;--lembut:#101B3E;--garis:#2A3A6B;--teks:#F8FAFC;--redup:#94A3B8;--cincin:#38BDF8;--benar:#4ADE80;--warn:#FBBF24;--salah:#F87171;--bg-benar:rgba(74,222,128,.14);--tx-benar:#BBF7D0;--bg-warn:rgba(251,191,36,.16);--tx-warn:#FDE68A;--bg-salah:rgba(248,113,113,.16);--tx-salah:#FECACA;--bg-info:rgba(56,189,248,.15);--tx-info:#BAE6FD;--sh:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;border:2px solid var(--input);background:var(--kartu);color:var(--teks)}
+.btn:hover{background:var(--lembut);border-color:var(--teks)}
+.btn-utama{background:var(--aksen);color:var(--di-aksen);border-color:var(--di-aksen);box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.app.gelap .btn-utama{border-color:var(--aksen)}
+.btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn:focus-visible,.langkah:focus-visible,.soal:focus-visible,.ikon:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--cincin);outline-offset:2px}
+.kartu{background:var(--kartu);border:1.5px solid var(--garis);border-radius:16px;box-shadow:var(--sh)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;border:1.5px solid}
+.p-draf{background:var(--lembut);color:var(--teks);border-color:var(--input)}
+.p-ok{background:var(--bg-benar);color:var(--tx-benar);border-color:var(--benar)}
+.p-warn{background:var(--bg-warn);color:var(--tx-warn);border-color:var(--warn)}
+.p-info{background:var(--bg-info);color:var(--tx-info);border-color:#0369A1}
+.langkah{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border-radius:99px;border:2px solid var(--garis);background:var(--kartu);color:var(--teks);font-weight:700}
+.langkah .no{width:28px;height:28px;border-radius:50%;border:2px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.langkah.on{border-color:var(--teks);background:var(--lembut)}
+.langkah.on .no{background:var(--teks);color:var(--latar);border-color:var(--teks)}
+.fl{display:flex;flex-direction:column;gap:6px}
+.fl label,.fl .l{font-weight:700}
+.fl input,.fl select,.fl textarea{border:2px solid var(--input);border-radius:12px;padding:10px 14px;font:inherit;background:var(--kartu);color:var(--teks);min-height:48px;box-sizing:border-box;width:100%}
+.soal{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--garis);background:var(--kartu);color:var(--teks);min-height:44px}
+.soal:hover{border-color:var(--input)}
+.soal.on{border-color:var(--teks);background:var(--lembut)}
+.cb{flex:none;width:24px;height:24px;border-radius:7px;border:2px solid var(--input);display:inline-flex;align-items:center;justify-content:center;margin-top:2px}
+.soal.on .cb{background:var(--teks);border-color:var(--teks);color:var(--latar)}
+.ikon{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--input);background:var(--kartu);color:var(--teks);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ikon[disabled]{opacity:.4;cursor:not-allowed}
+.sw{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer}
+.sw input{width:22px;height:22px;accent-color:#0EA5E9}
+</style>
+</helmet>
+<div class="app {{tema}}" style="min-height:960px">
+
+<header style="background:#1A2F65;color:#fff;padding:12px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px">
+<a href="#" style="color:#C9D2EC;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Kuis &amp; Ulangan</a>
+<div style="flex:1 1 260px;min-width:0"><h1 style="font-size:20px;color:#fff">{{judulKuis}}</h1></div>
+<span class="{{kelasStatus}}">{{teksStatus}}</span>
+<button type="button" class="btn" style="background:transparent;color:#fff;border-color:#95A7D5" aria-pressed="{{gelap}}" onClick="{{ubahGelap}}">Mode gelap</button>
+</header>
+
+<div style="padding:24px 32px 40px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box;max-width:1200px;margin:0 auto">
+
+<nav aria-label="Langkah menyusun kuis" style="display:flex;flex-wrap:wrap;gap:10px">
+<sc-for list="{{langkah}}" as="l" hint-placeholder-count="3">
+<button type="button" class="{{l.kelas}}" aria-current="{{l.arus}}" onClick="{{l.pergi}}"><span class="no">{{l.no}}</span>{{l.nama}}</button>
+</sc-for>
+</nav>
+
+<sc-if value="{{l1}}" hint-placeholder-val="{{true}}">
+<section class="kartu" style="padding:24px;display:flex;flex-direction:column;gap:18px" aria-labelledby="a1">
+<h2 id="a1" style="font-size:22px">Info dan jadwal</h2>
+<div class="fl"><label for="j">Judul kuis</label><input id="j" value="{{judul}}" onChange="{{ubahJudul}}" placeholder="Contoh: Ulangan Harian IPA Bab 3"></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+<div class="fl"><label for="m">Mapel</label><select id="m"><option>IPA</option><option>Matematika</option><option>Bahasa Indonesia</option></select></div>
+<div class="fl"><label for="k">Kelas</label><select id="k"><option>5A</option><option>5B</option><option>5C</option></select></div>
+<div class="fl"><label for="d">Durasi (menit)</label><input id="d" type="number" min="1" value="{{durasi}}" onChange="{{ubahDurasi}}"></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+<div class="fl"><label for="s1">Mulai</label><input id="s1" type="datetime-local" value="2026-10-12T08:00"></div>
+<div class="fl"><label for="s2">Selesai</label><input id="s2" type="datetime-local" value="2026-10-12T09:00"></div>
+</div>
+<div class="fl"><label for="ds">Deskripsi <span style="font-weight:400;color:var(--redup)">(opsional)</span></label><textarea id="ds" rows="2" placeholder="Pesan singkat untuk murid"></textarea></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px 28px">
+<label class="sw"><input type="checkbox" checked>Acak urutan soal</label>
+<label class="sw"><input type="checkbox" checked>Acak urutan pilihan jawaban</label>
+</div>
+<p style="font-size:14px;color:var(--redup)">Pengaturan lanjutan (percobaan ulang, peringkat, pengaman) mengikuti pengaturan sekolah atau kelas, dan bisa diubah khusus untuk kuis ini di tab Pengaturan.</p>
+<div style="display:flex;justify-content:flex-end"><button type="button" class="btn btn-utama" onClick="{{ke2}}">Lanjut: susun soal</button></div>
+</section>
+</sc-if>
+
+<sc-if value="{{l2}}" hint-placeholder-val="{{false}}">
+<section style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start" aria-label="Susun soal">
+<div class="kartu" style="flex:1 1 380px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:20px">Bank soal</h2>
+<p style="font-size:14px;color:var(--redup)">Pilih soal untuk dimasukkan ke kuis. Soal yang dipilih ditandai centang.</p>
+<sc-for list="{{bank}}" as="b" hint-placeholder-count="6">
+<button type="button" class="{{b.kelas}}" role="checkbox" aria-checked="{{b.on}}" onClick="{{b.toggle}}">
+<span class="cb"><sc-if value="{{b.on}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></sc-if></span>
+<span style="flex:1"><span class="pill p-draf" style="margin-right:8px">{{b.tipe}}</span><span style="font-weight:600">{{b.teks}}</span></span>
+<span style="font-size:14px;color:var(--redup)">{{b.skor}} poin</span>
+</button>
+</sc-for>
+</div>
+
+<div class="kartu" style="flex:1 1 380px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:10px"><h2 style="font-size:20px;flex:1">Susunan kuis</h2><span style="font-weight:700">{{jumlah}} soal · {{totalSkor}} poin</span></div>
+<sc-if value="{{kosongSusun}}" hint-placeholder-val="{{false}}"><div style="border:2px dashed var(--input);border-radius:14px;padding:28px;text-align:center;color:var(--redup)">Belum ada soal. Pilih dari bank soal di sebelah kiri.</div></sc-if>
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{susun}}" as="s" hint-placeholder-count="4">
+<li style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid var(--garis);border-radius:14px;background:var(--lembut)">
+<strong style="width:28px;text-align:center;font-family:Nunito,sans-serif;font-size:18px">{{s.no}}</strong>
+<span style="flex:1;font-weight:600">{{s.teks}}</span>
+<button type="button" class="ikon" aria-label="Naikkan soal {{s.no}}" disabled="{{s.diAtas}}" onClick="{{s.naik}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+<button type="button" class="ikon" aria-label="Turunkan soal {{s.no}}" disabled="{{s.diBawah}}" onClick="{{s.turun}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+</li>
+</sc-for>
+</ol>
+<p style="font-size:13px;color:var(--redup)">Urutan ini dipakai jika pengacakan dimatikan. Jika dinyalakan, tiap murid mendapat urutan acak dari server.</p>
+</div>
+</section>
+<div style="display:flex;justify-content:space-between;gap:10px"><button type="button" class="btn" onClick="{{ke1}}">Kembali</button><button type="button" class="btn btn-utama" onClick="{{ke3}}">Lanjut: tinjau</button></div>
+</sc-if>
+
+<sc-if value="{{l3}}" hint-placeholder-val="{{false}}">
+<section class="kartu" style="padding:24px;display:flex;flex-direction:column;gap:16px" aria-labelledby="a3">
+<h2 id="a3" style="font-size:22px">Tinjau sebelum dipublikasikan</h2>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{cek}}" as="c" hint-placeholder-count="4">
+<li style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:var(--lembut)">
+<span class="{{c.kelas}}">{{c.status}}</span><span style="flex:1">{{c.teks}}</span>
+</li>
+</sc-for>
+</ul>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+<div style="background:var(--lembut);border-radius:14px;padding:12px 16px"><span style="font-size:14px;color:var(--redup)">Untuk kelas</span><strong style="display:block;font-size:20px">5A · 30 murid</strong></div>
+<div style="background:var(--lembut);border-radius:14px;padding:12px 16px"><span style="font-size:14px;color:var(--redup)">Jadwal</span><strong style="display:block;font-size:20px">Sen 12 Okt, 08.00–09.00</strong></div>
+<div style="background:var(--lembut);border-radius:14px;padding:12px 16px"><span style="font-size:14px;color:var(--redup)">Soal</span><strong style="display:block;font-size:20px">{{jumlah}} soal · {{totalSkor}} poin</strong></div>
+</div>
+<p class="pill p-info" style="align-self:flex-start;border-radius:12px;padding:8px 14px;font-weight:600">Setelah kuis mulai berjalan, soal tidak bisa diubah lagi.</p>
+<sc-if value="{{terbit}}" hint-placeholder-val="{{false}}"><p role="status" class="pill p-ok" style="align-self:flex-start;border-radius:12px;padding:8px 14px;font-weight:700">Kuis dipublikasikan. Murid kelas 5A akan melihatnya di daftar ulangan.</p></sc-if>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px"><button type="button" class="btn" onClick="{{ke2}}">Kembali</button><button type="button" class="btn btn-utama" disabled="{{tidakSiap}}" onClick="{{terbitkan}}">Publikasikan kuis</button></div>
+</section>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":960}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { gelap: false, langkah: 1, judul: 'IPA Bab 3: Sistem Pernapasan', durasi: '60', sel: [1, 2, 4], terbit: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const bank = [
+      { id: 1, tipe: 'Pilihan ganda', teks: 'Alat pernapasan ikan adalah …', skor: 10 },
+      { id: 2, tipe: 'Benar / salah', teks: 'Paru-paru berada di dalam rongga dada.', skor: 5 },
+      { id: 3, tipe: 'Isian singkat', teks: 'Organ penyaring debu di hidung disebut …', skor: 5 },
+      { id: 4, tipe: 'Menjodohkan', teks: 'Jodohkan organ dengan fungsinya.', skor: 10 },
+      { id: 5, tipe: 'Mengurutkan', teks: 'Urutkan jalur udara dari hidung ke paru-paru.', skor: 10 },
+      { id: 6, tipe: 'Uraian', teks: 'Mengapa kita bernapas lebih cepat saat berlari?', skor: 15 }
+    ];
+    const byId = (id) => bank.find((b) => b.id === id);
+    const tog = (id) => () => this.setState({ sel: s.sel.includes(id) ? s.sel.filter((x) => x !== id) : s.sel.concat([id]), terbit: false });
+    const geser = (i, d) => () => { const a = s.sel.slice(); const j = i + d; const t = a[i]; a[i] = a[j]; a[j] = t; this.setState({ sel: a }); };
+    const susun = s.sel.map((id, i) => ({ no: String(i + 1), teks: byId(id).teks, diAtas: i === 0, diBawah: i === s.sel.length - 1, naik: geser(i, -1), turun: geser(i, 1) }));
+    const total = s.sel.reduce((a, id) => a + byId(id).skor, 0);
+    const judulOk = s.judul.trim().length > 0;
+    const durOk = Number(s.durasi) > 0;
+    const soalOk = s.sel.length > 0;
+    const c = (ok, teks) => ({ status: ok ? 'Lengkap' : 'Belum', kelas: ok ? 'pill p-ok' : 'pill p-warn', teks });
+    const siap = judulOk && durOk && soalOk;
+    const L = (n, nama) => ({ no: String(n), nama, kelas: s.langkah === n ? 'langkah on' : 'langkah', arus: s.langkah === n ? 'step' : undefined, pergi: () => this.setState({ langkah: n }) });
+    return {
+      tema: s.gelap ? 'gelap' : '', gelap: s.gelap, ubahGelap: () => this.setState({ gelap: !s.gelap }),
+      judulKuis: s.judul.trim() ? s.judul : 'Kuis baru',
+      kelasStatus: s.terbit ? 'pill p-ok' : 'pill p-draf', teksStatus: s.terbit ? 'Belum dimulai' : 'Draf',
+      langkah: [L(1, 'Info dan jadwal'), L(2, 'Susun soal'), L(3, 'Tinjau dan publikasi')],
+      l1: s.langkah === 1, l2: s.langkah === 2, l3: s.langkah === 3,
+      judul: s.judul, durasi: s.durasi,
+      ubahJudul: (e) => this.setState({ judul: e.target.value }), ubahDurasi: (e) => this.setState({ durasi: e.target.value }),
+      ke1: () => this.setState({ langkah: 1 }), ke2: () => this.setState({ langkah: 2 }), ke3: () => this.setState({ langkah: 3 }),
+      bank: bank.map((b) => { const on = s.sel.includes(b.id); return Object.assign({}, b, { on, kelas: on ? 'soal on' : 'soal', toggle: tog(b.id) }); }),
+      susun, jumlah: s.sel.length, totalSkor: total, kosongSusun: s.sel.length === 0,
+      cek: [c(judulOk, 'Judul terisi'), c(durOk, 'Durasi lebih dari 0 menit'), c(true, 'Jadwal selesai setelah jadwal mulai'), c(soalOk, 'Minimal satu soal dipilih')],
+      tidakSiap: !siap, terbit: s.terbit, terbitkan: () => this.setState({ terbit: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

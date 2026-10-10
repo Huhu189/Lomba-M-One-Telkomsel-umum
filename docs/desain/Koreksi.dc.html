@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Koreksi Manual Guru</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+.app{--latar:#F8FAFC;--kartu:#fff;--lembut:#EEF2F7;--garis:#E2E8F0;--teks:#0F172A;--redup:#475569;--aksen:#0EA5E9;--di-aksen:#0F172A;--sorot:#EEF385;--input:#64748B;--cincin:#1A2F65;--benar:#15803D;--warn:#B45309;--salah:#B91C1C;--bg-benar:#DCFCE7;--tx-benar:#14532D;--bg-warn:#FDE9C8;--tx-warn:#6B3500;--bg-salah:#FEE2E2;--tx-salah:#7F1111;--bg-info:#E0F2FE;--tx-info:#0C4A6E;--sh:0 1px 3px rgba(15,23,42,.1);background:var(--latar);color:var(--teks)}
+.app.gelap{--latar:#0B1530;--kartu:#14214A;--lembut:#101B3E;--garis:#2A3A6B;--teks:#F8FAFC;--redup:#94A3B8;--cincin:#38BDF8;--benar:#4ADE80;--warn:#FBBF24;--salah:#F87171;--bg-benar:rgba(74,222,128,.14);--tx-benar:#BBF7D0;--bg-warn:rgba(251,191,36,.16);--tx-warn:#FDE68A;--bg-salah:rgba(248,113,113,.16);--tx-salah:#FECACA;--bg-info:rgba(56,189,248,.15);--tx-info:#BAE6FD;--sh:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;border:2px solid var(--input);background:var(--kartu);color:var(--teks)}
+.btn:hover{background:var(--lembut);border-color:var(--teks)}
+.btn-utama{background:var(--aksen);color:var(--di-aksen);border-color:var(--di-aksen)}
+.app.gelap .btn-utama{border-color:var(--aksen)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn:focus-visible,.item:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--cincin);outline-offset:2px}
+.kartu{background:var(--kartu);border:1.5px solid var(--garis);border-radius:16px;box-shadow:var(--sh)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;border:1.5px solid}
+.p-warn{background:var(--bg-warn);color:var(--tx-warn);border-color:var(--warn)}
+.p-info{background:var(--bg-info);color:var(--tx-info);border-color:#0369A1}
+.p-bad{background:var(--bg-salah);color:var(--tx-salah);border-color:var(--salah)}
+.p-ok{background:var(--bg-benar);color:var(--tx-benar);border-color:var(--benar)}
+.item{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--garis);background:var(--kartu);color:var(--teks);min-height:44px}
+.item:hover{border-color:var(--input)}
+.item.on{border-color:var(--teks);background:var(--lembut)}
+.fl{display:flex;flex-direction:column;gap:6px}
+.fl label{font-weight:700}
+.fl input,.fl textarea{border:2px solid var(--input);border-radius:12px;padding:10px 14px;font:inherit;background:var(--kartu);color:var(--teks);min-height:48px;box-sizing:border-box;width:100%}
+.fl.err input,.fl.err textarea{border-color:var(--salah)}
+.gal{display:flex;align-items:center;gap:6px;color:var(--salah);font-size:14px;font-weight:700}
+.stp{width:48px;height:48px;border-radius:12px;border:2px solid var(--input);background:var(--kartu);color:var(--teks);font-size:22px;font-weight:800}
+.stp:focus-visible{outline:3px solid var(--cincin);outline-offset:2px}
+</style>
+</helmet>
+<div class="app {{tema}}" style="min-height:980px">
+
+<header style="background:#1A2F65;color:#fff;padding:12px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px">
+<a href="#" style="color:#C9D2EC;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Kuis</a>
+<div style="flex:1 1 260px"><h1 style="font-size:20px;color:#fff">IPA Bab 3 · Antrean koreksi</h1><p style="font-size:14px;color:#C9D2EC">{{sisa}} jawaban menunggu keputusan guru</p></div>
+<button type="button" class="btn" style="background:transparent;color:#fff;border-color:#95A7D5" aria-pressed="{{gelap}}" onClick="{{ubahGelap}}">Mode gelap</button>
+</header>
+
+<div style="display:flex;flex-wrap:wrap;gap:20px;padding:24px 32px 40px;align-items:flex-start;box-sizing:border-box">
+
+<nav aria-label="Antrean jawaban" style="flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;gap:10px">
+<h2 style="font-size:18px">Antrean</h2>
+<sc-for list="{{antrean}}" as="a" hint-placeholder-count="4">
+<button type="button" class="{{a.kelas}}" aria-current="{{a.arus}}" onClick="{{a.pilih}}">
+<span style="display:flex;align-items:center;gap:8px"><strong>{{a.nama}}</strong><span class="{{a.pill}}" style="margin-left:auto">{{a.status}}</span></span>
+<span style="font-size:14px;color:var(--redup)">{{a.soal}}</span>
+</button>
+</sc-for>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+<section class="kartu" style="padding:24px;display:flex;flex-direction:column;gap:16px" aria-labelledby="ds">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<h2 id="ds" style="font-size:22px">{{cur.nama}} · {{cur.tipe}}</h2>
+<span style="margin-left:auto;font-size:14px;color:var(--redup)">Skor maksimal {{cur.maks}}</span>
+</div>
+<div><p style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--redup)">Soal</p><p style="font-weight:600;font-size:18px">{{cur.soal}}</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+<div style="background:var(--lembut);border-radius:14px;padding:14px 16px"><p style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--redup)">Jawaban murid</p><p style="margin-top:4px">{{cur.jawaban}}</p></div>
+<div style="background:var(--lembut);border-radius:14px;padding:14px 16px"><p style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--redup)">Kunci dan kata kunci</p><p style="margin-top:4px">{{cur.kunci}}</p></div>
+</div>
+<div style="display:flex;gap:12px;align-items:flex-start;border:1.5px dashed var(--input);border-radius:14px;padding:12px 16px">
+<span class="pill p-info">Saran otomatis</span>
+<p style="font-size:15px">{{cur.saran}} <span style="color:var(--redup)">Ini hanya saran. Murid tidak melihat alasan ini, dan nilai baru berubah setelah kamu menyimpan koreksi.</span></p>
+</div>
+</section>
+
+<sc-if value="{{tahap0}}" hint-placeholder-val="{{true}}">
+<section class="kartu" style="padding:24px;display:flex;flex-direction:column;gap:16px" aria-labelledby="dk">
+<h2 id="dk" style="font-size:20px">Koreksi manual</h2>
+<div class="fl"><span style="font-weight:700" id="ls">Skor untuk jawaban ini</span>
+<div role="group" aria-labelledby="ls" style="display:flex;align-items:center;gap:12px">
+<button type="button" class="stp" aria-label="Kurangi skor" onClick="{{kurang}}">−</button>
+<span aria-live="polite" style="font-family:Nunito,sans-serif;font-weight:800;font-size:34px;min-width:90px;text-align:center">{{skor}} <span style="font-size:18px;color:var(--redup)">/ {{cur.maks}}</span></span>
+<button type="button" class="stp" aria-label="Tambah skor" onClick="{{tambah}}">+</button>
+</div></div>
+<div class="{{kelasAlasan}}"><label for="al">Alasan perubahan <span style="font-weight:400;color:var(--redup)">(wajib, minimal 10 huruf)</span></label>
+<textarea id="al" rows="3" value="{{alasan}}" onChange="{{ubahAlasan}}" placeholder="Contoh: Jawaban menyebut alur hidung ke trakea, tapi belum menyebut bronkus."></textarea>
+<sc-if value="{{galat}}" hint-placeholder-val="{{false}}"><span class="gal" role="alert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 8v5M12 17h.01"/></svg>{{galat}}</span></sc-if>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<button type="button" class="btn btn-utama" onClick="{{mintaToken}}">Lanjut: minta token konfirmasi</button>
+<span style="font-size:14px;color:var(--redup)">Mengubah nilai adalah tindakan sensitif, jadi butuh token sekali pakai.</span>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{tahap1}}" hint-placeholder-val="{{false}}">
+<section class="kartu" style="padding:24px;display:flex;flex-direction:column;gap:14px;border-color:var(--teks)" aria-labelledby="dt">
+<h2 id="dt" style="font-size:20px">Masukkan token konfirmasi</h2>
+<p style="color:var(--redup)">Token dikirim ke email gurumu. Berlaku 2 menit (sisa 01:52) dan hanya bisa dipakai sekali. Skor {{skor}} dengan alasan: “{{alasan}}”.</p>
+<div class="{{kelasToken}}" style="max-width:260px"><label for="tk">Token 6 angka</label><input id="tk" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="{{token}}" onChange="{{ubahToken}}" placeholder="______" style="font-family:Nunito,sans-serif;font-weight:800;font-size:24px;letter-spacing:.3em">
+<sc-if value="{{galatToken}}" hint-placeholder-val="{{false}}"><span class="gal" role="alert">{{galatToken}}</span></sc-if></div>
+<p style="font-size:13px;color:var(--redup)">Hanya untuk demo: token yang benar adalah 482913.</p>
+<div style="display:flex;flex-wrap:wrap;gap:10px"><button type="button" class="btn" onClick="{{batal}}">Kembali</button><button type="button" class="btn btn-utama" onClick="{{simpan}}">Simpan koreksi</button></div>
+</section>
+</sc-if>
+
+<sc-if value="{{tahap2}}" hint-placeholder-val="{{false}}">
+<section class="kartu" role="status" style="padding:24px;display:flex;flex-direction:column;gap:10px;border-color:var(--benar)">
+<span class="pill p-ok" style="align-self:flex-start">Tersimpan</span>
+<h2 style="font-size:20px">Koreksi tercatat. Total nilai dihitung ulang.</h2>
+<p style="color:var(--redup)">Nilai {{cur.nama}} berubah dari {{lama}} menjadi {{baru}}. Skor per tag ikut diperbarui. Catatan di bawah tidak bisa diubah atau dihapus.</p>
+<div><button type="button" class="btn" onClick="{{batal}}">Koreksi jawaban lain</button></div>
+</section>
+</sc-if>
+
+<section aria-labelledby="dr" style="display:flex;flex-direction:column;gap:8px">
+<h2 id="dr" style="font-size:18px">Riwayat koreksi (hanya bertambah)</h2>
+<div class="kartu">
+<sc-for list="{{riwayat}}" as="r" hint-placeholder-count="3">
+<div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:12px 18px;border-top:1.5px solid var(--garis)">
+<span style="font-size:14px;color:var(--redup);min-width:96px">{{r.jam}}</span>
+<span style="flex:1 1 260px"><strong>{{r.murid}}</strong>: {{r.ubah}}. <span style="color:var(--redup)">{{r.alasan}}</span></span>
+<span style="font-size:14px;color:var(--redup)">oleh {{r.guru}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { gelap: false, sel: 0, tahap: 0, skor: 7, alasan: '', token: '', galat: '', galatToken: '', tersimpan: [] };
+  }
+  renderVals() {
+    const s = this.state;
+    const data = [
+      { nama: 'Salsa R.', tipe: 'Uraian', status: 'Saran AI', pill: 'pill p-info', maks: 10, skor: 7, nilai: [72, 79],
+        soal: 'Jelaskan perjalanan udara dari hidung sampai paru-paru.',
+        jawaban: 'Udara masuk lewat hidung, lalu ke tenggorokan, batang tenggorok, dan sampai di paru-paru.',
+        kunci: 'Kata kunci: hidung, faring, trakea, bronkus, alveolus. Bobot terbesar: trakea dan alveolus.',
+        saran: 'Skor 7 dari 10. Alur benar tapi bronkus dan alveolus belum disebut.' },
+      { nama: 'Dimas S.', tipe: 'Isian singkat', status: 'Perlu ditinjau', pill: 'pill p-warn', maks: 5, skor: 3, nilai: [64, 67],
+        soal: 'Organ yang menyaring debu di dalam hidung disebut …',
+        jawaban: 'rambut getar hidung',
+        kunci: 'Kunci: rambut hidung. Sinonim: rambut getar.',
+        saran: 'Kemiripan 78%, di bawah ambang 80%. Sinonim “rambut getar” cocok sebagian.' },
+      { nama: 'Raka F.', tipe: 'Gambar dari murid', status: 'Perlu ditinjau', pill: 'pill p-warn', maks: 10, skor: 5, nilai: [58, 63],
+        soal: 'Gambarkan alur udara dari hidung sampai paru-paru dan beri nama bagiannya.',
+        jawaban: 'Lampiran gambar (PNG). Gambar tidak dinilai otomatis.',
+        kunci: 'Minimal 4 bagian bernama: hidung, trakea, bronkus, paru-paru.',
+        saran: 'Tidak ada saran. Jenis ini selalu dinilai guru.' },
+      { nama: 'Bima P.', tipe: 'Uraian', status: 'Gagal dinilai', pill: 'pill p-bad', maks: 10, skor: 6, nilai: [70, 76],
+        soal: 'Mengapa kita bernapas lebih cepat saat berlari?',
+        jawaban: 'Karena tubuh butuh lebih banyak oksigen untuk tenaga.',
+        kunci: 'Kata kunci: oksigen, energi, karbon dioksida.',
+        saran: 'Penilaian otomatis gagal untuk soal ini. Soal lain tetap dinilai.' }
+    ];
+    const cur = data[s.sel];
+    const riwayat = s.tersimpan.concat([
+      { jam: '09 Okt 15.40', murid: 'Citra L.', ubah: 'Skor 4 menjadi 6', alasan: 'Jawaban menyebut alveolus.', guru: 'Bu Rina' },
+      { jam: '09 Okt 15.32', murid: 'Eka W.', ubah: 'Skor 8 menjadi 7', alasan: 'Satu kata kunci tertukar.', guru: 'Bu Rina' }
+    ]);
+    const sisa = data.length - s.tersimpan.length;
+    return {
+      tema: s.gelap ? 'gelap' : '', gelap: s.gelap, ubahGelap: () => this.setState({ gelap: !s.gelap }),
+      sisa,
+      antrean: data.map((d, i) => ({ nama: d.nama, status: d.status, pill: d.pill, soal: d.tipe + ' · ' + d.soal.slice(0, 34) + '…',
+        kelas: i === s.sel ? 'item on' : 'item', arus: i === s.sel ? 'true' : undefined,
+        pilih: () => this.setState({ sel: i, tahap: 0, skor: d.skor, alasan: '', token: '', galat: '', galatToken: '' }) })),
+      cur, skor: s.skor, alasan: s.alasan, token: s.token,
+      tahap0: s.tahap === 0, tahap1: s.tahap === 1, tahap2: s.tahap === 2,
+      galat: s.galat, kelasAlasan: s.galat ? 'fl err' : 'fl',
+      galatToken: s.galatToken, kelasToken: s.galatToken ? 'fl err' : 'fl',
+      lama: cur.nilai[0], baru: cur.nilai[1] + (s.skor - cur.skor),
+      riwayat,
+      kurang: () => this.setState({ skor: Math.max(0, s.skor - 1) }),
+      tambah: () => this.setState({ skor: Math.min(cur.maks, s.skor + 1) }),
+      ubahAlasan: (e) => this.setState({ alasan: e.target.value, galat: '' }),
+      ubahToken: (e) => this.setState({ token: e.target.value, galatToken: '' }),
+      mintaToken: () => s.alasan.trim().length < 10
+        ? this.setState({ galat: 'Alasan wajib diisi, minimal 10 huruf, agar perubahan nilai bisa dipertanggungjawabkan.' })
+        : this.setState({ tahap: 1 }),
+      batal: () => this.setState({ tahap: 0, token: '', galatToken: '' }),
+      simpan: () => s.token.trim() !== '482913'
+        ? this.setState({ galatToken: 'Token tidak cocok atau sudah kedaluwarsa. Minta token baru jika perlu.' })
+        : this.setState({ tahap: 2, tersimpan: [{ jam: 'Baru saja', murid: cur.nama, ubah: 'Skor menjadi ' + s.skor, alasan: s.alasan, guru: 'Bu Rina' }].concat(s.tersimpan) })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Editor Materi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+.app{--latar:#F8FAFC;--kartu:#fff;--lembut:#EEF2F7;--garis:#E2E8F0;--teks:#0F172A;--redup:#475569;--aksen:#0EA5E9;--di-aksen:#0F172A;--sorot:#EEF385;--pend:#95A7D5;--input:#64748B;--cincin:#1A2F65;--benar:#15803D;--warn:#B45309;--bg-warn:#FDE9C8;--tx-warn:#6B3500;--bg-info:#E0F2FE;--tx-info:#0C4A6E;--sh:0 1px 3px rgba(15,23,42,.1);background:var(--latar);color:var(--teks)}
+.app.gelap{--latar:#0B1530;--kartu:#14214A;--lembut:#101B3E;--garis:#2A3A6B;--teks:#F8FAFC;--redup:#94A3B8;--cincin:#38BDF8;--benar:#4ADE80;--warn:#FBBF24;--bg-warn:rgba(251,191,36,.16);--tx-warn:#FDE68A;--bg-info:rgba(56,189,248,.15);--tx-info:#BAE6FD;--sh:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;font-weight:700;border:2px solid var(--input);background:var(--kartu);color:var(--teks)}
+.btn:hover{background:var(--lembut);border-color:var(--teks)}
+.btn-utama{background:var(--aksen);color:var(--di-aksen);border-color:var(--di-aksen);box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.app.gelap .btn-utama{border-color:var(--aksen)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.klip:focus-visible,.stp:focus-visible,.tr:focus-visible,input:focus-visible,textarea:focus-visible,.tool:focus-visible{outline:3px solid var(--cincin);outline-offset:2px}
+.kartu{background:var(--kartu);border:1.5px solid var(--garis);border-radius:16px;box-shadow:var(--sh)}
+.tool{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 14px;border-radius:12px;border:1.5px solid var(--input);background:var(--kartu);color:var(--teks);font-weight:700;text-align:left}
+.tool:hover{background:var(--lembut);border-color:var(--teks)}
+.lane{display:flex;align-items:center;gap:8px}
+.lane .lb{flex:none;width:36px;text-align:center;font-size:13px;font-weight:800;color:var(--redup)}
+.area{position:relative;flex:1;height:52px;border-radius:10px;background:var(--lembut);border:1.5px dashed var(--garis)}
+.klip{position:absolute;top:4px;bottom:4px;border-radius:9px;border:2px solid #0F172A;color:#0F172A;font-weight:700;font-size:13px;padding:0 8px;display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;text-align:left}
+.k-teks{background:#EEF385}
+.k-media{background:#0EA5E9}
+.k-kuis{background:#95A7D5}
+.klip.on{box-shadow:0 0 0 3px var(--latar),0 0 0 6px var(--teks)}
+.stp{width:44px;height:44px;border-radius:12px;border:2px solid var(--input);background:var(--kartu);color:var(--teks);font-size:20px;font-weight:800;padding:0}
+.tr{min-height:44px;min-width:56px;padding:0 14px;border-radius:12px;border:2px solid var(--input);background:var(--kartu);color:var(--teks);font-weight:800}
+.tr.on{background:var(--teks);color:var(--latar);border-color:var(--teks)}
+.fl{display:flex;flex-direction:column;gap:6px}
+.fl label,.fl .l{font-weight:700;font-size:14px}
+.fl textarea,.fl input[type=text]{border:2px solid var(--input);border-radius:12px;padding:10px 12px;font:inherit;background:var(--kartu);color:var(--teks);box-sizing:border-box;width:100%}
+.sw{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;font-weight:700}
+.sw input{width:22px;height:22px;accent-color:#0EA5E9}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;border:1.5px solid}
+.p-warn{background:var(--bg-warn);color:var(--tx-warn);border-color:var(--warn)}
+.p-info{background:var(--bg-info);color:var(--tx-info);border-color:#0369A1}
+.p-draf{background:var(--lembut);color:var(--teks);border-color:var(--input)}
+</style>
+</helmet>
+<div class="app {{tema}}" style="min-height:980px">
+
+<header style="background:#1A2F65;color:#fff;padding:12px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px">
+<a href="#" style="color:#C9D2EC;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Materi</a>
+<div style="flex:1 1 220px;min-width:0"><h1 style="font-size:20px;color:#fff">Sistem Pernapasan</h1><p style="font-size:13px;color:#C9D2EC">Kelas 5A · durasi {{durasiTotal}}</p></div>
+<span class="pill p-draf">Draf</span>
+<button type="button" class="btn" style="background:transparent;color:#fff;border-color:#95A7D5" aria-pressed="{{gelap}}" onClick="{{ubahGelap}}">Mode gelap</button>
+<button type="button" class="btn">Laporan murid</button>
+<button type="button" class="btn btn-utama">Publikasikan</button>
+</header>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;padding:16px 24px 32px;align-items:flex-start;box-sizing:border-box">
+
+<aside aria-label="Alat" style="flex:0 0 230px;display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--redup)">Tambah elemen</h2>
+<button type="button" class="tool" onClick="{{tambahTeks}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>Teks</button>
+<button type="button" class="tool" onClick="{{tambahMedia}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Unggah gambar, video, audio</button>
+<button type="button" class="tool" onClick="{{tambahKuis}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4"/></svg>Kuis sisipan</button>
+<h2 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--redup);margin-top:8px">Template</h2>
+<button type="button" class="tool" style="font-weight:600"><span style="flex:1">Pembuka, video, latihan</span></button>
+<button type="button" class="tool" style="font-weight:600"><span style="flex:1">Teks bergambar</span></button>
+<p style="font-size:13px;color:var(--redup)">Kuis sisipan hanya memakai soal yang sudah ada di bank soal, dan murid mengerjakannya sebagai latihan.</p>
+</aside>
+
+<main style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">
+
+<section aria-label="Pratinjau" class="kartu" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+<div role="img" aria-label="{{labelPv}}" style="aspect-ratio:16/8;max-height:300px;width:100%;border-radius:12px;background:{{bgPv}};color:{{fgPv}};border:2px solid var(--garis);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;box-sizing:border-box;text-align:center;overflow:hidden">
+<span style="font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.85">{{jenisPv}}</span>
+<span style="font-family:Nunito,sans-serif;font-weight:800;font-size:28px;line-height:1.25">{{isiPv}}</span>
+<span style="font-size:14px;opacity:.9">{{bawahPv}}</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<span style="font-family:Nunito,sans-serif;font-weight:800;min-width:56px" aria-label="Waktu saat ini">{{waktu}}</span>
+<button type="button" class="btn btn-utama" style="min-width:104px" aria-label="{{labelPutar}}" onClick="{{putar}}">{{teksPutar}}</button>
+<input type="range" aria-label="Posisi waktu" min="0" max="{{totalDetik}}" step="0.5" value="{{t}}" onChange="{{geserT}}" style="flex:1 1 200px;accent-color:#0EA5E9;height:32px">
+<span style="font-family:Nunito,sans-serif;font-weight:800;min-width:56px;text-align:right" aria-label="Durasi total">{{durasiTotal}}</span>
+</div>
+</section>
+
+<section aria-label="Timeline" class="kartu" style="padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px">
+<div class="lane" aria-hidden="true"><span class="lb"></span>
+<div style="position:relative;flex:1;height:22px;font-size:12px;color:var(--redup)">
+<sc-for list="{{tanda}}" as="m" hint-placeholder-count="7"><span style="position:absolute;left:{{m.kiri}}%;top:0;transform:translateX(-1px);border-left:1.5px solid var(--input);padding-left:4px;height:22px">{{m.label}}</span></sc-for>
+</div></div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{lanes}}" as="ln" hint-placeholder-count="2">
+<div class="lane"><span class="lb">{{ln.nama}}</span>
+<div class="area">
+<sc-for list="{{ln.klip}}" as="k" hint-placeholder-count="2">
+<button type="button" class="{{k.kelas}}" style="left:{{k.kiri}}%;width:{{k.lebar}}%" aria-label="{{k.label}}" aria-pressed="{{k.on}}" onClick="{{k.pilih}}">{{k.judul}}</button>
+</sc-for>
+</div></div>
+</sc-for>
+<div class="lane"><span class="lb">A1</span><div class="area" style="display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--redup)">audio (belum ada klip)</div></div>
+<div aria-hidden="true" style="position:absolute;top:-4px;bottom:-4px;left:calc(44px + (100% - 44px) * {{kiriT}} / 100);width:0;border-left:2px solid var(--salahp,#B91C1C);pointer-events:none"><span style="position:absolute;top:-4px;left:-7px;width:12px;height:12px;border-radius:50%;background:#B91C1C"></span></div>
+</div>
+</section>
+</main>
+
+<aside aria-label="Pengaturan klip" class="kartu" style="flex:1 1 280px;max-width:340px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{adaPilih}}" hint-placeholder-val="{{true}}">
+<div style="display:flex;align-items:center;gap:8px"><h2 style="font-size:18px;flex:1">{{pilih.jenis}}</h2><span style="font-size:13px;color:var(--redup)">Track {{pilih.trackNama}}</span></div>
+<sc-if value="{{pilih.isTeks}}" hint-placeholder-val="{{false}}"><div class="fl"><label for="tk">Teks yang tampil</label><textarea id="tk" rows="3" value="{{pilih.teks}}" onChange="{{ubahTeks}}"></textarea></div></sc-if>
+<sc-if value="{{pilih.isKuis}}" hint-placeholder-val="{{false}}">
+<div class="fl"><span class="l">Kuis dari bank soal</span><p style="font-weight:600">{{pilih.judul}}</p></div>
+<label class="sw"><input type="checkbox" checked="{{pilih.wajib}}" onChange="{{ubahWajib}}">Wajib dikerjakan</label>
+<p style="font-size:13px;color:var(--redup)">Jika wajib, server menahan murid di blok ini sampai kuisnya selesai.</p>
+</sc-if>
+<sc-if value="{{pilih.isMedia}}" hint-placeholder-val="{{false}}"><div class="fl"><span class="l">Berkas</span><p style="font-weight:600">{{pilih.judul}}</p></div></sc-if>
+<div class="fl"><span class="l">Mulai (detik)</span><div style="display:flex;align-items:center;gap:10px"><button type="button" class="stp" aria-label="Mulai lebih awal 0,5 detik" onClick="{{mulaiKurang}}">−</button><strong style="min-width:64px;text-align:center;font-family:Nunito,sans-serif;font-size:20px">{{pilih.mulai}}</strong><button type="button" class="stp" aria-label="Mulai lebih lambat 0,5 detik" onClick="{{mulaiTambah}}">+</button></div></div>
+<div class="fl"><span class="l">Durasi (detik)</span><div style="display:flex;align-items:center;gap:10px"><button type="button" class="stp" aria-label="Durasi kurang 0,5 detik" onClick="{{durKurang}}">−</button><strong style="min-width:64px;text-align:center;font-family:Nunito,sans-serif;font-size:20px">{{pilih.durasi}}</strong><button type="button" class="stp" aria-label="Durasi tambah 0,5 detik" onClick="{{durTambah}}">+</button></div></div>
+<div class="fl"><span class="l">Track</span><div role="radiogroup" aria-label="Track" style="display:flex;gap:8px"><sc-for list="{{trackPilih}}" as="r" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{r.on}}" class="{{r.kelas}}" onClick="{{r.pilih}}">{{r.nama}}</button></sc-for></div>
+<span style="font-size:13px;color:var(--redup)">Track yang lebih tinggi tampil di atas track di bawahnya.</span></div>
+<sc-if value="{{bentrok}}" hint-placeholder-val="{{false}}"><p role="alert" class="pill p-warn" style="border-radius:12px;padding:8px 12px;font-weight:600">Klip ini bertumpuk dengan klip lain di track yang sama. Geser waktunya atau pindahkan ke track lain.</p></sc-if>
+<button type="button" class="btn" style="color:#B91C1C;border-color:#B91C1C" onClick="{{hapusKlip}}">Hapus klip</button>
+</sc-if>
+<sc-if value="{{tanpaPilih}}" hint-placeholder-val="{{false}}"><p style="color:var(--redup)">Pilih klip di timeline untuk mengatur waktunya.</p></sc-if>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      gelap: false, t: 4, play: false, sel: 3, nextId: 10,
+      klip: [
+        { id: 1, tipe: 'media', track: 0, mulai: 0, durasi: 36, judul: 'Animasi paru-paru.mp4', teks: '', wajib: false },
+        { id: 2, tipe: 'kuis', track: 0, mulai: 36, durasi: 14, judul: 'Latihan 1: alat pernapasan', teks: '', wajib: true },
+        { id: 3, tipe: 'teks', track: 1, mulai: 2, durasi: 12, judul: 'Alat pernapasan manusia', teks: 'Alat pernapasan manusia', wajib: false },
+        { id: 4, tipe: 'teks', track: 1, mulai: 20, durasi: 14, judul: 'Proses bernapas', teks: 'Proses bernapas: menghirup dan mengembuskan', wajib: false }
+      ]
+    };
+  }
+  componentDidMount() { this.timer = null; }
+  componentWillUnmount() { if (this.timer) clearInterval(this.timer); }
+  jalan(on) {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (on) {
+      this.timer = setInterval(() => {
+        const s = this.state;
+        const total = Math.max(60, ...s.klip.map((k) => k.mulai + k.durasi));
+        if (s.t + 0.25 >= total) { clearInterval(this.timer); this.timer = null; this.setState({ t: total, play: false }); }
+        else this.setState({ t: s.t + 0.25 });
+      }, 250);
+    }
+  }
+  renderVals() {
+    const s = this.state;
+    const fmt = (x) => { const m = Math.floor(x / 60); const d = Math.floor(x % 60); return String(m).padStart(2, '0') + ':' + String(d).padStart(2, '0'); };
+    const total = Math.max(60, ...s.klip.map((k) => k.mulai + k.durasi));
+    const upd = (id, f) => this.setState({ klip: s.klip.map((k) => (k.id === id ? Object.assign({}, k, f(k)) : k)) });
+    const aktif = s.klip.filter((k) => k.mulai <= s.t && s.t < k.mulai + k.durasi).sort((a, b) => b.track - a.track);
+    const atas = aktif[0];
+    const dasar = aktif.find((k) => k.tipe === 'media');
+    let pv = { jenis: 'Tidak ada klip', isi: 'Kosong di detik ini', bawah: '', bg: 'var(--lembut)', fg: 'var(--teks)', label: 'Pratinjau kosong' };
+    if (atas) {
+      if (atas.tipe === 'teks') pv = { jenis: 'Teks', isi: atas.teks || '(teks kosong)', bawah: dasar ? 'di atas: ' + dasar.judul : '', bg: '#EEF385', fg: '#0F172A', label: 'Teks: ' + atas.teks };
+      else if (atas.tipe === 'media') pv = { jenis: 'Media', isi: atas.judul, bawah: 'pratinjau berkas', bg: '#0EA5E9', fg: '#0F172A', label: 'Media: ' + atas.judul };
+      else pv = { jenis: atas.wajib ? 'Kuis sisipan · wajib' : 'Kuis sisipan · opsional', isi: atas.judul, bawah: 'Murid mengerjakan sebagai latihan', bg: '#95A7D5', fg: '#0F172A', label: 'Kuis: ' + atas.judul };
+    }
+    const maxTrack = Math.max(1, ...s.klip.map((k) => k.track));
+    const tNama = (n) => 'V' + (n + 1);
+    const jenisNama = { teks: 'Teks', media: 'Media', kuis: 'Kuis sisipan' };
+    const lanes = [];
+    for (let tr = maxTrack; tr >= 0; tr--) {
+      lanes.push({
+        nama: tNama(tr),
+        klip: s.klip.filter((k) => k.track === tr).map((k) => ({
+          kelas: 'klip k-' + k.tipe + (k.id === s.sel ? ' on' : ''), on: k.id === s.sel,
+          kiri: (k.mulai / total) * 100, lebar: (k.durasi / total) * 100,
+          judul: (k.tipe === 'kuis' && k.wajib ? 'Wajib · ' : '') + k.judul,
+          label: jenisNama[k.tipe] + ': ' + k.judul + ', mulai ' + k.mulai + ' detik, durasi ' + k.durasi + ' detik',
+          pilih: () => this.setState({ sel: k.id })
+        }))
+      });
+    }
+    const tanda = [];
+    const langkah = total > 90 ? 20 : 10;
+    for (let x = 0; x <= total; x += langkah) tanda.push({ kiri: (x / total) * 100, label: fmt(x) });
+    const cur = s.klip.find((k) => k.id === s.sel);
+    const bentrok = cur ? s.klip.some((k) => k.id !== cur.id && k.track === cur.track && k.mulai < cur.mulai + cur.durasi && cur.mulai < k.mulai + k.durasi) : false;
+    const pilih = cur ? { jenis: jenisNama[cur.tipe], isTeks: cur.tipe === 'teks', isKuis: cur.tipe === 'kuis', isMedia: cur.tipe === 'media',
+      teks: cur.teks, judul: cur.judul, wajib: cur.wajib, mulai: String(cur.mulai).replace('.', ','), durasi: String(cur.durasi).replace('.', ','), trackNama: tNama(cur.track) } : {};
+    const trackPilih = [0, 1, 2].map((n) => ({ nama: tNama(n), on: !!cur && cur.track === n, kelas: cur && cur.track === n ? 'tr on' : 'tr', pilih: () => cur && upd(cur.id, () => ({ track: n })) }));
+    const tambah = (k) => this.setState({ klip: s.klip.concat([Object.assign({ id: s.nextId }, k)]), sel: s.nextId, nextId: s.nextId + 1 });
+    const akhir0 = Math.max(0, ...s.klip.filter((k) => k.track === 0).map((k) => k.mulai + k.durasi));
+    return {
+      tema: s.gelap ? 'gelap' : '', gelap: s.gelap, ubahGelap: () => this.setState({ gelap: !s.gelap }),
+      durasiTotal: fmt(total), waktu: fmt(s.t), t: s.t, totalDetik: total, kiriT: (s.t / total) * 100,
+      jenisPv: pv.jenis, isiPv: pv.isi, bawahPv: pv.bawah, bgPv: pv.bg, fgPv: pv.fg, labelPv: pv.label,
+      teksPutar: s.play ? 'Jeda' : 'Putar', labelPutar: s.play ? 'Jeda pratinjau' : 'Putar pratinjau',
+      putar: () => { const on = !s.play; this.setState({ play: on, t: on && s.t >= total ? 0 : s.t }); this.jalan(on); },
+      geserT: (e) => this.setState({ t: Number(e.target.value) }),
+      tanda, lanes, adaPilih: !!cur, tanpaPilih: !cur, pilih, trackPilih, bentrok,
+      ubahTeks: (e) => cur && upd(cur.id, () => ({ teks: e.target.value, judul: e.target.value.slice(0, 40) })),
+      ubahWajib: () => cur && upd(cur.id, (k) => ({ wajib: !k.wajib })),
+      mulaiKurang: () => cur && upd(cur.id, (k) => ({ mulai: Math.max(0, k.mulai - 0.5) })),
+      mulaiTambah: () => cur && upd(cur.id, (k) => ({ mulai: k.mulai + 0.5 })),
+      durKurang: () => cur && upd(cur.id, (k) => ({ durasi: Math.max(1, k.durasi - 0.5) })),
+      durTambah: () => cur && upd(cur.id, (k) => ({ durasi: k.durasi + 0.5 })),
+      hapusKlip: () => cur && this.setState({ klip: s.klip.filter((k) => k.id !== cur.id), sel: null }),
+      tambahTeks: () => tambah({ tipe: 'teks', track: 1, mulai: Math.floor(s.t), durasi: 8, judul: 'Teks baru', teks: 'Teks baru', wajib: false }),
+      tambahMedia: () => tambah({ tipe: 'media', track: 0, mulai: akhir0, durasi: 10, judul: 'Berkas baru.mp4', teks: '', wajib: false }),
+      tambahKuis: () => tambah({ tipe: 'kuis', track: 0, mulai: akhir0, durasi: 12, judul: 'Latihan baru', teks: '', wajib: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

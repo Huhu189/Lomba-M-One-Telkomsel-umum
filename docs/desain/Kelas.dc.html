@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Kelola Kelas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8FAFC;color:#0F172A;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;text-decoration:none;border:2px solid #0F172A;background:#fff;color:#0F172A}
+.btn:hover{background:#EEF2F7}
+.btn-utama{background:#0EA5E9;box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.btn-utama:hover{background:#38BDF8}
+.btn-utama:active{transform:translateY(1px)}
+.btn-bahaya{background:#B91C1C;border-color:#7F1111;color:#fff}
+.btn-bahaya:hover{background:#991B1B}
+.btn:focus-visible,.nav a:focus-visible,.tab:focus-visible,.ikon:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #1A2F65;outline-offset:2px}
+.nav a:focus-visible{outline-color:#EEF385}
+.nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px;border-radius:12px;color:#C9D2EC;text-decoration:none;font-weight:600}
+.nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav a.aktif{background:#F8FAFC;color:#1A2F65;font-weight:700}
+.tab{min-height:40px;padding:0 16px;border-radius:999px;border:1.5px solid #64748B;background:#fff;color:#0F172A;font-weight:700}
+.tab.on{background:#1A2F65;color:#fff;border-color:#1A2F65}
+.ikon{width:44px;height:44px;border-radius:12px;border:1.5px solid #64748B;background:#fff;color:#0F172A;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ikon:hover{background:#EEF2F7}
+.ikon.hapus{color:#B91C1C;border-color:#B91C1C}
+.ikon.hapus:hover{background:#FEE2E2}
+.kartu{background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;overflow:hidden}
+.th,.tr{display:grid;grid-template-columns:minmax(120px,1.4fr) 90px 150px 90px 104px;gap:16px;align-items:center;padding:12px 20px}
+.th{background:#EEF2F7;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.tr{border-top:1.5px solid #E2E8F0;min-height:64px}
+.tr:hover{background:#F1F5F9}
+.aks{display:flex;gap:8px;justify-content:flex-end}
+.fl{display:flex;flex-direction:column;gap:6px}
+.fl label{font-weight:700}
+.fl input,.fl select{min-height:48px;border:2px solid #64748B;border-radius:12px;padding:0 14px;font:inherit;background:#fff;color:#0F172A}
+@media (max-width:700px){
+.th{display:none}
+.tr{grid-template-columns:1fr 1fr;gap:8px 16px}
+.tr [data-l]:before{content:attr(data-l);display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.tr .nm{grid-column:1/3;font-size:18px}
+.aks{grid-column:1/3;justify-content:flex-start}
+}
+</style>
+</helmet>
+<div style="position:relative;display:flex;flex-wrap:wrap;min-height:980px">
+
+<aside style="flex:0 0 260px;background:#1A2F65;color:#F8FAFC;padding:24px 16px;display:flex;flex-direction:column;gap:24px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px;padding:0 6px">
+<span style="width:36px;height:36px;border-radius:10px;background:#EEF385;color:#1A2F65;display:inline-flex;align-items:center;justify-content:center;font-family:Nunito,sans-serif;font-weight:800">US</span>
+<strong style="font-family:Nunito,sans-serif;font-size:19px">Ulangan Sekolah</strong>
+</div>
+<nav class="nav" aria-label="Menu utama" style="display:flex;flex-direction:column;gap:20px">
+<sc-for list="{{grup}}" as="g" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:2px">
+<p style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#95A7D5;padding:0 14px 6px">{{g.nama}}</p>
+<sc-for list="{{g.item}}" as="m" hint-placeholder-count="3">
+<a href="#" class="{{m.kelas}}" aria-current="{{m.arus}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.d}}"/></svg>
+<span>{{m.label}}</span>
+</a>
+</sc-for>
+</div>
+</sc-for>
+</nav>
+</aside>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 40px 48px;display:flex;flex-direction:column;gap:24px;box-sizing:border-box">
+
+<header style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px">
+<div style="flex:1 1 320px;display:flex;flex-direction:column;gap:4px">
+<nav aria-label="Jejak halaman" style="font-size:14px;color:#475569">Data induk &nbsp;/&nbsp; <span style="color:#0F172A;font-weight:700">Kelas</span></nav>
+<h1 style="font-size:34px;color:#1A2F65">Kelas</h1>
+<p style="color:#475569">{{ringkas}}</p>
+</div>
+<button type="button" class="btn btn-utama" onClick="{{bukaTambah}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+Tambah kelas
+</button>
+</header>
+
+<div role="group" aria-label="Saring menurut tingkat" style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{filter}}" as="f" hint-placeholder-count="7">
+<button type="button" class="{{f.kelas}}" aria-pressed="{{f.on}}" onClick="{{f.pilih}}">{{f.label}}</button>
+</sc-for>
+</div>
+
+<sc-if value="{{adaData}}" hint-placeholder-val="{{true}}">
+<div class="kartu" role="table" aria-label="Daftar kelas">
+<div class="th" role="row">
+<span role="columnheader">Kelas</span><span role="columnheader">Tingkat</span><span role="columnheader">Tahun ajaran</span><span role="columnheader">Murid</span><span role="columnheader" style="text-align:right">Aksi</span>
+</div>
+<sc-for list="{{baris}}" as="k" hint-placeholder-count="5">
+<div class="tr" role="row">
+<strong class="nm" role="cell" style="font-size:17px">{{k.nama}}</strong>
+<span role="cell" data-l="Tingkat">{{k.tingkat}}</span>
+<span role="cell" data-l="Tahun ajaran">{{k.tahun}}</span>
+<span role="cell" data-l="Murid">{{k.murid}}</span>
+<div class="aks" role="cell">
+<button type="button" class="ikon" aria-label="{{k.labelUbah}}" onClick="{{k.ubah}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></svg>
+</button>
+<button type="button" class="ikon hapus" aria-label="{{k.labelHapus}}" onClick="{{k.hapus}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+</button>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{kosong}}" hint-placeholder-val="{{false}}">
+<div class="kartu" style="padding:56px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+<span style="width:64px;height:64px;border-radius:18px;background:#EEF385;display:inline-flex;align-items:center;justify-content:center">
+<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V9l9-5 9 5v11M9 20v-6h6v6"/></svg>
+</span>
+<h2 style="font-size:22px">{{judulKosong}}</h2>
+<p style="max-width:420px;color:#475569">Kelas dipakai untuk mengelompokkan murid dan membagikan kuis. Tambahkan satu kelas, lalu impor murid ke dalamnya.</p>
+<button type="button" class="btn btn-utama" onClick="{{bukaTambah}}">Tambah kelas</button>
+</div>
+</sc-if>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="align-self:flex-start;display:flex;align-items:center;gap:10px;background:#1A2F65;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EEF385" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+{{toast}}
+</div>
+</sc-if>
+</main>
+
+<sc-if value="{{form}}" hint-placeholder-val="{{false}}">
+<div style="position:absolute;inset:0;background:rgba(15,22,49,.55);display:flex;justify-content:flex-end">
+<section role="dialog" aria-modal="true" aria-labelledby="jf" style="width:min(420px,100%);background:#fff;padding:28px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:12px">
+<h2 id="jf" style="font-size:24px;flex:1">{{judulForm}}</h2>
+<button type="button" class="ikon" aria-label="Tutup formulir" onClick="{{tutup}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<form style="display:flex;flex-direction:column;gap:16px" onSubmit="{{simpan}}">
+<div class="fl"><label for="n">Nama kelas</label><input id="n" placeholder="Contoh: 6A" autocomplete="off"></div>
+<div class="fl"><label for="t">Tingkat</label><select id="t"><option>Pilih tingkat…</option><option>Kelas 1</option><option>Kelas 2</option><option>Kelas 3</option><option>Kelas 4</option><option>Kelas 5</option><option>Kelas 6</option></select></div>
+<div class="fl"><label for="y">Tahun ajaran <span style="font-weight:400;color:#475569">(opsional)</span></label><input id="y" placeholder="2026/2027"></div>
+<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+<button type="button" class="btn" onClick="{{tutup}}">Batal</button>
+<button type="submit" class="btn btn-utama">Simpan kelas</button>
+</div>
+</form>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{dialog}}" hint-placeholder-val="{{false}}">
+<div style="position:absolute;inset:0;background:rgba(15,22,49,.55);display:flex;justify-content:center;align-items:flex-start;padding:140px 20px">
+<section role="alertdialog" aria-modal="true" aria-labelledby="jd" aria-describedby="dd" style="width:min(460px,100%);background:#fff;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box">
+<span style="width:48px;height:48px;border-radius:14px;background:#FEE2E2;display:inline-flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v5M12 17h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+<h2 id="jd" style="font-size:22px">{{dialog.judul}}</h2>
+<p id="dd" style="color:#475569">{{dialog.isi}}</p>
+<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:12px">
+<button type="button" class="btn" onClick="{{tutup}}">Batal</button>
+<button type="button" class="btn btn-bahaya" onClick="{{dialog.ya}}">Hapus kelas</button>
+</div>
+</section>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      filter: 'semua',
+      form: null,
+      hapusId: null,
+      toast: '',
+      data: [
+        { id: 1, nama: '4A', tingkat: 4, murid: 28 },
+        { id: 2, nama: '4B', tingkat: 4, murid: 27 },
+        { id: 3, nama: '5A', tingkat: 5, murid: 30 },
+        { id: 4, nama: '5B', tingkat: 5, murid: 29 },
+        { id: 5, nama: '5C', tingkat: 5, murid: 26 },
+        { id: 6, nama: '6A', tingkat: 6, murid: 31 },
+        { id: 7, nama: '6B', tingkat: 6, murid: 29 }
+      ]
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const ikon = {
+      home: 'M3 11l9-8 9 8M5 10v10h14V10',
+      kuis: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4',
+      bank: 'M4 5h16v14H4zM4 10h16M10 10v9',
+      tag: 'M3 12V3h9l9 9-9 9zM7.5 7.5h.01',
+      kelas: 'M3 20V9l9-5 9 5v11M9 20v-6h6v6',
+      mapel: 'M4 20h4L19 9l-4-4L4 16z',
+      murid: 'M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8',
+      materi: 'M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z',
+      avatar: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z',
+      atur: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4'
+    };
+    const m = (label, d, aktif) => ({ label, d, kelas: aktif ? 'aktif' : '', arus: aktif ? 'page' : undefined });
+    const grup = [
+      { nama: 'Ringkasan', item: [m('Beranda', ikon.home)] },
+      { nama: 'Ujian', item: [m('Kuis', ikon.kuis), m('Bank Soal', ikon.bank), m('Tag Soal', ikon.tag)] },
+      { nama: 'Data induk', item: [m('Kelas', ikon.kelas, true), m('Mapel', ikon.mapel), m('Murid', ikon.murid)] },
+      { nama: 'Belajar', item: [m('Materi', ikon.materi), m('Moderasi Avatar', ikon.avatar), m('Pengaturan', ikon.atur)] }
+    ];
+    const tutup = () => this.setState({ form: null, hapusId: null });
+    const tampil = s.filter === 'semua' ? s.data : s.data.filter((k) => k.tingkat === s.filter);
+    const baris = tampil.map((k) => ({
+      nama: 'Kelas ' + k.nama,
+      tingkat: 'Tingkat ' + k.tingkat,
+      tahun: '2026/2027',
+      murid: k.murid + ' murid',
+      labelUbah: 'Ubah kelas ' + k.nama,
+      labelHapus: 'Hapus kelas ' + k.nama,
+      ubah: () => this.setState({ form: 'ubah:' + k.nama, toast: '' }),
+      hapus: () => this.setState({ hapusId: k.id, toast: '' })
+    }));
+    const f = (id, label) => ({ label, on: s.filter === id, kelas: s.filter === id ? 'tab on' : 'tab', pilih: () => this.setState({ filter: id, toast: '' }) });
+    const filter = [f('semua', 'Semua'), f(1, 'Tingkat 1'), f(2, 'Tingkat 2'), f(3, 'Tingkat 3'), f(4, 'Tingkat 4'), f(5, 'Tingkat 5'), f(6, 'Tingkat 6')];
+    const target = s.data.find((k) => k.id === s.hapusId);
+    const dialog = target ? {
+      judul: 'Hapus kelas ' + target.nama + '?',
+      isi: target.murid + ' murid akan dilepas dari kelas ini. Hasil kuis mereka tetap tersimpan. Tindakan ini tidak bisa dibatalkan.',
+      ya: () => this.setState({ data: s.data.filter((k) => k.id !== target.id), hapusId: null, toast: 'Kelas ' + target.nama + ' dihapus.' })
+    } : null;
+    const judulForm = s.form === 'tambah' ? 'Tambah kelas' : 'Ubah kelas ' + String(s.form || '').replace('ubah:', '');
+    return {
+      grup,
+      filter,
+      baris,
+      adaData: baris.length > 0,
+      kosong: baris.length === 0,
+      judulKosong: s.filter === 'semua' ? 'Belum ada kelas' : 'Belum ada kelas tingkat ' + s.filter,
+      ringkas: s.data.length + ' kelas · Tahun ajaran 2026/2027',
+      toast: s.toast,
+      form: !!s.form,
+      judulForm,
+      dialog,
+      tutup,
+      bukaTambah: () => this.setState({ form: 'tambah', toast: '' }),
+      simpan: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ form: null, toast: 'Perubahan kelas disimpan.' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

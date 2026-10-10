@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Audit UI</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8FAFC;color:#0F172A;font-family:'Nunito Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3,h4{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700;border:1.5px solid #0F172A}
+.s-Tinggi{background:#B91C1C;color:#fff;border-color:#B91C1C}
+.s-Sedang{background:#FDE9C8;color:#6B3500;border-color:#B45309}
+.s-ok{background:#DCFCE7;color:#14532D;border-color:#15803D}
+.s-warn{background:#FDE9C8;color:#6B3500;border-color:#B45309}
+.s-bad{background:#FEE2E2;color:#7F1111;border-color:#B91C1C}
+.s-off{background:#EEF2F7;color:#0F172A;border-color:#64748B}
+.s-Rendah{background:#EEF2F7;color:#1A2F65;border-color:#64748B}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin-bottom:4px}
+</style>
+</helmet>
+<div style="max-width:1200px;margin:0 auto;padding:56px 32px 72px;display:flex;flex-direction:column;gap:48px;box-sizing:border-box">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+<span class="lbl">Audit UI · src.zip · 187 berkas</span>
+<h1 style="font-size:44px;line-height:1.1;color:#1A2F65">Ulangan Sekolah punya fondasi yang rapi, tapi alur kerja intinya belum terasa matang.</h1>
+<p style="max-width:780px;color:#475569;font-size:18px">Pagar mutu, aksesibilitas dasar, dan keterbukaan soal pengaman ulangan sudah serius dikerjakan. Yang lemah ada di tempat guru dan murid paling sering berada: beranda, tabel data, dan layar ulangan. Papan ini juga mencocokkan kode dengan spesifikasi lomba (chunks), lalu memberi contoh halaman dengan palet resmi.</p>
+<p style="font-size:14px;color:#475569">Catatan metode: temuan berasal dari membaca kode, CSS, dan 18 berkas spesifikasi, bukan dari menjalankan aplikasi. package.json dan jsconfig tidak ada di zip, jadi dependensi dan checkJs tidak bisa saya periksa. Angka kontras dihitung dari nilai hex.</p>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<h2 style="font-size:26px;color:#1A2F65">Ada berapa perangkat UI?</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+<sc-for list="{{inventaris}}" as="x" hint-placeholder-count="7">
+<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:2px">
+<span style="font-family:Nunito,sans-serif;font-weight:800;font-size:40px;line-height:1;color:#1A2F65">{{x.n}}</span>
+<strong style="font-size:15px">{{x.nama}}</strong>
+<span style="font-size:13px;color:#475569">{{x.ket}}</span>
+</div>
+</sc-for>
+</div>
+<p style="color:#475569;max-width:820px">Totalnya sekitar 57 perangkat UI ditambah 33 ikon. Tiga pemilih peran (kuis, materi, avatar) hanya mengganti tampilan guru dan murid, jadi jumlah layar unik sedikit di bawah 35. Dua editor adalah file terbesar (hampir 900 baris masing-masing) dan paling berisiko jadi sulit dirawat.</p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:26px;color:#1A2F65">Yang sudah bagus dan perlu dipertahankan</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">
+<sc-for list="{{bagus}}" as="b" hint-placeholder-count="4">
+<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:2px"><path d="M5 12l5 5 9-10"/></svg>
+<p style="font-size:15px">{{b}}</p>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<h2 style="font-size:26px;color:#1A2F65">Kritik, urut dari yang paling berpengaruh</h2>
+<sc-for list="{{temuan}}" as="t" hint-placeholder-count="3">
+<article style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+<span style="font-family:Nunito,sans-serif;font-weight:800;color:#475569">{{t.no}}</span>
+<span class="chip {{t.kelas}}">{{t.sev}}</span>
+<h3 style="font-size:20px;flex:1 1 320px;color:#0F172A">{{t.judul}}</h3>
+<span style="font-size:13px;color:#475569">Contoh perbaikan: {{t.lihat}}</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">
+<div><p class="lbl">Bukti di kode</p><p style="font-size:15px">{{t.bukti}}</p></div>
+<div><p class="lbl">Dampak</p><p style="font-size:15px">{{t.dampak}}</p></div>
+<div><p class="lbl">Perbaikan</p><p style="font-size:15px">{{t.perbaikan}}</p></div>
+</div>
+</article>
+</sc-for>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:26px;color:#1A2F65">Kesesuaian dengan spesifikasi lomba</h2>
+<p style="color:#475569;max-width:820px">Dicocokkan dengan chunk theme, stack, structure, quality-gates, security, anticheat, dan slice 00–10. Bobot penilaian: UI/UX dan responsif 20%, fungsionalitas dan tema 25%, kualitas teknis 15%.</p>
+<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;overflow:hidden">
+<sc-for list="{{spec}}" as="x" hint-placeholder-count="6">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:12px 20px;border-top:1.5px solid #E2E8F0">
+<strong style="flex:1 1 300px">{{x.item}}</strong>
+<span class="{{x.kelas}}" style="min-width:130px;justify-content:center">{{x.status}}</span>
+<span style="flex:1 1 320px;font-size:14px;color:#475569">{{x.ket}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:26px;color:#1A2F65">Urutan pengerjaan sampai 15 Oktober 15.30 WIB</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+<sc-for list="{{urutan}}" as="u" hint-placeholder-count="3">
+<div style="background:#1A2F65;color:#F8FAFC;border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#EEF385">{{u.tahap}}</span>
+<h3 style="font-size:20px">{{u.judul}}</h3>
+<p style="font-size:15px;color:#C9D2EC">{{u.isi}}</p>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      inventaris: [
+        { n: '35', nama: 'Layar', ket: '31 Halaman*, 3 pemilih peran, Beranda' },
+        { n: '7', nama: 'Komponen dasar', ket: 'Tombol, Isian, Banner, Langkah, MeterSandi, Maskot, Toast' },
+        { n: '4', nama: 'Kerangka & merek', ket: 'KerangkaAuth, KerangkaUmum, Merek, TombolTema' },
+        { n: '8', nama: 'Tipe soal', ket: 'Pilihan ganda sampai menjodohkan, via RendererSoal' },
+        { n: '2', nama: 'Editor besar', ket: 'EditorSoal dan EditorMateri' },
+        { n: '1', nama: 'Modal proteksi', ket: 'Pengaman jendela ulangan' },
+        { n: '33', nama: 'Ikon SVG', ket: 'icons.jsx, satu set sendiri' }
+      ],
+      bagus: [
+        'Warna hanya lewat variabel CSS: tidak ada satu pun hex di berkas JSX, dan ada tes yang menjaganya.',
+        'ModalProteksi sudah tepat sasaran: pemberitahuan, bukan gerbang, dengan bahasa yang tidak menakut-nakuti anak.',
+        'Layar ulangan memakai role timer dan alertdialog, serta pagar galat khusus yang tidak menghilangkan jawaban.',
+        'MathML dirender tanpa dangerouslySetInnerHTML, mode gelap lewat data-bs-theme, dan tidak ada TODO atau FIXME di kode.'
+      ],
+
+      temuan: [
+        { no: '01', sev: 'Tinggi', kelas: 's-Tinggi', judul: 'Cincin fokus keyboard berwarna teal gagal kontras', lihat: 'Standar (6)',
+          bukti: ':focus-visible di theme.css memakai outline 3px var(--aksen). Teal kode #0FA3B8 di atas #F5F2EA hanya 2,70:1. Aksen resmi #0EA5E9 di atas #F8FAFC juga hanya 2,65:1.',
+          dampak: 'Batas WCAG 1.4.11 adalah 3:1. Pengguna keyboard, dan layar proyektor kelas yang pucat, sulit melihat posisi fokus. Mengganti palet saja tidak menyelesaikannya.',
+          perbaikan: 'Pakai cincin indigo #1A2F65 3 px dengan lapisan putih (12,25:1), dan #38BDF8 di mode gelap (7,28:1). Tetap terlihat di atas tombol sky.' },
+        { no: '02', sev: 'Tinggi', kelas: 's-Tinggi', judul: '"Kumpulkan jawaban" memakai window.confirm', lihat: 'Ulangan (4)',
+          bukti: 'HalamanKerjakan.jsx baris 571. Ada 7 pemakaian window.confirm di aplikasi, termasuk semua tombol Hapus.',
+          dampak: 'Aksi yang tidak bisa dibatalkan hanya diberi satu kalimat. Dialog bawaan browser tidak bisa diberi gaya dan sering terblokir di webview HP.',
+          perbaikan: 'DialogKonfirmasi buatan sendiri. Saat mengumpulkan ulangan, tampilkan ringkasan: terjawab, ragu, dan belum dijawab.' },
+        { no: '03', sev: 'Tinggi', kelas: 's-Tinggi', judul: 'Layar ulangan: satu scroll panjang tanpa navigator soal', lihat: 'Ulangan (4) dan HP (5)',
+          bukti: 'HalamanKerjakan memetakan seluruh attempt.soal dalam satu kolom. Timer ada di kartu atas yang ikut tergulir. Tidak ada penanda ragu.',
+          dampak: 'Murid kehilangan sisa waktu saat scroll, sulit melompat ke soal tertentu, dan tidak bisa meninjau sebelum mengumpulkan.',
+          perbaikan: 'Header lengket berisi timer dan status simpan. Navigator nomor dengan empat status. Satu soal per layar di HP.' },
+        { no: '04', sev: 'Tinggi', kelas: 's-Tinggi', judul: 'Beranda setelah masuk tidak membantu tugas apa pun', lihat: 'Beranda guru (2)',
+          bukti: 'Beranda.jsx hanya menampilkan peran, status akun, email, lalu kalimat "akan muncul di sini".',
+          dampak: 'Guru tidak melihat kuis yang sedang berlangsung atau antrean koreksi. Murid tidak melihat ulangan berikutnya.',
+          perbaikan: 'Dashboard berbasis tugas: bagian "Perlu perhatian" di atas, angka ringkas, lalu jadwal kuis.' },
+        { no: '05', sev: 'Sedang', kelas: 's-Sedang', judul: 'Dua sistem tombol berjalan bersamaan', lihat: 'Kelas (3) dan Standar (6)',
+          bukti: '81 pemakaian kelas Bootstrap mentah (btn-outline-primary, btn-outline-danger, btn-sm) berbanding 63 pemakaian komponen Tombol.',
+          dampak: 'Tombol Ubah dan Hapus di tabel lebih pendek dari target 44 px yang ditetapkan sendiri, dan tampil berbeda dari halaman auth.',
+          perbaikan: 'Tambah varian bahaya dan ukuran sedang (tinggi 44 px) ke Tombol. Buat TombolIkon dengan aria-label wajib.' },
+        { no: '06', sev: 'Sedang', kelas: 's-Sedang', judul: 'Loading hanya teks, data kosong hanya satu kalimat', lihat: 'Kelas (3)',
+          bukti: '36 teks "Memuat…" dan nol skeleton. Keadaan kosong tidak punya tombol tindakan.',
+          dampak: 'Layout melompat saat data tiba, dan layar terasa mati di jaringan sekolah yang lambat.',
+          perbaikan: 'Komponen Skeleton dan KosongData (ikon, judul, penjelasan, satu tindakan utama).' },
+        { no: '07', sev: 'Sedang', kelas: 's-Sedang', judul: 'Menu guru: sembilan pil datar tanpa kelompok', lihat: 'Beranda guru (2)',
+          bukti: 'MENU_GURU berisi 9 item. Kuis dan Bank Soal memakai ikon yang sama (IkonPapan). Pil mendatar tampil mulai lg.',
+          dampak: 'Pil pindah ke dua baris di lebar 1024 px. Pengguna harus menghafal urutan karena tidak ada pengelompokan.',
+          perbaikan: 'Sidebar dengan grup Ujian, Data induk, Belajar. Setiap menu punya ikon sendiri dan penanda halaman aktif.' },
+        { no: '08', sev: 'Sedang', kelas: 's-Sedang', judul: 'Tabel data memaksa geser horizontal di HP', lihat: 'Kelas (3)',
+          bukti: 'table-responsive dipakai di 8 halaman, termasuk Kelas, Murid, Mapel, dan Bank Soal.',
+          dampak: 'Kolom Aksi terdorong keluar layar, padahal itu bagian yang paling sering dipakai guru.',
+          perbaikan: 'Di bawah 640 px, ubah baris menjadi kartu bertumpuk dengan aksi tetap terlihat. Di desktop, tabel dengan aksi ikon.' },
+        { no: '09', sev: 'Rendah', kelas: 's-Rendah', judul: 'Hierarki judul dan kepala halaman tidak seragam', lihat: 'Kelas (3)',
+          bukti: 'HalamanKelas memakai h1 dengan class h5 dan judul kartu h6. Tidak ada komponen kepala halaman bersama.',
+          dampak: 'Tiap halaman menaruh judul, deskripsi, dan tombol utama di tempat berbeda, sehingga pengguna harus mencari ulang.',
+          perbaikan: 'Komponen HeaderHalaman: jejak, h1, deskripsi satu baris, tombol utama di kanan.' },
+        { no: '10', sev: 'Rendah', kelas: 's-Rendah', judul: 'CSS satu berkas besar dan tidak ada skala spacing', lihat: 'Standar (6)',
+          bukti: 'theme.css 2.025 baris dengan 161 nama kelas. Ada 30 inline style. Bootstrap penuh dimuat, padahal dipakai terutama untuk grid dan utilitas.',
+          dampak: 'Perubahan satu fitur berisiko mengenai fitur lain, dan bobot CSS awal lebih besar dari perlu.',
+          perbaikan: 'Pecah per fitur dan tambah token spacing dan tipografi. Bootstrap tetap CSS saja sesuai stack. Pangkas hanya jika ukuran CSS terbukti jadi masalah.' },
+        { no: '11', sev: 'Sedang', kelas: 's-Sedang', judul: 'Palet di kode menyimpang dari palet di chunk theme', lihat: 'Semua papan memakai palet resmi',
+          bukti: 'theme.css memakai kertas #F5F2EA, teal #0FA3B8, navy #1B2A5E, teks #16203C, link #0B6E8F, gelap #0F1631. Spesifikasi menetapkan #F8FAFC, #0EA5E9, #1A2F65, #0F172A, #0369A1, #0B1530. Komentar di theme.css menyebutnya "evolusi".',
+          dampak: 'Penilai membandingkan hasil dengan spesifikasi. Penyimpangan yang tidak dijelaskan bisa terbaca sebagai tidak mengikuti arahan, padahal UI/UX bernilai 20%.',
+          perbaikan: 'Putuskan satu: selaraskan ke palet resmi (ganti nilai di dua blok variabel saja), atau catat alasan penyimpangan di docs. Papan ini memakai palet resmi.' },
+        { no: '12', sev: 'Rendah', kelas: 's-Rendah', judul: 'Tombol utama "timbul" kurang cocok dengan Soft UI dan layar ulangan yang tenang', lihat: 'Ulangan (4) dan Standar (6)',
+          bukti: '.btn-aksen di theme.css memakai bayangan keras 4 px dan bergeser saat ditekan. Spesifikasi meminta bayangan halus dan halaman ulangan minim ornamen.',
+          dampak: 'Di layar ulangan, tombol yang "melompat" menambah gangguan visual saat murid perlu fokus pada soal.',
+          perbaikan: 'Bayangan lembut 0 2px 6px, border tetap jelas, dan pergeseran hanya 1 px saat ditekan.' }
+      ],
+      spec: [
+        { item: 'Bootstrap hanya CSS, toast dan ikon buatan sendiri', status: 'Sesuai', kelas: 'chip s-ok', ket: 'main.jsx hanya mengimpor CSS Bootstrap. toast.jsx dan icons.jsx ada.' },
+        { item: 'Warna lewat variabel CSS, tanpa hex di komponen', status: 'Sesuai', kelas: 'chip s-ok', ket: '0 hex di berkas JSX, tes tema tersedia.' },
+        { item: 'Palet resmi F8FAFC, 0EA5E9, 1A2F65, 95A7D5, EEF385', status: 'Menyimpang', kelas: 'chip s-bad', ket: 'Lihat temuan 11.' },
+        { item: 'Dua gaya: guru (indigo) dan murid (sorot lime)', status: 'Sebagian', kelas: 'chip s-warn', ket: 'Satu palet dipakai bersama. Papan ini memisahkan: sidebar indigo untuk guru, sorot lime untuk murid.' },
+        { item: 'Mode gelap lewat data-bs-theme', status: 'Sesuai', kelas: 'chip s-ok', ket: 'Blok [data-bs-theme=dark] dan tema.js sudah ada.' },
+        { item: 'Halaman ulangan tenang dan minim ornamen', status: 'Sebagian', kelas: 'chip s-warn', ket: 'Tombol timbul (temuan 12) dan tanpa navigator soal (temuan 03).' },
+        { item: 'Error boundary aplikasi dan khusus ulangan', status: 'Sesuai', kelas: 'chip s-ok', ket: 'main.jsx dan BatasGalatUlangan.jsx.' },
+        { item: 'State loading dan error wajib', status: 'Sebagian', kelas: 'chip s-warn', ket: 'Ada, tapi hanya teks. Lihat temuan 06.' },
+        { item: 'Pemberitahuan pengaman: bukan gerbang', status: 'Sesuai', kelas: 'chip s-ok', ket: 'ModalProteksi.jsx. Desain ulangnya ada di papan 4.' },
+        { item: 'Aksesibilitas: label, fokus, aria-live, keyboard', status: 'Sebagian', kelas: 'chip s-warn', ket: 'Label dan aria-live baik. Cincin fokus gagal kontras (temuan 01).' },
+        { item: 'Struktur src/sections dan src/shared', status: 'Sesuai', kelas: 'chip s-ok', ket: 'Ada tambahan shared/layout dan src/theme di luar shared, wajar.' },
+        { item: 'Tanpa placeholder atau TODO', status: 'Sesuai', kelas: 'chip s-ok', ket: '0 TODO atau FIXME.' },
+        { item: 'JSDoc dengan checkJs strict, dependensi sesuai daftar', status: 'Belum bisa dicek', kelas: 'chip s-off', ket: 'jsconfig.json dan package.json tidak ada di zip. JSDoc terlihat di berkas.' }
+      ],
+      urutan: [
+        { tahap: 'Sabtu 10 – Minggu 11 Okt · fondasi', judul: 'Fokus, dialog, tombol, palet', isi: 'Perbaiki cincin fokus, tombol varian bahaya dan ukuran 44 px, DialogKonfirmasi, Skeleton, KosongData. Putuskan soal palet (temuan 11).' },
+        { tahap: 'Senin 12 – Selasa 13 Okt · alur inti', judul: 'Ulangan murid dan beranda', isi: 'Header lengket, navigator soal, tandai ragu, ringkasan sebelum kumpul, status offline. Lalu dashboard guru dan murid.' },
+        { tahap: 'Rabu 14 Okt · data dan HP', judul: 'Menu, tabel, mode gelap', isi: 'Sidebar guru, tabel jadi kartu di HP, ganti semua window.confirm. Mode gelap terakhir karena di urutan potong spesifikasi ia lebih dulu dikorbankan.' },
+        { tahap: 'Kamis 15 Okt sebelum 15.30 WIB · penutup', judul: 'Bekukan dan kumpulkan', isi: 'Jalankan verify.sh sampai hijau, cek link deploy dari perangkat lain, lengkapi jurnal prompt dan log mentah. Commit kecil dengan tanggal asli, tanpa force push.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

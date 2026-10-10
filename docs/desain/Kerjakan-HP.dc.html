@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Ulangan di HP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8FAFC;color:#0F172A;font-family:'Nunito Sans',system-ui,sans-serif;font-size:17px;line-height:1.5}
+h1,h2{font-family:Nunito,system-ui,sans-serif;margin:0}
+p{margin:0}
+button{font:inherit}
+.opsi{display:flex;align-items:center;gap:14px;width:100%;min-height:64px;padding:10px 14px;border-radius:16px;border:2px solid #64748B;background:#fff;color:#0F172A;text-align:left;font-size:19px}
+.opsi.pilih{background:#EEF385;border-color:#0F172A;font-weight:700}
+.huruf{flex:none;width:34px;height:34px;border-radius:10px;border:2px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-family:Nunito,sans-serif;font-weight:800}
+.opsi.pilih .huruf{background:#0F172A;color:#EEF385}
+.bb{min-height:56px;border-radius:14px;border:2px solid #64748B;background:#fff;color:#0F172A;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 14px}
+.bb.u{background:#0EA5E9;border-color:#0F172A;box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.bb:focus-visible,.opsi:focus-visible{outline:3px solid #1A2F65;outline-offset:2px}
+.seg{height:6px;border-radius:3px;background:#E2E8F0}
+.seg.j{background:#0EA5E9}
+.seg.r{background:#EEF385;outline:1.5px solid #0F172A;outline-offset:-1px}
+.seg.a{outline:2px solid #0F172A;outline-offset:1px}
+</style>
+</helmet>
+<div style="width:390px;height:844px;display:flex;flex-direction:column;background:#F8FAFC;box-sizing:border-box;overflow:hidden">
+
+<header style="background:#fff;border-bottom:1.5px solid #E2E8F0;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="flex:1;min-width:0"><h1 style="font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">IPA Bab 3: Sistem Pernapasan</h1><p style="font-size:13px;color:#475569">Soal 4 dari 8 · 5 terjawab</p></div>
+<div role="timer" aria-label="Sisa waktu 24 menit 18 detik" style="display:flex;align-items:center;gap:6px;background:#EEF385;border:2px solid #0F172A;border-radius:12px;padding:4px 12px;font-family:Nunito,sans-serif;font-weight:800;font-size:20px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18"/></svg>24:18</div>
+</div>
+<div role="progressbar" aria-label="Soal terjawab" aria-valuemin="0" aria-valuemax="8" aria-valuenow="5" style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px">
+<span class="seg j"></span><span class="seg j"></span><span class="seg j"></span><span class="seg r a"></span><span class="seg j"></span><span class="seg j"></span><span class="seg"></span><span class="seg"></span>
+</div>
+</header>
+
+<main style="flex:1;overflow:auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<span style="padding:2px 12px;border-radius:99px;background:#EEF2F7;font-size:13px;font-weight:700">Pilihan ganda</span>
+<span style="padding:2px 12px;border-radius:99px;background:#EEF385;border:1.5px solid #0F172A;font-size:13px;font-weight:700">Ragu-ragu</span>
+<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;background:#E0F2FE;border:1.5px solid #0369A1;color:#0C4A6E;font-size:13px;font-weight:700"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg>Pengaman</span>
+</div>
+<p style="font-size:24px;line-height:1.4;font-weight:700">Pertukaran gas pada manusia terjadi di …</p>
+<div role="radiogroup" aria-label="Pilihan jawaban" style="display:flex;flex-direction:column;gap:10px">
+<button type="button" role="radio" aria-checked="false" class="opsi"><span class="huruf">A</span>Lambung</button>
+<button type="button" role="radio" aria-checked="true" class="opsi pilih"><span class="huruf">B</span>Alveolus<svg style="margin-left:auto" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button>
+<button type="button" role="radio" aria-checked="false" class="opsi"><span class="huruf">C</span>Usus</button>
+<button type="button" role="radio" aria-checked="false" class="opsi"><span class="huruf">D</span>Ginjal</button>
+</div>
+<p role="status" style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Jawabanmu tersimpan otomatis</p>
+</main>
+
+<nav aria-label="Navigasi soal" style="background:#fff;border-top:1.5px solid #E2E8F0;padding:12px 16px 16px;display:grid;grid-template-columns:56px 1fr 56px 1fr;gap:10px">
+<button type="button" class="bb" aria-label="Soal sebelumnya"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+<button type="button" class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>Daftar soal</button>
+<button type="button" class="bb" aria-label="Tandai ragu-ragu" style="background:#EEF385;border-color:#0F172A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+<button type="button" class="bb u" style="font-size:18px">Selanjutnya</button>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

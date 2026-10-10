@@ -103,7 +103,7 @@ async function main() {
       isi: document.querySelector('main')?.innerText?.replace(/\\s+/g, ' ').slice(0, 240) ?? '(tanpa main)',
     })`)
 
-  const masuk = async (akun) =>
+  const masukSekali = async (akun) =>
     evalJs(`(async () => {
       await fetch('/sanctum/csrf-cookie', { credentials: 'include' })
       const token = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN=')).split('=')[1])
@@ -115,6 +115,18 @@ async function main() {
       })
       return { status: res.status, email: (await res.json())?.user?.email ?? null }
     })()`)
+
+  const masuk = async (akun) => {
+    let hasilMasuk = await masukSekali(akun)
+
+    for (let coba = 0; coba < 3 && hasilMasuk.status === 429; coba++) {
+      console.log('   (batas masuk per menit tercapai, menunggu 20 detik…)')
+      await sleep(20_000)
+      hasilMasuk = await masukSekali(akun)
+    }
+
+    return hasilMasuk
+  }
 
   const apiJson = async (jalur, metode = 'GET', muatan = null) =>
     evalJs(`(async () => {
@@ -196,8 +208,10 @@ async function main() {
   const duaDigit = (angka) => String(angka).padStart(2, '0')
   const lokal = (waktu) =>
     `${waktu.getFullYear()}-${duaDigit(waktu.getMonth() + 1)}-${duaDigit(waktu.getDate())}T${duaDigit(waktu.getHours())}:${duaDigit(waktu.getMinutes())}`
-  const mulai = new Date(Date.now() - 60_000)
-  const selesai = new Date(Date.now() + 3_600_000)
+  // Jadwal dipasang di depan dulu: server menolak mengubah susunan soal saat
+  // kuis sudah berjalan, sedangkan langkah 2 (susun soal) butuh menyimpan.
+  const mulai = new Date(Date.now() + 300_000)
+  const selesai = new Date(Date.now() + 3_900_000)
 
   await evalJs(`__alat.isi('#kuis-mulai', '${lokal(mulai)}')`)
   await evalJs(`__alat.isi('#kuis-selesai', '${lokal(selesai)}')`)
@@ -208,15 +222,16 @@ async function main() {
     `fetch('/api/v1/kuis', { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json()).then((d) => d.find((k) => k.judul === 'Latihan Operasi Hitung (draf)').id)`,
   )
 
-  await evalJs(`__alat.klikTeks('Susun soal')`)
-  await sleep(2000)
-  const susunanAwal = await evalJs(`document.querySelectorAll('.col-lg-6 input[type="checkbox"]').length`)
+  // Menyimpan info & jadwal membawa guru ke langkah 2 (bank soal + susunan).
+  // Susunan disimpan oleh tombol "Lanjut: tinjau", publikasi dari langkah 3.
+  const susunanAwal = await evalJs(`document.querySelectorAll('.pilih-soal').length`)
   await evalJs(
-    `[...document.querySelectorAll('.col-lg-6 input[type="checkbox"]')].slice(0, 2).forEach((c) => { if (!c.checked) c.click() })`,
+    `[...document.querySelectorAll('.pilih-soal')].slice(0, 2).forEach((b) => { if (b.getAttribute('aria-checked') !== 'true') b.click() })`,
   )
-  await evalJs(`__alat.klikTeks('Simpan susunan')`)
-  await sleep(2000)
-  await evalJs(`__alat.klikTeks('Terbitkan')`)
+  await sleep(600)
+  await evalJs(`__alat.klikTeks('Lanjut: tinjau')`)
+  await sleep(2200)
+  await evalJs(`__alat.klikTeks('Publikasikan kuis')`)
   await sleep(2600)
 
   const kartuSetelahTerbit = await evalJs(`__alat.teksKartu('Latihan Operasi Hitung (draf)')`)
@@ -224,6 +239,32 @@ async function main() {
     'guru menyusun soal lalu menerbitkan kuis',
     kartuSetelahTerbit !== null && !kartuSetelahTerbit.includes('Draf') && susunanAwal >= 4,
     kartuSetelahTerbit ?? 'kartu tidak ditemukan',
+  )
+
+  // Setelah terbit, jadwal digeser ke jendela "sedang berjalan" lewat API supaya
+  // smoke slice 04 menemukan kuis yang bisa dikerjakan.
+  const geserJadwal = await evalJs(`(async () => {
+    const k = await fetch('/api/v1/kuis/${kuisId}', { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json())
+    await fetch('/sanctum/csrf-cookie', { credentials: 'include' })
+    const token = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN=')).split('=')[1])
+    const res = await fetch('/api/v1/kuis/${kuisId}', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': token },
+      body: JSON.stringify({
+        judul: k.judul, deskripsi: k.deskripsi ?? undefined, subject_id: k.subject_id, class_id: k.class_id,
+        durasi_menit: k.durasi_menit, acak_soal: k.acak_soal, acak_opsi: k.acak_opsi,
+        mulai_at: new Date(Date.now() - 60_000).toISOString(),
+        selesai_at: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+    })
+    const isi = await res.json().catch(() => null)
+    return { status: res.status, berjalan: isi?.sedang_berjalan ?? null }
+  })()`)
+  catat(
+    'jadwal kuis digeser ke jendela berjalan (dipakai smoke slice 04)',
+    geserJadwal.status === 200,
+    `status ${geserJadwal.status} · berjalan=${geserJadwal.berjalan}`,
   )
 
   // ---------- 5. Sisi murid ----------
@@ -250,13 +291,20 @@ async function main() {
 
   await buka(`/kuis/${kuisId}`)
   const isiMurid = await evalJs(`document.querySelector('main')?.innerText?.replace(/\\s+/g, ' ') ?? ''`)
+  // K-02: daftar soal baru keluar lewat attempt yang sudah dimulai, jadi halaman
+  // detail murid memang tidak memuat teks soal maupun kunci jawaban.
   catat(
-    'murid melihat soal tanpa kunci jawaban',
-    isiMurid.includes('1/2 + 1/4') && !isiMurid.toLowerCase().includes('kunci'),
-    isiMurid.slice(0, 120),
+    'murid belum melihat soal/kunci sebelum menekan Kerjakan sekarang (K-02)',
+    !isiMurid.includes('1/2 + 1/4') &&
+      !isiMurid.toLowerCase().includes('kunci') &&
+      isiMurid.includes('Kerjakan sekarang'),
+    isiMurid.slice(0, 140),
   )
 
   await apiJson('/v1/auth/keluar', 'POST')
+  // Tab yang dibuat harness ini ditutup supaya target Chrome tidak menumpuk
+  // saat smoke dijalankan berulang.
+  await send('Target.closeTarget', { targetId })
   ws.close()
 
   const gagal = hasil.filter((satu) => !satu.lolos)

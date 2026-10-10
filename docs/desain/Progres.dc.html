@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Progres Tema Murid</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8FAFC;color:#0F172A;font-family:'Nunito Sans',system-ui,sans-serif;font-size:18px;line-height:1.55}
+h1,h2,h3{font-family:Nunito,system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+a{color:#0369A1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:12px;font-weight:700;border:2px solid #64748B;background:#fff;color:#0F172A;text-decoration:none}
+.btn:hover{background:#EEF2F7;border-color:#0F172A}
+.btn-utama{background:#0EA5E9;border-color:#0F172A;box-shadow:0 2px 6px rgba(15,23,42,.22)}
+.btn-utama:hover{background:#38BDF8}
+.btn:focus-visible,.nav a:focus-visible,.tab:focus-visible{outline:3px solid #1A2F65;outline-offset:2px}
+.nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:99px;color:#0F172A;text-decoration:none;font-weight:700}
+.nav a:hover{background:#EEF2F7}
+.nav a.aktif{background:#EEF385;border:2px solid #0F172A;padding:0 14px}
+.tab{min-height:44px;padding:0 18px;border-radius:99px;border:1.5px solid #64748B;background:#fff;color:#0F172A;font-weight:700}
+.tab.on{background:#EEF385;border:2px solid #0F172A}
+.kartu{background:#fff;border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.lv{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:99px;font-size:14px;font-weight:700;border:1.5px solid}
+.lv-paham{background:#DCFCE7;color:#14532D;border-color:#15803D}
+.lv-mulai{background:#FDE9C8;color:#6B3500;border-color:#B45309}
+.lv-belum{background:#FEE2E2;color:#7F1111;border-color:#B91C1C}
+.bar{height:10px;border-radius:99px;background:#E2E8F0;overflow:hidden}
+.bar>span{display:block;height:100%;border-radius:99px}
+.lencana{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:16px 10px;border-radius:16px;border:2px solid #0F172A;background:#EEF385}
+.lencana.kunci{background:#fff;border:2px dashed #64748B;color:#475569}
+</style>
+</helmet>
+<div style="min-height:1000px">
+
+<header style="background:#fff;border-bottom:1.5px solid #E2E8F0;padding:10px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:10px;background:#EEF385;border:2px solid #0F172A;display:inline-flex;align-items:center;justify-content:center;font-family:Nunito,sans-serif;font-weight:800">US</span><strong style="font-family:Nunito,sans-serif;font-size:19px">Ulangan Sekolah</strong></div>
+<nav class="nav" aria-label="Menu murid" style="display:flex;flex-wrap:wrap;gap:4px;flex:1">
+<a href="#">Ulangan Saya</a><a href="#">Materi</a><a href="#" class="aktif" aria-current="page">Progres Tema</a><a href="#">Lencana</a><a href="#">Avatar</a>
+</nav>
+<span style="display:inline-flex;align-items:center;gap:10px"><span style="width:40px;height:40px;border-radius:50%;background:#95A7D5;color:#0F172A;display:inline-flex;align-items:center;justify-content:center;font-weight:800" aria-hidden="true">AP</span><strong>Adinda</strong></span>
+</header>
+
+<main style="max-width:1100px;margin:0 auto;padding:32px 32px 56px;display:flex;flex-direction:column;gap:28px;box-sizing:border-box">
+
+<div style="display:flex;flex-direction:column;gap:4px">
+<h1 style="font-size:34px;color:#1A2F65">Progres tema</h1>
+<p style="color:#475569">Lihat bagian mana yang sudah kamu kuasai dan mana yang perlu dilatih.</p>
+</div>
+
+<section aria-labelledby="hh" style="display:flex;flex-wrap:wrap;gap:16px">
+<div class="kartu" style="flex:1 1 360px;padding:24px;display:flex;flex-direction:column;gap:14px">
+<h2 id="hh" style="font-size:20px">IPA Bab 3: Sistem Pernapasan</h2>
+<div style="display:flex;flex-wrap:wrap;gap:16px">
+<div style="flex:1 1 140px;background:#EEF385;border:2px solid #0F172A;border-radius:16px;padding:14px 16px"><span style="font-size:16px;font-weight:700">Nilai ulangan</span><span style="display:block;font-family:Nunito,sans-serif;font-weight:800;font-size:48px;line-height:1">78</span><span style="font-size:13px">Tidak berubah. Dipakai untuk peringkat.</span></div>
+<div style="flex:1 1 140px;background:#EEF2F7;border-radius:16px;padding:14px 16px"><span style="font-size:16px;font-weight:700">Nilai latihan (ke-2)</span><span style="display:block;font-family:Nunito,sans-serif;font-weight:800;font-size:48px;line-height:1">86</span><span style="font-size:13px;color:#475569">Untuk belajar. Tidak masuk peringkat.</span></div>
+</div>
+<p style="font-size:14px;color:#475569">Kamu bisa mengulang 1 kali lagi.</p>
+<div><a class="btn btn-utama" href="#">Ulangi latihan</a></div>
+</div>
+
+<div class="kartu" style="flex:1 1 300px;padding:24px;display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:20px">Peringkat kelas 5A</h2>
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+<li style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;background:#EEF2F7"><strong style="width:24px">1</strong><span style="flex:1">Citra L.</span><strong>94</strong></li>
+<li style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;background:#EEF2F7"><strong style="width:24px">2</strong><span style="flex:1">Eka W.</span><strong>88</strong></li>
+<li style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;background:#EEF2F7"><strong style="width:24px">3</strong><span style="flex:1">Gita M.</span><strong>81</strong></li>
+<li aria-label="Kamu, peringkat 4, skor 78" style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;background:#EEF385;border:2px solid #0F172A"><strong style="width:24px">4</strong><span style="flex:1;font-weight:700">Kamu</span><strong>78</strong></li>
+</ol>
+<p style="font-size:13px;color:#475569">Peringkat memakai nilai ulangan. Muncul hanya kalau guru menyalakannya.</p>
+</div>
+</section>
+
+<section aria-labelledby="ht" style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<h2 id="ht" style="font-size:24px;flex:1 1 200px">Pemahaman per tema</h2>
+<div role="group" aria-label="Saring tema" style="display:flex;gap:8px">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="2"><button type="button" class="{{t.kelas}}" aria-pressed="{{t.on}}" onClick="{{t.pilih}}">{{t.label}}</button></sc-for>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+<sc-for list="{{tema}}" as="m" hint-placeholder-count="4">
+<article class="kartu" style="padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="font-size:18px;flex:1 1 140px">{{m.nama}}</h3><span class="{{m.kelas}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.d}}"/></svg>{{m.level}}</span></div>
+<div class="bar" role="img" aria-label="{{m.label}}"><span style="width:{{m.persen}}%;background:{{m.warna}}"></span></div>
+<p style="font-size:14px;color:#475569">{{m.benar}} dari {{m.total}} soal benar. {{m.saran}}</p>
+<sc-if value="{{m.latihan}}" hint-placeholder-val="{{false}}"><div><a class="btn" href="#">Latihan {{m.nama}}</a></div></sc-if>
+</article>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="hl" style="display:flex;flex-direction:column;gap:14px">
+<h2 id="hl" style="font-size:24px">Lencana mapelmu</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+<div class="lencana"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><strong>Jago IPA</strong><span style="font-size:13px">Rata-rata 85 ke atas</span></div>
+<div class="lencana"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><strong>Rajin Mengulang</strong><span style="font-size:13px">Mengulang 3 kuis</span></div>
+<div class="lencana kunci"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z"/></svg><strong>Jago Matematika</strong><span style="font-size:13px">Terkunci: butuh rata-rata 85, kamu 79</span></div>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { f: 'semua' }; }
+  renderVals() {
+    const s = this.state;
+    const cek = 'M5 12l5 5 9-10';
+    const tengah = 'M5 12h14';
+    const seru = 'M12 7v6M12 17h.01';
+    const info = {
+      paham: { level: 'Paham', kelas: 'lv lv-paham', d: cek, warna: '#15803D' },
+      mulai: { level: 'Mulai paham', kelas: 'lv lv-mulai', d: tengah, warna: '#B45309' },
+      belum: { level: 'Belum paham', kelas: 'lv lv-belum', d: seru, warna: '#B91C1C' }
+    };
+    const data = [
+      ['Alat pernapasan', 'paham', 5, 5, 'Pertahankan.'],
+      ['Proses bernapas', 'mulai', 3, 5, 'Coba lagi soal tentang diafragma.'],
+      ['Gangguan pernapasan', 'belum', 1, 4, 'Baca dulu materi “Penyakit paru-paru”.'],
+      ['Menjaga kesehatan', 'paham', 3, 3, 'Pertahankan.']
+    ].map((d) => Object.assign({}, info[d[1]], {
+      nama: d[0], benar: d[2], total: d[3], persen: Math.round(d[2] / d[3] * 100), saran: d[4], latihan: d[1] !== 'paham',
+      label: d[0] + ': ' + info[d[1]].level + ', ' + d[2] + ' dari ' + d[3] + ' benar', _k: d[1]
+    }));
+    const t = (id, l) => ({ label: l, on: s.f === id, kelas: s.f === id ? 'tab on' : 'tab', pilih: () => this.setState({ f: id }) });
+    return { tabs: [t('semua', 'Semua tema'), t('perlu', 'Perlu dilatih')], tema: s.f === 'semua' ? data : data.filter((d) => d._k !== 'paham') };
+  }
+}
+</script>
+</body>
+</html>

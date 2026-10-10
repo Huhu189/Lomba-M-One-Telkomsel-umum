@@ -168,3 +168,114 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   (audit U-01..U-04 + Q-01..Q-19 + S-01/S-04/S-05/S-07/S-14/I-01 dikerjakan satu per ID sampai
   ekspor Word ulang) dan `2026-10-08 ±20.10 WIB` (perapian dokumen: transkrip mentah utuh +
   ekspor Word). Salinan byte-exact: `log-mentah/sesi-2026-10-05-chat-messages.json.gz`.
+
+- **Putaran audit 5 pilar (9 Oktober 2026)**: permintaan pengguna — mengerjakan temuan `audit.md`
+  menurut prioritas, satu per ID, dengan bukti angka. Yang selesai: kelompok 1 (otorisasi lintas
+  guru + kunci jawaban/`Policy` di setiap endpoint) dan performa jalur pengerjaan (P-03 autosave
+  bebas bank soal, P-04 pengumpulan satu `upsert` alih-alih query per soal), lalu **P-02 presence**:
+  kehadiran dipindah dari satu peta utuh per kuis di cache ke **satu hash Redis per kuis + set
+  indeks**, sehingga satu request murid hanya menyentuh satu medan (`HGET`/`HSET`, O(1)) dan dua
+  request bersamaan tidak saling menimpa; guru tetap membaca satu kelas dengan satu `HGETALL`.
+  Cadangan non-Redis (`GudangPeta`) dipertahankan, jalur gagal tetap *fail-open*, dan ada pemulihan
+  kunci sisa bertipe string dari driver lama. Verifikasi: `./verify.sh` **HIJAU** — Pest **226 passed
+  (1808 assertions)**, Pint 318 berkas, checkJs OK, ESLint 0 error, Vitest 42 berkas/338 test,
+  realtime 15 test; smoke HTTP nyata dengan layanan lokal hidup (backend :8000, realtime :4000,
+  frontend :5173) **242/242 lulus**; jumlah perintah Redis diukur sungguhan lewat `INFO commandstats`
+  (satu request murid = 1 hget + 1 hset, tanpa `HGETALL`). Batasan jujur ada di
+  `laporan-pengujian.md` A.22.6 (P-01 paginasi masih terbuka, belum ada uji beban lapangan).
+
+- **Putaran P-01 paginasi (9 Oktober 2026)**: lanjutan prioritas `audit.md` — satu-satunya temuan
+  kelompok 2 yang masih terbuka sesudah P-02/P-03/P-04. Endpoint yang paling tidak terbatas
+  (**daftar murid**) dijadikan contoh pertama: `MuridController::index` sekarang `->paginate`
+  (**50/halaman**, batas atas 200) dengan bentuk respons paginator Laravel (`data[]` + `meta`),
+  frontend `HalamanMurid` mendapat tombol Sebelumnya/Berikutnya + "Menampilkan N dari M murid",
+  dan `skemaHalamanMurid` menolak bentuk array lama. Verifikasi: `php artisan test` **227 passed
+  (1818 assertions)**, `./verify.sh` **HIJAU** (Vitest kini 43 berkas/342 test), smoke HTTP nyata
+  **242/242 lulus**. Batasan jujur: P-01 baru sebagian — kuis, materi, koreksi, peringkat, ekspor
+  nilai, monitor, dan kecurangan masih memuat semua baris (lihat `laporan-pengujian.md` A.23.6).
+
+- **Putaran UI (10 Oktober 2026)**: permintaan pengguna — tombol Ubah di `/kuis` belum responsif,
+  layout kurang rapih, minta **hamburger** untuk tiap bagian, utamakan **ikon**, dan matangkan
+  **editor materi** ("saat di play video gak jalan" → pakai media native HTML + sinkron). Yang
+  dikerjakan: shell baru (navbar pil ber-ikon ≥ lg, laci hamburger < lg, tutup lewat Escape/overlay/
+  tautan), baris aksi kartu kuis ber-ikon yang membungkus rapi, dan pratinjau editor materi memakai
+  `<video>`/`<audio>` native yang mengikuti jam timeline (`offsetMedia`), plus perbaikan klip
+  berdurasi 0 supaya media tetap muncul. Verifikasi: `./verify.sh` **HIJAU** (Pest 227 passed/1818
+  assertions, Vitest 44 berkas/355 test), `npm run build` lolos, smoke CDP baru
+  `docs/smoke-ui-nav.mjs` **13/13** (390 px & 1280 px), dan cek editor via CDP **7/7** (media benar
+  berjalan saat timeline diputar). Batasan: perombakan seluruh halaman belum, lihat A.24.6.
+
+- **Putaran desain Ulangan Sekolah (10 Oktober 2026)**: pengguna menyerahkan paket desain
+  `desain-ulangan-sekolah.zip` (12 papan: audit + contoh "sesudah" + papan Standar) dan meminta
+  melanjutkan UI dengan acuan itu; lewat pilihan, pengguna memutuskan **palet diselaraskan ke palet
+  resmi spesifikasi** dan pekerjaan mengikuti urutan papan mulai dari fondasi. Yang dikerjakan:
+  token baru (cincin fokus yang lolos kontras, skala jarak & huruf), `Tombol` varian bahaya + ukuran
+  44 px + `TombolIkon` ber-`aria-label`, komponen `DialogKonfirmasi` (menggantikan 6 dari 7
+  `window.confirm`), `Skeleton`, `KosongData`, `HeaderHalaman`, `TabelData` (tabel → kartu di HP),
+  `PanelForm` (dialog samping), dan `KerangkaUmum` menjadi panel samping indigo berkelompok
+  (Ringkasan/Ujian/Data induk/Belajar) dengan menu Beranda serta ikon Kuis berbeda dari Bank Soal.
+  Papan 3 "Kelola Kelas (sesudah)" diterapkan penuh, lalu polanya dipakai di Mapel, Murid, Tag,
+  Bank Soal, dan Kuis. Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest **227 passed
+  (1818 assertions)**, Pint 318 berkas, checkJs OK, ESLint 0 error, Vitest **46 berkas/373 test**
+  (naik dari 44/355), realtime 15 test. Batasan jujur ada di `laporan-pengujian.md` A.25.6 — layar
+  ulangan (papan 4/5), beranda (2), dan papan 7–12 belum dikerjakan.
+
+- **Putaran desain lanjutan — layar ulangan & beranda (10 Oktober 2026)**: melanjutkan urutan papan
+  desain ke papan 4/5 dan 2. Layar ulangan murid sekarang punya **kepala lengket** (judul, lencana
+  pengaman, progress bar terjawab, sisa waktu, tombol Selesai), **satu soal per layar**, **navigator
+  nomor** empat keadaan (dijawab / ragu-ragu / belum dijawab / aktif) yang dilipat di HP, **penanda
+  ragu**, banner **koneksi putus**, dan **dialog ringkasan sebelum mengumpulkan** — ini menggantikan
+  `window.confirm` terakhir, jadi tidak ada lagi `window.confirm` di seluruh `src/`. Skala huruf murid
+  dibesarkan (teks soal 26 px, pilihan 20 px/68 px). Beranda guru menjadi **dasbor berbasis tugas**:
+  "Perlu perhatian" (berlangsung → Buka monitor, antrean koreksi, laporan avatar), 4 angka ringkas, dan
+  jadwal kuis bertab Hari ini / Minggu ini; beranda murid menampilkan ulangan berikutnya + pintasan.
+  Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest **227 passed (1818 assertions)**, Pint 318
+  berkas, checkJs OK, ESLint 0 error, Vitest **49 berkas/397 test** (A.25: 46/373), realtime 15 test,
+  `npm run build` lolos. Batasan jujur di `laporan-pengujian.md` A.26.6 — papan 7–12 (Monitor, Koreksi,
+  Progres, Kuis 3 langkah, EditorSoal, EditorMateri) belum dikerjakan.
+
+- **Putaran desain lanjutan — Monitor, Koreksi, Progres (10 Oktober 2026)**: menutup urutan papan 7–9.
+  Live Monitor memakai kepala halaman bersama, **strip angka ringkas dari snapshot server**
+  (Mengerjakan / Selesai / Tidak aktif / Perlu ditinjau), tabel murid via `TabelData` (jadi kartu di HP,
+  kolom Catatan tidak lagi terdorong keluar layar), kolom **Terakhir aktif** dalam bahasa manusia, pil
+  saringan catatan, dan keadaan kosong per saringan. Koreksi manual dan Progres Tema mendapat kepala
+  bersama, skeleton, kosong-data, ukuran tombol 44 px, dan Progres Tema mendapat **saringan "Semua tema /
+  Perlu dilatih"**. Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest **227 passed (1818
+  assertions)**, Pint 318 berkas, checkJs OK, ESLint 0 error, Vitest **50 berkas/401 test** (A.26:
+  49/397), realtime 15 test, `npm run build` lolos. Batasan di A.27.6: papan 10–12 (Kuis 3 langkah,
+  EditorSoal, EditorMateri) belum, papan 8 baru sebagian, 3 halaman masih `table-responsive`.
+- **Putaran desain lanjutan — papan 10 & 11 + satu sistem tombol (10 Oktober 2026)**: menutup dua papan
+  terakhir paket desain. **Papan 10**: halaman kuis guru jadi alur **tiga langkah** (info & jadwal → susun
+  soal → tinjau & publikasi) dengan pil langkah bernomor (`LangkahPil`, `aria-current="step"`), bank soal
+  sebagai baris centang ber-label, panel susunan bernomor dengan tombol naik/turun ber-`aria-label`, dan
+  langkah 3 berisi daftar kelengkapan + ringkasan (tombol terbit mati selama ada butir "Belum").
+  **Papan 11**: editor soal jadi tiga kartu bernomor + sisi kanan lengket berisi pratinjau (`RendererSoal`
+  yang sama dengan layar murid) dan daftar **Kelengkapan** yang diturunkan dari validator yang sama
+  (`kelengkapanSoal()`), jadi daftar periksa tidak pernah berbeda pendapat dengan galat simpan; kunci
+  benar/salah dan pemilih tipe memakai pil (bukan `<select>`). **Butir DoD "satu sistem tombol"**: seluruh
+  kelas tombol Bootstrap di JSX (`btn-sm`, `btn-outline-*`, `btn-primary`) diganti `Tombol`/`TombolTaut`/
+  `TombolIkon`, pemetaannya di `theme.css` dihapus, dan dijaga tes baru `sistemTombol.test.js`.
+  Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest **227 passed (1818 assertions)**, Pint OK,
+  checkJs OK, ESLint 0 error, Vitest **53 berkas/428 test** (A.27: 50/401), realtime 15 test,
+  `npm run build` lolos, smoke CDP baru `docs/smoke-ui-susun.mjs` **40/40**; `smoke-ui-nav.mjs` 14/14 dan
+  `smoke-ui-slice03.mjs` 9/9 setelah disesuaikan. Batasan di A.28.7: papan 8 baru sebagian, smoke
+  slice 04–07 belum dibereskan.
+
+- **Putaran verifikasi — smoke mandiri slice 04–07 dan bug payload soal letak kata (10 Oktober 2026)**:
+  menutup utang A.28.7. Semua harness slice 04–07 ditulis ulang jadi **mandiri** (membuat soal + ulangan
+  untuk kelas murid uji, memeriksa lewat layar sungguhan, lalu menghapus jejaknya di blok `finally` dan
+  memulihkan pengaturan yang diubah), plus tahan **429** (throttle masuk 5/menit), menutup tab Chrome
+  sendiri, dan mengikuti teks UI baru (satu soal per layar, "x dari N terjawab", "Selesai" →
+  "Kumpulkan", panel "Catatan untuk ditinjau"). Harness baru itu **menemukan bug nyata (Q-19)**:
+  `AttemptService::payloadSoal()` hanya menyalin `opsi/kiri/kanan/item`, sehingga soal **letak kata**
+  sampai ke perangkat murid **tanpa `kata` dan `posisi`** — soal tampil kosong dan mustahil dijawab dari
+  layar, sementara penilaian lewat API tetap "benar" sehingga tidak tertangkap uji lama. Perbaikan:
+  daftar putih ditambah `kata` + `posisi`; penjaganya tes baru di `Slice06Test` yang sudah dibuktikan
+  gagal bila perbaikan dibalik. Satu salah tulis seeder (`UserStatus` → `Usa_erStatus`, 213 tes gagal)
+  juga tertangkap `verify.sh` dan dipulihkan. Verifikasi: `./verify.sh` **SEMUA HIJAU exit 0** — Pest
+  **228 passed (1833 assertions)**, Pint OK, checkJs OK, ESLint 0 error, Vitest 53 berkas/428 test,
+  realtime 15 test; seluruh smoke UI satu tarikan **148 pemeriksaan lulus** (nav 14/14 · susun 40/40 ·
+  slice03 9/9 · slice04 18/18 · slice05 20/20 · slice06 27/27 · slice07 20/20), `smoke-http-fitur.mjs`
+  **242/242**, dan slice04/slice05 diulang berturut-turut tetap penuh (harness mandiri memang bisa
+  dijalankan berulang). Batasan di A.29.7: papan 8 (Koreksi) masih sebagian, tanpa uji visual, smoke UI
+  butuh empat layanan hidup.
