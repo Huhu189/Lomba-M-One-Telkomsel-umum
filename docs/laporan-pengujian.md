@@ -2315,6 +2315,7 @@ Frontend (diubah): `sections/question/tipeSoal.js`, `validasi.js`, `EditorSoal.j
   ditolak (422) tanpa menambah baris catatan.
 - Uji lama yang mengirim `tamper_suspected` dari klien diganti memakai `dom_injection`; perilaku
   append-only-nya tetap diuji apa adanya.
-- Hasil: `php artisan test --filter=Slice07` → **16 passed (163 assertions)**; `./verify.sh` **SEMUA HIJAU**.
+- Hasil: `php artisan test --filter=Slice07` → **16 passed (163 assertions)**; `./verify.sh` **SEMUA HIJAU**;
+  total setelah 2A: `php artisan test` **253 passed (2256 assertions)**, `npx vitest run` **54 berkas / 484 test**.
 - Belum: pengirim sisi klien untuk dua kategori baru, denyut ber-nonce, `SapuPresence`, dan pemeriksaan
   integritas fungsi proteksi (bagian 2B–2D).
