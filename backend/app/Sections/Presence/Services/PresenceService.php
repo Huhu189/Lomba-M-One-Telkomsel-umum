@@ -8,9 +8,13 @@ use App\Sections\Attempt\Enums\StatusAttempt;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Services\KecuranganService;
+use App\Sections\Presence\Contracts\GudangPresence;
 use App\Sections\Quiz\Models\Kuis;
+use Illuminate\Cache\RedisStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Presence tanpa heartbeat berat (chunk slice-07).
@@ -20,13 +24,11 @@ use Illuminate\Support\Facades\Cache;
  * terjadi (memuat attempt, menyimpan jawaban) memperpanjang `last_seen`; klien
  * hanya perlu mengirim satu ping kecil bila 15 detik berlalu tanpa request lain.
  *
- * Penyimpanan: **satu peta per kuis** (`presence:kuis:{id}`) berisi attempt →
- * {student_id, sesi, terakhir}. Peta ini dibaca sekali untuk seluruh Live
- * Monitor (satu round-trip untuk 40 murid, bukan 40 kunci terpisah), dan tetap
- * cocok dengan Redis di produksi maupun driver cache yang dipakai di dev/test.
- * Kesegaran ditentukan ambang 45 detik; `sapu()` membuang entri yang sudah
- * basi. Tab yang disembunyikan tetap dianggap online — itu memang bukan alasan
- * menuduh anak pergi.
+ * Penyimpanan diserahkan ke `GudangPresence` (P-02): dengan Redis, satu request
+ * hanya menyentuh satu entri milik murid itu (HSET/HGET), bukan membaca-menulis
+ * seluruh peta kelas. Kesegaran ditentukan ambang 45 detik; `sapu()` membuang
+ * entri yang sudah basi. Tab yang disembunyikan tetap dianggap online — itu
+ * memang bukan alasan menuduh anak pergi.
  */
 class PresenceService
 {
@@ -36,8 +38,8 @@ class PresenceService
     /** Setelah sekian detik tanpa aktivitas, murid dicatat "lama tidak aktif". */
     public const AMBANG_LAMA_OFFLINE = 120;
 
-    /** Masa simpan peta kuis di cache (detik). */
-    private const TTL_PETA = 10800;
+    /** Gudang yang terpilih (di-cache per proses supaya tidak diperiksa ulang). */
+    private ?GudangPresence $gudang = null;
 
     public function __construct(private readonly KecuranganService $kecurangan) {}
 
@@ -50,9 +52,9 @@ class PresenceService
         $sekarang = Carbon::now();
         $kuisId = (int) $attempt->quiz_id;
         $attemptId = (int) $attempt->getKey();
+        $gudang = $this->gudang();
 
-        $peta = $this->peta($kuisId);
-        $sebelum = $peta[$attemptId] ?? null;
+        $sebelum = $gudang->entri($kuisId, $attemptId);
 
         // Sesi ganda: sesi lain yang MASIH segar untuk attempt yang sama.
         // Ini satu-satunya kategori kecurangan yang bisa dilihat server sendiri
@@ -76,19 +78,11 @@ class PresenceService
             ]);
         }
 
-        $peta[$attemptId] = [
+        $gudang->simpan($kuisId, $attemptId, [
             'student_id' => (int) $attempt->student_id,
             'sesi' => $sesi,
             'terakhir' => $sekarang->toIso8601String(),
-        ];
-
-        Cache::put($this->kunciKuis($kuisId), $peta, self::TTL_PETA);
-
-        $indeks = $this->indeksKuis();
-        if (! in_array($kuisId, $indeks, true)) {
-            $indeks[] = $kuisId;
-            Cache::put($this->kunciIndeks(), $indeks, self::TTL_PETA);
-        }
+        ]);
     }
 
     /**
@@ -101,7 +95,7 @@ class PresenceService
         $sekarang = Carbon::now();
         $hasil = [];
 
-        foreach ($this->peta((int) $kuis->getKey()) as $attemptId => $entri) {
+        foreach ($this->gudang()->semua((int) $kuis->getKey()) as $attemptId => $entri) {
             if (! is_array($entri)) {
                 continue;
             }
@@ -130,19 +124,18 @@ class PresenceService
     public function sapu(): int
     {
         $sekarang = Carbon::now();
+        $gudang = $this->gudang();
         $dibuang = 0;
 
-        foreach ($this->indeksKuis() as $kuisId) {
-            $peta = $this->peta((int) $kuisId);
+        foreach ($gudang->kuis() as $kuisId) {
+            $rusak = [];
+            $basi = [];
 
-            if ($peta === []) {
-                continue;
-            }
-
-            foreach ($peta as $attemptId => $entri) {
+            foreach ($gudang->semua($kuisId) as $attemptId => $entri) {
+                // Entri rusak (nilai tak terbaca) dibuang seperti sebelumnya,
+                // tanpa dicatat sebagai kejadian curang.
                 if (! is_array($entri)) {
-                    unset($peta[$attemptId]);
-                    $dibuang++;
+                    $rusak[] = $attemptId;
 
                     continue;
                 }
@@ -157,16 +150,16 @@ class PresenceService
                     continue;
                 }
 
-                $this->catatLamaOffline((int) $attemptId, $entri);
+                $this->catatLamaOffline($attemptId, $entri);
 
-                unset($peta[$attemptId]);
-                $dibuang++;
+                $basi[] = $attemptId;
             }
 
-            if ($peta === []) {
-                Cache::forget($this->kunciKuis((int) $kuisId));
-            } else {
-                Cache::put($this->kunciKuis((int) $kuisId), $peta, self::TTL_PETA);
+            $buang = [...$rusak, ...$basi];
+
+            if ($buang !== []) {
+                $gudang->buang($kuisId, $buang);
+                $dibuang += count($buang);
             }
         }
 
@@ -176,12 +169,47 @@ class PresenceService
     /** Lupakan kehadiran satu attempt (dipakai saat attempt dikumpulkan). */
     public function lupakan(Attempt $attempt): void
     {
-        $kuisId = (int) $attempt->quiz_id;
-        $peta = $this->peta($kuisId);
+        $this->gudang()->buang((int) $attempt->quiz_id, [(int) $attempt->getKey()]);
+    }
 
-        unset($peta[(int) $attempt->getKey()]);
+    /** Nama gudang yang aktif (`redis`/`peta`) — untuk jejak saat memeriksa produksi. */
+    public function namaGudang(): string
+    {
+        return $this->gudang()->nama();
+    }
 
-        Cache::put($this->kunciKuis($kuisId), $peta, self::TTL_PETA);
+    /**
+     * Gudang yang dipakai proses ini.
+     *
+     * Redis dipilih bila cache aplikasi memang store Redis — di sanalah hash
+     * per kuis bisa dipakai sehingga satu request murid tidak perlu membaca
+     * seluruh kelas (P-02). Driver lain (array/database) memakai peta seperti
+     * semula supaya perilaku dev/test tidak berubah.
+     *
+     * Pemeriksaan store dibungkus supaya konfigurasi cache yang salah tidak
+     * menjatuhkan jalur ujian: presence itu pelengkap, bukan penentu nilai.
+     */
+    private function gudang(): GudangPresence
+    {
+        if ($this->gudang !== null) {
+            return $this->gudang;
+        }
+
+        try {
+            $toko = Cache::store();
+        } catch (Throwable $galat) {
+            report($galat);
+
+            return $this->gudang = new GudangPeta;
+        }
+
+        // Laravel membungkus store-nya dengan `Repository`, jadi yang diperiksa
+        // adalah store di belakangnya (`RedisStore` atau bukan).
+        $belakang = $toko instanceof Repository ? $toko->getStore() : $toko;
+
+        return $this->gudang = $belakang instanceof RedisStore
+            ? new GudangRedis($belakang)
+            : new GudangPeta;
     }
 
     /** Catat sekali saja per attempt supaya sapuan berkala tidak menumpuk catatan. */
@@ -199,7 +227,7 @@ class PresenceService
             return;
         }
 
-        Cache::put($penanda, true, self::TTL_PETA);
+        Cache::put($penanda, true, GudangPeta::TTL_DETIK);
 
         $this->kecurangan->catatTurunan($attempt, KategoriKecurangan::LongOffline, [
             'sesi' => isset($entri['sesi']) ? (string) $entri['sesi'] : '',
@@ -225,38 +253,8 @@ class PresenceService
 
         try {
             return Carbon::parse($nilai);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function peta(int $kuisId): array
-    {
-        $peta = Cache::get($this->kunciKuis($kuisId));
-
-        return is_array($peta) ? $peta : [];
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function indeksKuis(): array
-    {
-        $indeks = Cache::get($this->kunciIndeks());
-
-        return is_array($indeks) ? array_values(array_map('intval', $indeks)) : [];
-    }
-
-    private function kunciKuis(int $kuisId): string
-    {
-        return 'presence:kuis:'.$kuisId;
-    }
-
-    private function kunciIndeks(): string
-    {
-        return 'presence:indeks';
     }
 }
