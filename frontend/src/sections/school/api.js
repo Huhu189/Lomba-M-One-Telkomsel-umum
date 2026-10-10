@@ -45,6 +45,17 @@ export const skemaMurid = z.object({
   kelas_nama: z.string(),
 })
 
+/** Halaman daftar murid (P-01: endpoint memakai paginasi 50/halaman). */
+export const skemaHalamanMurid = z.object({
+  data: z.array(skemaMurid),
+  meta: z.object({
+    total: z.number(),
+    current_page: z.number(),
+    last_page: z.number(),
+    per_page: z.number(),
+  }),
+})
+
 /** Skema satu galat baris impor. */
 export const skemaGalatBaris = z.object({
   baris: z.number(),
@@ -167,15 +178,20 @@ export async function hapusMapel(id) {
 }
 
 /**
- * Daftar murid (opsional filter per kelas).
+ * Daftar murid (opsional filter per kelas), satu halaman per panggilan.
+ * Satu sekolah bisa punya ribuan murid; server membatasi per halaman dan
+ * mengirim `meta` supaya tabel tidak pernah memuat semuanya sekaligus.
  * @param {number|null} [classId]
- * @returns {Promise<DataMurid[]>}
+ * @param {number} [halaman]
+ * @returns {Promise<z.infer<typeof skemaHalamanMurid>>}
  */
-export async function ambilMurid(classId) {
-  const respons = await client.get('/v1/murid', {
-    params: classId ? { 'filter[class_id]': classId } : {},
-  })
-  return z.array(skemaMurid).parse(respons.data)
+export async function ambilMurid(classId, halaman = 1) {
+  /** @type {Record<string, string|number>} */
+  const params = { page: halaman }
+  if (classId) params['filter[class_id]'] = classId
+
+  const respons = await client.get('/v1/murid', { params })
+  return skemaHalamanMurid.parse(respons.data)
 }
 
 /**

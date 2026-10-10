@@ -1,5 +1,7 @@
 /**
- * Halaman kelola mapel (slice 02) — guru/admin menambah, mengubah, menghapus.
+ * Halaman Mata Pelajaran (slice 02) dengan pola yang sama seperti halaman
+ * Kelas: kepala halaman bersama, tabel data yang jadi kartu di HP, kolom aksi
+ * tombol ikon ber-label, panel formulir samping, dan dialog konfirmasi hapus.
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -9,12 +11,25 @@ import { skemaMapelForm } from './validasi.js'
 import { ambilMapel, buatMapel, ubahMapel, hapusMapel } from './api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import Banner from '../../shared/ui/Banner.jsx'
+import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
+import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
+import KosongData from '../../shared/ui/KosongData.jsx'
+import PanelForm from '../../shared/ui/PanelForm.jsx'
+import Skeleton from '../../shared/ui/Skeleton.jsx'
+import TabelData from '../../shared/ui/TabelData.jsx'
+import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
+import { IkonLapis, IkonPensil, IkonTambah, IkonTongSampah } from '../../icons.jsx'
 
 const nilaiAwal = { nama: '', kode: '' }
 
 export default function HalamanMapel() {
   const queryClient = useQueryClient()
   const [idUbah, setIdUbah] = useState(/** @type {number | null} */ (null))
+  const [panelBuka, setPanelBuka] = useState(false)
+  const [mapelDihapus, setMapelDihapus] = useState(
+    /** @type {import('./api.js').DataMapel | null} */ (null),
+  )
 
   const daftarMapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
 
@@ -36,8 +51,7 @@ export default function HalamanMapel() {
     },
     onSuccess: async () => {
       tampilkanToast('sukses', idUbah === null ? 'Mapel ditambahkan.' : 'Mapel diperbarui.')
-      setIdUbah(null)
-      reset(nilaiAwal)
+      tutupPanel()
       await queryClient.invalidateQueries({ queryKey: ['mapel'] })
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
@@ -47,100 +61,166 @@ export default function HalamanMapel() {
     mutationFn: async (/** @type {number} */ id) => hapusMapel(id),
     onSuccess: async () => {
       tampilkanToast('info', 'Mapel dihapus.')
+      setMapelDihapus(null)
       await queryClient.invalidateQueries({ queryKey: ['mapel'] })
     },
-    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+    onError: (galat) => {
+      tampilkanToast('salah', pesanGalatApi(galat))
+      setMapelDihapus(null)
+    },
   })
 
+  const data = daftarMapel.data ?? []
+
+  function bukaTambah() {
+    setIdUbah(null)
+    reset(nilaiAwal)
+    setPanelBuka(true)
+  }
+
   /** @param {import('./api.js').DataMapel} mapel */
-  function mulaiUbah(mapel) {
+  function bukaUbah(mapel) {
     setIdUbah(mapel.id)
     setValue('nama', mapel.nama)
     setValue('kode', mapel.kode ?? '')
+    setPanelBuka(true)
+  }
+
+  function tutupPanel() {
+    setPanelBuka(false)
+    setIdUbah(null)
+    reset(nilaiAwal)
   }
 
   return (
-    <div className="row g-4">
-      <div className="col-lg-7">
-        <div className="kartu-soft p-4 h-100">
-          <h1 className="h5 fw-bold mb-3">Kelola Mata Pelajaran</h1>
+    <>
+      <HeaderHalaman
+        judul="Mata Pelajaran"
+        jejak="Data induk / Mapel"
+        deskripsi={
+          daftarMapel.isSuccess
+            ? `${data.length} mata pelajaran aktif`
+            : 'Memuat daftar mata pelajaran…'
+        }
+      >
+        <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+          Tambah mapel
+        </Tombol>
+      </HeaderHalaman>
 
-          {daftarMapel.isLoading && <p className="text-body-secondary">Memuat mapel…</p>}
-          {daftarMapel.isError && <p className="status-salah">Gagal memuat mapel.</p>}
+      {daftarMapel.isPending && <Skeleton judul baris={3} label="Memuat mapel…" />}
 
-          {daftarMapel.data && daftarMapel.data.length === 0 && (
-            <p className="text-body-secondary">Belum ada mata pelajaran.</p>
-          )}
+      {daftarMapel.isError && (
+        <Banner jenis="salah" judul="Gagal memuat mata pelajaran">
+          <p className="mb-2">Periksa koneksi, lalu coba lagi.</p>
+          <Tombol varian="tepi" onClick={() => daftarMapel.refetch()}>
+            Coba lagi
+          </Tombol>
+        </Banner>
+      )}
 
-          {daftarMapel.data && daftarMapel.data.length > 0 && (
-            <ul className="list-group list-group-flush">
-              {daftarMapel.data.map((mapel) => (
-                <li key={mapel.id} className="list-group-item d-flex align-items-center gap-3 px-0">
-                  <div className="me-auto">
-                    <span className="fw-semibold">{mapel.nama}</span>
-                    {mapel.kode && <span className="badge text-bg-light ms-2">{mapel.kode}</span>}
+      {daftarMapel.isSuccess && data.length > 0 && (
+        <div className="kartu-soft p-0">
+          <TabelData
+            label="Daftar mata pelajaran"
+            kolom={[
+              { kunci: 'nama', judul: 'Nama', sel: (mapel) => <strong>{mapel.nama}</strong> },
+              { kunci: 'kode', judul: 'Kode', sel: (mapel) => mapel.kode || '—' },
+              {
+                kunci: 'aksi',
+                judul: 'Aksi',
+                aksi: true,
+                sel: (mapel) => (
+                  <div className="aksi-baris">
+                    <TombolIkon
+                      label={`Ubah mapel ${mapel.nama}`}
+                      ikon={IkonPensil}
+                      onClick={() => bukaUbah(mapel)}
+                    />
+                    <TombolIkon
+                      label={`Hapus mapel ${mapel.nama}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      onClick={() => setMapelDihapus(mapel)}
+                    />
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={() => mulaiUbah(mapel)}
-                  >
-                    Ubah
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    disabled={hapus.isPending}
-                    onClick={() => {
-                      if (window.confirm(`Hapus mapel ${mapel.nama}?`)) hapus.mutate(mapel.id)
-                    }}
-                  >
-                    Hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                ),
+              },
+            ]}
+            baris={data}
+            kunciBaris={(mapel) => mapel.id}
+          />
         </div>
-      </div>
+      )}
 
-      <div className="col-lg-5">
-        <div className="kartu-soft p-4 h-100">
-          <h2 className="h6 fw-bold mb-3">{idUbah === null ? 'Tambah Mapel' : 'Ubah Mapel'}</h2>
+      {daftarMapel.isSuccess && data.length === 0 && (
+        <KosongData
+          judul="Belum ada mata pelajaran"
+          ikon={IkonLapis}
+          aksi={
+            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+              Tambah mapel
+            </Tombol>
+          }
+        >
+          Mata pelajaran dipakai saat menyusun kuis dan laporan. Tambahkan satu, contohnya Matematika
+          atau IPAS.
+        </KosongData>
+      )}
 
-          <form onSubmit={handleSubmit((data) => simpan.mutate(data))} noValidate>
-            <div className="mb-3">
-              <label className="form-label fw-semibold" htmlFor="nama-mapel">Nama mapel</label>
-              <input id="nama-mapel" className="form-control" placeholder="Contoh: Matematika" {...register('nama')} />
-              {errors.nama && <p className="status-salah small mb-0 mt-1">{teksGalat(errors.nama)}</p>}
-            </div>
+      <PanelForm
+        buka={panelBuka}
+        judul={idUbah === null ? 'Tambah mapel' : 'Ubah mapel'}
+        labelTutup="Tutup formulir mapel"
+        onTutup={tutupPanel}
+      >
+        <form onSubmit={handleSubmit((isi) => simpan.mutate(isi))} noValidate>
+          <div className="mb-3">
+            <label className="form-label fw-semibold" htmlFor="nama-mapel">
+              Nama mapel
+            </label>
+            <input
+              id="nama-mapel"
+              className="form-control"
+              placeholder="Contoh: Matematika"
+              autoComplete="off"
+              {...register('nama')}
+            />
+            {errors.nama && <p className="status-salah small mb-0 mt-1">{teksGalat(errors.nama)}</p>}
+          </div>
 
-            <div className="mb-4">
-              <label className="form-label fw-semibold" htmlFor="kode-mapel">Kode (opsional)</label>
-              <input id="kode-mapel" className="form-control" placeholder="MTK" {...register('kode')} />
-              {errors.kode && <p className="status-salah small mb-0 mt-1">{teksGalat(errors.kode)}</p>}
-            </div>
+          <div className="mb-4">
+            <label className="form-label fw-semibold" htmlFor="kode-mapel">
+              Kode <span className="teks-lembut fw-normal">(opsional)</span>
+            </label>
+            <input id="kode-mapel" className="form-control" placeholder="MTK" {...register('kode')} />
+            {errors.kode && <p className="status-salah small mb-0 mt-1">{teksGalat(errors.kode)}</p>}
+          </div>
 
-            <div className="d-flex gap-2">
-              <button type="submit" className="btn btn-aksen" disabled={isSubmitting || simpan.isPending}>
-                {idUbah === null ? 'Tambah' : 'Simpan perubahan'}
-              </button>
-              {idUbah !== null && (
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setIdUbah(null)
-                    reset(nilaiAwal)
-                  }}
-                >
-                  Batal
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          <div className="d-flex flex-wrap justify-content-end gap-2">
+            <Tombol varian="tepi" onClick={tutupPanel}>
+              Batal
+            </Tombol>
+            <Tombol type="submit" memuat={isSubmitting || simpan.isPending}>
+              {idUbah === null ? 'Simpan mapel' : 'Simpan perubahan'}
+            </Tombol>
+          </div>
+        </form>
+      </PanelForm>
+
+      <DialogKonfirmasi
+        buka={mapelDihapus !== null}
+        judul={`Hapus mapel ${mapelDihapus?.nama ?? ''}?`}
+        labelYa="Hapus mapel"
+        bahaya
+        memuat={hapus.isPending}
+        onYa={() => {
+          if (mapelDihapus !== null) hapus.mutate(mapelDihapus.id)
+        }}
+        onBatal={() => setMapelDihapus(null)}
+      >
+        Kuis yang memakai mapel ini kehilangan penanda mapelnya. Tindakan ini tidak bisa dibatalkan.
+      </DialogKonfirmasi>
+    </>
   )
 }

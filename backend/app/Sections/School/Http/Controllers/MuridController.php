@@ -22,9 +22,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MuridController extends Controller
 {
-    public function index(SekolahService $sekolah): AnonymousResourceCollection
+    public function index(Request $request, SekolahService $sekolah): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Murid::class);
+
+        // P-01: satu sekolah bisa punya ribuan murid; daftar dibatasi per halaman
+        // supaya payload dan memori tidak tumbuh mengikuti jumlah murid. Batas
+        // atas 200 menjaga `?per_page=1000` tidak mengembalikan semuanya lagi.
+        $perHalaman = max(1, min(200, $request->integer('per_page', 50)));
 
         $daftar = QueryBuilder::for(Murid::class)
             ->where('school_id', $sekolah->tunggal()->id)
@@ -32,7 +37,7 @@ class MuridController extends Controller
             ->allowedSorts('nis')
             ->defaultSort('nis')
             ->with(['user', 'kelas'])
-            ->get();
+            ->paginate(perPage: $perHalaman, page: max(1, $request->integer('page', 1)));
 
         return MuridResource::collection($daftar);
     }

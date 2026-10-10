@@ -82,7 +82,11 @@ it('guru dapat menambah, mengubah, dan menghapus murid tunggal', function (): vo
         ->and($buat->json('kelas_nama'))->toBe('6A');
 
     $id = (int) $buat->json('id');
-    $this->getJson('/api/v1/murid')->assertOk()->assertJsonCount(1);
+    // P-01: daftar murid berpaginasi, jadi barisnya ada di `data[]`.
+    $this->getJson('/api/v1/murid')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.nama', 'Zaki Pratama');
 
     $this->putJson("/api/v1/murid/{$id}", [
         'nama' => 'Zaki Baru',
@@ -93,6 +97,34 @@ it('guru dapat menambah, mengubah, dan menghapus murid tunggal', function (): vo
 
     $this->deleteJson("/api/v1/murid/{$id}")->assertOk();
     expect(Murid::query()->whereKey($id)->exists())->toBeFalse();
+});
+
+it('daftar murid berpaginasi dan membatasi jumlah per halaman', function (): void {
+    $kelas = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6B', 'tingkat' => 6]);
+    Murid::factory()->count(5)->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $kelas->id,
+    ]);
+
+    Sanctum::actingAs(User::factory()->guru()->create());
+
+    // Halaman pertama: 2 dari 5, dan metadata total lengkap.
+    $this->getJson('/api/v1/murid?per_page=2')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('meta.total', 5)
+        ->assertJsonPath('meta.last_page', 3)
+        ->assertJsonPath('meta.current_page', 1);
+
+    // Halaman terakhir memuat sisanya.
+    $this->getJson('/api/v1/murid?per_page=2&page=3')
+        ->assertOk()
+        ->assertJsonCount(1, 'data');
+
+    // `per_page` besar dipangkas ke batas 200 supaya tak bisa diminta semua lagi.
+    $this->getJson('/api/v1/murid?per_page=1000')
+        ->assertOk()
+        ->assertJsonPath('meta.per_page', 200);
 });
 
 it('validasi menolak tingkat di luar 1-6 dan nama kelas duplikat', function (): void {

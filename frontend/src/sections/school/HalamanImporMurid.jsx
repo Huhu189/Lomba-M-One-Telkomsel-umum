@@ -3,11 +3,12 @@
  * Menampilkan laporan per baris: berapa sukses, berapa gagal, baris mana yang gagal.
  */
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { imporMurid } from './api.js'
 import { ringkasLaporanImpor } from './validasi.js'
 import { pesanGalatApi } from '../auth/api.js'
+import TabelData from '../../shared/ui/TabelData.jsx'
+import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { RUTE } from '../../routes.js'
 
@@ -71,24 +72,19 @@ export default function HalamanImporMurid() {
               <p className="fw-semibold mb-2">{ringkasan.ringkasan}</p>
 
               {ringkasan.galat.length > 0 && (
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle">
-                    <thead>
-                      <tr>
-                        <th scope="col" style={{ width: '5rem' }}>Baris</th>
-                        <th scope="col">Pesan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ringkasan.galat.map((galat) => (
-                        <tr key={galat.baris}>
-                          <td className="fw-semibold">{galat.baris}</td>
-                          <td>{galat.pesan}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <TabelData
+                  label="Baris yang gagal diimpor"
+                  baris={ringkasan.galat}
+                  kunciBaris={(galat) => galat.baris}
+                  kolom={[
+                    {
+                      kunci: 'baris',
+                      judul: 'Baris',
+                      sel: (galat) => <strong>{galat.baris}</strong>,
+                    },
+                    { kunci: 'pesan', judul: 'Pesan' },
+                  ]}
+                />
               )}
 
               {laporan && laporan.gagal > 0 && (
@@ -99,9 +95,7 @@ export default function HalamanImporMurid() {
             </div>
           )}
 
-          <Link className="btn btn-outline-primary" to={RUTE.murid}>
-            Kembali ke daftar murid
-          </Link>
+          <TombolTaut varian="tepi" to={RUTE.murid}>Kembali ke daftar murid</TombolTaut>
         </div>
       </div>
     </div>
