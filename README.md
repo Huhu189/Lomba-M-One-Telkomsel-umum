@@ -13,7 +13,7 @@
 
 <strong><p style="font-size:20px">Manajemen Kelas & Materi</p></strong>
 <ul>
-  <li><strong>Ruang Kelas Virtual:</strong> Pengelompokan siswa berdasarkan kelas, jurusan, atau organisasi untuk distribusi ujian yang tepat sasaran.</li>
+  <li><strong>Ruang Kelas Virtual:</strong> Pengelompokan siswa berdasarkan kelas atau organisasi untuk distribusi ujian yang tepat sasaran.</li>
   <li><strong>Penyebaran Materi Efektif:</strong> Unggah dan bagikan modul pembelajaran, video interaktif, dan dokumen pendukung dalam satu dashboard.</li>
   <li><strong>Pelacakan Progres:</strong> Pantau sejauh mana peserta didik telah membaca materi atau menyelesaikan tugas yang diberikan.</li>
 </ul>
