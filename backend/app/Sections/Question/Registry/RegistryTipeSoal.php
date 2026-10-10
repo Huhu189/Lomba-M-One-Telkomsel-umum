@@ -84,4 +84,16 @@ final class RegistryTipeSoal
     {
         return self::penangan($tipe)->nilai($konten, $kunci, $jawaban);
     }
+
+    /**
+     * Bobot jawaban 0.0–1.0 (Objektif 1A) — mesin skor memakai ini supaya soal
+     * yang dinilai sebagian tidak dipaksa benar/salah.
+     *
+     * @param  array<string, mixed>  $konten
+     * @param  array<string, mixed>  $kunci
+     */
+    public static function bobot(TipeSoal $tipe, array $konten, array $kunci, mixed $jawaban): float
+    {
+        return self::penangan($tipe)->bobot($konten, $kunci, $jawaban);
+    }
 }

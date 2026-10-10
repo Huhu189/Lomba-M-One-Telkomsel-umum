@@ -15,6 +15,8 @@ namespace App\Sections\Question\Registry;
  */
 final class PenanganIsianSingkat implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     public const AMBANG_BAWAAN = 0.8;
 
     public function validasiKonten(array $konten): array

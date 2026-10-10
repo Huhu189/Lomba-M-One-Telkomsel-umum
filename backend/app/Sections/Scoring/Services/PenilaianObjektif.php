@@ -21,6 +21,11 @@ use Throwable;
  * `PenilaianTeks`; `PenilaiSoal` yang memilih jalurnya. Tipe non-objektif yang
  * sampai ke kelas ini (pemanggilan langsung) tetap ditandai `perlu_tinjau`.
  */
+/**
+ * Sejak gelombang bobot (Objektif 1A) kelas ini memakai `bobot()` penangan
+ * sehingga tipe yang bisa dinilai sebagian (mis. pilihan ganda kompleks)
+ * mendapat skor proporsional lewat `skor = bobot * skor_soal`.
+ */
 final class PenilaianObjektif
 {
     /**
@@ -44,7 +49,7 @@ final class PenilaianObjektif
         }
 
         try {
-            $benar = RegistryTipeSoal::nilai(
+            $bobot = RegistryTipeSoal::bobot(
                 $tipe,
                 $soal->kontenSebagaiArray(),
                 $soal->kunciSebagaiArray(),
@@ -54,10 +59,16 @@ final class PenilaianObjektif
             return ['status' => StatusPenilaian::Gagal, 'benar' => null, 'skor' => 0.0];
         }
 
+        // Bobot di luar 0–1 hanya bisa datang dari penangan yang salah tulis;
+        // dijepit di sini supaya skor tidak pernah melebihi skor soal.
+        $bobot = max(0.0, min(1.0, $bobot));
+
         return [
             'status' => StatusPenilaian::Dinilai,
-            'benar' => $benar,
-            'skor' => $benar ? (float) $soal->skor : 0.0,
+            // "benar" tetap berarti benar utuh; skor sebagian punya kolom skor
+            // sendiri (`answers.skor` decimal(8,2)).
+            'benar' => $bobot === 1.0,
+            'skor' => round($bobot * (float) $soal->skor, 2),
         ];
     }
 }

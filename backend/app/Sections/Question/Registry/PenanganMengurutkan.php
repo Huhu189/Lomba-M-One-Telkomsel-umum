@@ -11,6 +11,8 @@ namespace App\Sections\Question\Registry;
  */
 final class PenanganMengurutkan implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     private const MIN_ITEM = 2;
 
     public function validasiKonten(array $konten): array

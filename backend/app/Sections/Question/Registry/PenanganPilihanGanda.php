@@ -11,6 +11,8 @@ namespace App\Sections\Question\Registry;
  */
 final class PenanganPilihanGanda implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     private const MIN_OPSI = 2;
 
     private const MAKS_OPSI = 6;

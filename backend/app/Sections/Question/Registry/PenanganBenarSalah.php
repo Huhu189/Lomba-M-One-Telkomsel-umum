@@ -11,6 +11,8 @@ namespace App\Sections\Question\Registry;
  */
 final class PenanganBenarSalah implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     public function validasiKonten(array $konten): array
     {
         return [

@@ -14,6 +14,8 @@ namespace App\Sections\Question\Registry;
  */
 class PenanganMenjodohkan implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     private const MIN_PASANGAN = 2;
 
     /** Nama kunci pemetaan di `kunci` (hubung kata memakai `sambungan`). */

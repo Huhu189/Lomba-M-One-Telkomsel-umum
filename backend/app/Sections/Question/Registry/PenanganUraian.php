@@ -15,6 +15,8 @@ namespace App\Sections\Question\Registry;
  */
 final class PenanganUraian implements PenanganTipeSoal
 {
+    use BobotBiner;
+
     public const AMBANG_LULUS_BAWAAN = 0.6;
 
     public function validasiKonten(array $konten): array
