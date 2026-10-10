@@ -2295,20 +2295,140 @@ a {
 
 /* Canvas pratinjau: panggung gelap tempat hasil susunan tampil. */
 .nle-canvas {
+  --tinggi-canvas: clamp(260px, 46vh, 520px);
+
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 320px;
-  padding: 1rem;
+  height: var(--tinggi-canvas);
+  padding: 0.5rem;
   overflow: hidden;
   background: #0f1115;
   border-radius: var(--radius);
 }
 
+/* Bingkai dengan rasio TERKUNCI: lebar mengikuti tinggi tersedia, tidak pernah
+ * melar. Apa pun yang lebih besar dari bingkai dipotong, bukan meluber. */
+.nle-bingkai {
+  position: relative;
+  width: min(100%, calc((var(--tinggi-canvas) - 1rem) * var(--r, 1.7778)));
+  aspect-ratio: var(--r, 1.7778);
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius-kecil);
+}
+
 .nle-canvas-isi {
+  display: grid;
+  place-items: center;
   width: 100%;
+  height: 100%;
+  overflow: auto;
   color: var(--putih);
   text-align: center;
+}
+
+.nle-media-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.nle-media-penuh {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.nle-keterangan {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  padding: 0.35rem 0.6rem;
+  color: var(--putih);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Bilah rasio + tombol segmen. */
+.nle-bilah {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.nle-segmen,
+.nle-tool-kecil {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--teks);
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: 999px;
+}
+
+.nle-segmen.aktif {
+  color: var(--putih);
+  background: var(--aktif);
+  border-color: var(--aktif);
+}
+
+.nle-tool-kuis {
+  white-space: nowrap;
+}
+
+.nle-atur {
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--garis);
+}
+
+/* Lapisan kuis sisipan di atas bingkai. */
+.nle-kuis {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  overflow: auto;
+  color: var(--putih);
+  text-align: start;
+  background: rgba(15, 17, 21, 0.88);
+}
+
+.nle-kuis-vertikal {
+  inset-inline: 0;
+  inset-block-end: 0;
+  max-height: 70%;
+}
+
+.nle-kuis-horizontal {
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 44%;
+}
+
+.nle-kuis-judul {
+  margin: 0;
+  font-weight: 600;
+}
+
+.nle-kuis-mode {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.nle-kuis-opsi {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.nle-kuis-pilihan {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-kecil);
 }
 
 .nle-canvas-catatan {
@@ -2360,6 +2480,9 @@ a {
 .nle-ruler {
   position: relative;
   height: 1.7rem;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
   background: var(--kartu-lembut);
   border-bottom: 1px solid var(--garis);
 }
@@ -2472,11 +2595,22 @@ a {
   position: absolute;
   inset-block-start: -0.35rem;
   inset-inline-start: 50%;
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.9rem;
+  height: 0.9rem;
   background: var(--status-salah);
   border-radius: 50%;
   transform: translateX(-50%);
+  /* Kepala jarum bisa diseret (induknya pointer-events: none). */
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.nle-playhead-kepala::after {
+  /* Area sentuh lebih besar dari titik merahnya. */
+  position: absolute;
+  inset: -0.5rem;
+  content: '';
 }
 
 .nle-plus {
@@ -2550,13 +2684,7 @@ a {
   }
 
   .nle-canvas {
-    min-height: 0;
-    max-height: 26vh;
-    padding: 0.5rem;
-  }
-
-  .nle-canvas-isi img {
-    max-height: 22vh;
+    --tinggi-canvas: 30vh;
   }
 
   .nle-lane {
@@ -3401,5 +3529,53 @@ a {
 @media (max-width: 991.98px) {
   .sisi-lengket {
     position: static;
+  }
+}
+
+/* Pemutar video murid: bingkai rasio terkunci + panel kuis sisipan. */
+.pm-bingkai {
+  position: relative;
+  width: min(100%, calc(75vh * var(--r, 1.7778)));
+  margin-inline: auto;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius);
+  aspect-ratio: var(--r, 1.7778);
+  container-type: inline-size;
+}
+
+.pm-kuis {
+  position: absolute;
+  z-index: 3;
+  padding: 0.85rem;
+  overflow: auto;
+  color: var(--teks);
+  background: var(--kartu);
+  box-shadow: 0 0 0 1px var(--garis);
+}
+
+.pm-kuis:focus {
+  outline: none;
+}
+
+.pm-kuis-vertikal {
+  inset-inline: 0;
+  inset-block-end: 0;
+  max-height: 80%;
+}
+
+.pm-kuis-horizontal {
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 46%;
+}
+
+/* Bingkai sempit (mis. 9:16 di ponsel): panel samping jadi panel bawah. */
+@container (max-width: 520px) {
+  .pm-kuis-horizontal {
+    inset-block: auto 0;
+    inset-inline: 0;
+    width: auto;
+    max-height: 80%;
   }
 }

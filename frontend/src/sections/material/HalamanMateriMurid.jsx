@@ -15,6 +15,7 @@ import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import RendererSoal from '../question/render/RendererSoal.jsx'
+import PemutarMateri from './PemutarMateri.jsx'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import {
   bolehDibuka,
@@ -96,6 +97,16 @@ export default function HalamanMateriMurid() {
     onError: (error) => setGalat(pesanGalatApi(error)),
   })
 
+  // Kuis yang tayang di dalam video diputar dari pemutar videonya, bukan bagian sendiri.
+  const bagian = (progres.data?.blok ?? []).filter((satu) => satu.host_id == null)
+  const nomorBagian = (/** @type {number} */ blockId) =>
+    bagian.findIndex((satu) => satu.block_id === blockId) + 1
+  const sisaSisipan = blokAktif
+    ? (progres.data?.blok ?? []).filter(
+        (satu) => satu.host_id === blokAktif.block_id && satu.wajib && satu.status !== 'selesai',
+      ).length
+    : 0
+
   return (
     <div className="container py-4">
       <h1 className="h4 fw-bold mb-1">Materi Belajar</h1>
@@ -150,13 +161,13 @@ export default function HalamanMateriMurid() {
               </div>
 
               <ol className="list-unstyled mb-3">
-                {progres.data.blok.map((satu) => {
+                {bagian.map((satu, indeks) => {
                   const boleh = bolehDibuka(progres.data, satu)
                   const aktif = blokAktif?.block_id === satu.block_id
 
                   return (
                     <li key={satu.block_id} className="d-flex flex-wrap align-items-center gap-2 py-2 border-bottom">
-                      <span className="badge-status lembut">Bagian {satu.urutan}</span>
+                      <span className="badge-status lembut">Bagian {indeks + 1}</span>
                       <span className="small flex-grow-1">
                         {satu.tipe_label}
                         {satu.wajib ? '' : ' (opsional)'} · {satu.status_label}
@@ -175,7 +186,9 @@ export default function HalamanMateriMurid() {
 
               {blokAktif && (
                 <div className="border rounded-3 p-3">
-                  <h3 className="h6 fw-bold">Bagian {blokAktif.urutan}: {blokAktif.tipe_label}</h3>
+                  <h3 className="h6 fw-bold">
+                    Bagian {nomorBagian(blokAktif.block_id) || blokAktif.urutan}: {blokAktif.tipe_label}
+                  </h3>
 
                   {blokAktif.tipe === 'teks' && (
                     <p className="mb-3" style={{ whiteSpace: 'pre-wrap' }}>
@@ -197,8 +210,13 @@ export default function HalamanMateriMurid() {
                               className="img-fluid rounded-3"
                             />
                           )}
-                          {blokAktif.media.mime?.startsWith('video/') && (
-                            <video src={blokAktif.media.url} controls className="w-100 rounded-3" />
+                          {blokAktif.media.mime?.startsWith('video/') && progres.data && (
+                            <PemutarMateri
+                              key={blokAktif.block_id}
+                              blok={blokAktif}
+                              ringkasan={progres.data}
+                              materiId={/** @type {number} */ (terpilihId)}
+                            />
                           )}
                           {blokAktif.media.mime?.startsWith('audio/') && (
                             <audio src={blokAktif.media.url} controls className="w-100" />
@@ -261,11 +279,16 @@ export default function HalamanMateriMurid() {
 
                   <Tombol
                     memuat={selesai.isPending}
-                    disabled={blokAktif.tipe === 'kuis' && hasilLatihan === null}
+                    disabled={(blokAktif.tipe === 'kuis' && hasilLatihan === null) || sisaSisipan > 0}
                     onClick={() => selesai.mutate(blokAktif.block_id)}
                   >
                     Tandai bagian ini selesai
                   </Tombol>
+                  {sisaSisipan > 0 && (
+                    <p className="small teks-lembut mt-2 mb-0">
+                      Jawab {sisaSisipan} kuis wajib di dalam video dulu.
+                    </p>
+                  )}
                 </div>
               )}
             </section>

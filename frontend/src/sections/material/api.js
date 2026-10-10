@@ -47,6 +47,8 @@ export const skemaBlokMateri = z.object({
   track: z.number().optional(),
   mulai_detik: z.number().optional(),
   durasi_detik: z.number().optional(),
+  // Media: fit/fokus_x/fokus_y/zoom. Kuis: mode/tata.
+  tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
   kuis_judul: z.string().nullable().optional(),
   jumlah_soal: z.number().nullable().optional(),
 })
@@ -62,6 +64,7 @@ export const skemaMateri = z.object({
   class_id: z.number().optional(),
   tag_id: z.number().nullable().optional(),
   urutan: z.number().optional(),
+  rasio: z.string().optional(),
   mapel_nama: z.string().nullable().optional(),
   kelas_nama: z.string().nullable().optional(),
   tema_nama: z.string().nullable().optional(),
@@ -91,6 +94,14 @@ export const skemaProgresBlok = z.object({
   status: z.string(),
   status_label: z.string(),
   skor: z.number().optional(),
+  // Penempatan timeline + pengaturan tampilan (media: fit/fokus/zoom; kuis: mode/tata).
+  mulai_detik: z.number().optional(),
+  durasi_detik: z.number().optional(),
+  tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
+  // Kuis yang tayang di dalam video: id blok video tuannya.
+  host_id: z.number().nullable().optional(),
+  // Pertimbangan server (aturan urutan berbasis timeline); klien hanya menampilkan.
+  boleh_dibuka: z.boolean().optional(),
 })
 
 /** Ringkasan progres murid pada satu materi. */
@@ -101,6 +112,7 @@ export const skemaRingkasanMateri = z.object({
     deskripsi: z.string().nullable(),
     mapel_nama: z.string().nullable().optional(),
     tema_nama: z.string().nullable().optional(),
+    rasio: z.string().optional(),
   }),
   blok: z.array(skemaProgresBlok),
   jumlah_blok: z.number(),
@@ -125,6 +137,7 @@ export const skemaIsiBlok = skemaProgresBlok.extend({
       ukuran_manusia: z.string().optional(),
       url: z.string().optional(),
       tersedia: z.boolean().optional(),
+      tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
     })
     .optional(),
   kuis: z
@@ -231,6 +244,7 @@ export const skemaResponsPotongan = z.object({
  *   track?: number,
  *   mulai_detik?: number,
  *   durasi_detik?: number,
+ *   tampilan?: Record<string, string|number>,
  * }} MuatanBlok
  */
 
@@ -266,7 +280,11 @@ export function potongBerkas(isi, ukuranPotongan) {
  * @returns {z.infer<typeof skemaProgresBlok>|null}
  */
 export function blokBerikutnya(ringkasan) {
-  const blok = [...(ringkasan?.blok ?? [])].sort((a, b) => a.urutan - b.urutan)
+  // Urutan tayang = timeline; kuis yang tayang di dalam video bukan "bagian"
+  // tersendiri (diputar dari pemutar videonya).
+  const blok = [...(ringkasan?.blok ?? [])]
+    .filter((satu) => satu.host_id == null)
+    .sort((a, b) => (a.mulai_detik ?? 0) - (b.mulai_detik ?? 0) || a.urutan - b.urutan)
   const wajibTertunda = blok.find((satu) => satu.wajib && satu.status !== 'selesai')
 
   if (wajibTertunda) return wajibTertunda
@@ -281,6 +299,9 @@ export function blokBerikutnya(ringkasan) {
  * @returns {boolean}
  */
 export function bolehDibuka(ringkasan, blok) {
+  // Server sudah menghitung dengan aturan urutan timeline; pakai bila ada.
+  if (typeof blok.boleh_dibuka === 'boolean') return blok.boleh_dibuka
+
   return (ringkasan?.blok ?? [])
     .filter((satu) => satu.wajib && satu.urutan < blok.urutan)
     .every((satu) => satu.status === 'selesai')
@@ -322,10 +343,11 @@ export async function hapusMateri(id) {
  * Ganti seluruh urutan blok materi.
  * @param {number} id
  * @param {MuatanBlok[]} blok
+ * @param {string} [rasio] rasio bingkai pratinjau (16:9, 9:16, 1:1, 4:3)
  */
-export async function sinkronBlok(id, blok) {
+export async function sinkronBlok(id, blok, rasio) {
   await ambilCsrfCookie()
-  const respons = await client.put(`/v1/materi/${id}/blok`, { blok })
+  const respons = await client.put(`/v1/materi/${id}/blok`, rasio ? { blok, rasio } : { blok })
   return skemaMateri.parse(respons.data)
 }
 

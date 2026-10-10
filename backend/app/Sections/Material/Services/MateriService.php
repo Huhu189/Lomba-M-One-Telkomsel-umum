@@ -86,11 +86,15 @@ class MateriService
      *
      * @throws ValidationException
      */
-    public function sinkronBlok(Materi $materi, array $blok): Materi
+    public function sinkronBlok(Materi $materi, array $blok, ?string $rasio = null): Materi
     {
         $bersih = array_values($blok);
 
-        DB::transaction(function () use ($materi, $bersih): void {
+        DB::transaction(function () use ($materi, $bersih, $rasio): void {
+            if ($rasio !== null) {
+                $materi->forceFill(['rasio' => $rasio])->save();
+            }
+
             foreach ($bersih as $indeks => $satu) {
                 $urutan = $indeks + 1;
                 $tipe = TipeBlok::from((string) ($satu['tipe'] ?? ''));
@@ -99,13 +103,14 @@ class MateriService
                 // kuis), jadi waktu dihitung lebih dulu lalu digabung dengan isi
                 // khusus tipe. Disimpan di dalam kolom JSON `isi`.
                 $waktu = $this->validasiWaktu($satu, $urutan);
-                $isi = $waktu;
+                $tampilan = $this->validasiTampilan($tipe, $satu['tampilan'] ?? null);
+                $isi = $waktu + $tampilan;
                 $kuisId = null;
 
                 if ($tipe->berkuis()) {
                     $kuisId = $this->validasiKuis($materi, (int) ($satu['quiz_id'] ?? 0));
                 } else {
-                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? [])) + $waktu;
+                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? [])) + $waktu + $tampilan;
                 }
 
                 BlokMateri::query()->updateOrCreate(
@@ -212,6 +217,39 @@ class MateriService
             'mulai_detik' => round(max(0.0, min($mulai, 86400.0)), 2),
             'durasi_detik' => round(max(0.5, min($durasi, 86400.0)), 2),
         ];
+    }
+
+    /**
+     * Pengaturan tampilan klip, dinormalkan ke nilai yang sah. Media: cara muat
+     * ke bingkai (utuh/penuhi) + titik fokus + zoom. Kuis: video berhenti atau
+     * tetap jalan, dan tata letak panel. Teks tidak punya pengaturan.
+     *
+     * @return array<string, mixed>
+     */
+    private function validasiTampilan(TipeBlok $tipe, mixed $mentah): array
+    {
+        if (! is_array($mentah) || $tipe === TipeBlok::Teks) {
+            return [];
+        }
+
+        if ($tipe === TipeBlok::Media) {
+            $fit = (string) ($mentah['fit'] ?? 'contain');
+
+            return ['tampilan' => [
+                'fit' => in_array($fit, ['contain', 'cover'], true) ? $fit : 'contain',
+                'fokus_x' => (int) round(max(0.0, min((float) ($mentah['fokus_x'] ?? 50), 100.0))),
+                'fokus_y' => (int) round(max(0.0, min((float) ($mentah['fokus_y'] ?? 50), 100.0))),
+                'zoom' => round(max(1.0, min((float) ($mentah['zoom'] ?? 1), 3.0)), 2),
+            ]];
+        }
+
+        $mode = (string) ($mentah['mode'] ?? 'jeda');
+        $tata = (string) ($mentah['tata'] ?? 'vertikal');
+
+        return ['tampilan' => [
+            'mode' => in_array($mode, ['jeda', 'berjalan'], true) ? $mode : 'jeda',
+            'tata' => in_array($tata, ['vertikal', 'horizontal'], true) ? $tata : 'vertikal',
+        ]];
     }
 
     /**

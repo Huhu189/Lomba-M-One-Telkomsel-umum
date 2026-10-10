@@ -34,7 +34,8 @@ class MateriResource extends JsonResource
             'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->kelas->nama),
             'tema_nama' => $this->whenLoaded('tag', fn () => $this->tag?->nama),
             'publikasi_at' => $this->publikasi_at?->toIso8601String(),
-            'jumlah_blok' => $this->whenCounted('blok', fn () => $this->blok->count()),
+            'jumlah_blok' => $this->whenCounted('blok'),
+            'rasio' => $this->rasio ?? '16:9',
             'blok' => BlokResource::collection($this->whenLoaded('blok')),
             'unggahan' => UnggahanResource::collection($this->whenLoaded('unggahan')),
         ];

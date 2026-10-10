@@ -10,6 +10,9 @@ use Illuminate\Validation\Rule;
 
 class SinkronBlokRequest extends FormRequest
 {
+    /** Rasio bingkai pratinjau yang diizinkan. */
+    public const RASIO = ['16:9', '9:16', '1:1', '4:3'];
+
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -22,6 +25,7 @@ class SinkronBlokRequest extends FormRequest
     {
         return [
             'blok' => ['present', 'array', 'max:200'],
+            'rasio' => ['nullable', Rule::in(self::RASIO)],
             'blok.*.tipe' => ['required', Rule::enum(TipeBlok::class)],
             'blok.*.wajib' => ['nullable', 'boolean'],
             'blok.*.isi' => ['nullable', 'array'],
@@ -31,7 +35,22 @@ class SinkronBlokRequest extends FormRequest
             'blok.*.track' => ['nullable', 'integer', 'min:0', 'max:20'],
             'blok.*.mulai_detik' => ['nullable', 'numeric', 'min:0', 'max:86400'],
             'blok.*.durasi_detik' => ['nullable', 'numeric', 'min:0', 'max:86400'],
+            // Pengaturan tampilan per klip (disimpan di dalam `isi`).
+            'blok.*.tampilan' => ['nullable', 'array'],
+            'blok.*.tampilan.fit' => ['nullable', Rule::in(['contain', 'cover'])],
+            'blok.*.tampilan.fokus_x' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'blok.*.tampilan.fokus_y' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'blok.*.tampilan.zoom' => ['nullable', 'numeric', 'min:1', 'max:3'],
+            'blok.*.tampilan.mode' => ['nullable', Rule::in(['jeda', 'berjalan'])],
+            'blok.*.tampilan.tata' => ['nullable', Rule::in(['vertikal', 'horizontal'])],
         ];
+    }
+
+    public function rasio(): ?string
+    {
+        $rasio = $this->validated('rasio');
+
+        return is_string($rasio) ? $rasio : null;
     }
 
     /**

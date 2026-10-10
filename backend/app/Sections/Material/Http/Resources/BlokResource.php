@@ -39,6 +39,8 @@ class BlokResource extends JsonResource
             'track' => (int) ($isi['track'] ?? 0),
             'mulai_detik' => (float) ($isi['mulai_detik'] ?? 0),
             'durasi_detik' => (float) ($isi['durasi_detik'] ?? 0),
+            // Pengaturan tampilan: media (fit/fokus/zoom) dan kuis (mode/tata).
+            'tampilan' => is_array($isi['tampilan'] ?? null) ? $isi['tampilan'] : null,
             'kuis_judul' => $this->whenLoaded('kuis', fn () => $this->kuis->judul),
             'jumlah_soal' => $this->whenLoaded('kuis', fn () => $this->kuis->soal()->count()),
         ];

@@ -75,10 +75,20 @@ class ProgresMateriService
         $materi->loadMissing(['mapel', 'tag', 'blok']);
         $selesai = $this->petaProgres($materi, $profil);
 
+        $selesaiId = collect($selesai)
+            ->filter(fn (ProgresMateri $p): bool => $p->status === StatusProgres::Selesai)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $peta = $this->petaHost($materi->blok);
         $blok = [];
 
-        foreach ($materi->blok as $satu) {
+        // Urutan tayang mengikuti timeline (mulai, lalu urutan simpan), bukan
+        // urutan klip dibuat guru.
+        foreach ($this->urutWaktu($materi->blok) as $satu) {
             $progres = $selesai[$satu->getKey()] ?? null;
+            $isi = is_array($satu->isi) ? $satu->isi : [];
 
             $blok[] = [
                 'block_id' => $satu->getKey(),
@@ -89,6 +99,15 @@ class ProgresMateriService
                 'status' => $progres?->status->value ?? 'belum',
                 'status_label' => $progres?->status->label() ?? 'Belum dibuka',
                 'skor' => (float) ($progres->skor ?? 0),
+                'mulai_detik' => $this->mulai($satu),
+                'durasi_detik' => $this->durasi($satu),
+                // Kuis yang tayang DI DALAM video: id blok video tuannya.
+                'host_id' => $peta[$satu->getKey()] ?? null,
+                'tampilan' => is_array($isi['tampilan'] ?? null) ? $isi['tampilan'] : null,
+                // Kesopanan tampilan saja; server tetap penentu di buka/selesai.
+                'boleh_dibuka' => $this->wajibSebelum($materi->blok, $satu, $peta)
+                    ->diff($selesaiId)
+                    ->isEmpty(),
             ];
         }
 
@@ -102,6 +121,7 @@ class ProgresMateriService
                 'deskripsi' => $materi->deskripsi,
                 'mapel_nama' => $materi->mapel?->nama,
                 'tema_nama' => $materi->tag?->nama,
+                'rasio' => $materi->rasio ?? '16:9',
             ],
             'blok' => $blok,
             'jumlah_blok' => count($blok),
@@ -180,6 +200,8 @@ class ProgresMateriService
 
         $skor = 0.0;
 
+        $this->pastikanSisipanSelesai($materi, $blok, $profil);
+
         if ($blok->tipe->berkuis()) {
             $attempt = $progres->attempt_id === null
                 ? null
@@ -223,12 +245,18 @@ class ProgresMateriService
             'skor' => (float) $progres->skor,
         ];
 
+        $isi = is_array($blok->isi) ? $blok->isi : [];
+        $payload['mulai_detik'] = $this->mulai($blok);
+        $payload['durasi_detik'] = $this->durasi($blok);
+        $payload['tampilan'] = is_array($isi['tampilan'] ?? null) ? $isi['tampilan'] : null;
+
         if ($blok->tipe === TipeBlok::Teks) {
             $payload['teks'] = (string) ($blok->isi['teks'] ?? '');
         }
 
         if ($blok->tipe === TipeBlok::Media) {
             $payload['media'] = $this->payloadMedia((string) ($blok->isi['unggahan_kode'] ?? ''), (string) ($blok->isi['keterangan'] ?? ''));
+            $payload['media']['tampilan'] = $payload['tampilan'];
         }
 
         if ($blok->tipe->berkuis() && $blok->kuis !== null) {
@@ -321,17 +349,16 @@ class ProgresMateriService
     }
 
     /**
-     * Semua blok wajib sebelum blok ini harus sudah selesai.
+     * Semua blok wajib sebelum blok ini (menurut timeline) harus sudah selesai.
+     * Kuis yang tayang di dalam sebuah video tidak mensyaratkan video itu
+     * selesai — justru video yang menunggu kuisnya (lihat pastikanSisipanSelesai).
      *
      * @throws ValidationException
      */
     private function pastikanUrutan(Materi $materi, BlokMateri $blok, Murid $profil): void
     {
-        $wajibSebelum = BlokMateri::query()
-            ->where('material_id', $materi->getKey())
-            ->where('urutan', '<', $blok->urutan)
-            ->where('wajib', true)
-            ->pluck('id');
+        $semua = BlokMateri::query()->where('material_id', $materi->getKey())->get();
+        $wajibSebelum = $this->wajibSebelum($semua, $blok, $this->petaHost($semua));
 
         if ($wajibSebelum->isEmpty()) {
             return;
@@ -350,5 +377,132 @@ class ProgresMateriService
                 'blok' => 'Selesaikan blok wajib sebelumnya dulu sebelum membuka blok ini.',
             ]);
         }
+    }
+
+    /**
+     * Video baru boleh ditutup setelah kuis wajib di dalamnya selesai.
+     *
+     * @throws ValidationException
+     */
+    private function pastikanSisipanSelesai(Materi $materi, BlokMateri $blok, Murid $profil): void
+    {
+        if ($blok->tipe !== TipeBlok::Media) {
+            return;
+        }
+
+        $semua = BlokMateri::query()->where('material_id', $materi->getKey())->get();
+
+        $sisipan = collect($this->petaHost($semua))
+            ->filter(fn ($hostId): bool => (int) $hostId === (int) $blok->getKey())
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => (bool) $semua->firstWhere('id', $id)?->wajib);
+
+        if ($sisipan->isEmpty()) {
+            return;
+        }
+
+        $sudah = ProgresMateri::query()
+            ->where('student_id', $profil->getKey())
+            ->whereIn('block_id', $sisipan->all())
+            ->where('status', StatusProgres::Selesai->value)
+            ->pluck('block_id')
+            ->map(fn ($id): int => (int) $id);
+
+        if ($sisipan->diff($sudah)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'blok' => 'Jawab dulu kuis di dalam video sebelum menandai bagian ini selesai.',
+            ]);
+        }
+    }
+
+    /**
+     * Id blok wajib yang harus selesai sebelum `$blok` boleh dibuka.
+     *
+     * @param  iterable<int, BlokMateri>  $semua
+     * @param  array<int, int>  $peta  kuis id => video tuan id
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function wajibSebelum(iterable $semua, BlokMateri $blok, array $peta): \Illuminate\Support\Collection
+    {
+        return collect($semua)
+            ->filter(fn (BlokMateri $lain): bool => $lain->wajib
+                && $lain->getKey() !== $blok->getKey()
+                && $this->sebelum($lain, $blok)
+                && ($peta[$blok->getKey()] ?? null) !== $lain->getKey())
+            ->map(fn (BlokMateri $lain): int => (int) $lain->getKey())
+            ->values();
+    }
+
+    /** `$a` tayang lebih dulu dari `$b`: mulai lebih awal; seri → urutan simpan. */
+    private function sebelum(BlokMateri $a, BlokMateri $b): bool
+    {
+        $selisih = $this->mulai($a) <=> $this->mulai($b);
+
+        return $selisih !== 0 ? $selisih < 0 : $a->urutan < $b->urutan;
+    }
+
+    /**
+     * @param  iterable<int, BlokMateri>  $blok
+     * @return array<int, BlokMateri>
+     */
+    private function urutWaktu(iterable $blok): array
+    {
+        $daftar = collect($blok)->all();
+        usort($daftar, fn (BlokMateri $a, BlokMateri $b): int => $this->sebelum($a, $b) ? -1 : ($this->sebelum($b, $a) ? 1 : 0));
+
+        return $daftar;
+    }
+
+    /**
+     * Peta kuis → video/audio tuan: kuis yang titik mulainya jatuh di dalam
+     * jendela klip media berputar. Tanpa durasi (data lama) tidak ada jendela.
+     *
+     * @param  iterable<int, BlokMateri>  $semua
+     * @return array<int, int>
+     */
+    private function petaHost(iterable $semua): array
+    {
+        $blok = collect($semua);
+        $media = $blok->filter(fn (BlokMateri $b): bool => $b->tipe === TipeBlok::Media && $this->durasi($b) > 0);
+
+        if ($media->isEmpty()) {
+            return [];
+        }
+
+        $mime = UnggahanMateri::query()
+            ->whereIn('kode', $media->map(fn (BlokMateri $b): string => (string) ($b->isi['unggahan_kode'] ?? ''))->all())
+            ->pluck('mime', 'kode');
+
+        $tuan = $media->filter(function (BlokMateri $b) use ($mime): bool {
+            $tipeMime = (string) ($mime[(string) ($b->isi['unggahan_kode'] ?? '')] ?? '');
+
+            return str_starts_with($tipeMime, 'video/') || str_starts_with($tipeMime, 'audio/');
+        });
+
+        $peta = [];
+
+        foreach ($blok->filter(fn (BlokMateri $b): bool => $b->tipe === TipeBlok::Kuis) as $kuis) {
+            foreach ($tuan as $host) {
+                $mulai = $this->mulai($kuis);
+
+                if ($mulai >= $this->mulai($host) && $mulai < $this->mulai($host) + $this->durasi($host)) {
+                    $peta[(int) $kuis->getKey()] = (int) $host->getKey();
+                    break;
+                }
+            }
+        }
+
+        return $peta;
+    }
+
+    private function mulai(BlokMateri $blok): float
+    {
+        return (float) (is_array($blok->isi) ? ($blok->isi['mulai_detik'] ?? 0) : 0);
+    }
+
+    private function durasi(BlokMateri $blok): float
+    {
+        return (float) (is_array($blok->isi) ? ($blok->isi['durasi_detik'] ?? 0) : 0);
     }
 }

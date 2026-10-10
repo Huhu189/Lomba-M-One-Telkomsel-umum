@@ -445,3 +445,138 @@ it('menolak blok kuis yang memuat soal uraian atau kuis kelas lain', function ()
         ['tipe' => 'media', 'wajib' => true, 'isi' => ['unggahan_kode' => 'kode-tidak-ada']],
     ]])->assertStatus(422)->assertJsonValidationErrors(['blok']);
 });
+
+it('daftar dan buat materi tidak 500 (jumlah_blok dihitung tanpa lazy loading)', function (): void {
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Satu.']],
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Dua.']],
+    ]])->assertOk();
+
+    // Regresi: MateriResource memanggil relasi `blok` yang tidak dimuat.
+    $daftar = $this->getJson('/api/v1/materi')->assertOk();
+
+    expect($daftar->json('0.jumlah_blok'))->toBe(2)
+        ->and($daftar->json('0.rasio'))->toBe('16:9');
+});
+
+it('menyimpan rasio bingkai dan pengaturan tampilan klip (dinormalkan server)', function (): void {
+    $soal = m08Soal($this, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
+    ], ['jawaban' => 'B'], 4, $this->tag->id);
+
+    $kuis = m08Kuis($this, [$soal]);
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $respons = $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'rasio' => '9:16',
+        'blok' => [
+            ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Pembuka.'], 'tampilan' => ['fit' => 'cover']],
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'mulai_detik' => 12, 'durasi_detik' => 8,
+                'tampilan' => ['mode' => 'berjalan', 'tata' => 'horizontal']],
+        ],
+    ])->assertOk();
+
+    expect($respons->json('rasio'))->toBe('9:16')
+        // Teks tidak punya pengaturan tampilan: diabaikan.
+        ->and($respons->json('blok.0.tampilan'))->toBeNull()
+        ->and($respons->json('blok.1.tampilan'))->toBe(['mode' => 'berjalan', 'tata' => 'horizontal']);
+
+    $ulang = $this->getJson("/api/v1/materi/{$materi->id}")->assertOk();
+
+    expect($ulang->json('rasio'))->toBe('9:16')
+        ->and($ulang->json('blok.1.tampilan.tata'))->toBe('horizontal');
+
+    // Tanpa `rasio` pada sinkron berikutnya, rasio yang tersimpan tidak berubah.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Saja.']],
+    ]])->assertOk()->assertJsonPath('rasio', '9:16');
+
+    // Nilai di luar daftar ditolak, bukan diam-diam diganti.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['rasio' => '21:9', 'blok' => []])
+        ->assertStatus(422)->assertJsonValidationErrors(['rasio']);
+
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'tampilan' => ['mode' => 'melayang']],
+    ]])->assertStatus(422);
+});
+
+it('kuis di dalam video: tidak mengunci dirinya, dan video menunggu kuis wajibnya', function (): void {
+    $soal = m08Soal($this, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
+    ], ['jawaban' => 'B'], 4, $this->tag->id);
+
+    $kuis = m08Kuis($this, [$soal]);
+    $materi = m08Materi($this);
+
+    // Berkas video sungguhan lewat jalur unggah (terdeteksi dari tanda `ftyp`).
+    $unggah = m08Unggah($this, $materi, 'klip.mp4', "\x00\x00\x00\x18ftypmp42".str_repeat('a', 300));
+
+    expect($unggah['respons']->json('mime'))->toBe('video/mp4');
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    // Urutan simpan SENGAJA dibalik: kuis dibuat lebih dulu dari videonya.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'track' => 1, 'mulai_detik' => 20, 'durasi_detik' => 10,
+            'tampilan' => ['mode' => 'jeda', 'tata' => 'vertikal']],
+        ['tipe' => 'media', 'wajib' => true, 'isi' => ['unggahan_kode' => $unggah['kode'], 'keterangan' => ''],
+            'track' => 0, 'mulai_detik' => 0, 'durasi_detik' => 60],
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Penutup.'], 'track' => 0, 'mulai_detik' => 70, 'durasi_detik' => 10],
+    ]])->assertOk();
+
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    $blok = BlokMateri::query()->where('material_id', $materi->id)->get()->keyBy(fn (BlokMateri $satu): string => $satu->tipe->value);
+    $idKuis = $blok['kuis']->id;
+    $idVideo = $blok['media']->id;
+    $idTeks = $blok['teks']->id;
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $ringkasan = $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+
+    // Tayang menurut timeline, bukan urutan simpan.
+    expect(array_column($ringkasan->json('blok'), 'block_id'))->toBe([$idVideo, $idKuis, $idTeks])
+        ->and($ringkasan->json('blok.1.host_id'))->toBe($idVideo)
+        ->and($ringkasan->json('blok.0.host_id'))->toBeNull()
+        ->and($ringkasan->json('blok.0.boleh_dibuka'))->toBeTrue()
+        // Kuis di dalam video tidak mensyaratkan videonya selesai.
+        ->and($ringkasan->json('blok.1.boleh_dibuka'))->toBeTrue()
+        ->and($ringkasan->json('blok.2.boleh_dibuka'))->toBeFalse()
+        ->and($ringkasan->json('materi.rasio'))->toBe('16:9');
+
+    // Penutup tetap terkunci sampai video dan kuisnya beres.
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idTeks}/buka")->assertStatus(422);
+
+    $buka = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idVideo}/buka")->assertOk();
+
+    expect($buka->json('blok.media.mime'))->toBe('video/mp4');
+
+    // Video belum boleh ditutup: kuis wajib di dalamnya belum dijawab.
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idVideo}/selesai")
+        ->assertStatus(422)->assertJsonValidationErrors(['blok']);
+
+    // Murid mencapai titik kuis: dibuka dari pemutar (video belum selesai).
+    $kuisBuka = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idKuis}/buka")->assertOk();
+    $attemptId = (int) $kuisBuka->json('attempt.id');
+
+    $this->postJson("/api/v1/attempt/{$attemptId}/jawab", ['question_id' => $soal->id, 'jawaban' => 'B'])->assertOk();
+    $this->postJson("/api/v1/attempt/{$attemptId}/kumpulkan", ['idempotency_key' => 'sisipan-1'])->assertOk();
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idKuis}/selesai")->assertOk();
+
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idVideo}/selesai")->assertOk();
+
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idTeks}/buka")->assertOk();
+});

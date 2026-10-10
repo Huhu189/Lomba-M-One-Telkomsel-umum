@@ -33,20 +33,29 @@ import {
   unggahBerkas,
 } from './api.js'
 import {
+  RASIO_BAWAAN,
+  RASIO_CANVAS,
   TEMPLATE_MATERI,
   TIPE_BLOK,
   adaTemplate,
   blokBaru,
   ciriKlip,
   dariServer,
+  detikDariX,
   durasiTotal,
   formatWaktu,
-  klipPada,
+  gayaMedia,
+  klipDasarPada,
+  kuisJeda,
+  kuisPadaWaktu,
   muatanBlok,
   offsetMedia,
+  rasioAngka,
   setMulai,
   sisipBlok,
   susunTrack,
+  tampilanKlip,
+  ubahTampilan,
 } from './editorMateri.js'
 
 /** Langkah detik saat penempatan klip digeser lewat tombol di inspector. */
@@ -125,10 +134,13 @@ function MediaTersinkron({ berkas, klip, bermain, detik }) {
   const properti = {
     ref: elemen,
     src: berkas.url ?? undefined,
-    controls: true,
+    // Pratinjau dikendalikan tombol play timeline; kontrol native ikut ter-zoom
+    // dan terpotong saat media diatur "penuhi bingkai", jadi dimatikan di sini.
+    controls: false,
     playsInline: true,
     preload: 'metadata',
-    className: 'w-100 rounded-3',
+    className: 'nle-media-penuh',
+    style: gayaMedia(klip),
     onLoadedMetadata: (/** @type {import('react').SyntheticEvent<HTMLMediaElement>} */ e) => {
       geser(e.currentTarget, offsetRef.current)
     },
@@ -168,13 +180,13 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
     }
 
     return (
-      <div className="text-center">
+      <div className="nle-media-wrap">
         {berkas.tampil_langsung && berkas.mime?.startsWith('image/') && (
           <img
             src={berkas.url ?? undefined}
             alt={satu.keterangan || berkas.nama_asli}
-            className="img-fluid rounded-3"
-            style={{ maxHeight: '60vh' }}
+            className="nle-media-penuh"
+            style={gayaMedia(satu)}
           />
         )}
         {berkas.tampil_langsung &&
@@ -197,9 +209,7 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
             Unduh berkas ({berkas.kategori_label})
           </a>
         )}
-        {satu.keterangan !== '' && (
-          <p className="small teks-lembut mt-2 mb-0">{satu.keterangan}</p>
-        )}
+        {satu.keterangan !== '' && <p className="nle-keterangan small mb-0">{satu.keterangan}</p>}
       </div>
     )
   }
@@ -212,6 +222,48 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
       <p className="fw-semibold mb-0">
         {kuis ? `${kuis.judul} (${kuis.jumlah_soal ?? 0} soal)` : 'Kuis belum dipilih.'}
       </p>
+    </div>
+  )
+}
+
+/**
+ * Lapisan kuis sisipan di atas bingkai (pratinjau). Soal sungguhan dirender
+ * di sisi murid; di editor guru cukup melihat tata letak dan perilakunya.
+ *
+ * @param {{
+ *   klip: import('./editorMateri.js').BarisBlok,
+ *   kuis: import('../quiz/api.js').DataKuis|undefined,
+ *   tertahan: boolean,
+ *   onLanjut: () => void,
+ * }} props
+ */
+function LapisanKuis({ klip, kuis, tertahan, onLanjut }) {
+  const tampilan = tampilanKlip(klip)
+
+  return (
+    <div
+      className={`nle-kuis nle-kuis-${tampilan.tata}`}
+      role="dialog"
+      aria-label="Pratinjau kuis sisipan"
+    >
+      <p className="nle-kuis-judul">
+        {kuis ? `${kuis.judul} (${kuis.jumlah_soal ?? 0} soal)` : 'Kuis belum dipilih'}
+      </p>
+      <p className="nle-kuis-mode">
+        {tampilan.mode === 'jeda' ? '⏸ Video berhenti sampai kuis dijawab' : '▶ Video tetap berjalan'}
+      </p>
+      <div className="nle-kuis-opsi" aria-hidden="true">
+        {['A', 'B', 'C', 'D'].map((huruf) => (
+          <span key={huruf} className="nle-kuis-pilihan">
+            Pilihan {huruf}
+          </span>
+        ))}
+      </div>
+      {tertahan && (
+        <Tombol ukuran="sedang" onClick={onLanjut}>
+          Lanjutkan video (pratinjau)
+        </Tombol>
+      )}
     </div>
   )
 }
@@ -268,8 +320,16 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const [bermain, setBermain] = useState(false)
   const [trackEkstra, setTrackEkstra] = useState(0)
   const [menuTambah, setMenuTambah] = useState(false)
+  const [rasio, setRasio] = useState(materi.rasio ?? RASIO_BAWAAN)
+  // Indeks kuis "jeda" yang sedang menahan pemutaran pratinjau (null = tidak ada).
+  const [kuisTertahan, setKuisTertahan] = useState(/** @type {number|null} */ (null))
   const inputBerkas = useRef(/** @type {HTMLInputElement|null} */ (null))
   const detikRef = useRef(0)
+  const blokRef = useRef(blok)
+  // Kuis jeda yang sudah dilanjutkan; dikosongkan tiap playhead dipindah manual.
+  const dilewatiRef = useRef(/** @type {Set<number>} */ (new Set()))
+  const penggarisRef = useRef(/** @type {HTMLDivElement|null} */ (null))
+  const sedangGeserRef = useRef(false)
 
   const laporan = useQuery({
     queryKey: ['materi-laporan', materi.id],
@@ -278,7 +338,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   })
 
   const simpanBlok = useMutation({
-    mutationFn: async () => sinkronBlok(materi.id, muatanBlok(blok)),
+    mutationFn: async () => sinkronBlok(materi.id, muatanBlok(blok), rasio),
     onSuccess: () => {
       setGalat('')
       tampilkanToast('sukses', 'Susunan materi tersimpan.')
@@ -325,6 +385,10 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     detikRef.current = detik
   }, [detik])
 
+  useEffect(() => {
+    blokRef.current = blok
+  }, [blok])
+
   // Playback: maju 0,25 detik tiap 250 ms, lalu berhenti di ujung timeline.
   // Penghentian terjadi di dalam callback interval (bukan badan efek) supaya
   // tidak memicu render berantai.
@@ -332,7 +396,21 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     if (!bermain) return undefined
 
     const id = window.setInterval(() => {
-      const lanjut = Math.min(total, Math.round((detikRef.current + 0.25) * 100) / 100)
+      const dari = detikRef.current
+      const lanjut = Math.min(total, Math.round((dari + 0.25) * 100) / 100)
+
+      // Kuis bermode "jeda": video berhenti tepat di titik kuis sampai dilanjutkan.
+      const henti = kuisJeda(blokRef.current, dari, lanjut, dilewatiRef.current)
+
+      if (henti) {
+        window.clearInterval(id)
+        detikRef.current = henti.baris.mulai_detik
+        setDetik(henti.baris.mulai_detik)
+        setKuisTertahan(henti.indeks)
+        setBermain(false)
+        return
+      }
+
       detikRef.current = lanjut
       setDetik(lanjut)
 
@@ -344,6 +422,50 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
     return () => window.clearInterval(id)
   }, [bermain, total])
+
+  /**
+   * Pindahkan jarum merah (playhead) ke detik tertentu.
+   * @param {number} nilai
+   */
+  function cari(nilai) {
+    const aman = Math.min(total, Math.max(0, Math.round(nilai * 100) / 100))
+    dilewatiRef.current.clear()
+    setKuisTertahan(null)
+    detikRef.current = aman
+    setDetik(aman)
+  }
+
+  function lanjutkanKuis() {
+    if (kuisTertahan !== null) dilewatiRef.current.add(kuisTertahan)
+    setKuisTertahan(null)
+    setBermain(true)
+  }
+
+  /** @param {import('react').PointerEvent<HTMLElement>} e */
+  function geserJarum(e) {
+    const kotak = penggarisRef.current?.getBoundingClientRect()
+    if (kotak) cari(detikDariX(e.clientX, kotak, total))
+  }
+
+  // Dipakai penggaris dan kepala jarum: tekan lalu seret untuk memilih detik.
+  const gagangJarum = {
+    onPointerDown: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+      e.preventDefault()
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+      sedangGeserRef.current = true
+      geserJarum(e)
+    },
+    onPointerMove: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+      if (sedangGeserRef.current) geserJarum(e)
+    },
+    onPointerUp: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+      sedangGeserRef.current = false
+      e.currentTarget.releasePointerCapture?.(e.pointerId)
+    },
+    onPointerCancel: () => {
+      sedangGeserRef.current = false
+    },
+  }
 
   /** @param {number} indeks @param {Partial<import('./editorMateri.js').BarisBlok>} ubah */
   function ubahBaris(indeks, ubah) {
@@ -359,7 +481,8 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
    * @returns {number}
    */
   function tambahBlok(tipe, isi) {
-    const hasil = sisipBlok(blok, blokBaru(tipe, { mulai_detik: detik, ...isi }))
+    const dasar = tipe === 'kuis' ? { track: 1 } : {}
+    const hasil = sisipBlok(blok, blokBaru(tipe, { mulai_detik: detik, ...dasar, ...isi }))
     setBlok(hasil.blok)
     setTerpilih(hasil.indeks)
     setMenuTambah(false)
@@ -383,10 +506,26 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const track = useMemo(() => susunTrack(blok), [blok])
   const trackTampil = useMemo(() => [...track].reverse(), [track])
-  const klipTampil = klipPada(blok, detik)
+  const klipTampil = klipDasarPada(blok, detik)
+
+  // Lapisan kuis: yang sedang menahan video, atau kuis "berjalan" di jendelanya.
+  // Kuis "jeda" juga dipratinjau saat klipnya dipilih dan pemutaran dijeda.
+  const kuisLapisan = (() => {
+    if (kuisTertahan !== null && blok[kuisTertahan]) {
+      return { baris: blok[kuisTertahan], indeks: kuisTertahan }
+    }
+
+    const dalam = kuisPadaWaktu(blok, detik).filter(
+      ({ baris, indeks }) =>
+        tampilanKlip(baris).mode === 'berjalan' || (!bermain && indeks === aktif),
+    )
+
+    return dalam.length === 0 ? null : dalam[dalam.length - 1]
+  })()
 
   const belumTersimpan =
-    JSON.stringify(muatanBlok(blok)) !== JSON.stringify(muatanBlok(dariServer(materi.blok)))
+    JSON.stringify(muatanBlok(blok)) !== JSON.stringify(muatanBlok(dariServer(materi.blok))) ||
+    rasio !== (materi.rasio ?? RASIO_BAWAAN)
 
   const tandaDetik = useMemo(() => {
     const langkah = total <= 120 ? 5 : total <= 300 ? 10 : 30
@@ -510,24 +649,53 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
       <div className="nle-kerja">
         {galat && <Banner jenis="salah">{galat}</Banner>}
 
+        <div className="nle-bilah" role="group" aria-label="Rasio bingkai">
+          <span className="small fw-semibold">🔒 Rasio bingkai</span>
+          {RASIO_CANVAS.map((satu) => (
+            <button
+              key={satu.nilai}
+              type="button"
+              className={`nle-segmen${rasio === satu.nilai ? ' aktif' : ''}`}
+              aria-pressed={rasio === satu.nilai}
+              onClick={() => setRasio(satu.nilai)}
+            >
+              {satu.label}
+            </button>
+          ))}
+        </div>
+
         <div className="nle-canvas" aria-label="Pratinjau hasil">
-          <div className="nle-canvas-isi">
-            {klipTampil ? (
-              <IsiKlip
-                satu={klipTampil}
-                cariUnggahan={cariUnggahan}
-                daftarKuis={daftarKuis}
-                bermain={bermain}
-                detik={detik}
+          <div
+            className="nle-bingkai"
+            style={/** @type {import('react').CSSProperties} */ ({ '--r': rasioAngka(rasio) })}
+            data-rasio={rasio}
+          >
+            <div className="nle-canvas-isi">
+              {klipTampil ? (
+                <IsiKlip
+                  satu={klipTampil}
+                  cariUnggahan={cariUnggahan}
+                  daftarKuis={daftarKuis}
+                  bermain={bermain}
+                  detik={detik}
+                />
+              ) : (
+                <p className="teks-lembut mb-0 text-center">
+                  Tidak ada klip pada detik {formatWaktu(detik)}. Geser jarum merah atau tambah elemen.
+                </p>
+              )}
+            </div>
+            {kuisLapisan && (
+              <LapisanKuis
+                klip={kuisLapisan.baris}
+                kuis={daftarKuis.find((k) => String(k.id) === String(kuisLapisan.baris.quiz_id))}
+                tertahan={kuisTertahan !== null}
+                onLanjut={lanjutkanKuis}
               />
-            ) : (
-              <p className="teks-lembut mb-0 text-center">
-                Tidak ada klip pada detik {formatWaktu(detik)}. Geser playhead atau tambah elemen.
-              </p>
             )}
           </div>
           <div className="nle-canvas-catatan small teks-lembut">
-            {klipTampil ? `Klip aktif · track ${klipTampil.track}` : 'Layar kosong'}
+            {klipTampil ? `Klip aktif · track ${klipTampil.track}` : 'Layar kosong'} · bingkai {rasio}
           </div>
         </div>
 
@@ -540,7 +708,11 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             className="nle-play"
             aria-label={bermain ? 'Jeda' : 'Putar'}
             onClick={() => {
-              if (!bermain && detik >= total) setDetik(0)
+              if (kuisTertahan !== null) {
+                lanjutkanKuis()
+                return
+              }
+              if (!bermain && detik >= total) cari(0)
               setBermain((satu) => !satu)
             }}
           >
@@ -557,12 +729,35 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             step={0.1}
             value={detik}
             aria-label="Geser waktu"
-            onChange={(e) => setDetik(Number(e.target.value))}
+            onChange={(e) => cari(Number(e.target.value))}
           />
+          <button
+            type="button"
+            className="nle-tool-kecil"
+            aria-label="Mundur 0,1 detik"
+            onClick={() => cari(detik - 0.1)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="nle-tool-kecil"
+            aria-label="Maju 0,1 detik"
+            onClick={() => cari(detik + 0.1)}
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            className="nle-tool-kecil nle-tool-kuis"
+            onClick={() => tambahBlok('kuis')}
+          >
+            ? Kuis di {detik.toFixed(1)} dtk
+          </button>
         </div>
 
         <div className="nle-timeline" aria-label="Timeline materi">
-          <div className="nle-ruler">
+          <div className="nle-ruler" ref={penggarisRef} {...gagangJarum}>
             {tandaDetik.map((t) => (
               <span
                 key={t}
@@ -575,8 +770,27 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
           </div>
 
           <div className="nle-lane-wrap">
-            <div className="nle-playhead" style={{ left: posisiPersen(detik) }} aria-hidden="true">
-              <span className="nle-playhead-kepala" />
+            <div className="nle-playhead" style={{ left: posisiPersen(detik) }}>
+              <span
+                className="nle-playhead-kepala"
+                role="slider"
+                tabIndex={0}
+                aria-label="Jarum waktu: seret atau tekan panah kiri/kanan"
+                aria-valuemin={0}
+                aria-valuemax={total}
+                aria-valuenow={detik}
+                aria-valuetext={`${detik.toFixed(1)} detik`}
+                {...gagangJarum}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    cari(detik - 0.1)
+                  } else if (e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    cari(detik + 0.1)
+                  }
+                }}
+              />
             </div>
 
             {trackTampil.map((satu) => (
@@ -607,6 +821,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     >
                       <span className="nle-klip-judul" aria-hidden="true">
                         {ciri.ikon} {ciri.label}
+                        {baris.tipe === 'kuis' && tampilanKlip(baris).mode === 'jeda' ? ' ⏸' : ''}
                       </span>
                     </button>
                   )
@@ -808,20 +1023,117 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
               </div>
             )}
 
+            {klipAktif.tipe === 'media' && (
+              <div className="nle-atur mt-2">
+                <strong className="small d-block mb-1">Penyesuaian di bingkai {rasio}</strong>
+                <div className="row g-2 align-items-end">
+                  <div className="col-12 col-lg-4">
+                    <label className="form-label small mb-1" htmlFor="nle-fit">
+                      Bila media tidak pas dengan bingkai
+                    </label>
+                    <select
+                      id="nle-fit"
+                      className="form-select form-select-sm"
+                      value={tampilanKlip(klipAktif).fit}
+                      onChange={(e) => setBlok(ubahTampilan(blok, aktif, { fit: e.target.value }))}
+                    >
+                      <option value="contain">Tampil utuh (ada pinggiran kosong)</option>
+                      <option value="cover">Penuhi bingkai (bagian luar terpotong)</option>
+                    </select>
+                  </div>
+                  {[
+                    ['zoom', 'Zoom', 1, 3, 0.05],
+                    ['fokus_x', 'Geser kiri–kanan', 0, 100, 1],
+                    ['fokus_y', 'Geser atas–bawah', 0, 100, 1],
+                  ].map(([kunci, label, min, maks, langkah]) => (
+                    <div className="col-6 col-lg-2" key={String(kunci)}>
+                      <label className="form-label small mb-1" htmlFor={`nle-${kunci}`}>
+                        {label}
+                      </label>
+                      <input
+                        id={`nle-${kunci}`}
+                        className="form-range"
+                        type="range"
+                        min={Number(min)}
+                        max={Number(maks)}
+                        step={Number(langkah)}
+                        value={Number(tampilanKlip(klipAktif)[String(kunci)])}
+                        onChange={(e) =>
+                          setBlok(ubahTampilan(blok, aktif, { [String(kunci)]: Number(e.target.value) }))
+                        }
+                      />
+                    </div>
+                  ))}
+                  <div className="col-12 col-lg-2">
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      onClick={() =>
+                        setBlok(ubahTampilan(blok, aktif, { fit: 'contain', fokus_x: 50, fokus_y: 50, zoom: 1 }))
+                      }
+                    >
+                      Atur ulang
+                    </Tombol>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {klipAktif.tipe === 'kuis' && (
-              <select
-                className="form-select form-select-sm"
-                aria-label={`Pilih kuis untuk klip ${aktif + 1}`}
-                value={klipAktif.quiz_id}
-                onChange={(e) => ubahBaris(aktif, { quiz_id: e.target.value })}
-              >
-                <option value="">Pilih kuis dari bank soal…</option>
-                {daftarKuis.map((satuKuis) => (
-                  <option key={satuKuis.id} value={satuKuis.id}>
-                    {satuKuis.judul} ({satuKuis.jumlah_soal ?? 0} soal)
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  className="form-select form-select-sm"
+                  aria-label={`Pilih kuis untuk klip ${aktif + 1}`}
+                  value={klipAktif.quiz_id}
+                  onChange={(e) => ubahBaris(aktif, { quiz_id: e.target.value })}
+                >
+                  <option value="">Pilih kuis dari bank soal…</option>
+                  {daftarKuis.map((satuKuis) => (
+                    <option key={satuKuis.id} value={satuKuis.id}>
+                      {satuKuis.judul} ({satuKuis.jumlah_soal ?? 0} soal)
+                    </option>
+                  ))}
+                </select>
+                <div className="row g-2 mt-1 align-items-end">
+                  <div className="col-12 col-lg-4">
+                    <label className="form-label small mb-1" htmlFor="nle-mode">
+                      Saat kuis muncul
+                    </label>
+                    <select
+                      id="nle-mode"
+                      className="form-select form-select-sm"
+                      value={tampilanKlip(klipAktif).mode}
+                      onChange={(e) => setBlok(ubahTampilan(blok, aktif, { mode: e.target.value }))}
+                    >
+                      <option value="jeda">Video berhenti dulu</option>
+                      <option value="berjalan">Video tetap berjalan</option>
+                    </select>
+                  </div>
+                  <div className="col-12 col-lg-4">
+                    <label className="form-label small mb-1" htmlFor="nle-tata">
+                      Tata letak kuis
+                    </label>
+                    <select
+                      id="nle-tata"
+                      className="form-select form-select-sm"
+                      value={tampilanKlip(klipAktif).tata}
+                      onChange={(e) => setBlok(ubahTampilan(blok, aktif, { tata: e.target.value }))}
+                    >
+                      <option value="vertikal">Vertikal (panel di bawah)</option>
+                      <option value="horizontal">Horizontal (panel di samping)</option>
+                    </select>
+                  </div>
+                  <div className="col-12 col-lg-4">
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      onClick={() => setBlok(setMulai(blok, aktif, detik))}
+                    >
+                      Taruh di jarum merah ({detik.toFixed(1)} dtk)
+                    </Tombol>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}

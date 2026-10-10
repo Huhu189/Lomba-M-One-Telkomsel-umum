@@ -22,6 +22,7 @@
  *   track: number,
  *   mulai_detik: number,
  *   durasi_detik: number,
+ *   tampilan?: Record<string, string|number>,
  * }} BarisBlok
  */
 
@@ -96,6 +97,10 @@ export function dariServer(blok) {
       track: typeof satu.track === 'number' ? satu.track : 0,
       mulai_detik: typeof satu.mulai_detik === 'number' ? satu.mulai_detik : indeks * DURASI_BAWAAN,
       durasi_detik: durasi,
+      tampilan:
+        satu.tampilan && typeof satu.tampilan === 'object'
+          ? /** @type {Record<string, string|number>} */ (satu.tampilan)
+          : undefined,
     }
   })
 }
@@ -130,6 +135,8 @@ export function muatanBlok(blok) {
     track: Math.max(0, Math.round(satu.track)),
     mulai_detik: Math.max(0, satu.mulai_detik),
     durasi_detik: Math.max(0.5, satu.durasi_detik),
+    // Hanya dikirim bila guru pernah mengaturnya; selalu dalam bentuk ternormalkan.
+    ...(satu.tampilan !== undefined && satu.tipe !== 'teks' ? { tampilan: tampilanKlip(satu) } : {}),
   }))
 }
 
@@ -281,4 +288,177 @@ export function offsetMedia(detik, mulai, durasi) {
   const mentah = Math.max(0, detik - mulaiAman)
 
   return Number.isFinite(durasi) && durasi > 0 ? Math.min(mentah, durasi) : mentah
+}
+
+/* ------------------------------------------------------------------ *
+ * Bingkai (rasio terkunci), penyesuaian media, dan kuis sisipan.
+ * ------------------------------------------------------------------ */
+
+/** Rasio bingkai pratinjau yang bisa dipilih guru. */
+export const RASIO_CANVAS = [
+  { nilai: '16:9', label: 'Horizontal 16:9' },
+  { nilai: '9:16', label: 'Vertikal 9:16' },
+  { nilai: '1:1', label: 'Kotak 1:1' },
+  { nilai: '4:3', label: 'Klasik 4:3' },
+]
+
+export const RASIO_BAWAAN = '16:9'
+
+/**
+ * Rasio "a:b" jadi angka lebar/tinggi. Nilai tak sah jatuh ke 16:9.
+ * @param {string|undefined|null} rasio
+ * @returns {number}
+ */
+export function rasioAngka(rasio) {
+  const [a, b] = String(rasio ?? '').split(':').map(Number)
+
+  return a > 0 && b > 0 ? a / b : 16 / 9
+}
+
+/**
+ * @param {unknown} nilai
+ * @param {number} min
+ * @param {number} maks
+ * @param {number} bawaan
+ */
+function jepit(nilai, min, maks, bawaan) {
+  const angka = Number(nilai)
+
+  return Number.isFinite(angka) ? Math.min(maks, Math.max(min, angka)) : bawaan
+}
+
+/**
+ * Pengaturan tampilan klip yang sudah dinormalkan (sama persis dengan yang
+ * disimpan server, supaya "belum tersimpan" tidak menyala terus).
+ *  - media: fit (contain = utuh, cover = penuhi bingkai/terpotong), fokus_x/y
+ *    (0–100, titik yang dipertahankan saat terpotong), zoom (1–3).
+ *  - kuis: mode (jeda = video berhenti, berjalan = video lanjut), tata
+ *    (vertikal = panel di bawah, horizontal = panel di samping).
+ *
+ * @param {Pick<BarisBlok, 'tipe'> & { tampilan?: Record<string, string|number> }} satu
+ * @returns {Record<string, string|number>}
+ */
+export function tampilanKlip(satu) {
+  const t = satu.tampilan ?? {}
+
+  if (satu.tipe === 'media') {
+    return {
+      fit: t.fit === 'cover' ? 'cover' : 'contain',
+      fokus_x: Math.round(jepit(t.fokus_x, 0, 100, 50)),
+      fokus_y: Math.round(jepit(t.fokus_y, 0, 100, 50)),
+      zoom: Math.round(jepit(t.zoom, 1, 3, 1) * 100) / 100,
+    }
+  }
+
+  if (satu.tipe === 'kuis') {
+    return {
+      mode: t.mode === 'berjalan' ? 'berjalan' : 'jeda',
+      tata: t.tata === 'horizontal' ? 'horizontal' : 'vertikal',
+    }
+  }
+
+  return {}
+}
+
+/**
+ * Ubah sebagian pengaturan tampilan satu klip.
+ * @param {BarisBlok[]} blok
+ * @param {number} indeks
+ * @param {Record<string, string|number>} ubah
+ * @returns {BarisBlok[]}
+ */
+export function ubahTampilan(blok, indeks, ubah) {
+  return blok.map((satu, urutan) =>
+    urutan === indeks ? { ...satu, tampilan: { ...tampilanKlip(satu), ...ubah } } : satu,
+  )
+}
+
+/**
+ * Gaya CSS media di dalam bingkai: object-fit + titik fokus + zoom.
+ * @param {Pick<BarisBlok, 'tipe'> & { tampilan?: Record<string, string|number> }} satu
+ * @returns {import('react').CSSProperties}
+ */
+export function gayaMedia(satu) {
+  const t = tampilanKlip(satu)
+  const titik = `${t.fokus_x}% ${t.fokus_y}%`
+
+  return {
+    objectFit: /** @type {'contain'|'cover'} */ (t.fit),
+    objectPosition: titik,
+    transform: Number(t.zoom) > 1 ? `scale(${t.zoom})` : undefined,
+    transformOrigin: titik,
+  }
+}
+
+/**
+ * Klip tampil di bingkai pada detik tertentu, TANPA kuis (kuis jadi lapisan
+ * sendiri di atas media). Track tertinggi menang.
+ * @param {BarisBlok[]} blok
+ * @param {number} detik
+ * @returns {BarisBlok|null}
+ */
+export function klipDasarPada(blok, detik) {
+  return klipPada(
+    blok.map((satu) => (satu.tipe === 'kuis' ? { ...satu, durasi_detik: 0 } : satu)),
+    detik,
+  )
+}
+
+/**
+ * Kuis yang jendelanya memuat `detik`, urut dari track terendah.
+ * @param {BarisBlok[]} blok
+ * @param {number} detik
+ * @returns {Array<{ baris: BarisBlok, indeks: number }>}
+ */
+export function kuisPadaWaktu(blok, detik) {
+  return blok
+    .map((baris, indeks) => ({ baris, indeks }))
+    .filter(
+      ({ baris }) =>
+        baris.tipe === 'kuis' &&
+        detik >= baris.mulai_detik &&
+        detik < baris.mulai_detik + baris.durasi_detik,
+    )
+    .sort((a, b) => a.baris.track - b.baris.track)
+}
+
+/**
+ * Kuis bermode "jeda" pertama yang titik mulainya terlewati/tersentuh saat
+ * playhead maju dari `dari` ke `ke`, kecuali yang sudah dilewati.
+ *
+ * @param {BarisBlok[]} blok
+ * @param {number} dari
+ * @param {number} ke
+ * @param {Set<number>} dilewati indeks kuis yang sudah dilanjutkan
+ * @returns {{ baris: BarisBlok, indeks: number }|null}
+ */
+export function kuisJeda(blok, dari, ke, dilewati) {
+  const kandidat = blok
+    .map((baris, indeks) => ({ baris, indeks }))
+    .filter(
+      ({ baris, indeks }) =>
+        baris.tipe === 'kuis' &&
+        tampilanKlip(baris).mode === 'jeda' &&
+        !dilewati.has(indeks) &&
+        baris.mulai_detik >= dari &&
+        baris.mulai_detik <= ke,
+    )
+    .sort((a, b) => a.baris.mulai_detik - b.baris.mulai_detik)
+
+  return kandidat[0] ?? null
+}
+
+/**
+ * Posisi X pointer → detik pada penggaris (dibulatkan 0,1 detik, dijepit).
+ * @param {number} klienX
+ * @param {{ left: number, width: number }} kotak
+ * @param {number} total
+ * @returns {number}
+ */
+export function detikDariX(klienX, kotak, total) {
+  if (!(kotak.width > 0)) return 0
+
+  const rasio = Math.min(1, Math.max(0, (klienX - kotak.left) / kotak.width))
+
+  return Math.round(rasio * total * 10) / 10
 }
