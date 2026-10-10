@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Sections\Question\Enums;
 
 /**
- * Delapan jenis soal. Enam di antaranya dinilai pasti (pilihan ganda, benar/salah,
- * menjodohkan, mengurutkan, letak kata, hubung kata); isian singkat dan uraian
- * dinilai bertingkat lewat kata kunci (slice 06).
+ * Delapan jenis soal lama, ditambah jenis baru dari Objektif 1 (22 tipe pada
+ * akhir ketiga gelombang). Enam tipe lama dinilai pasti (pilihan ganda,
+ * benar/salah, menjodohkan, mengurutkan, letak kata, hubung kata); isian
+ * singkat dan uraian dinilai bertingkat lewat kata kunci (slice 06).
+ *
+ * Tipe baru yang objektif dinilai mesin skor lewat `bobot()`; satu tipe
+ * (`tugas_unggah`) bukan objektif karena hasilnya dinilai guru dari rubrik.
  */
 enum TipeSoal: string
 {
@@ -20,6 +24,14 @@ enum TipeSoal: string
     case LetakKata = 'letak_kata';
     case HubungKata = 'hubung_kata';
 
+    // Gelombang 1 (Objektif 1B): tipe 1, 2, 3, 6, 7, 9.
+    case PilihanGandaKompleks = 'pilihan_ganda_kompleks';
+    case BenarSalahMajemuk = 'benar_salah_majemuk';
+    case IsianAngka = 'isian_angka';
+    case PilihanGambar = 'pilihan_gambar';
+    case UrutGambar = 'urut_gambar';
+    case SusunHuruf = 'susun_huruf';
+
     /**
      * Soal objektif = dinilai pasti tanpa toleransi/tafsir; koreksi guru tidak
      * diperlukan. Isian singkat dan uraian bukan objektif (lihat `bertingkat()`).
@@ -28,7 +40,9 @@ enum TipeSoal: string
     {
         return match ($this) {
             self::PilihanGanda, self::BenarSalah, self::Menjodohkan, self::Mengurutkan,
-            self::LetakKata, self::HubungKata => true,
+            self::LetakKata, self::HubungKata,
+            self::PilihanGandaKompleks, self::BenarSalahMajemuk, self::IsianAngka,
+            self::PilihanGambar, self::UrutGambar, self::SusunHuruf => true,
             default => false,
         };
     }
@@ -53,6 +67,12 @@ enum TipeSoal: string
             self::Uraian => 'Uraian',
             self::LetakKata => 'Letak kata',
             self::HubungKata => 'Hubung kata',
+            self::PilihanGandaKompleks => 'Pilihan ganda kompleks',
+            self::BenarSalahMajemuk => 'Benar / salah majemuk',
+            self::IsianAngka => 'Isian angka',
+            self::PilihanGambar => 'Pilihan gambar',
+            self::UrutGambar => 'Urut gambar',
+            self::SusunHuruf => 'Susun huruf',
         };
     }
 }

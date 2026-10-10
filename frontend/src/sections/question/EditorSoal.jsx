@@ -1,27 +1,41 @@
 /**
- * Editor bank soal (slice 03 + 06).
+ * Editor bank soal (slice 03 + 06) — papan desain 11.
  *
- * Bidang berubah mengikuti tipe soal (delapan tipe); validasi kelengkapan
- * dijalankan di klien (cermin registry backend) lalu pratinjau memakai renderer
- * yang sama dengan layar murid — jadi yang dilihat guru persis yang dilihat murid.
+ * Tata letaknya tiga kartu bernomor di kolom utama (jenis soal → isi soal →
+ * pengaturan) dengan sisi kanan yang mengikuti gulir berisi pratinjau dan daftar
+ * kelengkapan. Bidang berubah mengikuti tipe soal (delapan tipe); validasi
+ * kelengkapan dijalankan di klien (cermin registry backend) lalu pratinjau
+ * memakai renderer yang sama dengan layar murid — jadi yang dilihat guru persis
+ * yang dilihat murid.
  */
 import { useState } from 'react'
 import Banner from '../../shared/ui/Banner.jsx'
-import { Tombol } from '../../shared/ui/Tombol.jsx'
+import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
+import { IkonTambah, IkonTongSampah } from '../../icons.jsx'
 import RendererSoal from './render/RendererSoal.jsx'
 import {
   DAFTAR_TIPE,
+  MAKS_GAMBAR,
+  MAKS_HURUF,
   MAKS_MATEMATIKA,
   MAKS_OPSI,
+  MAKS_OPSI_KOMPLEKS,
+  MAKS_PERNYATAAN,
+  MAKS_PETUNJUK,
+  MIN_GAMBAR,
+  MIN_HURUF,
   MIN_ITEM,
   MIN_OPSI,
+  MIN_OPSI_KOMPLEKS,
+  MIN_PERNYATAAN,
   TIPE,
+  TIPE_TANPA_TEKS,
   idBerikut,
   muatanDariState,
   stateDariSoal,
   stateSoalKosong,
 } from './tipeSoal.js'
-import { validasiSoal } from './validasi.js'
+import { kelengkapanSoal, siapSoal, validasiSoal } from './validasi.js'
 
 /**
  * Fieldset pasangan kiri–kanan untuk menjodohkan & hubung kata. Backend memakai
@@ -71,23 +85,26 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
   }
 
   return (
-    <fieldset className="col-12">
-      <legend className="h6 fw-semibold">{judul} (minimal {MIN_ITEM})</legend>
+    <fieldset className="mt-2">
+      <legend className="fw-bold fs-6">
+        {judul} (minimal {MIN_ITEM})
+      </legend>
 
       <div className="row g-3">
         <div className="col-md-6">
-          <h3 className="h6 fw-semibold teks-lembut">Kiri</h3>
+          <h3 className="fw-bold fs-6 teks-lembut">Kiri</h3>
           {state.kiri.map((satu, index) => (
             <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <span className="opsi-huruf">{satu.id}</span>
+              <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
               <input
-                className="form-control form-control-sm flex-grow-1"
+                className="form-control flex-grow-1"
                 aria-label={`Teks kiri ${satu.id}`}
                 value={satu.teks}
                 onChange={(e) => ubahKiri(index, e.target.value)}
+                placeholder="Contoh: Paru-paru"
               />
               <select
-                className="form-select form-select-sm jodoh-pilih"
+                className="form-select jodoh-pilih"
                 aria-label={`Pasangan kiri ${satu.id}`}
                 value={peta[satu.id] ?? ''}
                 onChange={(e) => simpanPeta({ ...peta, [satu.id]: e.target.value })}
@@ -99,55 +116,56 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-danger"
+              <TombolIkon
+                label={`Hapus item kiri ${satu.id}`}
+                ikon={IkonTongSampah}
+                varian="bahaya"
                 disabled={state.kiri.length <= MIN_ITEM}
                 onClick={() => hapusKiri(index)}
-              >
-                Hapus
-              </button>
+              />
             </div>
           ))}
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-primary"
+          <Tombol
+            varian="tepi"
+            ukuran="sedang"
+            ikon={IkonTambah}
             disabled={state.kiri.length >= MAKS_OPSI}
             onClick={() => ubah({ kiri: [...state.kiri, { id: idBerikut('K', state.kiri), teks: '' }] })}
           >
             Tambah kiri
-          </button>
+          </Tombol>
         </div>
 
         <div className="col-md-6">
-          <h3 className="h6 fw-semibold teks-lembut">Kanan</h3>
+          <h3 className="fw-bold fs-6 teks-lembut">Kanan</h3>
           {state.kanan.map((satu, index) => (
             <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
-              <span className="opsi-huruf">{satu.id}</span>
+              <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
               <input
-                className="form-control form-control-sm"
+                className="form-control"
                 aria-label={`Teks kanan ${satu.id}`}
                 value={satu.teks}
                 onChange={(e) => ubahKanan(index, e.target.value)}
+                placeholder="Contoh: Alat pernapasan"
               />
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-danger"
+              <TombolIkon
+                label={`Hapus item kanan ${satu.id}`}
+                ikon={IkonTongSampah}
+                varian="bahaya"
                 disabled={state.kanan.length <= MIN_ITEM}
                 onClick={() => hapusKanan(index)}
-              >
-                Hapus
-              </button>
+              />
             </div>
           ))}
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-primary"
+          <Tombol
+            varian="tepi"
+            ukuran="sedang"
+            ikon={IkonTambah}
             disabled={state.kanan.length >= MAKS_OPSI}
             onClick={() => ubah({ kanan: [...state.kanan, { id: idBerikut('N', state.kanan), teks: '' }] })}
           >
             Tambah kanan
-          </button>
+          </Tombol>
         </div>
       </div>
     </fieldset>
@@ -298,6 +316,98 @@ export default function EditorSoal({
     ubah({ item: state.item.filter((_, posisi) => posisi !== index) })
   }
 
+  /**
+   * Benar/salah majemuk: daftar pernyataan + kunci tiap baris.
+   * @param {number} index
+   * @param {string} teks
+   */
+  function ubahPernyataan(index, teks) {
+    ubah({
+      pernyataan: state.pernyataan.map((satu, posisi) => (posisi === index ? { ...satu, teks } : satu)),
+    })
+  }
+
+  function tambahPernyataan() {
+    ubah({ pernyataan: [...state.pernyataan, { id: idBerikut('P', state.pernyataan), teks: '' }] })
+  }
+
+  /** @param {number} index */
+  function hapusPernyataan(index) {
+    if (state.pernyataan.length <= MIN_PERNYATAAN) return
+    const hilang = state.pernyataan[index]?.id ?? ''
+    const kunci = { ...state.kunciPernyataan }
+    delete kunci[hilang]
+    ubah({ pernyataan: state.pernyataan.filter((_, posisi) => posisi !== index), kunciPernyataan: kunci })
+  }
+
+  /** @param {number} index @param {string} media */
+  function ubahOpsiGambar(index, media) {
+    ubah({
+      opsiGambar: state.opsiGambar.map((satu, posisi) => (posisi === index ? { ...satu, media } : satu)),
+    })
+  }
+
+  function tambahOpsiGambar() {
+    ubah({ opsiGambar: [...state.opsiGambar, { id: idBerikut('G', state.opsiGambar), media: '' }] })
+  }
+
+  /** @param {number} index */
+  function hapusOpsiGambar(index) {
+    if (state.opsiGambar.length <= MIN_GAMBAR) return
+    const sisa = state.opsiGambar.filter((_, posisi) => posisi !== index)
+    const idSisa = sisa.map((satu) => satu.id)
+    ubah({
+      opsiGambar: sisa,
+      jawabanGambar: idSisa.includes(state.jawabanGambar) ? state.jawabanGambar : (idSisa[0] ?? ''),
+    })
+  }
+
+  /**
+   * Urut gambar: item bergambar + nomor urut benar.
+   * @param {number} index
+   * @param {string} media
+   * @param {string} posisi
+   */
+  function ubahItemGambar(index, media, posisi) {
+    ubah({
+      itemGambar: state.itemGambar.map((satu, nomor) =>
+        nomor === index ? { ...satu, media, posisi } : satu,
+      ),
+    })
+  }
+
+  function tambahItemGambar() {
+    ubah({
+      itemGambar: [
+        ...state.itemGambar,
+        {
+          id: idBerikut('U', state.itemGambar),
+          media: '',
+          posisi: String(state.itemGambar.length + 1),
+        },
+      ],
+    })
+  }
+
+  /** @param {number} index */
+  function hapusItemGambar(index) {
+    if (state.itemGambar.length <= MIN_GAMBAR) return
+    ubah({ itemGambar: state.itemGambar.filter((_, posisi) => posisi !== index) })
+  }
+
+  /** @param {string} id @param {boolean} dicentang */
+  function ubahKunciKompleks(id, dicentang) {
+    ubah({
+      benarKompleks: dicentang
+        ? [...state.benarKompleks.filter((satu) => satu !== id), id]
+        : state.benarKompleks.filter((satu) => satu !== id),
+    })
+  }
+
+  const kelengkapan = kelengkapanSoal(state)
+  const siap = siapSoal(kelengkapan)
+  const muatan = muatanDariState(state)
+
   function kirim() {
     const temuan = validasiSoal(state)
 
@@ -307,591 +417,945 @@ export default function EditorSoal({
     }
 
     setGalat([])
-    onSimpan(muatanDariState(state))
+    onSimpan(muatan)
   }
 
   return (
-    <div className="kartu-soft p-4">
-      <div className="d-flex flex-wrap align-items-baseline gap-2 mb-3">
-        <h2 className="h6 fw-bold mb-0">{soal === null ? 'Tambah Soal' : `Ubah Soal #${soal.id}`}</h2>
-        <span className="teks-lembut small">
-          Objektif (dinilai pasti) atau bertingkat (isian singkat &amp; uraian, dikoreksi guru bila perlu).
-        </span>
-        {soal !== null && (
-          <button type="button" className="btn btn-sm btn-outline-secondary ms-auto" onClick={onBatal}>
-            Batal ubah
-          </button>
-        )}
-      </div>
-
-      {galat.length > 0 && (
-        <div className="mb-3">
-          <Banner jenis="salah" judul="Soal belum lengkap">
-            <ul className="mb-0 ps-3">
-              {galat.map((pesan) => (
-                <li key={pesan}>{pesan}</li>
-              ))}
-            </ul>
-          </Banner>
-        </div>
-      )}
-
-      <div className="row g-3">
-        <div className="col-sm-6 col-lg-4">
-          <label className="form-label fw-semibold" htmlFor="soal-mapel">Mapel</label>
-          <select
-            id="soal-mapel"
-            className="form-select"
-            value={state.subject_id}
-            onChange={(e) => ubah({ subject_id: e.target.value })}
-          >
-            <option value="">Pilih mapel…</option>
-            {daftarMapel.map((mapel) => (
-              <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-sm-6 col-lg-4">
-          <label className="form-label fw-semibold" htmlFor="soal-tag">Tag / tema (opsional)</label>
-          <select
-            id="soal-tag"
-            className="form-select"
-            value={state.tag_id}
-            onChange={(e) => ubah({ tag_id: e.target.value })}
-          >
-            <option value="">Tanpa tag</option>
-            {daftarTag.map((tag) => (
-              <option key={tag.id} value={String(tag.id)}>{tag.nama}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-sm-6 col-lg-4">
-          <label className="form-label fw-semibold" htmlFor="soal-tipe">Tipe soal</label>
-          <select
-            id="soal-tipe"
-            className="form-select"
-            value={state.tipe}
-            onChange={(e) => ubah({ tipe: e.target.value })}
-          >
-            {DAFTAR_TIPE.map((tipe) => (
-              <option key={tipe.nilai} value={tipe.nilai}>
-                {tipe.label}{tipe.objektif ? '' : ' (dinilai guru bila perlu)'}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-12">
-          <label className="form-label fw-semibold" htmlFor="soal-teks">Isi soal</label>
-          <textarea
-            id="soal-teks"
-            className="form-control"
-            rows={3}
-            value={state.teks}
-            onChange={(e) => ubah({ teks: e.target.value })}
-            placeholder="Tulis pertanyaan seperti kamu menjelaskannya ke murid…"
-          />
-        </div>
-
-        {state.tipe === TIPE.pilihanGanda && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Opsi jawaban ({MIN_OPSI}–{MAKS_OPSI})</legend>
-
-            {state.opsi.map((satu, index) => (
-              <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
-                <div className="form-check m-0">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="kunci-pilihan-ganda"
-                    id={`kunci-${satu.id}`}
-                    checked={state.jawaban === satu.id}
-                    onChange={() => ubah({ jawaban: satu.id })}
-                  />
-                  <label className="form-check-label sr-saja" htmlFor={`kunci-${satu.id}`}>
-                    Tandai opsi {satu.id} sebagai kunci
-                  </label>
-                </div>
-                <span className="opsi-huruf">{satu.id}.</span>
-                <input
-                  className="form-control"
-                  aria-label={`Teks opsi ${satu.id}`}
-                  value={satu.teks}
-                  onChange={(e) => ubahOpsi(index, e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-danger"
-                  disabled={state.opsi.length <= MIN_OPSI}
-                  onClick={() => hapusOpsi(index)}
-                >
-                  Hapus
-                </button>
-              </div>
-            ))}
-
-            <div className="d-flex align-items-center gap-2">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary"
-                disabled={state.opsi.length >= MAKS_OPSI}
-                onClick={tambahOpsi}
-              >
-                Tambah opsi
-              </button>
-              <span className="teks-lembut small">Radio di kiri menandai kunci jawaban.</span>
-            </div>
-          </fieldset>
-        )}
-
-        {state.tipe === TIPE.benarSalah && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Pernyataan benar atau salah</legend>
-            <div className="d-flex gap-3">
-              {[
-                { nilai: true, label: 'Benar', id: 'kunci-benar' },
-                { nilai: false, label: 'Salah', id: 'kunci-salah' },
-              ].map((pilihan) => (
-                <div key={pilihan.id} className="form-check">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="kunci-benar-salah"
-                    id={pilihan.id}
-                    checked={state.benar === pilihan.nilai}
-                    onChange={() => ubah({ benar: pilihan.nilai })}
-                  />
-                  <label className="form-check-label" htmlFor={pilihan.id}>{pilihan.label}</label>
-                </div>
-              ))}
-            </div>
-          </fieldset>
-        )}
-
-        {state.tipe === TIPE.menjodohkan && (
-          <FieldsetPasangan
-            state={state}
-            ubah={ubah}
-            namaPeta="pasangan"
-            judul="Pasangan menjodohkan"
-          />
-        )}
-
-        {state.tipe === TIPE.hubungKata && (
-          <FieldsetPasangan
-            state={state}
-            ubah={ubah}
-            namaPeta="sambungan"
-            judul="Sambungan hubung kata"
-          />
-        )}
-
-        {state.tipe === TIPE.letakKata && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Kata + posisi (minimal {MIN_ITEM})</legend>
+    <div className="row g-4 align-items-start">
+      <div className="col-lg-8">
+        <div className="d-flex flex-column gap-4">
+          <section className="kartu-soft p-4" aria-labelledby="soal-judul-1">
+            <h2 id="soal-judul-1" className="judul-bagian">1. Pilih jenis soal</h2>
             <p className="teks-lembut small">
-              Setiap kata wajib punya satu posisi. Penilaian otomatis: seluruh kata harus tepat.
-            </p>
-
-            <div className="row g-3">
-              <div className="col-md-7">
-                <h3 className="h6 fw-semibold teks-lembut">Kata</h3>
-                {state.kata.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <span className="opsi-huruf">{satu.id}</span>
-                    <input
-                      className="form-control form-control-sm flex-grow-1"
-                      aria-label={`Teks kata ${satu.id}`}
-                      value={satu.teks}
-                      onChange={(e) => ubahKata(index, e.target.value)}
-                    />
-                    <select
-                      className="form-select form-select-sm jodoh-pilih"
-                      aria-label={`Posisi kata ${satu.id}`}
-                      value={state.penempatan[satu.id] ?? ''}
-                      onChange={(e) =>
-                        ubah({ penempatan: { ...state.penempatan, [satu.id]: e.target.value } })
-                      }
-                    >
-                      <option value="">Posisi…</option>
-                      {state.posisi.map((pasang) => (
-                        <option key={pasang.id} value={pasang.id}>
-                          {pasang.id} — {pasang.teks || '(belum diisi)'}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      disabled={state.kata.length <= MIN_ITEM}
-                      onClick={() => hapusKata(index)}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary"
-                  disabled={state.kata.length >= MAKS_OPSI}
-                  onClick={() => ubah({ kata: [...state.kata, { id: idBerikut('W', state.kata), teks: '' }] })}
-                >
-                  Tambah kata
-                </button>
-              </div>
-
-              <div className="col-md-5">
-                <h3 className="h6 fw-semibold teks-lembut">Posisi</h3>
-                {state.posisi.map((satu, index) => (
-                  <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
-                    <span className="opsi-huruf">{satu.id}</span>
-                    <input
-                      className="form-control form-control-sm"
-                      aria-label={`Teks posisi ${satu.id}`}
-                      value={satu.teks}
-                      onChange={(e) => ubahPosisiKata(index, e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      disabled={state.posisi.length <= MIN_ITEM}
-                      onClick={() => hapusPosisiKata(index)}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary"
-                  disabled={state.posisi.length >= MAKS_OPSI}
-                  onClick={() =>
-                    ubah({ posisi: [...state.posisi, { id: idBerikut('P', state.posisi), teks: '' }] })
-                  }
-                >
-                  Tambah posisi
-                </button>
-              </div>
-            </div>
-          </fieldset>
-        )}
-
-        {state.tipe === TIPE.isianSingkat && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Jawaban baku + sinonim</legend>
-            <p className="teks-lembut small">
-              Jawaban murid dinilai mirip (toleran salah ketik ringan). Pisahkan sinonim dengan koma.
-            </p>
-
-            {state.jawabanBaku.map((satu, index) => (
-              <div key={index} className="row g-2 align-items-center mb-2">
-                <div className="col-md-5">
-                  <input
-                    className="form-control"
-                    aria-label={`Jawaban baku ${index + 1}`}
-                    value={satu.teks}
-                    onChange={(e) => ubahJawabanBaku(index, { teks: e.target.value })}
-                    placeholder="Jawaban baku, mis. 12"
-                  />
-                </div>
-                <div className="col-md-5">
-                  <input
-                    className="form-control"
-                    aria-label={`Sinonim jawaban ${index + 1}`}
-                    value={satu.sinonim}
-                    onChange={(e) => ubahJawabanBaku(index, { sinonim: e.target.value })}
-                    placeholder="Sinonim (opsional): dua belas, 12,0"
-                  />
-                </div>
-                <div className="col-md-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    disabled={state.jawabanBaku.length <= 1}
-                    onClick={() => hapusJawabanBaku(index)}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            <div className="d-flex flex-wrap align-items-center gap-3">
-              <button type="button" className="btn btn-sm btn-outline-primary" onClick={tambahJawabanBaku}>
-                Tambah jawaban
-              </button>
-
-              <div className="form-check m-0">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="soal-angka-persis"
-                  checked={state.angkaPersis}
-                  onChange={(e) => ubah({ angkaPersis: e.target.checked })}
-                />
-                <label className="form-check-label" htmlFor="soal-angka-persis">
-                  Angka harus persis (12 dianggap beda dari 12,5)
-                </label>
-              </div>
-
-              <div className="d-flex align-items-center gap-2">
-                <label className="form-label fw-semibold mb-0" htmlFor="soal-ambang-isian">
-                  Ambang mirip
-                </label>
-                <input
-                  id="soal-ambang-isian"
-                  className="form-control form-control-sm w-auto"
-                  type="number"
-                  step="0.05"
-                  min="0.1"
-                  max="1"
-                  value={state.ambang}
-                  onChange={(e) => ubah({ ambang: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <label className="form-label fw-semibold" htmlFor="soal-negasi">
-                Kata negasi yang membatalkan jawaban (opsional, pisah koma)
-              </label>
-              <input
-                id="soal-negasi"
-                className="form-control"
-                value={state.negasi}
-                onChange={(e) => ubah({ negasi: e.target.value })}
-                placeholder="bukan, tidak"
-              />
-            </div>
-          </fieldset>
-        )}
-
-        {state.tipe === TIPE.uraian && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Kata kunci penilaian</legend>
-            <p className="teks-lembut small">
-              Jawaban uraian dinilai dari kata kunci yang muncul. Bila belum yakin, soal masuk antrean
+              Enam tipe objektif dinilai pasti oleh server; isian singkat dan uraian bisa perlu
               koreksi guru.
             </p>
 
-            {state.kataKunci.map((satu, index) => (
-              <div key={index} className="row g-2 align-items-center mb-2">
-                <div className="col-md-7">
-                  <input
-                    className="form-control"
-                    aria-label={`Kata kunci ${index + 1}`}
-                    value={satu.teks}
-                    onChange={(e) => ubahKataKunci(index, { teks: e.target.value })}
-                    placeholder="mis. fotosintesis"
-                  />
-                </div>
-                <div className="col-md-3">
-                  <input
-                    className="form-control"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    aria-label={`Bobot kata kunci ${index + 1}`}
-                    value={satu.bobot}
-                    onChange={(e) => ubahKataKunci(index, { bobot: e.target.value })}
-                    placeholder="Bobot (opsional)"
-                  />
-                </div>
-                <div className="col-md-2">
+            <div role="radiogroup" aria-label="Jenis soal" className="d-flex flex-wrap gap-2">
+              {DAFTAR_TIPE.map((tipe) => {
+                const aktif = state.tipe === tipe.nilai
+
+                return (
                   <button
+                    key={tipe.nilai}
                     type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    disabled={state.kataKunci.length <= 1}
-                    onClick={() => hapusKataKunci(index)}
+                    role="radio"
+                    aria-checked={aktif}
+                    className="pil-tipe"
+                    onClick={() => ubah({ tipe: tipe.nilai })}
                   >
-                    Hapus
+                    {tipe.label}
+                    {tipe.objektif ? '' : ' · perlu tinjau'}
                   </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="kartu-soft p-4" aria-labelledby="soal-judul-2">
+            <h2 id="soal-judul-2" className="judul-bagian">2. Tulis soalnya</h2>
+
+            <div className="row g-3">
+              <div className="col-sm-6">
+                <div className="bidang">
+                  <label className="form-label" htmlFor="soal-mapel">Mapel</label>
+                  <select
+                    id="soal-mapel"
+                    className="form-select"
+                    value={state.subject_id}
+                    onChange={(e) => ubah({ subject_id: e.target.value })}
+                  >
+                    <option value="">Pilih mapel…</option>
+                    {daftarMapel.map((mapel) => (
+                      <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            ))}
 
-            <button type="button" className="btn btn-sm btn-outline-primary" onClick={tambahKataKunci}>
-              Tambah kata kunci
-            </button>
-
-            <div className="row g-3 mt-1">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold" htmlFor="soal-ambang-uraian">
-                  Ambang lulus
-                </label>
-                <input
-                  id="soal-ambang-uraian"
-                  className="form-control"
-                  type="number"
-                  step="0.05"
-                  min="0.1"
-                  max="1"
-                  value={state.ambangLulus}
-                  onChange={(e) => ubah({ ambangLulus: e.target.value })}
-                />
+              <div className="col-sm-6">
+                <div className="bidang">
+                  <label className="form-label" htmlFor="soal-tag">
+                    Tema (tag) <span className="teks-lembut fw-normal">opsional</span>
+                  </label>
+                  <select
+                    id="soal-tag"
+                    className="form-select"
+                    value={state.tag_id}
+                    onChange={(e) => ubah({ tag_id: e.target.value })}
+                  >
+                    <option value="">Tanpa tag</option>
+                    {daftarTag.map((tag) => (
+                      <option key={tag.id} value={String(tag.id)}>{tag.nama}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="col-md-8">
-                <label className="form-label fw-semibold" htmlFor="soal-sinonim-uraian">
-                  Sinonim kata kunci (opsional, tiap baris: kata = alias, alias)
+            </div>
+
+            {state.tipe !== TIPE.susunHuruf && (
+              <div className="bidang mt-3">
+                <label className="form-label" htmlFor="soal-teks">
+                  Isi soal
+                  {TIPE_TANPA_TEKS.includes(state.tipe) && (
+                    <span className="teks-lembut fw-normal"> opsional</span>
+                  )}
                 </label>
                 <textarea
-                  id="soal-sinonim-uraian"
+                  id="soal-teks"
                   className="form-control"
-                  rows={2}
-                  value={state.sinonimUraian}
-                  onChange={(e) => ubah({ sinonimUraian: e.target.value })}
-                  placeholder="fotosintesis = asimilasi"
+                  rows={3}
+                  value={state.teks}
+                  onChange={(e) => ubah({ teks: e.target.value })}
+                  placeholder="Tulis pertanyaan dengan kalimat pendek dan jelas"
                 />
+                <span className="teks-lembut small">
+                  {state.teks.trim().length} huruf. Untuk murid SD, usahakan satu kalimat.
+                </span>
               </div>
-            </div>
-          </fieldset>
-        )}
+            )}
 
-        {state.tipe === TIPE.mengurutkan && (
-          <fieldset className="col-12">
-            <legend className="h6 fw-semibold">Item + nomor urut benar (minimal {MIN_ITEM})</legend>
+            {state.tipe === TIPE.pilihanGanda && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Pilihan jawaban dan kunci ({MIN_OPSI}–{MAKS_OPSI})
+                </legend>
 
-            {state.item.map((satu, index) => (
-              <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
-                <input
-                  className="form-control form-control-sm urut-posisi"
-                  type="number"
-                  min={1}
-                  max={state.item.length}
-                  aria-label={`Nomor urut item ${satu.id}`}
-                  value={satu.posisi}
-                  onChange={(e) => ubahPosisi(index, e.target.value)}
-                />
-                <input
-                  className="form-control form-control-sm"
-                  aria-label={`Teks item ${satu.id}`}
-                  value={satu.teks}
-                  onChange={(e) => ubahItem(index, e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-danger"
-                  disabled={state.item.length <= MIN_ITEM}
-                  onClick={() => hapusItem(index)}
+                {state.opsi.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks opsi ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahOpsi(index, e.target.value)}
+                      placeholder="Tulis pilihan"
+                    />
+                    <label className="label-kunci" htmlFor={`kunci-${satu.id}`}>
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="kunci-pilihan-ganda"
+                        id={`kunci-${satu.id}`}
+                        checked={state.jawaban === satu.id}
+                        onChange={() => ubah({ jawaban: satu.id })}
+                      />
+                      Kunci
+                    </label>
+                    <TombolIkon
+                      label={`Hapus pilihan ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.opsi.length <= MIN_OPSI}
+                      onClick={() => hapusOpsi(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.opsi.length >= MAKS_OPSI}
+                  onClick={tambahOpsi}
                 >
-                  Hapus
-                </button>
-              </div>
-            ))}
+                  Tambah pilihan
+                </Tombol>
+              </fieldset>
+            )}
 
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-primary"
-              disabled={state.item.length >= MAKS_OPSI}
-              onClick={() =>
-                ubah({
-                  item: [
-                    ...state.item,
-                    { id: idBerikut('I', state.item), teks: '', posisi: String(state.item.length + 1) },
-                  ],
-                })
-              }
-            >
-              Tambah item
-            </button>
-          </fieldset>
-        )}
+            {state.tipe === TIPE.benarSalah && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Pernyataan ini …</legend>
+                <div role="radiogroup" aria-label="Kunci benar atau salah" className="d-flex flex-wrap gap-2">
+                  {[
+                    { nilai: true, label: 'Benar' },
+                    { nilai: false, label: 'Salah' },
+                  ].map((pilihan) => (
+                    <button
+                      key={pilihan.label}
+                      type="button"
+                      role="radio"
+                      aria-checked={state.benar === pilihan.nilai}
+                      className="pil-tipe"
+                      onClick={() => ubah({ benar: pilihan.nilai })}
+                    >
+                      {pilihan.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
-        <div className="col-sm-4">
-          <label className="form-label fw-semibold" htmlFor="soal-skor">Skor</label>
-          <input
-            id="soal-skor"
-            className="form-control"
-            type="number"
-            min={1}
-            max={100}
-            value={state.skor}
-            onChange={(e) => ubah({ skor: e.target.value })}
-          />
-        </div>
-
-        <div className="col-sm-4 d-flex align-items-end pb-2">
-          <div className="form-check form-switch">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              role="switch"
-              id="soal-aktif"
-              checked={state.aktif}
-              onChange={(e) => ubah({ aktif: e.target.checked })}
-            />
-            <label className="form-check-label" htmlFor="soal-aktif">Soal aktif</label>
-          </div>
-        </div>
-
-        <div className="col-12">
-          <label className="form-label fw-semibold" htmlFor="soal-pembahasan">Pembahasan (opsional)</label>
-          <textarea
-            id="soal-pembahasan"
-            className="form-control"
-            rows={2}
-            maxLength={500}
-            value={state.pembahasan}
-            onChange={(e) => ubah({ pembahasan: e.target.value })}
-            placeholder="Muncul setelah kuis selesai, tidak pernah ikut ke layar murid."
-          />
-        </div>
-
-        <details className="col-12">
-          <summary className="fw-semibold">Media &amp; MathML (opsional)</summary>
-          <div className="row g-3 mt-1">
-            <div className="col-md-6">
-              <label className="form-label fw-semibold" htmlFor="soal-media">Alamat media</label>
-              <input
-                id="soal-media"
-                className="form-control"
-                value={state.media}
-                onChange={(e) => ubah({ media: e.target.value })}
-                placeholder="/media/gambar-soal.png"
+            {state.tipe === TIPE.menjodohkan && (
+              <FieldsetPasangan
+                state={state}
+                ubah={ubah}
+                namaPeta="pasangan"
+                judul="Pasangan menjodohkan"
               />
+            )}
+
+            {state.tipe === TIPE.hubungKata && (
+              <FieldsetPasangan
+                state={state}
+                ubah={ubah}
+                namaPeta="sambungan"
+                judul="Sambungan hubung kata"
+              />
+            )}
+
+            {state.tipe === TIPE.letakKata && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Kata + posisi (minimal {MIN_ITEM})</legend>
+                <p className="teks-lembut small">
+                  Setiap kata wajib punya satu posisi. Penilaian otomatis: seluruh kata harus tepat.
+                </p>
+
+                <div className="row g-3">
+                  <div className="col-md-7">
+                    <h3 className="fw-bold fs-6 teks-lembut">Kata</h3>
+                    {state.kata.map((satu, index) => (
+                      <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                        <input
+                          className="form-control flex-grow-1"
+                          aria-label={`Teks kata ${satu.id}`}
+                          value={satu.teks}
+                          onChange={(e) => ubahKata(index, e.target.value)}
+                        />
+                        <select
+                          className="form-select jodoh-pilih"
+                          aria-label={`Posisi kata ${satu.id}`}
+                          value={state.penempatan[satu.id] ?? ''}
+                          onChange={(e) =>
+                            ubah({ penempatan: { ...state.penempatan, [satu.id]: e.target.value } })
+                          }
+                        >
+                          <option value="">Posisi…</option>
+                          {state.posisi.map((pasang) => (
+                            <option key={pasang.id} value={pasang.id}>
+                              {pasang.id} — {pasang.teks || '(belum diisi)'}
+                            </option>
+                          ))}
+                        </select>
+                        <TombolIkon
+                          label={`Hapus kata ${satu.id}`}
+                          ikon={IkonTongSampah}
+                          varian="bahaya"
+                          disabled={state.kata.length <= MIN_ITEM}
+                          onClick={() => hapusKata(index)}
+                        />
+                      </div>
+                    ))}
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      ikon={IkonTambah}
+                      disabled={state.kata.length >= MAKS_OPSI}
+                      onClick={() => ubah({ kata: [...state.kata, { id: idBerikut('W', state.kata), teks: '' }] })}
+                    >
+                      Tambah kata
+                    </Tombol>
+                  </div>
+
+                  <div className="col-md-5">
+                    <h3 className="fw-bold fs-6 teks-lembut">Posisi</h3>
+                    {state.posisi.map((satu, index) => (
+                      <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
+                        <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                        <input
+                          className="form-control"
+                          aria-label={`Teks posisi ${satu.id}`}
+                          value={satu.teks}
+                          onChange={(e) => ubahPosisiKata(index, e.target.value)}
+                        />
+                        <TombolIkon
+                          label={`Hapus posisi ${satu.id}`}
+                          ikon={IkonTongSampah}
+                          varian="bahaya"
+                          disabled={state.posisi.length <= MIN_ITEM}
+                          onClick={() => hapusPosisiKata(index)}
+                        />
+                      </div>
+                    ))}
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      ikon={IkonTambah}
+                      disabled={state.posisi.length >= MAKS_OPSI}
+                      onClick={() =>
+                        ubah({ posisi: [...state.posisi, { id: idBerikut('P', state.posisi), teks: '' }] })
+                      }
+                    >
+                      Tambah posisi
+                    </Tombol>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.isianSingkat && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Jawaban baku dan sinonim</legend>
+                <p className="teks-lembut small">
+                  Jawaban murid dinilai mirip, jadi salah ketik ringan masih dimaafkan. Pisahkan
+                  sinonim dengan koma.
+                </p>
+
+                {state.jawabanBaku.map((satu, index) => (
+                  <div key={index} className="row g-2 align-items-center mb-2">
+                    <div className="col-md-5">
+                      <input
+                        className="form-control"
+                        aria-label={`Jawaban baku ${index + 1}`}
+                        value={satu.teks}
+                        onChange={(e) => ubahJawabanBaku(index, { teks: e.target.value })}
+                        placeholder="Jawaban baku, mis. rambut hidung"
+                      />
+                    </div>
+                    <div className="col-md-5">
+                      <input
+                        className="form-control"
+                        aria-label={`Sinonim jawaban ${index + 1}`}
+                        value={satu.sinonim}
+                        onChange={(e) => ubahJawabanBaku(index, { sinonim: e.target.value })}
+                        placeholder="Sinonim: rambut getar, silia"
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <TombolIkon
+                        label={`Hapus jawaban baku ${index + 1}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        disabled={state.jawabanBaku.length <= 1}
+                        onClick={() => hapusJawabanBaku(index)}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <div className="d-flex flex-wrap gap-2">
+                  <Tombol varian="tepi" ukuran="sedang" ikon={IkonTambah} onClick={tambahJawabanBaku}>
+                    Tambah jawaban
+                  </Tombol>
+                </div>
+
+                <div className="d-flex flex-wrap align-items-center gap-3 mt-3">
+                  <label className="form-check">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="soal-angka-persis"
+                      checked={state.angkaPersis}
+                      onChange={(e) => ubah({ angkaPersis: e.target.checked })}
+                    />
+                    <span className="form-check-label">
+                      Angka harus persis (12 dianggap beda dari 12,5)
+                    </span>
+                  </label>
+
+                  <div className="d-flex align-items-center gap-2">
+                    <label className="form-label fw-bold mb-0" htmlFor="soal-ambang-isian">
+                      Kemiripan minimal
+                    </label>
+                    <input
+                      id="soal-ambang-isian"
+                      className="form-control w-auto"
+                      type="number"
+                      step="0.05"
+                      min="0.1"
+                      max="1"
+                      value={state.ambang}
+                      onChange={(e) => ubah({ ambang: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="bidang mt-3">
+                  <label className="form-label" htmlFor="soal-negasi">
+                    Kata negasi yang membatalkan jawaban <span className="teks-lembut fw-normal">opsional, pisah koma</span>
+                  </label>
+                  <input
+                    id="soal-negasi"
+                    className="form-control"
+                    value={state.negasi}
+                    onChange={(e) => ubah({ negasi: e.target.value })}
+                    placeholder="bukan, tidak"
+                  />
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.uraian && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Kata kunci penilaian</legend>
+                <p className="teks-lembut small">
+                  Jawaban uraian dinilai dari kata kunci yang muncul. Bila belum yakin, soal masuk
+                  antrean koreksi guru.
+                </p>
+
+                {state.kataKunci.map((satu, index) => (
+                  <div key={index} className="row g-2 align-items-center mb-2">
+                    <div className="col-md-7">
+                      <input
+                        className="form-control"
+                        aria-label={`Kata kunci ${index + 1}`}
+                        value={satu.teks}
+                        onChange={(e) => ubahKataKunci(index, { teks: e.target.value })}
+                        placeholder="mis. fotosintesis"
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <input
+                        className="form-control"
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        aria-label={`Bobot kata kunci ${index + 1}`}
+                        value={satu.bobot}
+                        onChange={(e) => ubahKataKunci(index, { bobot: e.target.value })}
+                        placeholder="Bobot (opsional)"
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <TombolIkon
+                        label={`Hapus kata kunci ${index + 1}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        disabled={state.kataKunci.length <= 1}
+                        onClick={() => hapusKataKunci(index)}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <Tombol varian="tepi" ukuran="sedang" ikon={IkonTambah} onClick={tambahKataKunci}>
+                  Tambah kata kunci
+                </Tombol>
+
+                <div className="row g-3 mt-3">
+                  <div className="col-md-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="soal-ambang-uraian">Ambang lulus</label>
+                      <input
+                        id="soal-ambang-uraian"
+                        className="form-control"
+                        type="number"
+                        step="0.05"
+                        min="0.1"
+                        max="1"
+                        value={state.ambangLulus}
+                        onChange={(e) => ubah({ ambangLulus: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-8">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="soal-sinonim-uraian">
+                        Sinonim kata kunci <span className="teks-lembut fw-normal">tiap baris: kata = alias, alias</span>
+                      </label>
+                      <textarea
+                        id="soal-sinonim-uraian"
+                        className="form-control"
+                        rows={2}
+                        value={state.sinonimUraian}
+                        onChange={(e) => ubah({ sinonimUraian: e.target.value })}
+                        placeholder="fotosintesis = asimilasi"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.mengurutkan && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Item + nomor urut benar (minimal {MIN_ITEM})</legend>
+
+                {state.item.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <input
+                      className="form-control form-control-sm urut-posisi"
+                      type="number"
+                      min={1}
+                      max={state.item.length}
+                      aria-label={`Nomor urut item ${satu.id}`}
+                      value={satu.posisi}
+                      onChange={(e) => ubahPosisi(index, e.target.value)}
+                    />
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks item ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahItem(index, e.target.value)}
+                    />
+                    <TombolIkon
+                      label={`Hapus item ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.item.length <= MIN_ITEM}
+                      onClick={() => hapusItem(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.item.length >= MAKS_OPSI}
+                  onClick={() =>
+                    ubah({
+                      item: [
+                        ...state.item,
+                        { id: idBerikut('I', state.item), teks: '', posisi: String(state.item.length + 1) },
+                      ],
+                    })
+                  }
+                >
+                  Tambah item
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.pilihanGandaKompleks && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Pilihan jawaban dan kunci ({MIN_OPSI_KOMPLEKS}–{MAKS_OPSI_KOMPLEKS})
+                </legend>
+                <p className="teks-lembut small">
+                  Tandai SEMUA pilihan yang benar (boleh lebih dari satu). Sisakan minimal satu
+                  pilihan yang bukan kunci.
+                </p>
+
+                {state.opsi.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks opsi ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahOpsi(index, e.target.value)}
+                      placeholder="Tulis pilihan"
+                    />
+                    <label className="label-kunci" htmlFor={`kunci-kompleks-${satu.id}`}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`kunci-kompleks-${satu.id}`}
+                        checked={state.benarKompleks.includes(satu.id)}
+                        onChange={(e) => ubahKunciKompleks(satu.id, e.target.checked)}
+                      />
+                      Kunci
+                    </label>
+                    <TombolIkon
+                      label={`Hapus pilihan ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.opsi.length <= MIN_OPSI_KOMPLEKS}
+                      onClick={() => hapusOpsi(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.opsi.length >= MAKS_OPSI_KOMPLEKS}
+                  onClick={tambahOpsi}
+                >
+                  Tambah pilihan
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.benarSalahMajemuk && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Pernyataan dan kunci ({MIN_PERNYATAAN}–{MAKS_PERNYATAAN})
+                </legend>
+
+                {state.pernyataan.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks pernyataan ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahPernyataan(index, e.target.value)}
+                      placeholder="Tulis pernyataan"
+                    />
+                    <div role="radiogroup" aria-label={`Kunci ${satu.id}`} className="d-flex gap-2">
+                      {[
+                        { nilai: true, label: 'Benar' },
+                        { nilai: false, label: 'Salah' },
+                      ].map((pilihan) => (
+                        <button
+                          key={pilihan.label}
+                          type="button"
+                          role="radio"
+                          aria-checked={state.kunciPernyataan[satu.id] === pilihan.nilai}
+                          className="pil-tipe"
+                          onClick={() =>
+                            ubah({ kunciPernyataan: { ...state.kunciPernyataan, [satu.id]: pilihan.nilai } })
+                          }
+                        >
+                          {pilihan.label}
+                        </button>
+                      ))}
+                    </div>
+                    <TombolIkon
+                      label={`Hapus pernyataan ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.pernyataan.length <= MIN_PERNYATAAN}
+                      onClick={() => hapusPernyataan(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.pernyataan.length >= MAKS_PERNYATAAN}
+                  onClick={tambahPernyataan}
+                >
+                  Tambah pernyataan
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.isianAngka && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Kunci angka dan toleransi</legend>
+                <div className="row g-3">
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="angka-satuan">Satuan (opsional)</label>
+                      <input
+                        id="angka-satuan"
+                        className="form-control"
+                        value={state.satuan}
+                        onChange={(e) => ubah({ satuan: e.target.value })}
+                        placeholder="cm"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="angka-nilai">Jawaban benar</label>
+                      <input
+                        id="angka-nilai"
+                        className="form-control"
+                        type="number"
+                        step="any"
+                        value={state.angkaNilai}
+                        onChange={(e) => ubah({ angkaNilai: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="bidang">
+                      <label className="form-label" htmlFor="angka-toleransi">Toleransi (≥ 0)</label>
+                      <input
+                        id="angka-toleransi"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={state.angkaToleransi}
+                        onChange={(e) => ubah({ angkaToleransi: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.pilihanGambar && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Gambar pilihan dan kunci ({MIN_GAMBAR}–{MAKS_GAMBAR})
+                </legend>
+
+                {state.opsiGambar.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Alamat gambar ${satu.id}`}
+                      value={satu.media}
+                      onChange={(e) => ubahOpsiGambar(index, e.target.value)}
+                      placeholder="/media/gambar.png"
+                    />
+                    <label className="label-kunci" htmlFor={`kunci-gambar-${satu.id}`}>
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="kunci-pilihan-gambar"
+                        id={`kunci-gambar-${satu.id}`}
+                        checked={state.jawabanGambar === satu.id}
+                        onChange={() => ubah({ jawabanGambar: satu.id })}
+                      />
+                      Kunci
+                    </label>
+                    <TombolIkon
+                      label={`Hapus gambar ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.opsiGambar.length <= MIN_GAMBAR}
+                      onClick={() => hapusOpsiGambar(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.opsiGambar.length >= MAKS_GAMBAR}
+                  onClick={tambahOpsiGambar}
+                >
+                  Tambah gambar
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.urutGambar && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">
+                  Gambar + nomor urut benar ({MIN_GAMBAR}–{MAKS_GAMBAR})
+                </legend>
+
+                {state.itemGambar.map((satu, index) => (
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <input
+                      className="form-control form-control-sm urut-posisi"
+                      type="number"
+                      min={1}
+                      max={state.itemGambar.length}
+                      aria-label={`Nomor urut gambar ${satu.id}`}
+                      value={satu.posisi}
+                      onChange={(e) => ubahItemGambar(index, satu.media, e.target.value)}
+                    />
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Alamat gambar ${satu.id}`}
+                      value={satu.media}
+                      onChange={(e) => ubahItemGambar(index, e.target.value, satu.posisi)}
+                      placeholder="/media/gambar.png"
+                    />
+                    <TombolIkon
+                      label={`Hapus gambar ${satu.id}`}
+                      ikon={IkonTongSampah}
+                      varian="bahaya"
+                      disabled={state.itemGambar.length <= MIN_GAMBAR}
+                      onClick={() => hapusItemGambar(index)}
+                    />
+                  </div>
+                ))}
+
+                <Tombol
+                  varian="tepi"
+                  ukuran="sedang"
+                  ikon={IkonTambah}
+                  disabled={state.itemGambar.length >= MAKS_GAMBAR}
+                  onClick={tambahItemGambar}
+                >
+                  Tambah gambar
+                </Tombol>
+              </fieldset>
+            )}
+
+            {state.tipe === TIPE.susunHuruf && (
+              <fieldset className="mt-3">
+                <legend className="fw-bold fs-6">Petunjuk dan kata</legend>
+                <div className="bidang">
+                  <label className="form-label" htmlFor="susun-petunjuk">Petunjuk</label>
+                  <input
+                    id="susun-petunjuk"
+                    className="form-control"
+                    maxLength={MAKS_PETUNJUK}
+                    value={state.petunjuk}
+                    onChange={(e) => ubah({ petunjuk: e.target.value })}
+                    placeholder="Nama hewan berkaki empat yang mengeong"
+                  />
+                </div>
+                <div className="bidang mt-3">
+                  <label className="form-label" htmlFor="susun-kata">
+                    Kata ({MIN_HURUF}–{MAKS_HURUF} huruf, tanpa spasi)
+                  </label>
+                  <input
+                    id="susun-kata"
+                    className="form-control"
+                    maxLength={MAKS_HURUF}
+                    value={state.kataSusun}
+                    onChange={(e) => ubah({ kataSusun: e.target.value })}
+                    placeholder="kucing"
+                  />
+                  <span className="teks-lembut small">
+                    Huruf akan diacak server; murid menyusunnya kembali menjadi kata ini.
+                  </span>
+                </div>
+              </fieldset>
+            )}
+          </section>
+
+          <section className="kartu-soft p-4" aria-labelledby="soal-judul-3">
+            <h2 id="soal-judul-3" className="judul-bagian">3. Pengaturan soal</h2>
+
+            <div className="row g-3 align-items-end">
+              <div className="col-sm-4">
+                <div className="bidang">
+                  <label className="form-label" htmlFor="soal-skor">Skor</label>
+                  <input
+                    id="soal-skor"
+                    className="form-control"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={state.skor}
+                    onChange={(e) => ubah({ skor: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="col-sm-8">
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    id="soal-aktif"
+                    checked={state.aktif}
+                    onChange={(e) => ubah({ aktif: e.target.checked })}
+                  />
+                  <label className="form-check-label" htmlFor="soal-aktif">
+                    Soal aktif (soal nonaktif tidak bisa diterbitkan di dalam kuis)
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="col-md-6">
-              <label className="form-label fw-semibold" htmlFor="soal-matematika">
-                MathML (maksimal {MAKS_MATEMATIKA} karakter)
+
+            <div className="bidang mt-3">
+              <label className="form-label" htmlFor="soal-pembahasan">
+                Pembahasan <span className="teks-lembut fw-normal">opsional, tampil setelah murid selesai</span>
               </label>
               <textarea
-                id="soal-matematika"
+                id="soal-pembahasan"
                 className="form-control"
-                rows={3}
-                value={state.matematika}
-                onChange={(e) => ubah({ matematika: e.target.value })}
-                placeholder="<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>"
+                rows={2}
+                maxLength={500}
+                value={state.pembahasan}
+                onChange={(e) => ubah({ pembahasan: e.target.value })}
+                placeholder="Jelaskan jawabannya dengan bahasa sederhana"
               />
             </div>
-          </div>
-        </details>
+
+            <details className="mt-3">
+              <summary className="fw-bold">Media &amp; MathML (opsional)</summary>
+              <div className="row g-3 mt-2">
+                <div className="col-md-6">
+                  <div className="bidang">
+                    <label className="form-label" htmlFor="soal-media">Alamat media</label>
+                    <input
+                      id="soal-media"
+                      className="form-control"
+                      value={state.media}
+                      onChange={(e) => ubah({ media: e.target.value })}
+                      placeholder="/media/gambar-soal.png"
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="bidang">
+                    <label className="form-label" htmlFor="soal-matematika">
+                      MathML (maksimal {MAKS_MATEMATIKA} karakter)
+                    </label>
+                    <textarea
+                      id="soal-matematika"
+                      className="form-control"
+                      rows={3}
+                      value={state.matematika}
+                      onChange={(e) => ubah({ matematika: e.target.value })}
+                      placeholder="<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>"
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            {galat.length > 0 && (
+              <div className="mt-3">
+                <Banner jenis="salah" judul="Soal belum lengkap">
+                  <ul className="mb-0 ps-3">
+                    {galat.map((pesan) => (
+                      <li key={pesan}>{pesan}</li>
+                    ))}
+                  </ul>
+                </Banner>
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
-      <div className="mt-4 d-flex flex-wrap gap-2 align-items-center">
-        <Tombol memuat={sedangMenyimpan} teksMemuat="Menyimpan…" onClick={kirim}>
-          {soal === null ? 'Simpan soal' : 'Perbarui soal'}
-        </Tombol>
-        {soal !== null && (
-          <button type="button" className="btn btn-outline-secondary" onClick={onBatal}>
-            Batal
-          </button>
-        )}
-      </div>
+      <aside className="col-lg-4 sisi-lengket" aria-label="Pratinjau dan kelengkapan">
+        <div className="d-flex flex-column gap-4">
+          <section className="kartu-soft p-4" aria-labelledby="soal-pratinjau">
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <h2 id="soal-pratinjau" className="judul-kecil flex-grow-1 mb-0">
+                Pratinjau (kunci ditandai)
+              </h2>
+              <span className="badge-status info">Sama seperti layar murid</span>
+            </div>
 
-      <hr className="my-4" />
+            <RendererSoal
+              tipe={state.tipe}
+              konten={muatan.konten}
+              kunci={muatan.kunci}
+              nama={`pratinjau-${state.tipe}`}
+              tampilkanKunci
+            />
+          </section>
 
-      <section aria-label="Pratinjau soal">
-        <h3 className="h6 fw-bold text-uppercase teks-lembut mb-3">Pratinjau (kunci ditandai)</h3>
-        <RendererSoal
-          tipe={state.tipe}
-          konten={muatanDariState(state).konten}
-          kunci={muatanDariState(state).kunci}
-          nama={`pratinjau-${state.tipe}`}
-          tampilkanKunci
-        />
-      </section>
+          <section className="kartu-soft p-4" aria-labelledby="soal-kelengkapan">
+            <h2 id="soal-kelengkapan" className="judul-kecil">Kelengkapan</h2>
+
+            <ul className="list-unstyled d-flex flex-column gap-2 mb-3">
+              {kelengkapan.map((satu) => (
+                <li key={satu.teks} className="d-flex align-items-center gap-2">
+                  <span className={`badge-status ${satu.ok ? 'sukses' : 'peringatan'}`}>
+                    {satu.ok ? 'Lengkap' : 'Belum'}
+                  </span>
+                  <span className="small">{satu.teks}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="d-flex flex-wrap gap-2">
+              <Tombol
+                disabled={!siap}
+                memuat={sedangMenyimpan}
+                teksMemuat="Menyimpan…"
+                onClick={kirim}
+              >
+                {soal === null ? 'Simpan soal' : 'Perbarui soal'}
+              </Tombol>
+              <Tombol varian="tepi" onClick={onBatal}>Batal</Tombol>
+            </div>
+
+            {!siap && (
+              <p className="teks-lembut small mt-2 mb-0">
+                Lengkapi butir yang masih “Belum” supaya soal bisa disimpan.
+              </p>
+            )}
+          </section>
+        </div>
+      </aside>
     </div>
   )
 }

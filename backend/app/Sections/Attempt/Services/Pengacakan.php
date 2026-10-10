@@ -47,6 +47,37 @@ final class Pengacakan
     }
 
     /**
+     * Huruf teracak untuk soal susun huruf.
+     *
+     * Hasilnya stabil per seed + soal (murid yang menyegarkan halaman melihat
+     * susunan huruf yang sama), dan huruf aslinya tidak pernah dikirim: layar
+     * anak hanya menerima hasil acak ini.
+     *
+     * @return array<int, string>
+     */
+    public static function urutHuruf(string $kata, int $seed, int|string $soalId): array
+    {
+        $huruf = mb_str_split($kata);
+        $berbobot = [];
+
+        foreach ($huruf as $urutan => $satu) {
+            $berbobot[] = [
+                'bobot' => sha1($seed.'|soal-'.$soalId.'|huruf|'.$urutan.'|'.$satu),
+                'urutan' => $urutan,
+                'nilai' => $satu,
+            ];
+        }
+
+        // Bila hasil acak ternyata sama persis dengan kata aslinya (mungkin
+        // untuk kata pendek), urutkan mundur supaya anak tetap harus menyusun.
+        usort($berbobot, static fn (array $kiri, array $kanan): int => [$kiri['bobot'], $kiri['urutan']] <=> [$kanan['bobot'], $kanan['urutan']]);
+
+        $acak = array_map(static fn (array $baris): string => (string) $baris['nilai'], $berbobot);
+
+        return $acak === $huruf ? array_reverse($acak) : $acak;
+    }
+
+    /**
      * @template T
      *
      * @param  array<int, T>  $daftar

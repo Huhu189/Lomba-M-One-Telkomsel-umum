@@ -21,6 +21,77 @@ use Illuminate\Database\Seeder;
  */
 class BankSoalSeeder extends Seeder
 {
+    /**
+     * Contoh soal tipe baru gelombang 1 (Objektif 1B) untuk demo editor dan
+     * layar murid. Tiap contoh dibuat sekali (idempoten) lewat `run()`.
+     *
+     * @return array<int, array{tipe: string, konten: array<string, mixed>, kunci: array<string, mixed>}>
+     */
+    private function soalTipeBaru(): array
+    {
+        return [
+            [
+                'tipe' => 'pilihan_ganda_kompleks',
+                'konten' => [
+                    'teks' => 'Centang semua bilangan genap.',
+                    'opsi' => [
+                        ['id' => 'o1', 'teks' => '4'],
+                        ['id' => 'o2', 'teks' => '7'],
+                        ['id' => 'o3', 'teks' => '10'],
+                        ['id' => 'o4', 'teks' => '15'],
+                    ],
+                ],
+                'kunci' => ['benar' => ['o1', 'o3']],
+            ],
+            [
+                'tipe' => 'benar_salah_majemuk',
+                'konten' => [
+                    'teks' => 'Tandai benar atau salah tiap pernyataan.',
+                    'pernyataan' => [
+                        ['id' => 'p1', 'teks' => '8 + 5 = 13'],
+                        ['id' => 'p2', 'teks' => '6 x 6 = 30'],
+                        ['id' => 'p3', 'teks' => '20 : 4 = 5'],
+                    ],
+                ],
+                'kunci' => ['jawaban' => ['p1' => true, 'p2' => false, 'p3' => true]],
+            ],
+            [
+                'tipe' => 'isian_angka',
+                'konten' => ['teks' => 'Berapa hasil 12 + 9?', 'satuan' => 'cm'],
+                'kunci' => ['nilai' => 21, 'toleransi' => 0],
+            ],
+            [
+                'tipe' => 'pilihan_gambar',
+                'konten' => [
+                    'teks' => 'Pilih gambar lingkaran.',
+                    'opsi' => [
+                        ['id' => 'g1', 'media' => '/media/lingkaran.png'],
+                        ['id' => 'g2', 'media' => '/media/persegi.png'],
+                        ['id' => 'g3', 'media' => '/media/segitiga.png'],
+                    ],
+                ],
+                'kunci' => ['benar' => 'g1'],
+            ],
+            [
+                'tipe' => 'urut_gambar',
+                'konten' => [
+                    'teks' => 'Urutkan gambar dari yang paling kecil.',
+                    'item' => [
+                        ['id' => 'u1', 'media' => '/media/besar.png'],
+                        ['id' => 'u2', 'media' => '/media/kecil.png'],
+                        ['id' => 'u3', 'media' => '/media/sedang.png'],
+                    ],
+                ],
+                'kunci' => ['urutan' => ['u2', 'u3', 'u1']],
+            ],
+            [
+                'tipe' => 'susun_huruf',
+                'konten' => ['petunjuk' => 'Nama hewan berkaki empat yang mengeong.'],
+                'kunci' => ['kata' => 'kucing'],
+            ],
+        ];
+    }
+
     public function run(): void
     {
         $sekolah = Sekolah::query()->orderBy('id')->first();
@@ -122,6 +193,35 @@ class BankSoalSeeder extends Seeder
                     'dibuat_oleh' => $pemilik,
                 ]);
             }
+        }
+
+        // Contoh soal tipe baru (Objektif 1) — dibuat idempoten, terpisah dari
+        // blok di atas supaya instalasi yang sudah punya bank soal lama tetap
+        // mendapat contoh tipe baru tanpa menggandakan soal lama.
+        foreach ($this->soalTipeBaru() as $baris) {
+            $penanda = $baris['konten']['teks'] ?? $baris['konten']['petunjuk'] ?? '';
+            $kolomPenanda = isset($baris['konten']['teks']) ? 'konten->teks' : 'konten->petunjuk';
+
+            $ada = Soal::query()
+                ->where('school_id', $sekolah->id)
+                ->where('tag_id', $tag->id)
+                ->where('tipe', $baris['tipe'])
+                ->where($kolomPenanda, $penanda)
+                ->exists();
+
+            if ($ada) {
+                continue;
+            }
+
+            Soal::query()->create([
+                ...$baris,
+                'school_id' => $sekolah->id,
+                'subject_id' => $mapel->id,
+                'tag_id' => $tag->id,
+                'skor' => 1,
+                'aktif' => true,
+                'dibuat_oleh' => $pemilik,
+            ]);
         }
 
         $kuisDraf = Kuis::query()->firstOrCreate(

@@ -3,84 +3,114 @@
  * Nilai hex HANYA boleh ada di blok :root dan [data-bs-theme='dark'] di bawah;
  * komponen dan SVG memakai var(--…) (dijaga oleh src/theme/tema.test.js).
  *
- * Palet "Tinta & Kertas" — evolusi dari spesifikasi chunk theme (peran warna
- * dipertahankan, nilai dilembutkan agar tidak generik dan tetap ramah anak SD):
- *  Kertas hangat #F5F2EA | Tinta navy  #1B2A5E (panel/aktif)
- *  Aksen laguna  #0FA3B8 | Pendukung   #92A5D6
- *  Sorot hangat  #EEF385 (stabilo, selalu + garis tepi) — dipertahankan
- *  Teks          #16203C (terang) / #F5F2EA (gelap)
- *  Mode gelap    latar #0F1631 | kartu #18234A | aktif #1B2A5E
- *  Link          #0B6E8F (terang) / #4FC3DC (gelap) | garis input #6C7486
- *  Status        benar #1A7A3C | salah #B42318 | peringatan #B45309 | info #0B6E8F
- *  Teks di atas #0FA3B8 / #92A5D6 / #EEF385 selalu gelap (teruji kontras AA).
+ * Palet resmi spesifikasi chunk theme (selaras dengan papan desain "Standar"):
+ *  Latar   #F8FAFC | Kartu #FFFFFF | Kartu lembut #EEF2F7
+ *  Teks    #0F172A | teks lembut #475569 | garis #E2E8F0 | garis input #64748B
+ *  Panel/sidebar guru + aktif #1A2F65 | teks di panel #F8FAFC
+ *  Aksen   #0EA5E9 (teks di atasnya selalu #0F172A) | pendukung #95A7D5
+ *  Sorot hangat #EEF385 (stabilo murid, selalu + garis tepi)
+ *  Link    #0369A1 (terang) / #38BDF8 (gelap)
+ *  Mode gelap: latar #0B1530 | kartu #14214A | garis #2A3A6B | teks #F8FAFC
+ *  Status  benar #15803D | salah #B91C1C | peringatan #B45309 | info #0369A1
+ *          (mode gelap: #4ADE80 / #F87171 / #FBBF24 / #38BDF8)
+ *  Cincin fokus #1A2F65 (terang, 12,25:1 di atas latar) / #38BDF8 (gelap, 7,28:1)
+ *  — cincin fokus TIDAK memakai --aksen: #0EA5E9 hanya 2,65:1 di atas latar
+ *    dan gagal batas WCAG 1.4.11 (3:1) untuk indikator fokus.
  */
 
 :root {
-  --latar: #f5f2ea;
+  --latar: #f8fafc;
   --kartu: #ffffff;
-  --kartu-lembut: #eceadf;
-  --aktif: #1b2a5e;
-  --teks: #16203c;
-  --teks-lembut: #565f79;
-  --panel: #1b2a5e;
-  --teks-di-panel: #f5f2ea;
-  --teks-di-panel-lembut: #c9d2ec;
-  --guru-sidebar: #1b2a5e;
-  --aksen: #0fa3b8;
-  --pendukung: #92a5d6;
+  --kartu-lembut: #eef2f7;
+  --aktif: #1a2f65;
+  --teks: #0f172a;
+  --teks-lembut: #475569;
+  --panel: #1a2f65;
+  --teks-di-panel: #f8fafc;
+  --teks-di-panel-lembut: #cbd5e1;
+  --guru-sidebar: #1a2f65;
+  --aksen: #0ea5e9;
+  --pendukung: #95a7d5;
   --sorot-hangat: #eef385;
-  --teks-di-aksen: #16203c;
-  --link: #0b6e8f;
-  --garis-input: #6c7486;
-  --garis: #e0dccd;
+  --teks-di-aksen: #0f172a;
+  --link: #0369a1;
+  --garis-input: #64748b;
+  --garis: #e2e8f0;
   --status-benar: #15803d;
   --status-salah: #b91c1c;
   --status-peringatan: #b45309;
   --status-info: #0369a1;
   --putih: #ffffff;
+  /* Cincin fokus sengaja bukan --aksen: lihat catatan kontras di atas. */
+  --cincin-fokus: #1a2f65;
+
+  /* Skala jarak 4–64 px (papan Standar) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Skala huruf (papan Standar) */
+  --fs-hero: 44px;
+  --fs-h1: 34px;
+  --fs-h2: 22px;
+  --fs-soal: 18px;
+  --fs-isi: 16px;
+  --fs-meta: 14px;
 
   --radius: 16px;
   --radius-kecil: 12px;
-  --bayangan: 0 2px 12px rgba(22, 32, 60, 0.08);
-  --bayangan-besar: 0 18px 48px rgba(22, 32, 60, 0.14);
-  --font-judul: ui-rounded, 'SF Pro Rounded', 'Nunito', 'Quicksand', system-ui, -apple-system,
+  --bayangan: 0 2px 12px rgba(15, 23, 42, 0.08);
+  --bayangan-besar: 0 18px 48px rgba(15, 23, 42, 0.14);
+  --bayangan-tombol: 0 2px 6px rgba(15, 23, 42, 0.22);
+  --font-judul: 'Nunito', ui-rounded, 'SF Pro Rounded', 'Quicksand', system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
+  --font-teks: 'Nunito Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* Peta ke variabel Bootstrap 5.3 (CSS saja, tanpa build Sass) */
   --bs-body-bg: var(--latar);
   --bs-body-color: var(--teks);
   --bs-body-font-size: 1.0625rem;
   --bs-primary: var(--aksen);
-  --bs-primary-rgb: 15, 163, 184;
+  --bs-primary-rgb: 14, 165, 233;
   --bs-link-color: var(--link);
-  --bs-link-color-rgb: 11, 110, 143;
+  --bs-link-color-rgb: 3, 105, 161;
   --bs-border-color: var(--garis);
   --bs-border-radius: var(--radius);
   --bs-secondary-color: var(--teks-lembut);
 }
 
 [data-bs-theme='dark'] {
-  --latar: #0f1631;
-  --kartu: #18234a;
-  --kartu-lembut: #131c3d;
-  --aktif: #1b2a5e;
-  --teks: #f5f2ea;
-  --teks-lembut: #b4bdd3;
-  --panel: #18234a;
-  --link: #4fc3dc;
-  --garis: #2c3866;
-  --garis-input: #8791ad;
+  --latar: #0b1530;
+  --kartu: #14214a;
+  --kartu-lembut: #101b3e;
+  --aktif: #1a2f65;
+  --teks: #f8fafc;
+  --teks-lembut: #94a3b8;
+  --panel: #14214a;
+  --teks-di-panel: #f8fafc;
+  --teks-di-panel-lembut: #94a3b8;
+  --guru-sidebar: #14214a;
+  --link: #38bdf8;
+  --garis: #2a3a6b;
+  --garis-input: #64748b;
+  --cincin-fokus: #38bdf8;
   --status-benar: #4ade80;
   --status-salah: #f87171;
   --status-peringatan: #fbbf24;
-  --status-info: #4fc3dc;
+  --status-info: #38bdf8;
   --bayangan: 0 2px 12px rgba(0, 0, 0, 0.35);
   --bayangan-besar: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --bayangan-tombol: 0 2px 6px rgba(0, 0, 0, 0.5);
 
   --bs-body-bg: var(--latar);
   --bs-body-color: var(--teks);
   --bs-link-color: var(--link);
-  --bs-link-color-rgb: 79, 195, 220;
+  --bs-link-color-rgb: 56, 189, 248;
   --bs-border-color: var(--garis);
   --bs-secondary-color: var(--teks-lembut);
 }
@@ -96,12 +126,7 @@ html {
 }
 
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-teks);
   min-height: 100vh;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -110,12 +135,31 @@ body {
 h1,
 h2,
 h3,
+h4,
 .h1,
 .h2,
 .h3,
 .merek-teks {
   font-family: var(--font-judul);
   letter-spacing: -0.01em;
+}
+
+/* Judul halaman (papan Standar): 34 px, bobot 800, satu h1 per halaman. */
+.h1,
+h1 {
+  font-weight: 800;
+}
+
+.judul-halaman {
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.judul-bagian {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 a {
@@ -129,9 +173,20 @@ a {
   padding-block: 0.65rem;
 }
 
+/*
+ * Cincin fokus memakai --cincin-fokus (#1A2F65 terang / #38BDF8 gelap), bukan
+ * --aksen: aksen sky hanya 2,65:1 di atas latar, di bawah batas 3:1 WCAG 1.4.11.
+ * Lapisan putih tipis menjaga cincin tetap terlihat di atas tombol berwarna.
+ */
 :focus-visible {
-  outline: 3px solid var(--aksen);
+  outline: 3px solid var(--cincin-fokus);
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--putih);
+  border-radius: 3px;
+}
+
+[data-bs-theme='dark'] :focus-visible {
+  box-shadow: 0 0 0 5px var(--kartu);
 }
 
 .teks-lembut {
@@ -192,13 +247,15 @@ a {
   cursor: not-allowed;
 }
 
-/* Tombol utama: sedikit "timbul" agar terasa bisa ditekan */
+/*
+ * Tombol utama: "Soft UI" — bayangan halus 0 2px 6px dan pergeseran 1 px saat
+ * ditekan (bukan 4 px timbul), supaya layar ulangan tetap tenang (temuan 12).
+ */
 .btn-aksen {
-  --tinggi-bayangan: 4px;
   background-color: var(--aksen);
   color: var(--teks-di-aksen);
   border: 2px solid var(--teks-di-aksen);
-  box-shadow: 0 var(--tinggi-bayangan) 0 var(--teks-di-aksen);
+  box-shadow: var(--bayangan-tombol);
   transform: translateY(0);
 }
 
@@ -210,11 +267,54 @@ a {
 }
 
 .btn-aksen:active:not(:disabled) {
-  transform: translateY(var(--tinggi-bayangan));
-  box-shadow: 0 0 0 var(--teks-di-aksen);
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
   color: var(--teks-di-aksen);
   background-color: var(--aksen);
   border-color: var(--teks-di-aksen);
+}
+
+/* Tombol bahaya (aksi merusak: hapus, batalkan). Dipakai DialogKonfirmasi. */
+.btn-bahaya {
+  background-color: var(--status-salah);
+  color: var(--putih);
+  border: 2px solid var(--status-salah);
+  box-shadow: var(--bayangan-tombol);
+}
+
+.btn-bahaya:hover:not(:disabled),
+.btn-bahaya:focus-visible {
+  background-color: color-mix(in srgb, var(--status-salah) 84%, var(--teks));
+  color: var(--putih);
+  border-color: var(--teks);
+}
+
+.btn-bahaya:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
+}
+
+.btn-bahaya:disabled {
+  color: var(--putih);
+}
+
+/*
+ * TombolIkon: persegi 44 px, ikon saja. Label wajib (prop `label`) dan dipakai
+ * sebagai aria-label, jadi kolom aksi tabel tetap terlihat di layar sempit.
+ */
+.btn-ikon {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+/* Ukuran sedang: tinggi 44 px (bukan 48 px bawaan) untuk baris aksi tabel. */
+.btn-sedang {
+  min-height: 44px;
+  padding-block: 0.35rem;
+  padding-inline: 1rem;
+  font-size: 0.95rem;
 }
 
 /* Tombol tepi (sekunder) */
@@ -1394,6 +1494,129 @@ a {
   width: 5rem;
 }
 
+/* ---------- Tipe soal baru (Objektif 1, gelombang 1) ---------- */
+
+/* Isian angka: kotak angka + satuan di sebelahnya. */
+.isian-angka .form-control {
+  max-width: 14rem;
+}
+
+.isian-angka-satuan {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Pilihan gambar: kartu besar, mudah ditekan di ponsel. */
+.pilihan-gambar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.pilihan-gambar-kartu {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid var(--garis, #cbd5e1);
+  border-radius: var(--radius-kecil);
+  cursor: pointer;
+  background-color: var(--kartu, #fff);
+  min-height: 4.5rem;
+}
+
+.pilihan-gambar-kartu.terpilih {
+  border-color: var(--aksen, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.pilihan-gambar-media {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-kecil);
+}
+
+/* Urut gambar: baris yang bisa diseret + tombol naik/turun. */
+.urut-gambar-baris {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 2px solid var(--garis, #cbd5e1);
+  border-radius: var(--radius-kecil);
+  background-color: var(--kartu, #fff);
+  touch-action: none;
+}
+
+.urut-gambar-baris.sedang-disert {
+  border-color: var(--aksen, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.urut-gambar-nomor {
+  font-weight: 800;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.urut-gambar-pegangan {
+  border: 1px dashed var(--garis, #cbd5e1);
+  background: none;
+  border-radius: var(--radius-kecil);
+  padding: 0.4rem 0.6rem;
+  cursor: grab;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.urut-gambar-media {
+  max-height: 5rem;
+  width: auto;
+  border-radius: var(--radius-kecil);
+}
+
+.urut-gambar-aksi {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Susun huruf: kotak huruf besar untuk diketuk. */
+.susun-huruf-jawaban {
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 2px dashed var(--garis, #cbd5e1);
+  border-radius: var(--radius-kecil);
+  font-size: 1.5rem;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+.susun-huruf-kotak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.susun-huruf-tombol {
+  min-width: 3rem;
+  min-height: 3rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: 2px solid var(--aksen, #2563eb);
+  border-radius: var(--radius-kecil);
+  background-color: var(--kartu, #fff);
+  cursor: pointer;
+}
+
+.susun-huruf-tombol.terpakai {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* ---------- Pengerjaan ulangan (slice 04) ---------- */
 
 .timer-ulangan {
@@ -1415,41 +1638,84 @@ a {
   color: var(--status-salah);
 }
 
+/* ---------- Kerangka badan: panel samping (≥ lg) atau satu kolom ---------- */
+
+/* Panel samping menempati 260 px di kiri pada layar ≥ lg; di bawah itu menu
+ * pindah ke laci sehingga konten memakai lebar penuh. */
+.kerangka-badan {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.kerangka-isi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (min-width: 992px) {
+  .kerangka-badan-menu {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: var(--sp-5);
+    align-items: start;
+    width: 100%;
+    max-width: 1680px;
+    margin-inline: auto;
+    padding-inline: var(--sp-4);
+  }
+}
+
 /* ---------- Papan navigasi (palet guru) ---------- */
 
-/* Panel gelap berisi tautan bagian. Di HP papan ini menggeser mendatar
-   (satu baris, sasaran tetap besar) alih-alih membungkus jadi tiga baris. */
+/* Panel samping berkelompok: Ringkasan, Ujian, Data induk, Belajar. Tampil
+   hanya di layar ≥ lg; di layar sempit digantikan laci (hamburger di header). */
 .papan-nav {
   display: flex;
-  gap: 0.4rem;
-  padding: 0.4rem;
-  margin-bottom: 1.25rem;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-4);
   background-color: var(--panel);
   color: var(--teks-di-panel);
   border-radius: var(--radius);
   box-shadow: var(--bayangan);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
 
-.papan-nav::-webkit-scrollbar {
-  display: none;
+@media (min-width: 992px) {
+  .papan-nav {
+    position: sticky;
+    top: var(--sp-4);
+    max-height: calc(100vh - var(--sp-6));
+    overflow-y: auto;
+  }
+}
+
+.papan-grup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.papan-grup-judul {
+  margin: 0 0 0.35rem;
+  padding-inline: 0.85rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teks-di-panel-lembut);
 }
 
 .papan-nav-taut {
-  flex: 0 0 auto;
   min-height: 46px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.95rem;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
   border-radius: var(--radius-kecil);
   border: 2px solid transparent;
   color: var(--teks-di-panel-lembut);
-  font-weight: 700;
-  white-space: nowrap;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -1460,9 +1726,111 @@ a {
 
 .papan-nav-taut.active,
 .papan-nav-taut[aria-current='page'] {
+  /* Terang di atas panel gelap — tetap kontras di mode gelap karena kedua
+   * variabel ikut bertukar. */
+  background-color: var(--teks-di-panel);
+  color: var(--panel);
+  border-color: var(--teks-di-panel);
+  font-weight: 800;
+}
+
+/* Tombol hamburger di header (hanya layar sempit). */
+.tombol-menu {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-kecil);
+  border: 2px solid var(--garis-input);
+  background-color: var(--kartu);
+  color: var(--teks);
+}
+
+.tombol-menu:hover {
+  background-color: var(--kartu-lembut);
+}
+
+/* Laci navigasi: panel dari kiri, di atas overlay gelap. */
+.laci-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: color-mix(in srgb, #0b1220 55%, transparent);
+}
+
+.laci-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 201;
+  width: min(84vw, 340px);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--kartu);
+  border-right: 1px solid var(--garis);
+  box-shadow: var(--bayangan);
+  padding: 0.9rem;
+  overflow-y: auto;
+}
+
+.laci-nav-kepala {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.laci-nav-daftar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Judul kelompok di laci memakai warna teks biasa (laci berlatar terang). */
+.laci-nav .papan-grup-judul {
+  color: var(--teks-lembut);
+}
+
+.laci-nav-taut {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-kecil);
+  border: 2px solid transparent;
+  color: var(--teks);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.laci-nav-taut:hover {
+  background-color: var(--kartu-lembut);
+}
+
+.laci-nav-taut.active,
+.laci-nav-taut[aria-current='page'] {
   background-color: var(--sorot-hangat);
   color: var(--teks-di-aksen);
   border-color: var(--teks-di-aksen);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .laci-nav {
+    animation: laci-masuk 0.18s ease-out;
+  }
+
+  @keyframes laci-masuk {
+    from {
+      transform: translateX(-16px);
+      opacity: 0.6;
+    }
+  }
 }
 
 /* Tautan teks biasa yang tetap ramah jari (min. 44 px). */
@@ -1479,74 +1847,38 @@ a {
   background-color: var(--kartu-lembut);
 }
 
-/* ---------- Pemetaan tombol Bootstrap ke palet tema ---------- */
+/* ---------- Sistem tombol ---------- */
 
-/* Beberapa halaman guru masih memakai kelas tombol Bootstrap. Daripada
-   membiarkannya memakai warna bawaan Bootstrap (biru #0d6efd yang gagal
-   kontras AA di latar terang), kelas-kelas itu diarahkan ke variabel tema.
-   Bootstrap 5.3 memakai custom property, jadi cukup diisi ulang di sini. */
-.btn-outline-primary {
-  --bs-btn-border-width: 2px;
-  --bs-btn-color: var(--link);
-  --bs-btn-border-color: var(--link);
-  --bs-btn-hover-color: var(--kartu);
-  --bs-btn-hover-bg: var(--link);
-  --bs-btn-hover-border-color: var(--link);
-  --bs-btn-focus-shadow-rgb: 11, 110, 143;
-  --bs-btn-active-color: var(--kartu);
-  --bs-btn-active-bg: var(--link);
-  --bs-btn-active-border-color: var(--link);
-  --bs-btn-disabled-color: var(--teks-lembut);
-  --bs-btn-disabled-border-color: var(--garis-input);
+/* Sejak papan Standar, hanya Tombol/TombolIkon yang boleh dipakai: bilah aksi
+   memakai .btn-aksen/.btn-tepi/.btn-bahaya/.btn-teks di atas. Kelas tombol
+   bawaan Bootstrap (btn-outline-*, btn-primary, btn-sm) sudah tidak dipakai di
+   JSX, jadi tidak dipetakan lagi; pemakaian barunya ditolak oleh
+   src/__tests__/sistemTombol.test.js. */
+
+/* Baris aksi di dalam kartu (kuis, materi, dst). Tautan aksi membungkus rapi;
+ * di layar sangat sempit tiap tombol menjadi selebar kartu supaya tidak ada
+ * tombol yang terpotong atau berdesakan. */
+.kartu-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.btn-outline-secondary {
-  --bs-btn-border-width: 2px;
-  --bs-btn-color: var(--teks);
-  --bs-btn-border-color: var(--garis-input);
-  --bs-btn-hover-color: var(--teks);
-  --bs-btn-hover-bg: var(--kartu-lembut);
-  --bs-btn-hover-border-color: var(--teks);
-  --bs-btn-active-color: var(--teks);
-  --bs-btn-active-bg: var(--kartu-lembut);
-  --bs-btn-active-border-color: var(--teks);
-  --bs-btn-disabled-color: var(--teks-lembut);
-  --bs-btn-disabled-border-color: var(--garis-input);
+.kartu-aksi > .btn {
+  flex: 1 1 auto;
 }
 
-.btn-outline-danger {
-  --bs-btn-border-width: 2px;
-  --bs-btn-color: var(--status-salah);
-  --bs-btn-border-color: var(--status-salah);
-  --bs-btn-hover-color: var(--kartu);
-  --bs-btn-hover-bg: var(--status-salah);
-  --bs-btn-hover-border-color: var(--status-salah);
-  --bs-btn-active-color: var(--kartu);
-  --bs-btn-active-bg: var(--status-salah);
-  --bs-btn-active-border-color: var(--status-salah);
-  --bs-btn-disabled-color: var(--teks-lembut);
-  --bs-btn-disabled-border-color: var(--garis-input);
+@media (max-width: 575.98px) {
+  .kartu-aksi > .btn {
+    flex: 1 1 100%;
+  }
 }
 
-/* Tombol padat juga diperlakukan sama supaya warna dan kontrasnya konsisten. */
-.btn-primary {
-  --bs-btn-border-width: 2px;
-  --bs-btn-bg: var(--aksen);
-  --bs-btn-color: var(--teks-di-aksen);
-  --bs-btn-border-color: var(--teks-di-aksen);
-  --bs-btn-hover-bg: var(--aksen);
-  --bs-btn-hover-color: var(--teks-di-aksen);
-  --bs-btn-hover-border-color: var(--teks-di-aksen);
-  --bs-btn-active-bg: var(--aksen);
-  --bs-btn-active-color: var(--teks-di-aksen);
-  --bs-btn-active-border-color: var(--teks-di-aksen);
-}
-
-/* Tombol kecil tetap 44 px: sasaran jari anak SD, bukan tombol rapat desktop. */
-.btn-sm {
-  min-height: 44px;
-  font-size: 0.95rem;
-  padding-block: 0.35rem;
+/* Tombol ikon tetap persegi 44 px di layar sempit (tidak direntangkan selebar
+ * baris) dan didorong ke ujung kanan baris aksi. */
+.kartu-aksi > .btn-ikon {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 /* Saklar dan kotak centang pengaturan: dibesarkan agar mudah ditekan. */
@@ -1807,7 +2139,7 @@ a {
 }
 
 .nle-klip:focus-visible {
-  outline: 2px solid var(--aksen);
+  outline: 2px solid var(--cincin-fokus);
   outline-offset: 1px;
 }
 
@@ -1914,5 +2246,845 @@ a {
 
   .nle-lane {
     height: 3rem;
+  }
+}
+
+/* ---------- Beranda berbasis tugas (papan 2) ---------- */
+
+/* "Perlu perhatian": daftar kartu dengan garis kiri berwarna per jenis —
+ * ditambah ikon + teks, jadi status tidak pernah hanya warna. */
+.perhatian-daftar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sp-3);
+}
+
+.perhatian-item {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis);
+  border-left-width: 6px;
+  border-radius: var(--radius);
+}
+
+.perhatian-item.monitor {
+  border-left-color: var(--status-benar);
+}
+
+.perhatian-item.koreksi {
+  border-left-color: var(--status-peringatan);
+}
+
+.perhatian-item.avatar {
+  border-left-color: var(--status-info);
+}
+
+.perhatian-ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-kecil);
+  background-color: var(--kartu-lembut);
+  color: var(--teks);
+}
+
+/* Angka ringkas beranda: besar dan tebal, dibaca sekilas dari jauh. */
+.angka-nilai {
+  font-family: var(--font-judul);
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+/* ---------- Layar ulangan murid (papan 4 & 5) ---------- */
+
+/* Skala huruf murid: teks lebih besar daripada layar guru supaya terbaca di
+ * proyektor kelas dan di HP. Nilainya dipakai khusus di dalam .layar-murid. */
+.layar-murid {
+  font-size: 18px;
+}
+
+/* Kepala lengket: murid selalu melihat sisa waktu, progres, dan tombol
+ * Selesai tanpa harus menggulir kembali ke atas. */
+.kepala-ulangan {
+  position: sticky;
+  top: 68px;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background-color: var(--panel);
+  color: var(--teks-di-panel);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+}
+
+.kepala-ulangan .teks-lembut {
+  color: var(--teks-di-panel-lembut);
+}
+
+.kepala-ulangan-judul {
+  font-family: var(--font-judul);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.kepala-ulangan-waktu {
+  display: block;
+  font-family: var(--font-judul);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kepala-ulangan-progres {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+
+.kepala-ulangan-batang {
+  height: 10px;
+  background-color: color-mix(in srgb, var(--teks-di-panel) 24%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.kepala-ulangan-batang > span {
+  display: block;
+  height: 100%;
+  background-color: var(--sorot-hangat);
+}
+
+/* Kartu soal aktif: satu soal per layar, teks soal paling besar. */
+.kartu-ulangan {
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  box-shadow: var(--bayangan);
+}
+
+.kartu-ulangan .soal-teks {
+  font-family: var(--font-judul);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.layar-murid .soal-opsi .form-check-label {
+  font-size: 20px;
+  min-height: 68px;
+}
+
+.layar-murid .soal-opsi .form-check-input {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* Tombol ragu-ragu (aktif = bendera terpasang). */
+.btn-ragu[aria-pressed='true'] {
+  background-color: var(--sorot-hangat);
+  border-color: var(--teks);
+  color: var(--teks-di-aksen);
+}
+
+/* Navigator soal: kisi nomor dengan empat keadaan. */
+.navigator-soal {
+  padding: var(--sp-4);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis);
+  border-radius: var(--radius);
+}
+
+.navigator-kisi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: var(--sp-2);
+}
+
+.navigator-nomor {
+  min-height: 52px;
+  border-radius: var(--radius-kecil);
+  border: 1.5px solid var(--garis-input);
+  background-color: var(--kartu);
+  color: var(--teks);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.navigator-nomor:hover {
+  background-color: var(--kartu-lembut);
+}
+
+.navigator-nomor.dijawab {
+  background-color: color-mix(in srgb, var(--status-benar) 16%, var(--kartu));
+  border-color: var(--status-benar);
+}
+
+.navigator-nomor.ragu {
+  background-color: var(--sorot-hangat);
+  border-color: var(--teks);
+  color: var(--teks-di-aksen);
+}
+
+.navigator-nomor.arus {
+  outline: 3px solid var(--cincin-fokus);
+  outline-offset: 2px;
+  font-weight: 800;
+}
+
+.navigator-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  font-size: var(--fs-meta);
+  color: var(--teks-lembut);
+}
+
+.navigator-legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.navigator-tanda {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--garis-input);
+  background-color: var(--kartu);
+}
+
+.navigator-tanda.dijawab {
+  background-color: color-mix(in srgb, var(--status-benar) 16%, var(--kartu));
+  border-color: var(--status-benar);
+  color: var(--status-benar);
+}
+
+.navigator-tanda.ragu {
+  background-color: var(--sorot-hangat);
+  border-color: var(--teks);
+  color: var(--teks-di-aksen);
+}
+
+/* Panel navigator lengket di samping soal pada layar lebar. */
+.navigator-tempel {
+  position: sticky;
+  top: 160px;
+}
+
+/* Di HP navigator dilipat di dalam <details> "Daftar soal". */
+.navigator-lipat > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Warna di atas panel gelap: timer & lencana memakai varian terang supaya
+ * tetap terbaca (--teks dan --status-* dirancang untuk latar terang). */
+.kepala-ulangan .timer-ulangan.aman {
+  color: var(--teks-di-panel);
+}
+
+.kepala-ulangan .timer-ulangan.peringatan {
+  color: color-mix(in srgb, var(--status-peringatan) 40%, var(--teks-di-panel));
+}
+
+.kepala-ulangan .timer-ulangan.kritis {
+  color: color-mix(in srgb, var(--status-salah) 40%, var(--teks-di-panel));
+}
+
+.kepala-ulangan .badge-status.lembut {
+  color: var(--teks-di-panel-lembut);
+}
+
+/* ---------- Kepala halaman bersama (papan Standar, temuan 09) ---------- */
+
+/* Satu h1 + deskripsi satu baris + slot tombol utama di kanan; dipakai semua
+ * halaman guru supaya judul selalu di tempat yang sama. */
+.kepala-halaman {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.kepala-halaman-teks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.kepala-halaman-jejak {
+  font-size: var(--fs-meta);
+  color: var(--teks-lembut);
+}
+
+.kepala-halaman-deskripsi {
+  color: var(--teks-lembut);
+  max-width: 70ch;
+}
+
+.kepala-halaman-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* ---------- Tabel data: tabel di desktop, kartu bertumpuk di bawah 700 px ---- */
+
+.tabel-data {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tabel-data caption {
+  caption-side: top;
+  text-align: start;
+  color: var(--teks-lembut);
+  font-size: var(--fs-meta);
+  padding-bottom: var(--sp-2);
+}
+
+.tabel-data th,
+.tabel-data td {
+  padding: 0.7rem 0.9rem;
+  text-align: start;
+  border-bottom: 1px solid var(--garis);
+  vertical-align: middle;
+}
+
+.tabel-data thead th {
+  font-size: var(--fs-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teks-lembut);
+}
+
+.tabel-data tbody tr:hover {
+  background-color: var(--kartu-lembut);
+}
+
+.tabel-data .kolom-aksi {
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* Kolom progres Live Monitor: batang + teks butuh lebar tetap. */
+.tabel-data .kolom-progres {
+  min-width: 9rem;
+}
+
+.tabel-data .aksi-baris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+
+/* Di HP kolom Aksi dulu terdorong keluar layar (temuan 08). Mulai < 700 px
+ * tiap baris berubah jadi kartu dan label kolom dibawa oleh data-label. */
+@media (max-width: 699.98px) {
+  .tabel-data thead {
+    display: none;
+  }
+
+  .tabel-data,
+  .tabel-data tbody,
+  .tabel-data tr,
+  .tabel-data td {
+    display: block;
+    width: 100%;
+  }
+
+  .tabel-data tr {
+    background-color: var(--kartu);
+    border: 1.5px solid var(--garis);
+    border-radius: var(--radius-kecil);
+    padding: 0.35rem 0.9rem;
+    margin-bottom: var(--sp-3);
+  }
+
+  .tabel-data td {
+    border-bottom: 1px dashed var(--garis);
+    padding: 0.5rem 0;
+  }
+
+  .tabel-data td:last-child {
+    border-bottom: 0;
+  }
+
+  .tabel-data td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    color: var(--teks-lembut);
+    margin-bottom: 0.15rem;
+  }
+
+  .tabel-data .kolom-aksi {
+    text-align: start;
+    white-space: normal;
+  }
+
+  .tabel-data .aksi-baris {
+    justify-content: flex-start;
+  }
+}
+
+/* ---------- Keadaan data kosong (temuan 06) ---------- */
+
+.kosong-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: center;
+  padding: var(--sp-7) var(--sp-5);
+  background-color: var(--kartu);
+  border: 1.5px dashed var(--garis-input);
+  border-radius: var(--radius);
+}
+
+.kosong-data-ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background-color: var(--kartu-lembut);
+  color: var(--teks-lembut);
+}
+
+.kosong-data-judul {
+  font-family: var(--font-judul);
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.kosong-data-teks {
+  color: var(--teks-lembut);
+  max-width: 48ch;
+}
+
+/* ---------- Skeleton pemuatan (temuan 06) ---------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--kartu-lembut);
+  border-radius: var(--radius-kecil);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--kartu) 60%, transparent),
+    transparent
+  );
+  animation: skeleton-kilau 1.4s ease-in-out infinite;
+}
+
+.skeleton-baris {
+  height: 14px;
+  margin-bottom: var(--sp-2);
+}
+
+.skeleton-judul {
+  height: 24px;
+  width: 42%;
+  margin-bottom: var(--sp-4);
+}
+
+.skeleton-kartu {
+  height: 92px;
+  margin-bottom: var(--sp-3);
+}
+
+@keyframes skeleton-kilau {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ---------- Dialog (DialogKonfirmasi memakai elemen <dialog> bawaan) ---------- */
+
+.dialog {
+  max-width: 32rem;
+  width: calc(100% - 2 * var(--sp-4));
+  padding: var(--sp-5);
+  color: var(--teks);
+  background-color: var(--kartu);
+  border: 2px solid var(--teks);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan-besar);
+}
+
+.dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.55);
+}
+
+.dialog-bahaya {
+  border-color: var(--status-salah);
+}
+
+.dialog-ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background-color: var(--kartu-lembut);
+  color: var(--status-salah);
+  margin-bottom: var(--sp-2);
+}
+
+/* Ringkasan sebelum mengumpulkan ulangan (temuan 02). */
+.dialog-ringkas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-3);
+  margin-block: var(--sp-4);
+}
+
+.dialog-ringkas > div {
+  padding: var(--sp-3) var(--sp-4);
+  background-color: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.dialog-ringkas strong {
+  display: block;
+  font-family: var(--font-judul);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+/* Panel formulir: dialog yang menempel di sisi kanan (papan Kelas). */
+.dialog-samping {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(26rem, 100%);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: var(--sp-5);
+  overflow-y: auto;
+  border-width: 0 0 0 2px;
+  border-radius: 0;
+}
+
+/* ---------- Pil saring (daftar kelas, bank soal, dst) ---------- */
+
+.pil-saring {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--garis-input);
+  border-radius: 999px;
+  background-color: var(--kartu);
+  color: var(--teks);
+  font-weight: 700;
+}
+
+.pil-saring:hover {
+  background-color: var(--kartu-lembut);
+}
+
+.pil-saring[aria-pressed='true'] {
+  background-color: var(--aktif);
+  border-color: var(--aktif);
+  color: var(--teks-di-panel);
+}
+
+/* Tombol ikon bahaya (hapus): merah, tetap ≥44 px. */
+.btn-ikon.btn-bahaya {
+  background-color: var(--status-salah);
+  border-color: var(--status-salah);
+  color: var(--putih);
+}
+
+.btn-ikon.btn-bahaya:hover:not(:disabled),
+.btn-ikon.btn-bahaya:focus-visible {
+  background-color: color-mix(in srgb, var(--status-salah) 84%, var(--teks));
+  color: var(--putih);
+}
+
+/* ---------- Langkah bersusun: susun kuis tiga langkah (papan 10) ---------- */
+
+/* Pil langkah: nomor + nama, tinggi tetap ≥48 px supaya nyaman ditekan.
+ * Langkah aktif ditandai aria-current="step" (bukan hanya warna) karena nomor
+ * ikut berubah tampilan; pembaca layar tetap membaca urutannya. */
+.pil-langkah {
+  display: inline-flex;
+  gap: var(--sp-3);
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--sp-4);
+  font-weight: 700;
+  color: var(--teks);
+  background-color: var(--kartu);
+  border: 2px solid var(--garis);
+  border-radius: 999px;
+}
+
+.pil-langkah:hover {
+  border-color: var(--garis-input);
+}
+
+.pil-langkah .no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: var(--fs-meta);
+  border: 2px solid currentcolor;
+  border-radius: 50%;
+}
+
+.pil-langkah[aria-current='step'] {
+  color: var(--teks-di-panel);
+  background-color: var(--aktif);
+  border-color: var(--aktif);
+}
+
+.pil-langkah[aria-current='step'] .no {
+  color: var(--aktif);
+  background-color: var(--teks-di-panel);
+}
+
+/* Baris soal yang bisa dicentang (bank soal di langkah susun). Tombol, bukan
+ * kotak centang kecil: seluruh baris jadi sasaran sentuh ≥44 px. */
+.pilih-soal {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: start;
+  color: var(--teks);
+  background-color: var(--kartu);
+  border: 2px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.pilih-soal:hover {
+  border-color: var(--garis-input);
+}
+
+.pilih-soal[aria-checked='true'] {
+  border-color: var(--teks);
+  background-color: var(--kartu-lembut);
+}
+
+.kotak-centang {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  border: 2px solid var(--garis-input);
+  border-radius: 7px;
+}
+
+.pilih-soal[aria-checked='true'] .kotak-centang {
+  color: var(--latar);
+  background-color: var(--teks);
+  border-color: var(--teks);
+}
+
+/* Ikon panah yang diputar: "naik"/"turun" tanpa menambah ikon baru. Putaran
+ * hanya bentuk, makna tetap dibawa aria-label tombolnya ("Naikkan soal nomor 2"). */
+.putar-90 {
+  transform: rotate(90deg);
+}
+
+.putar-270 {
+  transform: rotate(-90deg);
+}
+
+/* Satu baris ringkas berbingkai: dipakai daftar susunan kuis (langkah 2),
+ * butir kelengkapan (langkah 3), dan daftar serupa di halaman lain. */
+.baris-ringkas {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.baris-ringkas .susunan-no {
+  width: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* Kotak bergaris putus untuk keadaan kosong di dalam formulir. */
+.kotak-kosong {
+  padding: var(--sp-5);
+  color: var(--teks-lembut);
+  text-align: center;
+  border: 2px dashed var(--garis-input);
+  border-radius: var(--radius-kecil);
+}
+
+/* Petak ringkasan (mis. kelas / jadwal / jumlah soal sebelum terbit). */
+.petak-ringkas {
+  padding: var(--sp-3) var(--sp-4);
+  background-color: var(--kartu-lembut);
+  border-radius: var(--radius-kecil);
+}
+
+/* ---------- Editor soal: tiga kartu + sisi pratinjau (papan 11) ---------- */
+
+/* Judul kecil di dalam kartu sisi (pratinjau & kelengkapan, papan 11). */
+.judul-kecil {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* Blok label + kendali; menggantikan tumpukan .fl pada papan desain. */
+.bidang {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.bidang > .form-label {
+  margin-bottom: 0;
+  font-weight: 700;
+}
+
+/* Pil pemilih jenis soal & kunci benar/salah (radiogroup). */
+.pil-tipe {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font-weight: 700;
+  color: var(--teks);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis-input);
+  border-radius: 999px;
+}
+
+.pil-tipe:hover {
+  border-color: var(--teks);
+}
+
+.pil-tipe[aria-checked='true'] {
+  color: var(--latar);
+  background-color: var(--teks);
+  border-color: var(--teks);
+}
+
+/* Kotak huruf opsi (A, B, …) yang ikut melebar di layar sempit. */
+.kotak-huruf {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-weight: 800;
+  border: 2px solid currentcolor;
+  border-radius: 9px;
+}
+
+/* Label "Kunci" pada baris opsi — satu baris utuh tetap ≥48 px. */
+.label-kunci {
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: center;
+  min-height: 48px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.label-kunci .form-check-input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0;
+}
+
+/* Baris pratinjau: bentuknya sama dengan baris opsi di layar murid. */
+.baris-pratinjau {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  min-height: 52px;
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--kartu);
+  border: 2px solid var(--garis-input);
+  border-radius: var(--radius-kecil);
+}
+
+/* Baris yang merupakan kunci: sorotan hangat + garis tepi tegas (bukan warna
+ * saja — ada label "Kunci" di dalamnya). */
+.baris-pratinjau.kunci {
+  font-weight: 700;
+  color: var(--teks-di-aksen);
+  background-color: var(--sorot-hangat);
+  border-color: var(--teks-di-aksen);
+}
+
+/* Sisi kanan yang mengikuti gulir (pratinjau + kelengkapan). */
+.sisi-lengket {
+  position: sticky;
+  top: var(--sp-4);
+}
+
+@media (max-width: 991.98px) {
+  .sisi-lengket {
+    position: static;
   }
 }

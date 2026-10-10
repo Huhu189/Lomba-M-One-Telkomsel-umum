@@ -20,6 +20,12 @@ import SoalHubungKata from '../../../../sections/question/render/SoalHubungKata.
 import SoalIsianSingkat from '../../../../sections/question/render/SoalIsianSingkat.jsx'
 import SoalLetakKata from '../../../../sections/question/render/SoalLetakKata.jsx'
 import SoalUraian from '../../../../sections/question/render/SoalUraian.jsx'
+import SoalPilihanGandaKompleks from '../../../../sections/question/render/SoalPilihanGandaKompleks.jsx'
+import SoalBenarSalahMajemuk from '../../../../sections/question/render/SoalBenarSalahMajemuk.jsx'
+import SoalIsianAngka from '../../../../sections/question/render/SoalIsianAngka.jsx'
+import SoalPilihanGambar from '../../../../sections/question/render/SoalPilihanGambar.jsx'
+import SoalUrutGambar from '../../../../sections/question/render/SoalUrutGambar.jsx'
+import SoalSusunHuruf from '../../../../sections/question/render/SoalSusunHuruf.jsx'
 
 const kontenPg = {
   teks: 'Berapa hasil 4 + 5?',
@@ -359,5 +365,91 @@ describe('MediaSoal & MathML', () => {
 
   it('teksTanpaTag membuang markup sebagai cadangan', () => {
     expect(teksTanpaTag('<math><mn>2</mn></math>')).toBe('2')
+  })
+})
+
+describe('renderer tipe baru (gelombang 1)', () => {
+  it('pilihan ganda kompleks memakai kotak centang dan menandai kunci', () => {
+    const konten = {
+      teks: 'Centang bilangan genap.',
+      opsi: [
+        { id: 'o1', teks: '4' },
+        { id: 'o2', teks: '7' },
+        { id: 'o3', teks: '10' },
+      ],
+    }
+    const html = renderToStaticMarkup(
+      <SoalPilihanGandaKompleks konten={konten} kunci={{ benar: ['o1', 'o3'] }} nilai={['o1']} />,
+    )
+
+    expect(html.match(/type="checkbox"/g)).toHaveLength(3)
+    expect(html.match(/checked/g)).toHaveLength(1)
+    expect(html).not.toContain('badge-kunci')
+
+    const denganKunci = renderToStaticMarkup(
+      <SoalPilihanGandaKompleks konten={konten} kunci={{ benar: ['o1', 'o3'] }} tampilkanKunci />,
+    )
+    expect(denganKunci.match(/badge-kunci/g)).toHaveLength(2)
+  })
+
+  it('benar/salah majemuk menampilkan radio per pernyataan', () => {
+    const html = renderToStaticMarkup(
+      <SoalBenarSalahMajemuk
+        konten={{ teks: 'Tandai.', pernyataan: [{ id: 'p1', teks: '1 + 1 = 2' }, { id: 'p2', teks: '2 + 2 = 5' }] }}
+        nilai={{ p1: true }}
+      />,
+    )
+
+    expect(html).toContain('1 + 1 = 2')
+    expect(html.match(/type="radio"/g)).toHaveLength(4)
+    expect(html.match(/checked/g)).toHaveLength(1)
+  })
+
+  it('isian angka menampilkan satuan dan tidak membocorkan kunci bila tertutup', () => {
+    const html = renderToStaticMarkup(
+      <SoalIsianAngka konten={{ teks: 'Berapa?', satuan: 'cm' }} kunci={{ nilai: 21, toleransi: 0 }} />,
+    )
+
+    expect(html).toContain('cm')
+    expect(html).not.toContain('badge-kunci')
+  })
+
+  it('pilihan gambar menampilkan satu gambar per opsi dan kunci hanya saat dibuka', () => {
+    const konten = {
+      teks: 'Pilih lingkaran.',
+      opsi: [
+        { id: 'g1', media: '/media/a.png' },
+        { id: 'g2', media: '/media/b.png' },
+      ],
+    }
+    const html = renderToStaticMarkup(<SoalPilihanGambar konten={konten} kunci={{ benar: 'g1' }} />)
+
+    expect(html.match(/type="radio"/g)).toHaveLength(2)
+    expect(html).toContain('src="/media/a.png"')
+    expect(html).not.toContain('badge-kunci')
+  })
+
+  it('urut gambar menampilkan tombol naik/turun aksesibel', () => {
+    const konten = {
+      teks: 'Urutkan.',
+      item: [
+        { id: 'u1', media: '/media/a.png' },
+        { id: 'u2', media: '/media/b.png' },
+      ],
+    }
+    const html = renderToStaticMarkup(<SoalUrutGambar konten={konten} />)
+
+    expect(html).toContain('aria-label="Naikkan gambar ke atas"')
+    expect(html).toContain('aria-label="Turunkan gambar ke bawah"')
+  })
+
+  it('susun huruf memakai huruf dari server, bukan kata kunci', () => {
+    const html = renderToStaticMarkup(
+      <SoalSusunHuruf konten={{ petunjuk: 'Nama hewan mengeong.', huruf: ['g', 'n', 'k', 'u', 'c', 'i'] }} />,
+    )
+
+    expect(html).toContain('Nama hewan mengeong.')
+    expect(html.match(/susun-huruf-tombol/g)).toHaveLength(6)
+    expect(html).not.toContain('kucing')
   })
 })

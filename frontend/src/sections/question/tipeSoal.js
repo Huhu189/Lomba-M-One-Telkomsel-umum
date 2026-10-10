@@ -18,6 +18,12 @@ export const TIPE = {
   mengurutkan: 'mengurutkan',
   letakKata: 'letak_kata',
   hubungKata: 'hubung_kata',
+  pilihanGandaKompleks: 'pilihan_ganda_kompleks',
+  benarSalahMajemuk: 'benar_salah_majemuk',
+  isianAngka: 'isian_angka',
+  pilihanGambar: 'pilihan_gambar',
+  urutGambar: 'urut_gambar',
+  susunHuruf: 'susun_huruf',
 }
 
 /** @type {Record<string, string>} */
@@ -30,6 +36,12 @@ export const LABEL_TIPE = {
   [TIPE.mengurutkan]: 'Mengurutkan',
   [TIPE.letakKata]: 'Letak kata',
   [TIPE.hubungKata]: 'Hubung kata',
+  [TIPE.pilihanGandaKompleks]: 'Pilihan ganda kompleks',
+  [TIPE.benarSalahMajemuk]: 'Benar / salah majemuk',
+  [TIPE.isianAngka]: 'Isian angka',
+  [TIPE.pilihanGambar]: 'Pilihan gambar',
+  [TIPE.urutGambar]: 'Urut gambar',
+  [TIPE.susunHuruf]: 'Susun huruf',
 }
 
 /** Tipe yang dinilai pasti (soal objektif) — cermin TipeSoal::objektif(). */
@@ -40,10 +52,22 @@ export const TIPE_OBJEKTIF = [
   TIPE.mengurutkan,
   TIPE.letakKata,
   TIPE.hubungKata,
+  TIPE.pilihanGandaKompleks,
+  TIPE.benarSalahMajemuk,
+  TIPE.isianAngka,
+  TIPE.pilihanGambar,
+  TIPE.urutGambar,
+  TIPE.susunHuruf,
 ]
 
 /** Tipe bertingkat: dinilai kata kunci, sisanya menunggu koreksi guru. */
 export const TIPE_BERTINGKAT = [TIPE.isianSingkat, TIPE.uraian]
+
+/**
+ * Tipe yang pertanyaannya bukan `konten.teks` (gambar, atau petunjuk susun
+ * huruf), sehingga isi soal boleh kosong di editor.
+ */
+export const TIPE_TANPA_TEKS = [TIPE.pilihanGambar, TIPE.urutGambar, TIPE.susunHuruf]
 
 /** Isi <select> tipe soal pada editor. */
 export const DAFTAR_TIPE = Object.keys(LABEL_TIPE).map((nilai) => ({
@@ -58,6 +82,23 @@ export const MAKS_OPSI = 6
 
 /** Minimal pasangan menjodohkan / item mengurutkan / kata & posisi letak kata. */
 export const MIN_ITEM = 2
+
+/** Batas pilihan ganda kompleks (cermin PenanganPilihanGandaKompleks). */
+export const MIN_OPSI_KOMPLEKS = 3
+export const MAKS_OPSI_KOMPLEKS = 8
+
+/** Batas pernyataan benar/salah majemuk (cermin PenanganBenarSalahMajemuk). */
+export const MIN_PERNYATAAN = 2
+export const MAKS_PERNYATAAN = 8
+
+/** Batas gambar pilihan & urut (cermin PenanganPilihanGambar / PenanganUrutGambar). */
+export const MIN_GAMBAR = 2
+export const MAKS_GAMBAR = 8
+
+/** Batas kata susun huruf & panjang petunjuk (cermin PenanganSusunHuruf). */
+export const MIN_HURUF = 2
+export const MAKS_HURUF = 20
+export const MAKS_PETUNJUK = 500
 
 /** Batas panjang teks MathML (cermin BantuanKonten::galatMatematika). */
 export const MAKS_MATEMATIKA = 2000
@@ -103,6 +144,38 @@ export function daftarAman(nilai) {
       const rekaman = /** @type {Record<string, unknown>} */ (baris)
       return { id: teksAman(rekaman.id), teks: teksAman(rekaman.teks) }
     })
+}
+
+/**
+ * Daftar item bergambar {id, media} dari konten server.
+ * @param {unknown} nilai
+ * @returns {{ id: string, media: string }[]}
+ */
+export function daftarMedia(nilai) {
+  if (!Array.isArray(nilai)) return []
+
+  return nilai
+    .filter((baris) => baris !== null && typeof baris === 'object')
+    .map((baris) => {
+      const rekaman = /** @type {Record<string, unknown>} */ (baris)
+      return { id: teksAman(rekaman.id), media: teksAman(rekaman.media) }
+    })
+}
+
+/**
+ * Peta id → boolean dari data server (mis. kunci.jawaban benar/salah majemuk).
+ * @param {unknown} nilai
+ * @returns {Record<string, boolean>}
+ */
+export function rekamanBoolean(nilai) {
+  if (nilai === null || typeof nilai !== 'object' || Array.isArray(nilai)) return {}
+
+  /** @type {Record<string, boolean>} */
+  const hasil = {}
+  for (const [kunci, isi] of Object.entries(/** @type {Record<string, unknown>} */ (nilai))) {
+    if (typeof isi === 'boolean') hasil[kunci] = isi
+  }
+  return hasil
 }
 
 /**
@@ -206,6 +279,17 @@ export function idBerikut(prefix, daftar) {
  *   posisi: ItemKonten[],
  *   penempatan: Record<string, string>,
  *   sambungan: Record<string, string>,
+ *   benarKompleks: string[],
+ *   pernyataan: ItemKonten[],
+ *   kunciPernyataan: Record<string, boolean>,
+ *   satuan: string,
+ *   angkaNilai: string,
+ *   angkaToleransi: string,
+ *   opsiGambar: ({ id: string, media: string })[],
+ *   jawabanGambar: string,
+ *   itemGambar: ({ id: string, media: string, posisi: string })[],
+ *   petunjuk: string,
+ *   kataSusun: string,
  *   pembahasan: string,
  *   skor: string,
  *   aktif: boolean,
@@ -273,6 +357,26 @@ export function stateSoalKosong() {
     ],
     penempatan: { W1: 'P1', W2: 'P2' },
     sambungan: { K1: 'N1', K2: 'N2' },
+    benarKompleks: [],
+    pernyataan: [
+      { id: 'P1', teks: '' },
+      { id: 'P2', teks: '' },
+    ],
+    kunciPernyataan: { P1: true, P2: false },
+    satuan: '',
+    angkaNilai: '',
+    angkaToleransi: '0',
+    opsiGambar: [
+      { id: 'G1', media: '' },
+      { id: 'G2', media: '' },
+    ],
+    jawabanGambar: 'G1',
+    itemGambar: [
+      { id: 'U1', media: '', posisi: '1' },
+      { id: 'U2', media: '', posisi: '2' },
+    ],
+    petunjuk: '',
+    kataSusun: '',
     pembahasan: '',
     skor: '10',
     aktif: true,
@@ -315,6 +419,32 @@ export function kontenDariState(state) {
     konten.posisi = state.posisi.map((satu) => ({ id: satu.id, teks: satu.teks.trim() }))
   }
 
+  if (state.tipe === TIPE.pilihanGandaKompleks) {
+    konten.opsi = state.opsi.map((satu) => ({ id: satu.id, teks: satu.teks.trim() }))
+  }
+
+  if (state.tipe === TIPE.benarSalahMajemuk) {
+    konten.pernyataan = state.pernyataan.map((satu) => ({ id: satu.id, teks: satu.teks.trim() }))
+  }
+
+  if (state.tipe === TIPE.isianAngka) {
+    if (state.satuan.trim() !== '') konten.satuan = state.satuan.trim()
+  }
+
+  if (state.tipe === TIPE.pilihanGambar) {
+    konten.opsi = state.opsiGambar.map((satu) => ({ id: satu.id, media: satu.media.trim() }))
+  }
+
+  if (state.tipe === TIPE.urutGambar) {
+    konten.item = state.itemGambar.map((satu) => ({ id: satu.id, media: satu.media.trim() }))
+  }
+
+  if (state.tipe === TIPE.susunHuruf) {
+    konten.petunjuk = state.petunjuk.trim()
+    // konten susun huruf tidak memakai teks soal: petunjuk sudah menggantikannya.
+    delete konten.teks
+  }
+
   return konten
 }
 
@@ -331,7 +461,26 @@ export function kunciDariState(state) {
   if (state.tipe === TIPE.hubungKata) return { sambungan: { ...state.sambungan } }
   if (state.tipe === TIPE.isianSingkat) return kunciIsian(state)
   if (state.tipe === TIPE.uraian) return kunciUraian(state)
+  if (state.tipe === TIPE.pilihanGandaKompleks) return { benar: [...state.benarKompleks] }
+  if (state.tipe === TIPE.benarSalahMajemuk) return { jawaban: { ...state.kunciPernyataan } }
+  if (state.tipe === TIPE.isianAngka) {
+    return { nilai: Number(state.angkaNilai), toleransi: Number(state.angkaToleransi || 0) }
+  }
+  if (state.tipe === TIPE.pilihanGambar) return { benar: state.jawabanGambar }
+  if (state.tipe === TIPE.urutGambar) return { urutan: urutanDariItemGambar(state.itemGambar) }
+  if (state.tipe === TIPE.susunHuruf) return { kata: state.kataSusun.trim() }
   return { jawaban: state.jawaban }
+}
+
+/**
+ * Urutan id gambar berdasarkan posisi yang diisi guru (posisi 1 paling awal).
+ * @param {{ id: string, posisi: string }[]} item
+ * @returns {string[]}
+ */
+export function urutanDariItemGambar(item) {
+  return [...item]
+    .sort((a, b) => Number(a.posisi || 0) - Number(b.posisi || 0))
+    .map((satu) => satu.id)
 }
 
 /**
@@ -490,6 +639,46 @@ export function stateDariSoal(soal) {
     if (kiri.length > 0) state.kiri = kiri
     if (kanan.length > 0) state.kanan = kanan
     state.sambungan = rekamanTeks(kunci.sambungan)
+  }
+
+  if (soal.tipe === TIPE.pilihanGandaKompleks) {
+    const opsi = daftarAman(konten.opsi)
+    if (opsi.length > 0) state.opsi = opsi
+    state.benarKompleks = daftarTeks(kunci.benar)
+  }
+
+  if (soal.tipe === TIPE.benarSalahMajemuk) {
+    const pernyataan = daftarAman(konten.pernyataan)
+    if (pernyataan.length > 0) state.pernyataan = pernyataan
+    state.kunciPernyataan = rekamanBoolean(kunci.jawaban)
+  }
+
+  if (soal.tipe === TIPE.isianAngka) {
+    state.satuan = teksAman(konten.satuan)
+    state.angkaNilai = kunci.nilai === undefined || kunci.nilai === null ? '' : String(kunci.nilai)
+    state.angkaToleransi = kunci.toleransi === undefined || kunci.toleransi === null ? '0' : String(kunci.toleransi)
+  }
+
+  if (soal.tipe === TIPE.pilihanGambar) {
+    const opsi = daftarMedia(konten.opsi)
+    if (opsi.length > 0) state.opsiGambar = opsi
+    state.jawabanGambar = teksAman(kunci.benar) || (state.opsiGambar[0]?.id ?? '')
+  }
+
+  if (soal.tipe === TIPE.urutGambar) {
+    const item = daftarMedia(konten.item)
+    const urutan = daftarTeks(kunci.urutan)
+    if (item.length > 0) {
+      state.itemGambar = item.map((satu) => {
+        const posisi = urutan.indexOf(satu.id)
+        return { ...satu, posisi: String(posisi === -1 ? '' : posisi + 1) }
+      })
+    }
+  }
+
+  if (soal.tipe === TIPE.susunHuruf) {
+    state.petunjuk = teksAman(konten.petunjuk)
+    state.kataSusun = teksAman(kunci.kata)
   }
 
   return state

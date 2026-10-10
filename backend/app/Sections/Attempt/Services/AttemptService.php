@@ -709,6 +709,7 @@ class AttemptService
 
         foreach ($this->soalTerurut($attempt) as $nomor => $soal) {
             $konten = $soal->kontenSebagaiArray();
+            $tipe = $soal->tipeAman();
 
             /** @var array<string, mixed> $bersih */
             $bersih = ['teks' => $konten['teks'] ?? ''];
@@ -721,7 +722,12 @@ class AttemptService
                 $bersih['matematika'] = $konten['matematika'];
             }
 
-            foreach (['opsi', 'kiri', 'kanan', 'item'] as $namaDaftar) {
+            // Daftar kolom yang dipakai renderer tiap tipe; kalau ada yang
+            // terlewat, murid menerima soal tanpa pilihannya sama sekali. Letak
+            // kata memakai `kata` + `posisi`, dan keduanya sempat tidak ikut
+            // sehingga soal letak kata tampil kosong di layar anak. Tipe baru
+            // menambah `pernyataan` (benar/salah majemuk) dan `item` (urut/klasifikasi).
+            foreach (['opsi', 'kiri', 'kanan', 'item', 'kata', 'posisi', 'pernyataan'] as $namaDaftar) {
                 $daftar = $konten[$namaDaftar] ?? null;
 
                 if (! is_array($daftar)) {
@@ -733,7 +739,23 @@ class AttemptService
                 $bersih[$namaDaftar] = Pengacakan::urutOpsi($baris, (int) $attempt->seed, (int) $soal->getKey(), $this->acakOpsi($attempt));
             }
 
-            $tipe = $soal->tipeAman();
+            // Kolom teks pendukung tipe baru (isian angka: satuan; susun huruf:
+            // petunjuk). Bukan daftar, jadi tidak lewat pengacakan.
+            foreach (['satuan', 'petunjuk'] as $namaTeks) {
+                if (isset($konten[$namaTeks]) && is_string($konten[$namaTeks])) {
+                    $bersih[$namaTeks] = $konten[$namaTeks];
+                }
+            }
+
+            // Susun huruf: kunci.kata tidak pernah dikirim; murid hanya menerima
+            // huruf teracak (stabil per seed attempt) untuk disusun kembali.
+            if ($tipe === TipeSoal::SusunHuruf) {
+                $kata = $soal->kunciSebagaiArray()['kata'] ?? null;
+
+                if (is_string($kata) && $kata !== '') {
+                    $bersih['huruf'] = Pengacakan::urutHuruf($kata, (int) $attempt->seed, (int) $soal->getKey());
+                }
+            }
 
             $payload[] = [
                 'id' => $soal->getKey(),

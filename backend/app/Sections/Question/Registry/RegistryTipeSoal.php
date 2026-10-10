@@ -54,6 +54,12 @@ final class RegistryTipeSoal
             TipeSoal::HubungKata => new PenanganHubungKata,
             TipeSoal::IsianSingkat => new PenanganIsianSingkat,
             TipeSoal::Uraian => new PenanganUraian,
+            TipeSoal::PilihanGandaKompleks => new PenanganPilihanGandaKompleks,
+            TipeSoal::BenarSalahMajemuk => new PenanganBenarSalahMajemuk,
+            TipeSoal::IsianAngka => new PenanganIsianAngka,
+            TipeSoal::PilihanGambar => new PenanganPilihanGambar,
+            TipeSoal::UrutGambar => new PenanganUrutGambar,
+            TipeSoal::SusunHuruf => new PenanganSusunHuruf,
         };
     }
 
