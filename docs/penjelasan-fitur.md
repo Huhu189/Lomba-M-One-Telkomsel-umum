@@ -35,13 +35,13 @@ menyimpan dan mengumpulkan jawaban tidak lagi tumbuh seiring jumlah soal.
 
 ---
 
-## 2. Delapan jenis soal dan penilaian otomatis
+## 2. Dua puluh dua jenis soal dan penilaian otomatis
 
 ### Apa ini
-Delapan bentuk soal yang biasa dipakai guru SD, yang dinilai otomatis sebisanya: pilihan ganda, benar/salah, isian singkat, uraian, menjodohkan, mengurutkan, letak kata, dan hubung kata.
+Dua puluh dua bentuk soal yang biasa dipakai guru SD, yang dinilai otomatis sebisanya. Delapan tipe lama: pilihan ganda, benar/salah, isian singkat, uraian, menjodohkan, mengurutkan, letak kata, dan hubung kata. Empat belas tipe tambahan: pilihan ganda kompleks (jawaban boleh lebih dari satu), benar/salah majemuk (beberapa pernyataan sekaligus), isian angka bertoleransi, isian rumpang (kalimat berlubang), klasifikasi (memasukkan item ke kotak), pilihan gambar, urut gambar, hotspot gambar (mengetuk bagian gambar), susun huruf, tabel isian, garis bilangan, baca jam, teka silang mini, dan tugas unggah (foto/coretan/suara hasil kerja anak — satu-satunya tipe yang selalu ditinjau guru, bukan dinilai mesin).
 
 ### Cara kerjanya
-Guru membuat soal sekali di bank soal, lengkap dengan kunci jawabannya. Saat murid selesai, soal pilihan ganda, benar/salah, menjodohkan, dan mengurutkan langsung dinilai otomatis. Isian singkat dan uraian dinilai lebih hati-hati: aplikasi mengabaikan perbedaan kecil penulisan (misalnya "pecahan" salah ketik "pecahn" masih bisa diterima sesuai ambang yang guru atur), angka harus persis, kata kunci dipakai untuk menilai uraian. Bila jawaban ragu-ragu, aplikasi menandainya "perlu ditinjau" — bukan menebak benar atau salah. Penilaian AI (bila dinyalakan) bekerja hanya di server dan hasilnya hanya **saran** untuk guru; keputusan akhir tetap guru, lewat koreksi manual yang mencatat siapa mengubah apa dan kenapa.
+Guru membuat soal sekali di bank soal, lengkap dengan kunci jawabannya. Saat murid selesai, soal yang objektif langsung dinilai otomatis — sebagian tipe juga memberi **skor sebagian**: anak yang mencentang tiga dari empat jawaban benar, atau mengisi tiga dari lima lubang, tetap mendapat nilai sesuai porsi yang benar, bukan nol. Isian singkat dan uraian dinilai lebih hati-hati: aplikasi mengabaikan perbedaan kecil penulisan (misalnya "pecahan" salah ketik "pecahn" masih bisa diterima sesuai ambang yang guru atur), angka harus persis, kata kunci dipakai untuk menilai uraian. Tugas unggah tidak pernah dinilai mesin: berkasnya masuk antrean koreksi guru lengkap dengan rubrik yang guru tulis sendiri. Bila jawaban ragu-ragu, aplikasi menandainya "perlu ditinjau" — bukan menebak benar atau salah. Penilaian AI (bila dinyalakan) bekerja hanya di server dan hasilnya hanya **saran** untuk guru; keputusan akhir tetap guru, lewat koreksi manual yang mencatat siapa mengubah apa dan kenapa.
 
 ### Mengapa aman
 Kunci jawaban hanya hidup di server. Penilaian yang gagal di satu soal tidak menjatuhkan soal lain — murid tetap dinilai adil. Koreksi manual guru butuh alasan dan pencatatan khusus (audit), sehingga perubahan nilai bisa dilacak dan tidak bisa disembunyikan.
@@ -49,9 +49,18 @@ Kunci jawaban hanya hidup di server. Penilaian yang gagal di satu soal tidak men
 ### Manfaat untuk anak SD dan guru
 Guru kelas 4 yang mengoreksi 30 lembar uraian "sebutkan ciri hewan berkaki dua" bisa pulang lebih cepat: yang jelas dinilai otomatis, yang ragu tinggal ditinjau. Anak yang tulisannya berantakan atau salah ketik tidak langsung dianggap salah — aplikasi memaklumi typo yang wajar untuk usia SD.
 
-Status: **sudah bisa dipakai** (slice 06). Delapan tipe soal tersedia di editor guru, dinilai otomatis,
+Status: **sudah bisa dipakai** (slice 06 + putaran 22 tipe). Dua puluh dua tipe soal tersedia di editor guru,
+dinilai otomatis (objektif) atau menunggu koreksi guru (isian singkat, uraian, tugas unggah),
 lalu guru mengoreksi manual lewat token konfirmasi sekali pakai yang tercatat di audit.
 Pengoreksian bahasa oleh AI menyusul di slice 09.
+
+Catatan tampilan: editor soal menaruh daftar periksa **Kelengkapan** di sisi kanan bersama pratinjau
+(cermin aturan server, jadi tombol simpan baru hidup saat soal benar-benar lengkap), dan kuis disusun
+lewat tiga langkah — info & jadwal, susun soal, lalu tinjau dan publikasikan — supaya guru tidak
+menerbitkan kuis setengah jadi. Di layar murid, tiap jenis soal menampilkan **bahan yang memang dibutuhkan**
+untuk menjawabnya (pilihan ganda: opsinya; menjodohkan/hubung kata: dua kolomnya; mengurutkan: itemnya;
+letak kata: kata **dan** kolom posisinya) — soal tidak lagi tampil kosong hanya karena server tidak ikut
+mengirim salah satu daftar itu.
 
 ---
 
@@ -147,7 +156,7 @@ perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
 Tiga hal sekaligus: penghalang sederhana saat ulangan (anti-paste, anti-pindah tab, dan lainnya), cara tahu murid mana yang perangkatnya hidup tapi diam saja, dan layar pemantauan guru secara langsung.
 
 ### Cara kerjanya
-Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Live Monitor menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang.
+Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Di server, kehadiran satu kelas disimpan sebagai satu hash Redis per kuis, sehingga setiap request murid hanya menulis satu medan miliknya sendiri — biayanya tidak tumbuh seiring jumlah anak di kelas, dan dua anak yang menyimpan jawaban bersamaan tidak saling menimpa. Live Monitor menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang.
 
 ### Mengapa aman
 Kami jujur: **deteksi di browser bisa diakali**, dan aplikasi ini tidak pernah mengklaim "tahan 100%". Karena itu catatannya berfungsi sebagai bahan tinjauan guru (valid / tidak valid / menunggu), bukan vonis. Kalau perlindungannya error, ulangan **tetap jalan** (fail-open) — proteksi tidak boleh mengorbankan ujian.
