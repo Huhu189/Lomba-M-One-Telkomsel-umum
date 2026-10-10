@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   jawabanTeks,
   kelasStatus,
+  kunciKoreksi,
   langkahKoreksi,
+  pilihItemKoreksi,
   ringkasKunci,
   saranAiTeks,
 } from '../../../sections/scoring/tampilan.js'
@@ -86,5 +88,28 @@ describe('langkahKoreksi', () => {
 
   it('tersimpan menang atas token (mis. token masih terisi setelah simpan)', () => {
     expect(langkahKoreksi({ tersimpan: true })).toBe(3)
+  })
+})
+
+describe('pemilihan baris antrean', () => {
+/** @param {number} attempt @param {number} soal */
+  const baris = (attempt, soal) => ({ attempt_id: attempt, question_id: soal })
+  const daftar = [baris(7, 3), baris(7, 9), baris(8, 3)]
+
+  it('memakai attempt + soal sebagai kunci baris', () => {
+    expect(kunciKoreksi(baris(7, 9))).toBe('7-9')
+    expect(kunciKoreksi(baris(7, 9))).not.toBe(kunciKoreksi(baris(9, 7)))
+  })
+
+  it('membuka baris yang dipilih, bukan baris pertama', () => {
+    expect(pilihItemKoreksi(daftar, '8-3')).toEqual({ item: daftar[2], indeks: 2 })
+  })
+
+  it('jatuh ke baris pertama saat belum ada pilihan atau barisnya sudah hilang', () => {
+    expect(pilihItemKoreksi(daftar, null)).toEqual({ item: daftar[0], indeks: 0 })
+    // Baris yang barusan dikoreksi hilang dari antrean setelah disegarkan,
+    // jadi kuncinya tidak lagi ditemukan dan pilihan jatuh ke baris pertama.
+    expect(pilihItemKoreksi(daftar, '7-3-yang-hilang')).toEqual({ item: daftar[0], indeks: 0 })
+    expect(pilihItemKoreksi([], '7-3')).toEqual({ item: null, indeks: -1 })
   })
 })

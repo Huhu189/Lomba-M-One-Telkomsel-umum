@@ -476,6 +476,24 @@ async function main() {
     )
 
     await buka(`/kuis/${idKuisUji}/koreksi`)
+
+    // Papan 8: antrean di kiri, detail di kanan — baris yang dikoreksi dibuka dulu.
+    const kunciBaris = `${attempt.id}-${soalTeks.uraian.id}`
+    const adaBarisAntrean = await tunggu(
+      `document.querySelector('[data-koreksi="${kunciBaris}"]') !== null`,
+      12000,
+    )
+    await evalJs(`document.querySelector('[data-koreksi="${kunciBaris}"]')?.click(); true`)
+    const barisTerbuka = await tunggu(
+      `document.querySelector('[data-koreksi="${kunciBaris}"]')?.getAttribute('aria-current') === 'true'`,
+      8000,
+    )
+    catat(
+      'baris antrean dibuka dari kolom kiri dan ditandai aria-current',
+      adaBarisAntrean === true && barisTerbuka === true,
+      `kunci ${kunciBaris}`,
+    )
+
     const halamanKoreksi = await evalJs(`__alat.teksMain()`)
     catat(
       'halaman koreksi guru tampil dengan form ber-token',

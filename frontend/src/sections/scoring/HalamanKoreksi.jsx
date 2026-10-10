@@ -20,7 +20,15 @@ import { IkonCentang } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
-import { jawabanTeks, kelasStatus, langkahKoreksi, ringkasKunci, saranAiTeks } from './tampilan.js'
+import {
+  jawabanTeks,
+  kelasStatus,
+  kunciKoreksi,
+  langkahKoreksi,
+  pilihItemKoreksi,
+  ringkasKunci,
+  saranAiTeks,
+} from './tampilan.js'
 
 /** Nama ketiga langkah koreksi — dipakai penunjuk langkah di dalam form. */
 const LANGKAH_KOREKSI = ['Skor & alasan', 'Token konfirmasi', 'Tersimpan']
@@ -171,7 +179,8 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
       {tokenKedaluwarsa !== null && (
         <p className="teks-lembut small mb-2">
           Token konfirmasi aktif sampai {new Date(tokenKedaluwarsa).toLocaleTimeString('id-ID')}. Token
-          hangus setelah dipakai atau kedaluwarsa.
+          diterbitkan server untuk tindakan ini saja dan hangus setelah dipakai atau kedaluwarsa — simpan
+          koreksi sebelum waktunya habis.
         </p>
       )}
 
@@ -208,6 +217,10 @@ export default function HalamanKoreksi() {
   const { id } = useParams()
   const nomor = Number(id)
   const klienQuery = useQueryClient()
+  // Baris antrean yang sedang dibuka, disimpan sebagai kunci (attempt + soal) —
+  // bukan nomor urut — supaya pilihan guru tidak bergeser saat antrean menyegar
+  // dan baris yang sudah dikoreksi hilang.
+  const [kunci, setKunci] = useState(/** @type {string|null} */ (null))
 
   const antrean = useQuery({
     queryKey: ['koreksi', nomor],
@@ -229,9 +242,11 @@ export default function HalamanKoreksi() {
     )
   }
 
+  const terpilih = pilihItemKoreksi(data.item, kunci).item
+
   return (
     <div className="row justify-content-center">
-      <div className="col-lg-10">
+      <div className="col-lg-11">
         <div className="kartu-soft p-4 p-md-5">
           <HeaderHalaman
             judul={`Koreksi manual · ${data.judul_kuis}`}
@@ -260,41 +275,82 @@ export default function HalamanKoreksi() {
             </KosongData>
           )}
 
-          <div className="d-flex flex-column gap-3">
-            {data.item.map((item) => (
-              <section
-                key={`${item.attempt_id}-${item.question_id}`}
-                className="kartu-soft p-3"
-                aria-label={`Koreksi soal ${item.question_id}`}
-              >
-                <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-                  <span className="fw-semibold">{item.murid_nama ?? 'Murid'}</span>
-                  <span className="teks-lembut small">attempt #{item.no_attempt ?? item.attempt_id}</span>
-                  <span className="badge-status lembut">{item.tipe_label}</span>
-                  <span className={kelasStatus(item.status)}>{item.status_label}</span>
-                  {item.dinilai_manual && <span className="badge-status info">Sudah dikoreksi</span>}
-                  <span className="teks-lembut small ms-auto">
-                    skor {item.skor_sekarang} / {item.skor_maksimal}
-                  </span>
-                </div>
+          {data.jumlah > 0 && (
+            <div className="row g-4">
+              {/* Antrean kiri: satu baris per jawaban yang menunggu tinjauan. */}
+              <div className="col-12 col-lg-5 col-xl-4">
+                <h2 className="h6 fw-bold mb-2">Antrean</h2>
+                <ol className="list-unstyled mb-0">
+                  {data.item.map((satu) => {
+                    const kunciBaris = kunciKoreksi(satu)
+                    const dibuka = terpilih !== null && kunciKoreksi(terpilih) === kunciBaris
 
-                <p className="mb-1">{item.teks_soal}</p>
-                <p className="mb-1">
-                  <strong>Jawaban murid:</strong> {jawabanTeks(item.jawaban)}
-                </p>
-                <p className="teks-lembut small mb-3">
-                  <strong>Kunci:</strong> {ringkasKunci(item.kunci)}
-                </p>
+                    return (
+                      <li key={kunciBaris} className="mb-2">
+                        <button
+                          type="button"
+                          className="btn btn-tepi btn-lebar text-start"
+                          data-koreksi={kunciBaris}
+                          aria-current={dibuka ? 'true' : undefined}
+                          onClick={() => setKunci(kunciBaris)}
+                        >
+                          <span className="fw-semibold">{satu.murid_nama ?? 'Murid'}</span>
+                          <span className="d-block small teks-lembut">
+                            {satu.tipe_label} · attempt #{satu.no_attempt ?? satu.attempt_id} ·{' '}
+                            skor {satu.skor_sekarang} / {satu.skor_maksimal}
+                          </span>
+                          <span className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                            <span className={kelasStatus(satu.status)}>{satu.status_label}</span>
+                            {satu.dinilai_manual && <span className="badge-status info">Sudah dikoreksi</span>}
+                            {dibuka && <span className="badge-status lembut">sedang dibuka</span>}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </div>
 
-                <FormKoreksi
-                  item={item}
-                  alasanMin={data.alasan_min}
-                  aiAktif={data.ai_aktif}
-                  onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', nomor] })}
-                />
-              </section>
-            ))}
-          </div>
+              {/* Detail kanan: hanya baris yang dibuka, supaya satu form saja hidup. */}
+              <div className="col-12 col-lg-7 col-xl-8">
+                {terpilih === null ? (
+                  <Banner jenis="info">Pilih satu jawaban di antrean untuk mulai mengoreksi.</Banner>
+                ) : (
+                  <section className="kartu-lembut p-3" aria-label={`Koreksi soal ${terpilih.question_id}`}>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <span className="fw-semibold">{terpilih.murid_nama ?? 'Murid'}</span>
+                      <span className="teks-lembut small">
+                        attempt #{terpilih.no_attempt ?? terpilih.attempt_id}
+                      </span>
+                      <span className="badge-status lembut">{terpilih.tipe_label}</span>
+                      <span className={kelasStatus(terpilih.status)}>{terpilih.status_label}</span>
+                      {terpilih.dinilai_manual && <span className="badge-status info">Sudah dikoreksi</span>}
+                      <span className="teks-lembut small ms-auto">
+                        skor {terpilih.skor_sekarang} / {terpilih.skor_maksimal}
+                      </span>
+                    </div>
+
+                    <p className="mb-1">{terpilih.teks_soal}</p>
+                    <p className="mb-1">
+                      <strong>Jawaban murid:</strong> {jawabanTeks(terpilih.jawaban)}
+                    </p>
+                    <p className="teks-lembut small mb-3">
+                      <strong>Kunci:</strong> {ringkasKunci(terpilih.kunci)}
+                    </p>
+
+                    {/* `key` mengikat keadaan form ke barisnya: pindah baris = form bersih. */}
+                    <FormKoreksi
+                      key={kunciKoreksi(terpilih)}
+                      item={terpilih}
+                      alasanMin={data.alasan_min}
+                      aiAktif={data.ai_aktif}
+                      onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', nomor] })}
+                    />
+                  </section>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="d-flex flex-wrap gap-2 mt-4">
             <Link className="btn btn-tepi" to={RUTE.kuis}>

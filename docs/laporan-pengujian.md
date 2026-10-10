@@ -2417,39 +2417,67 @@ Di-commit: backend + frontend + tes sebagai `a859f78`; dokumen & harness menyusu
 
 ---
 
-## A.32 Papan 8 — Penunjuk Langkah di Koreksi Manual + Sisa Tombol Bootstrap (10 Oktober 2026)
+## A.32 Papan 8 — Susunan Dua Kolom, Pemilihan Baris, dan Penunjuk Langkah Koreksi (10 Oktober 2026)
 
-Lanjutan utang "papan 8 (Koreksi) masih sebagian" dari A.27.6/A.31.5. Putaran ini mengambil bagian yang
-bisa dikerjakan **tanpa mengubah makna token** (perubahan alur token menyentuh harness smoke slice 06,
-jadi butuh keputusan tersendiri).
+Lanjutan utang "papan 8 (Koreksi) masih sebagian" dari A.27.6/A.31.5. Putaran ini menuntaskan susunan
+dua kolom, pemilihan baris antrean, dan penunjuk langkah, serta **memutuskan secara sadar** untuk tidak
+meniru kolom "ketik token 6 angka" di papan desain (alasannya di A.32.1b).
 
 ### A.32.1 Yang dikerjakan
 
-- **Penunjuk langkah koreksi** di dalam form setiap baris antrean: `1 Skor & alasan → 2 Token konfirmasi
-  → 3 Tersimpan`, memakai komponen `Langkah` yang sudah ada (punya `aria-current="step"`, bukan hanya
-  warna). Nomor langkahnya dihitung pembantu murni `langkahKoreksi()` di `sections/scoring/tampilan.js`,
-  jadi penunjuk tidak bisa berbeda pendapat dengan keadaan tombol.
+- **Susunan dua kolom (papan 8)**: kolom kiri `Antrean` — satu baris per jawaban yang menunggu tinjauan,
+  teksnya `murid · tipe · attempt · skor sekarang/maksimal` plus lencana status; kolom kanan `detail` —
+  hanya baris yang sedang dibuka, berisi soal, jawaban murid, kunci, saran AI, lalu form koreksi. Sebelum
+  ini semua kartu baris dirender sekaligus dalam satu kolom.
+- **Pemilihan baris memakai identitas, bukan nomor urut**: state menyimpan kunci `attempt_id-question_id`
+  (`kunciKoreksi()`) dan baris aktif dicari dengan `pilihItemKoreksi()`. Penting karena satu koreksi yang
+  tersimpan **hilang dari antrean** dan nomor urut baris lain bergeser — kalau pilihan disimpan sebagai
+  indeks, guru akan mendadak berpindah ke baris yang salah. Bila kunci pilihannya sudah tidak ada,
+  pilihan jatuh ke baris pertama (bukan kosong).
+- **Baris aktif ditandai untuk pembaca layar**: `aria-current="true"` pada tombol baris, plus lencana
+  "sedang dibuka", jadi bukan hanya warna. Tombol baris juga membawa `data-koreksi="<attempt>-<soal>"`
+  sebagai pegangan stabil untuk harness smoke (tidak bergantung urutan atau teks).
+- **Penunjuk langkah koreksi**: `1 Skor & alasan → 2 Token konfirmasi → 3 Tersimpan`, memakai komponen
+  `Langkah` yang sudah ada (`aria-current="step"`). Nomor langkahnya dihitung pembantu murni
+  `langkahKoreksi()`, jadi penunjuk tidak bisa berbeda pendapat dengan keadaan tombol.
+- **Form diikat ke barisnya**: `FormKoreksi` diberi `key={kunciKoreksi(terpilih)}`, sehingga berpindah
+  baris = form bersih; skor/alasan/token baris sebelumnya tidak terbawa ke baris berikutnya.
 - **Sisa tombol Bootstrap dibersihkan**: dua `<button className="btn btn-tepi btn-sedang">` di
   `FormKoreksi` (tombol "Pakai saran AI"/"Minta saran AI") diganti `Tombol varian="tepi"`. Salah satu di
   antaranya bahkan menempel tanpa spasi (`type="button"className=…`) — ikut hilang.
+
+### A.32.1b Keputusan: token konfirmasi **tidak** dibuat jadi kolom "ketik 6 angka"
+
+Papan desain menggambar langkah kedua sebagai "Masukkan token konfirmasi — Token 6 angka", tetapi itu
+**mock demo**, bukan protokol yang sebenarnya ada di server: `TokenKonfirmasiService` menerbitkan
+`bin2hex(random_bytes(24))` — **48 karakter heksadesimal** — dan token itu terikat pada guru, tujuan,
+ serta sasaran (attempt + soal), berlaku 300 detik, dan sekali pakai.
+
+Memaksa guru mengetik 48 karakter acak bukan pengaman tambahan (token tetap kembali ke klien yang sama di
+respons yang sama) melainkan sekadar menambah peluang salah ketik pada tindakan yang sensitif. Jadi yang
+dipilih: **langkah konfirmasi tetap dua aksi klien** ("Minta token konfirmasi" → "Simpan koreksi") dengan
+penunjuk langkah yang jujur, dan teks di layar menjelaskan token itu diterbitkan server untuk tindakan ini
+saja lalu hangus — bukan pura-pura menyuruh mengetik kode. Perbedaan dari mock dicatat di sini supaya tidak
+terlihat seperti kelalaian.
 
 ### A.32.2 Verifikasi (dijalankan, bukan klaim)
 
 | Perintah | Hasil |
 | --- | --- |
-| `npx vitest run src/__tests__/sections/scoring` | **19 passed** (2 berkas; 3 tes baru untuk `langkahKoreksi`) |
+| `npx vitest run src/__tests__/sections/scoring` | **22 passed** (2 berkas) — 3 tes `langkahKoreksi` + 3 tes pemilihan baris (`kunciKoreksi`/`pilihItemKoreksi`) |
 | `npx eslint src/sections/scoring src/__tests__/sections/scoring` | 0 masalah |
-| `npm run check` (checkJs) | OK |
-| `docs/jalankan-smoke-ui.sh slice06` (backend+vite+realtime+Chrome) | **27/27 lulus, exit 0** — halaman koreksi tetap menampilkan form ber-token, token terbit, koreksi tersimpan, dan nilai naik lewat UI |
-| `./verify.sh` (root) | **SEMUA HIJAU exit 0** — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint 0 error (2 warning lama) · Vitest **56 berkas / 505 test** · realtime 15 test |
+| `npm run check` (checkJs) | OK (pembantu pemilihan baris dibuat **generik** lewat `@template` supaya tipe baris antrean tidak terpotong jadi `{attempt_id, question_id}` saja) |
+| `node --check docs/smoke-ui-slice06.mjs` | sintaks OK |
+| `docs/jalankan-smoke-ui.sh slice06` (backend+vite+realtime+Chrome) | **28/28 lulus, exit 0** — termasuk satu pemeriksaan baru: baris antrean dibuka dari kolom kiri dan ditandai `aria-current`; lalu token terbit, koreksi tersimpan, dan nilai naik lewat UI |
+| `./verify.sh` (root) | **SEMUA HIJAU exit 0** — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint 0 error (2 warning lama) · Vitest **56 berkas / 511 test** (A.31: 505) · realtime 15 test |
 
 ### A.32.3 Batasan jujur (yang belum selesai)
 
-- **Susunan dua kolom "antrean kiri + detail kanan" belum**: halaman masih satu kolom berisi daftar kartu.
-  Rencananya butuh satu keputusan tambahan: baris antrean mana yang otomatis terpilih, karena harness
-  smoke slice 06 mengisi form baris uraian lewat id `#skor-<attempt>-<soal>` — kalau hanya baris TERPILIH
-  yang dirender, pemilihan bawaan harus dijamin tepat supaya harness tetap sahih.
-- **Token masih terisi otomatis** dari respons "minta token" (belum ada langkah mengetik token seperti di
-  papan desain). Ini memang perilaku lama; mengubahnya berarti mengubah makna langkah konfirmasi dan
-  harus disertai keputusan apakah token ditampilkan ke guru atau dikirim lewat jalur lain.
-- Uji regresi visual/screenshot tetap belum ada; bukti tata letak dari DOM/CDP.
+- **Harness smoke slice 06 ikut disesuaikan** (menambah satu langkah: membuka baris antrean lewat
+  `data-koreksi`) — tanpa itu harness akan gagal, dan itu memang konsekuensi sah dari perubahan tata
+  letak; harness lalu dijalankan ulang dan **28/28 lulus**.
+- Halaman koreksi tetap **satu form hidup** (hanya baris terpilih yang dirender). Nilai per soal yang
+  sudah dinilai mesin tetap bisa diubah bila barisnya muncul di antrean; di luar itu tidak ada jalur
+  "telusuri attempt" di halaman ini.
+- Uji regresi visual/screenshot tetap belum ada; bukti tata letak dari DOM/CDP (kolom kiri/kanan, baris
+  aktif, lebar, dan posisi).

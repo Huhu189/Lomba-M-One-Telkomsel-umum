@@ -75,6 +75,39 @@ export function langkahKoreksi(keadaan) {
 }
 
 /**
+ * Kunci unik satu baris antrean koreksi (attempt + soal).
+ *
+ * Dipakai untuk memilih baris di antrean **berdasarkan identitasnya**, bukan
+ * nomor urut baris: setelah satu koreksi tersimpan, baris itu hilang dari
+ * antrean dan nomor urut baris lain bergeser — pilihan guru tidak boleh ikut
+ * bergeser karena itu.
+ *
+ * @param {{ attempt_id: number, question_id: number }} item
+ * @returns {string}
+ */
+export function kunciKoreksi(item) {
+  return `${item.attempt_id}-${item.question_id}`
+}
+
+/**
+ * Baris antrean yang sedang dibuka: yang cocok dengan `kunci`, atau baris
+ * pertama bila kunci itu sudah tidak ada lagi di antrean (mis. barisnya baru
+ * selesai dikoreksi).
+ *
+ * @template {{ attempt_id: number, question_id: number }} T
+ * @param {T[]} daftar
+ * @param {string|null} kunci
+ * @returns {{ item: T|null, indeks: number }}
+ */
+export function pilihItemKoreksi(daftar, kunci) {
+  if (!Array.isArray(daftar) || daftar.length === 0) return { item: null, indeks: -1 }
+
+  const indeks = daftar.findIndex((satu) => kunciKoreksi(satu) === kunci)
+
+  return indeks >= 0 ? { item: daftar[indeks], indeks } : { item: daftar[0], indeks: 0 }
+}
+
+/**
  * Kelas lencana status penilaian (perlu ditinjau vs gagal).
  * @param {string} status
  * @returns {string}

@@ -317,14 +317,18 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
   Pest/Vitest), pemutaran masih satu MP4 dev (5,4 MB), dan langkah penyegaran log mentah di
   `export-word.sh` sengaja belum dijalankan.
 
-- **Putaran papan 8 — penunjuk langkah koreksi manual (10 Oktober 2026)**: lanjutan utang A.27.6/A.31.5
-  yang tidak mengubah makna token. Form koreksi setiap baris antrean kini memakai penunjuk langkah
-  `1 Skor & alasan → 2 Token konfirmasi → 3 Tersimpan` (komponen `Langkah`, `aria-current="step"`), dan
-  nomor langkahnya dihitung pembantu murni `langkahKoreksi()` di `sections/scoring/tampilan.js` supaya
-  penunjuk tidak pernah berbeda pendapat dengan keadaan tombol. Dua sisa tombol Bootstrap di `FormKoreksi`
-  (salah satunya menempel tanpa spasi: `type="button"className=…`) diganti `Tombol varian="tepi"`.
-  Verifikasi: Vitest scoring **19 passed** (3 tes baru), ESLint 0 masalah, checkJs OK, dan alur koreksi
-  lewat layar sungguhan diulang lewat runner baru `docs/jalankan-smoke-ui.sh slice06` — **27/27 lulus**;
-  `./verify.sh` **SEMUA HIJAU exit 0**. Batasan di A.32.3: susunan dua kolom "antrean kiri + detail kanan"
-  belum (butuh keputusan baris mana yang otomatis terpilih agar harness slice 06 tetap sahih), dan token
-  masih terisi otomatis dari respons server, belum diketik seperti di papan desain.
+- **Putaran papan 8 — koreksi manual jadi dua kolom (10 Oktober 2026)**: lanjutan utang A.27.6/A.31.5,
+  dikerjakan penuh setelah pengguna memberi arahan "pilih best practice". Halaman koreksi kini **dua
+  kolom**: kiri `Antrean` (satu baris per jawaban yang menunggu tinjauan, `aria-current="true"` pada baris
+  aktif + lencana "sedang dibuka"), kanan detail hanya baris yang dibuka. Baris aktif dipilih lewat
+  **identitas** `attempt_id-question_id` (`kunciKoreksi`/`pilihItemKoreksi`) bukan nomor urut, karena satu
+  koreksi yang tersimpan hilang dari antrean dan nomor urut baris lain bergeser; form diberi
+  `key={kunciKoreksi(terpilih)}` supaya pindah baris = form bersih. Ditambah penunjuk langkah
+  `1 Skor & alasan → 2 Token konfirmasi → 3 Tersimpan` (`langkahKoreksi()`), dan dua sisa tombol Bootstrap
+  di `FormKoreksi` (salah satunya menempel tanpa spasi: `type="button"className=…`) diganti `Tombol`.
+  **Keputusan sadar**: kolom "ketik token 6 angka" dari papan desain **tidak** ditiru — token aslinya
+  `bin2hex(random_bytes(24))` (48 karakter) yang terikat guru + tindakan + sasaran, jadi memaksa mengetiknya
+  hanya menambah peluang salah ketik tanpa tambahan pengaman. Verifikasi: Vitest scoring **22 passed**
+  (6 tes baru), ESLint 0 masalah, checkJs OK, smoke slice 06 **28/28** (harness disesuaikan: membuka baris
+  antrean lewat `data-koreksi` lebih dulu) lewat runner baru `docs/jalankan-smoke-ui.sh`, dan `./verify.sh`
+  **SEMUA HIJAU exit 0** (Pest 256/2304 · Vitest 56 berkas/511 test).

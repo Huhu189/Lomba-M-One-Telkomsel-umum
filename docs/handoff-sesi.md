@@ -11,12 +11,12 @@ koreksi manual).
 
 | Perintah | Hasil |
 | --- | --- |
-| `./verify.sh` (root) | HIJAU (exit 0) — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **56 berkas / 505 test** · realtime 15 test |
+| `./verify.sh` (root) | HIJAU (exit 0) — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **56 berkas / 511 test** · realtime 15 test |
 | `php artisan test --filter=Slice08Test` | 12 passed (172 assertions) — termasuk 3 tes rasio/tampilan/kuis-sisipan |
 | `npx vitest run src/__tests__/sections/material` | 54 passed (4 berkas) |
 | Seluruh smoke UI satu tarikan (`nav`→`susun`→`03`→`04`→`05`→`06`→`07`) | **148 pemeriksaan lulus**: 14/14 · 40/40 · 9/9 · 18/18 · 20/20 · 27/27 · 20/20 (semua exit 0) — **terakhir dijalankan putaran A.29**, belum diulang sesudah A.30/A.31 |
 | `docs/jalankan-smoke-materi.sh` (pemutar materi + kuis sisipan, putaran A.31) | **22/22 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu) |
-| `docs/jalankan-smoke-ui.sh slice06` (ulang setelah perubahan papan 8, putaran A.32) | **27/27 lulus, exit 0** — backend+vite+realtime+Chrome |
+| `docs/jalankan-smoke-ui.sh slice06` (ulang sesudah papan 8 dua kolom, putaran A.32) | **28/28 lulus, exit 0** — backend+vite+realtime+Chrome; termasuk pemeriksaan baru “baris antrean dibuka dari kolom kiri + `aria-current`” |
 | `node docs/smoke-http-fitur.mjs` | **242/242 lulus** (butuh backend + realtime hidup) — juga dari putaran A.29 |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
@@ -50,10 +50,12 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   memunculkan kuis saat video mencapai detiknya (video wajib menunggu kuis wajib di dalamnya).
   Dokumentasi putaran ini ada di `laporan-pengujian.md` A.31 (termasuk daftar modifikasi yang saya
   lakukan terhadap paket eksternal dan alasan tiap modifikasi).
-- **A.32 — penunjuk langkah koreksi manual (papan 8, sebagian)**: `Langkah` + pembantu murni
-  `langkahKoreksi()` di `sections/scoring/tampilan.js` (3 tes baru), dan dua sisa tombol Bootstrap di
-  `FormKoreksi` diganti `Tombol`. Verifikasi: Vitest scoring 19 passed, checkJs OK, ESLint 0 masalah,
-  smoke slice 06 **27/27**, `./verify.sh` SEMUA HIJAU.
+- **A.32 — papan 8 tuntas**: halaman koreksi jadi **dua kolom** (antrean kiri, detail kanan), baris aktif
+  dipilih lewat identitas `attempt-soal` (`kunciKoreksi`/`pilihItemKoreksi`, 3 tes) bukan nomor urut,
+  ditandai `aria-current="true"` + `data-koreksi`, form diikat `key` ke barisnya, penunjuk langkah
+  "Skor & alasan → Token konfirmasi → Tersimpan" (`langkahKoreksi`, 3 tes), dan dua sisa tombol Bootstrap
+  diganti `Tombol`. Verifikasi: Vitest scoring 22 passed, checkJs OK, ESLint 0 masalah, smoke slice 06
+  **28/28** (harness disesuaikan: membuka baris antrean dulu), `./verify.sh` SEMUA HIJAU (Vitest 511).
 - **Runner smoke generik (A.32): `docs/jalankan-smoke-ui.sh <nama-harness>`** — menyalakan backend + vite +
   realtime + queue worker + Chrome dalam satu proses shell lalu mematikannya lagi, supaya harness lama
   (slice06/slice07, dsb.) bisa dijalankan sebagai satu perintah tanpa meninggalkan proses latar.
@@ -76,10 +78,12 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 - **Objektif 2B–2D (deteksi tamper/extension sisi klien) belum**: MutationObserver + pemindai berkala,
   pemeriksaan integritas fungsi proteksi, endpoint denyut ber-nonce, `SapuPresence` yang mengubah denyut
   berhenti menjadi `tamper_suspected`, dan pengirim sisi klien untuk dua kategori baru.
-- **Papan 8 (halaman Koreksi) masih sebagian**: penunjuk langkah ("Skor & alasan → Token konfirmasi →
-  Tersimpan") dan sisa tombol Bootstrap sudah beres di A.32, tetapi **susunan dua kolom "antrean kiri +
-  detail kanan" belum** dan **token masih terisi otomatis** (belum ada langkah mengetik token seperti
-  papan desain). Alur koreksinya sendiri sudah terbukti jalan (smoke slice 06, 27/27).
+- **Papan 8 (halaman Koreksi) sudah tuntas menurut keputusan A.32**: dua kolom (antrean kiri + detail
+  kanan), pemilihan baris berbasis identitas (`kunciKoreksi`/`pilihItemKoreksi`), penunjuk langkah, dan
+  sisa tombol Bootstrap beres. Yang **sengaja tidak** ditiru dari mock: kolom "ketik token 6 angka" —
+  token server sebenarnya `bin2hex(random_bytes(24))` (48 karakter), jadi memaksa guru mengetiknya hanya
+  menambah peluang salah ketik tanpa tambahan pengaman (alasan lengkap di `laporan-pengujian.md` A.32.1b).
+  Bukti layar: smoke slice 06 **28/28**.
 - **Papan 12 sudah jadi dan smoke UI-nya sudah lulus 22/22**, tetapi harness itu masih satu jalur:
   kuis mode _jeda_ di dalam video (mode _berjalan_ dan tata panel horizontal baru diuji Pest/Vitest), dan
   pemutaran masih terbukti dengan **satu MP4 dev** (5,4 MB), bukan semua kodek.
