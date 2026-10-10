@@ -2289,11 +2289,32 @@ Frontend (diubah): `sections/question/tipeSoal.js`, `validasi.js`, `EditorSoal.j
 
 ### A.30.8 Batasan jujur (yang belum selesai)
 
-- **Objektif 2 (deteksi extension: `dom_injection`, `extension_detected`, MutationObserver, heartbeat
-  nonce, `SapuPresence` → `tamper_suspected`) belum dikerjakan sama sekali.**
+- **Objektif 2 baru dikerjakan sebagian (2A).** Yang sudah jadi: `KategoriKecurangan` menaruh
+  `tamper_suspected` di kelompok turunan server (`dariKlien() = false`), ditambah kategori klien
+  `dom_injection` (skor 7) dan `extension_detected` (skor 6) beserta labelnya. Lihat A.30.9.
+  Yang belum ada: MutationObserver + pemindai berkala di klien, pemeriksaan integritas fungsi
+  proteksi, endpoint denyut ber-nonce, dan `SapuPresence` yang mengubah denyut berhenti menjadi
+  `tamper_suspected`.
+- `docs/word/` belum disegarkan karena `docs/export-log-sesi.py` + `docs/export-word.sh` belum dijalankan.
 - `docs/export-log-sesi.py` + `docs/export-word.sh` **belum dijalankan** untuk putaran ini, jadi dokumen
   Word di `docs/word/` belum disegarkan.
 - Smoke UI (`docs/smoke-ui-*.mjs`) belum dijalankan untuk tipe baru; bukti perilakunya masih dari
   Pest/Vitest.
 - Editor hotspot hanya memakai kotak angka (tanpa tarik-lepas area di atas gambar), dan editor teka silang
   memakai konvensi teks (huruf + `#`) alih-alih klik per kotak.
+
+### A.30.9 Objektif 2A — kategori kecurangan selaras (dijalankan)
+
+- `KategoriKecurangan::TamperSuspected` pindah ke kelompok **turunan server** (`dariKlien() = false`),
+  supaya murid tidak bisa menulis sendiri "dugaan gangguan proteksi" untuk mengaburkan catatan.
+- Kategori klien baru: `dom_injection` (skor risiko 7, label “Elemen asing disisipkan ke halaman”) dan
+  `extension_detected` (skor risiko 6, label “Extension peramban terdeteksi”). Label Live Monitor ikut
+  otomatis karena UI memakai `kategori_label` dari `KejadianKecuranganResource`.
+- Uji baru di `tests/Feature/Slice07Test.php`: tabel kebenaran `dariKlien()` untuk semua kasus enum,
+  kiriman klien `dom_injection` + `extension_detected` diterima (201), dan `tamper_suspected` dari klien
+  ditolak (422) tanpa menambah baris catatan.
+- Uji lama yang mengirim `tamper_suspected` dari klien diganti memakai `dom_injection`; perilaku
+  append-only-nya tetap diuji apa adanya.
+- Hasil: `php artisan test --filter=Slice07` → **16 passed (163 assertions)**; `./verify.sh` **SEMUA HIJAU**.
+- Belum: pengirim sisi klien untuk dua kategori baru, denyut ber-nonce, `SapuPresence`, dan pemeriksaan
+  integritas fungsi proteksi (bagian 2B–2D).

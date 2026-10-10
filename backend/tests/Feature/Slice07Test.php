@@ -175,7 +175,7 @@ it('catatan kecurangan bersifat append-only: hanya kolom tinjauan yang boleh ber
     $attempt = mulaiAttempt07($this->murid, $kuis);
 
     $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
-        'kejadian' => [['kategori' => 'tamper_suspected']],
+        'kejadian' => [['kategori' => 'dom_injection']],
     ])->assertCreated();
 
     $kejadian = KejadianKecurangan::query()->firstOrFail();
@@ -197,7 +197,46 @@ it('catatan kecurangan bersifat append-only: hanya kolom tinjauan yang boleh ber
 
     expect($segar->refresh()->review_status)->toBe(StatusTinjauan::Valid)
         // Isi catatan di database tidak berubah sama sekali.
-        ->and($segar->kategori)->toBe(KategoriKecurangan::TamperSuspected);
+        ->and($segar->kategori)->toBe(KategoriKecurangan::DomInjection);
+});
+
+it('membedakan kategori turunan server dari kategori perangkat murid', function (): void {
+    $turunanServer = ['duplicate_session', 'long_offline', 'late_submit', 'clock_jump', 'tamper_suspected'];
+
+    foreach (KategoriKecurangan::cases() as $kategori) {
+        expect($kategori->dariKlien())->toBe(! in_array($kategori->value, $turunanServer, true))
+            ->and($kategori->label())->not->toBe('');
+    }
+
+    // Denyut proteksi yang berhenti diturunkan server; murid tidak boleh
+    // menuliskannya sendiri (bisa dipakai mengaburkan catatan).
+    expect(KategoriKecurangan::TamperSuspected->dariKlien())->toBeFalse()
+        ->and(KategoriKecurangan::DomInjection->dariKlien())->toBeTrue()
+        ->and(KategoriKecurangan::ExtensionDetected->dariKlien())->toBeTrue();
+});
+
+it('menerima kategori deteksi extension dari klien dan menolak tamper_suspected', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+    $jalur = "/api/v1/attempt/{$attempt->id}/kejadian";
+
+    $this->postJson($jalur, [
+        'kejadian' => [
+            ['kategori' => 'dom_injection', 'rincian' => ['tag' => 'script']],
+            ['kategori' => 'extension_detected', 'rincian' => ['skema' => 'chrome-extension://abcdef']],
+        ],
+    ])->assertCreated();
+
+    expect(KejadianKecurangan::query()->count())->toBe(2)
+        ->and(KejadianKecurangan::query()->pluck('kategori')->map(
+            static fn (KategoriKecurangan $k): string => $k->value,
+        )->all())->toBe(['dom_injection', 'extension_detected']);
+
+    $this->postJson($jalur, [
+        'kejadian' => [['kategori' => 'tamper_suspected']],
+    ])->assertStatus(422)->assertJsonValidationErrors(['kejadian.0.kategori']);
+
+    expect(KejadianKecurangan::query()->count())->toBe(2);
 });
 
 it('guru meninjau catatan (valid/tidak valid) dan tinjauannya tercatat di audit', function (): void {

@@ -13,9 +13,14 @@ namespace App\Sections\Cheat\Enums;
  * `dariKlien()` membedakan kejadian yang boleh dikirim perangkat murid dari
  * kejadian yang **hanya** boleh diturunkan server (mis. `duplicate_session`,
  * `late_submit`). Ini menutup celah murid menulis catatan turunan server —
- * mis. mengaku "sesi ganda" — untuk mengaburkan catatan. `tamper_suspected`
- * tetap kategori sisi klien sesuai chunk anticheat (detektor tamper berjalan
- * di perangkat); saat ini belum ada pengirimnya.
+ * mis. mengaku "sesi ganda" — untuk mengaburkan catatan.
+ *
+ * `tamper_suspected` kini turunan server: ia muncul saat denyut proteksi murid
+ * berhenti padahal attempt masih berjalan (lihat SapuPresence), jadi perangkat
+ * murid tidak boleh menuliskannya sendiri. Deteksi sisi klien yang memang
+ * berasal dari perangkat memakai kategori `dom_injection` (elemen asing
+ * disisipkan ke halaman ulangan) dan `extension_detected` (peramban memuat
+ * sumber/skrip dari skema extension).
  */
 enum KategoriKecurangan: string
 {
@@ -28,13 +33,15 @@ enum KategoriKecurangan: string
     case ScreenshotAttempt = 'screenshot_attempt';
     case DevtoolsOpen = 'devtools_open';
     case DevtoolsShortcut = 'devtools_shortcut';
-    case TamperSuspected = 'tamper_suspected';
+    case DomInjection = 'dom_injection';
+    case ExtensionDetected = 'extension_detected';
 
     // Turunan server (dihitung dari data yang server pegang sendiri).
     case DuplicateSession = 'duplicate_session';
     case LongOffline = 'long_offline';
     case LateSubmit = 'late_submit';
     case ClockJump = 'clock_jump';
+    case TamperSuspected = 'tamper_suspected';
 
     /**
      * Skor risiko acuan (chunk anticheat). Angka ini bukan hukuman; ia hanya
@@ -45,8 +52,8 @@ enum KategoriKecurangan: string
         return match ($this) {
             self::TamperSuspected => 9,
             self::DuplicateSession, self::DevtoolsOpen, self::DevtoolsShortcut => 8,
-            self::ScreenshotAttempt => 7,
-            self::PasteAttempt, self::ClockJump => 6,
+            self::ScreenshotAttempt, self::DomInjection => 7,
+            self::PasteAttempt, self::ClockJump, self::ExtensionDetected => 6,
             self::TextSelectAttempt => 5,
             self::TabSwitch, self::FullscreenExit, self::LongOffline => 4,
             self::WindowBlur, self::LateSubmit => 3,
@@ -64,7 +71,9 @@ enum KategoriKecurangan: string
             self::ScreenshotAttempt => 'Percobaan tangkapan layar',
             self::DevtoolsOpen => 'Alat pengembang terbuka',
             self::DevtoolsShortcut => 'Pintasan alat pengembang',
-            self::TamperSuspected => 'Dugaan gangguan pada proteksi',
+            self::DomInjection => 'Elemen asing disisipkan ke halaman',
+            self::ExtensionDetected => 'Extension peramban terdeteksi',
+            self::TamperSuspected => 'Dugaan gangguan pada proteksi (denyut berhenti)',
             self::DuplicateSession => 'Sesi ganda',
             self::LongOffline => 'Lama tidak aktif',
             self::LateSubmit => 'Mengumpulkan terlambat',
@@ -76,7 +85,8 @@ enum KategoriKecurangan: string
     public function dariKlien(): bool
     {
         return match ($this) {
-            self::DuplicateSession, self::LongOffline, self::LateSubmit, self::ClockJump => false,
+            self::DuplicateSession, self::LongOffline, self::LateSubmit, self::ClockJump,
+            self::TamperSuspected => false,
             default => true,
         };
     }
