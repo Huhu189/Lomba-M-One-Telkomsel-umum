@@ -130,6 +130,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/materi', [MateriController::class, 'index'])->name('materi.index');
         Route::post('/materi', [MateriController::class, 'store'])->name('materi.store');
         Route::get('/materi-saya', [ProgresMateriController::class, 'daftar'])->name('materi.saya');
+        // Katalog tema perjalanan (template tema materi) — didaftarkan SEBELUM
+        // `/materi/{materi}` supaya "tema" tidak dibaca sebagai id materi.
+        Route::get('/materi/tema', [MateriController::class, 'tema'])->name('materi.tema');
         Route::get('/materi/{materi}', [MateriController::class, 'show'])->name('materi.show');
         Route::put('/materi/{materi}', [MateriController::class, 'update'])->name('materi.update');
         Route::delete('/materi/{materi}', [MateriController::class, 'destroy'])->name('materi.destroy');

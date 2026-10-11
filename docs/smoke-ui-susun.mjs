@@ -6,8 +6,10 @@
 //      langkah (aria-current="step"), langkah 1 → 2 → 3 bisa dilalui, bank soal
 //      bisa dicentang, dan langkah 3 menampilkan ringkasan + butir kelengkapan;
 //   2. Halaman bank soal: "Tambah soal" membuka editor tiga kartu bernomor
-//      dengan sisi pratinjau/kelengkapan, pil jenis soal berperan radio, dan
-//      butir "Lengkap/Belum" berubah saat isian dilengkapi;
+//      (tulis soal → pengaturan → pilih jenis) dengan sisi pratinjau/kelengkapan,
+//      pemilih jenis di kartu paling bawah berupa petak berikon yang bisa
+//      dilipat (22 petak berperan radio + <svg>), dan butir "Lengkap/Belum"
+//      berubah saat isian dilengkapi;
 //   3. Tidak ada luapan mendatar di layar 390px dan sasaran sentuh ≥44px.
 //
 // Efek samping dijaga: kuis draf dan soal contoh yang dibuat di sini dihapus
@@ -260,37 +262,42 @@ async function main() {
 
   const editor = await evalJs(`(() => {
     const judul = [...document.querySelectorAll('h2')].map((h) => h.textContent.trim())
-    const pil = [...document.querySelectorAll('.pil-tipe')]
+    const petak = [...document.querySelectorAll('.petak-tipe-tombol')]
     const sisi = document.querySelector('.sisi-lengket')
     return {
       h1: document.querySelector('h1')?.textContent ?? '',
       judul,
-      pilTipe: pil.length,
-      pilPeran: pil.length > 0 ? pil[0].getAttribute('role') : null,
-      atas: pil.length > 0 ? pil[0].closest('[role="radiogroup"]')?.getAttribute('aria-label') ?? null : null,
+      petak: petak.length,
+      petakPeran: petak.length > 0 ? petak[0].getAttribute('role') : null,
+      petakIkon: petak.length > 0 && petak.every((b) => b.querySelector('svg') !== null),
+      atas: petak.length > 0 ? petak[0].closest('[role="radiogroup"]')?.getAttribute('aria-label') ?? null : null,
+      lipat: document.querySelector('.pemilih-jenis')?.tagName ?? null,
+      urutan: [...document.querySelectorAll('.col-lg-8 section')].map((s) => s.querySelector('h2')?.textContent.trim() ?? ''),
       sisiLengket: sisi ? getComputedStyle(sisi).position : null,
       adaPratinjau: [...document.querySelectorAll('h2')].some((h) => h.textContent.includes('Pratinjau')),
       adaKelengkapan: [...document.querySelectorAll('h2')].some((h) => h.textContent.includes('Kelengkapan')),
     }
   })()`)
   cek('editor: h1 berubah jadi "Tambah soal"', editor.h1.toLowerCase().includes('tambah soal'), editor.h1)
-  cek('editor: tiga kartu bernomor tampil', ['1. Pilih jenis soal', '2. Tulis soalnya', '3. Pengaturan soal'].every((t) => editor.judul.includes(t)), editor.judul.join(' | '))
-  cek('editor: pil jenis soal berperan radio', editor.pilTipe === 8 && editor.pilPeran === 'radio' && editor.atas === 'Jenis soal', `pil=${editor.pilTipe} peran=${editor.pilPeran}`)
+  cek('editor: kartu bernomor baru tampil', ['1. Tulis soalnya', '2. Pengaturan soal', '3. Pilih jenis soal'].every((t) => editor.judul.includes(t)), editor.judul.join(' | '))
+  cek('editor: pemilih jenis soal di paling bawah (kartu ke-3)', editor.urutan[2] === '3. Pilih jenis soal', editor.urutan.join(' | '))
+  cek('editor: pemilih jenis soal bisa dibuka-tutup', editor.lipat === 'DETAILS', `tag=${editor.lipat}`)
+  cek('editor: petak jenis soal berperan radio & berikon', editor.petak === 22 && editor.petakPeran === 'radio' && editor.petakIkon && editor.atas === 'Jenis soal', `petak=${editor.petak} peran=${editor.petakPeran} ikon=${editor.petakIkon}`)
   cek('editor: sisi kanan berisi pratinjau + kelengkapan', editor.adaPratinjau && editor.adaKelengkapan, '')
   cek('editor: sisi kanan lengket di layar lebar', editor.sisiLengket === 'sticky', `posisi=${editor.sisiLengket}`)
 
   // Ganti jenis soal ke isian singkat: bidangnya harus ikut berubah.
-  await evalJs(`[...document.querySelectorAll('.pil-tipe')].find((b) => b.textContent.includes('Isian singkat')).click()`)
+  await evalJs(`[...document.querySelectorAll('.petak-tipe-tombol')].find((b) => b.textContent.includes('Isian singkat')).click()`)
   await sleep(400)
   const setelahGanti = await evalJs(`(() => {
-    const aktif = [...document.querySelectorAll('.pil-tipe')].filter((b) => b.getAttribute('aria-checked') === 'true')
+    const aktif = [...document.querySelectorAll('.petak-tipe-tombol')].filter((b) => b.getAttribute('aria-checked') === 'true')
     return {
       aktif: aktif.map((b) => b.textContent.trim()),
       adaJawabanBaku: Boolean(document.querySelector('#soal-ambang-isian')),
       butir: [...document.querySelectorAll('#soal-kelengkapan ~ ul .badge-status')].map((b) => b.textContent.trim()),
     }
   })()`)
-  cek('editor: pil aktif tunggal setelah ganti jenis', setelahGanti.aktif.length === 1 && setelahGanti.aktif[0].includes('Isian singkat'), setelahGanti.aktif.join(','))
+  cek('editor: petak aktif tunggal setelah ganti jenis', setelahGanti.aktif.length === 1 && setelahGanti.aktif[0].includes('Isian singkat'), setelahGanti.aktif.join(','))
   cek('editor: bidang isian singkat muncul', setelahGanti.adaJawabanBaku === true, '')
   cek('editor: butir kelengkapan menandai yang belum diisi', setelahGanti.butir.includes('Belum') && setelahGanti.butir.includes('Lengkap'), setelahGanti.butir.join(','))
 

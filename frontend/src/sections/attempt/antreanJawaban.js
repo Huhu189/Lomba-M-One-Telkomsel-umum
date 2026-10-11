@@ -82,6 +82,30 @@ export function adaSisa(antrean) {
 }
 
 /**
+ * Isi antrean dari cadangan lokal yang belum terkirim (sistem luring).
+ *
+ * Antrean kirim hanya hidup selama layar pengerjaan terbuka, sedangkan cadangan
+ * jawaban bertahan di perangkat. Tanpa pemulihan ini, murid yang memuat ulang
+ * halaman (atau berpindah halaman saat luring) MELIHAT jawabannya sendiri di
+ * layar — tampilan memakai cadangan — sementara antreannya kosong, jadi server
+ * tidak pernah menerimanya dan jawaban itu ikut hilang saat dikumpulkan.
+ *
+ * @param {AntreanJawaban} antrean
+ * @param {Record<string, unknown> | undefined | null} belumTerkirim
+ * @returns {number} jumlah entri yang dipulihkan
+ */
+export function pulihkan(antrean, belumTerkirim) {
+  let jumlah = 0
+
+  for (const [kunci, nilai] of Object.entries(belumTerkirim ?? {})) {
+    catat(antrean, Number(kunci), nilai)
+    jumlah += 1
+  }
+
+  return jumlah
+}
+
+/**
  * Satu pengirim tunggal untuk seluruh antrean.
  *
  * Autosave dan "Kumpulkan" memakai instance ini bersama-sama: setiap pekerjaan

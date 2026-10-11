@@ -63,6 +63,9 @@
   --fs-meta: 14px;
 
   --radius: 16px;
+  /* Tinggi kepala lengket; dipakai juga oleh panel samping dan kepala ulangan
+   * supaya keduanya menempel tepat di bawah kepala, bukan menutupinya. */
+  --tinggi-kepala: 68px;
   --radius-kecil: 12px;
   --bayangan: 0 2px 12px rgba(15, 23, 42, 0.08);
   --bayangan-besar: 0 18px 48px rgba(15, 23, 42, 0.14);
@@ -646,7 +649,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 68px;
+  min-height: var(--tinggi-kepala);
 }
 
 .merek {
@@ -1956,7 +1959,12 @@ a {
 /* ---------- Kerangka badan: panel samping (≥ lg) atau satu kolom ---------- */
 
 /* Panel samping menempati 260 px di kiri pada layar ≥ lg; di bawah itu menu
- * pindah ke laci sehingga konten memakai lebar penuh. */
+ * pindah ke laci sehingga konten memakai lebar penuh.
+ *
+ * Pada layar ≥ lg panel menjadi kolom flex yang terkunci di layar: tingginya
+ * selalu setinggi jendela dikurangi kepala lengket, jadi menu tidak ikut
+ * tergulir walau kontennya panjang. Panel sengaja menempel rata ke tepi kiri
+ * (tanpa jarak, tanpa sudut membulat) — hanya padding dalam yang tersisa. */
 .kerangka-badan {
   flex: 1 1 auto;
   min-height: 0;
@@ -1970,13 +1978,17 @@ a {
 
 @media (min-width: 992px) {
   .kerangka-badan-menu {
-    display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    gap: var(--sp-5);
-    align-items: start;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
     width: 100%;
-    max-width: 1680px;
-    margin-inline: auto;
+  }
+
+  /* Konten mengisi sisa lebar; jarak dari panel diatur di sini supaya panelnya
+   * sendiri tetap boleh menempel tepi. */
+  .kerangka-isi {
+    flex: 1 1 auto;
     padding-inline: var(--sp-4);
   }
 }
@@ -1999,9 +2011,17 @@ a {
 @media (min-width: 992px) {
   .papan-nav {
     position: sticky;
-    top: var(--sp-4);
-    max-height: calc(100vh - var(--sp-6));
+    top: var(--tinggi-kepala);
+    flex: 0 0 260px;
+    width: 260px;
+    align-self: flex-start;
+    height: calc(100vh - var(--tinggi-kepala));
+    max-height: none;
     overflow-y: auto;
+    /* Menempel rata ke tepi layar: tanpa sudut membulat dan tanpa bayangan
+     * melayang. Padding dalam tetap ada agar teks menu tidak menyentuh tepi. */
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 
@@ -2287,6 +2307,27 @@ a {
   border-color: var(--aksen);
 }
 
+/* Kartu template tema perjalanan di sidebar editor. */
+.nle-template {
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color: var(--teks);
+  text-align: start;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  cursor: pointer;
+}
+
+.nle-template:hover {
+  border-color: var(--aksen);
+}
+
+.nle-template.aktif {
+  border-color: var(--aktif);
+  box-shadow: inset 0 0 0 1px var(--aktif);
+}
+
 .nle-kerja {
   display: grid;
   gap: 0.75rem;
@@ -2380,6 +2421,54 @@ a {
 .nle-atur {
   padding-top: 0.5rem;
   border-top: 1px dashed var(--garis);
+}
+
+/* Pemilih kuis klip sisipan: pencarian + baris ringkas yang bisa dipindai. */
+.nle-pemilih-kuis {
+  padding: 0.6rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-pemilih-daftar {
+  display: grid;
+  gap: 0.3rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.nle-pemilih-baris {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  color: inherit;
+  text-align: start;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-pemilih-baris.aktif {
+  border-color: var(--aksen);
+  box-shadow: inset 0 0 0 1px var(--aksen);
+}
+
+.nle-pemilih-peringatan {
+  color: var(--status-salah);
+}
+
+/* Penjelasan opsional setelah kuis (blok kuis). */
+.nle-penjelasan {
+  padding: 0.6rem;
+  border: 1px dashed var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-penjelasan legend {
+  float: none;
+  width: auto;
+  padding: 0 0.25rem;
 }
 
 /* Lapisan kuis sisipan di atas bingkai. */
@@ -2576,6 +2665,52 @@ a {
   border-color: var(--teks);
 }
 
+/* Gagang pangkas `|` di kedua sisi klip terpilih. Grupnya mengikuti kotak klip
+ * tetapi tidak menutupi isi klip (pointer-events: none) — hanya tandanya yang
+ * bisa diseret, jadi menekan badan klip tetap memilih/menggeser klip. */
+.nle-pangkas-grup {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  height: 2rem;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.nle-pangkas {
+  position: absolute;
+  inset-block: 0;
+  display: flex;
+  align-items: center;
+  width: 0.9rem;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.nle-pangkas::before {
+  width: 3px;
+  height: 100%;
+  content: '';
+  background: var(--aksen);
+  border: 1px solid var(--kartu);
+  border-radius: 3px;
+}
+
+.nle-pangkas-kiri {
+  inset-inline-start: 0;
+  justify-content: flex-start;
+}
+
+.nle-pangkas-kanan {
+  inset-inline-end: 0;
+  justify-content: flex-end;
+}
+
+.nle-pangkas:focus-visible {
+  outline: 2px solid var(--cincin-fokus);
+  outline-offset: 1px;
+}
+
 .nle-klip:focus-visible {
   outline: 2px solid var(--cincin-fokus);
   outline-offset: 1px;
@@ -2756,7 +2891,7 @@ a {
  * Selesai tanpa harus menggulir kembali ke atas. */
 .kepala-ulangan {
   position: sticky;
-  top: 68px;
+  top: var(--tinggi-kepala);
   z-index: 90;
   display: flex;
   flex-wrap: wrap;
@@ -3469,6 +3604,91 @@ a {
   border-color: var(--teks);
 }
 
+/* -------------------------------------------------------------------------
+ * Pemilih jenis soal ringkas (papan 11 revisi): kartu lipat di paling bawah
+ * formulir. Semua tipe tampil sekaligus sebagai petak berikon — lebih ringkas
+ * daripada deretan pil, dan tetap sasaran sentuh ≥44 px.
+ * ------------------------------------------------------------------------- */
+.pemilih-jenis > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.pemilih-jenis > summary:hover .pemilih-jenis-terpilih {
+  text-decoration: underline;
+}
+
+.pemilih-jenis-terpilih {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px var(--sp-3);
+  font-weight: 700;
+  color: var(--latar);
+  background-color: var(--teks);
+  border-radius: 999px;
+}
+
+.petak-tipe {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+@media (min-width: 768px) {
+  .petak-tipe {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.petak-tipe-tombol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 84px;
+  padding: var(--sp-2);
+  text-align: center;
+  color: var(--teks);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis-input);
+  border-radius: var(--radius);
+}
+
+.petak-tipe-tombol:hover {
+  border-color: var(--teks);
+}
+
+.petak-tipe-tombol[aria-checked='true'] {
+  color: var(--latar);
+  background-color: var(--teks);
+  border-color: var(--teks);
+}
+
+.petak-tipe-ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.petak-tipe-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.petak-tipe-tanda {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
 /* Kotak huruf opsi (A, B, …) yang ikut melebar di layar sempit. */
 .kotak-huruf {
   display: inline-flex;
@@ -3558,6 +3778,30 @@ a {
   outline: none;
 }
 
+/* Penjelasan guru setelah kuis selesai (opsional). */
+.pm-penjelasan {
+  margin-block: 0.6rem;
+  padding: 0.75rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.pm-penjelasan-media {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  margin-block: 0.4rem;
+  object-fit: contain;
+  border-radius: var(--radius-kecil);
+}
+
+.pm-penjelasan-audio {
+  display: block;
+  width: 100%;
+  margin-block: 0.4rem;
+}
+
 .pm-kuis-vertikal {
   inset-inline: 0;
   inset-block-end: 0;
@@ -3577,5 +3821,290 @@ a {
     inset-inline: 0;
     width: auto;
     max-height: 80%;
+  }
+}
+
+/* ==========================================================================
+   Peta perjalanan materi (tema + langkah)
+   =
+   Latar panggung selalu media sungguhan: video latar guru bila ada, kalau tidak
+   foto tema (frontend/public/tema/) dengan gerak zoom halus. Bila keduanya tidak
+   ada, panggung memakai gradien tenang — tidak ada adegan gambar buatan. Gerak
+   penanda pos tetap CSS.
+   ========================================================================== */
+
+.jelajah {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+}
+
+.jelajah-kepala {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jelajah-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--teks-lembut);
+  text-transform: uppercase;
+}
+
+.jelajah-nama {
+  font-family: var(--font-judul);
+}
+
+.jelajah-tingkat {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.jelajah-lencana {
+  padding: 0.1rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--teks-di-aksen);
+  background: var(--sorot-hangat);
+  border-radius: 999px;
+}
+
+.jelajah-panggung {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  /* Cadangan saat tema belum punya foto dan guru belum menempelkan video:
+     gradien tenang yang tetap kontras dengan jalur putih dan titik pos. */
+  background:
+    radial-gradient(120% 90% at 78% 6%, rgba(255, 224, 130, 0.42) 0%, transparent 55%),
+    linear-gradient(165deg, #1e3a5f 0%, #2f5d84 46%, #3f7f6a 100%);
+  border-radius: var(--radius-kecil);
+}
+
+.jelajah-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Foto latar tema (lisensi bebas — lihat frontend/public/tema/LISENSI.md).
+   Bergerak sangat pelan supaya terasa hidup tanpa mengganggu membaca titik pos. */
+.jelajah-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: jelajah-zoom 26s ease-in-out infinite alternate;
+}
+
+/* Lapisan gelap tipis di atas foto/video supaya titik pos dan penanda posisi
+   tetap terbaca di bagian yang terang. Sengaja TANPA z-index: jalur dan titik
+   pos yang ber-z-index 1 tetap tercetak di atasnya. */
+.jelajah[data-latar='foto'] .jelajah-panggung::after,
+.jelajah[data-latar='video'] .jelajah-panggung::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background:
+    radial-gradient(120% 100% at 50% 0%, transparent 40%, rgba(2, 6, 23, 0.4) 100%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.4) 100%);
+  pointer-events: none;
+}
+
+.jelajah-jalur {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.jelajah-ruas {
+  stroke-linecap: round;
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+.jelajah-ruas[data-status='belum'] {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-dasharray: 6 6;
+}
+
+.jelajah-ruas[data-status='dilewati'] {
+  stroke: var(--aksen);
+}
+
+.jelajah-pos {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 0;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  color: #ffffff;
+  background: var(--pos-warna, #475569);
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  transform: translate(-50%, -50%);
+}
+
+.jelajah-pos[data-warna='hijau'] {
+  --pos-warna: #15803d;
+}
+
+.jelajah-pos[data-warna='biru'] {
+  --pos-warna: #0369a1;
+}
+
+.jelajah-pos[data-warna='coklat'] {
+  --pos-warna: #92400e;
+}
+
+.jelajah-pos[data-warna='kelabu'] {
+  --pos-warna: #475569;
+}
+
+.jelajah-pos[data-warna='jingga'] {
+  --pos-warna: #b45309;
+}
+
+.jelajah-pos[data-status='belum'] {
+  filter: grayscale(0.65) opacity(0.65);
+}
+
+.jelajah-pos[data-status='dibuka'] {
+  outline: 3px solid rgba(14, 165, 233, 0.55);
+  outline-offset: 2px;
+}
+
+/* Pos opsional ditandai bentuk (bukan hanya warna): sudut lebih tajam. */
+.jelajah-pos[data-jenis='opsional'] {
+  border-radius: 0.4rem;
+}
+
+.jelajah-pos-ikon {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: currentColor;
+}
+
+.jelajah-pos-nomor {
+  position: absolute;
+  inset-block-end: -1.15rem;
+  padding: 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--teks);
+  background: var(--kartu);
+  border-radius: 999px;
+}
+
+.jelajah-penanda {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.jelajah-penanda-orang {
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--aksen);
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.3rem rgba(14, 165, 233, 0.28);
+  animation: jelajah-langkah 1.5s ease-in-out infinite;
+}
+
+.jelajah-bilah {
+  height: 0.5rem;
+}
+
+.jelajah-ringkas {
+  color: var(--teks-lembut);
+}
+
+.jelajah-catatan {
+  color: var(--teks-lembut);
+}
+
+.jelajah-daftar {
+  display: grid;
+  gap: 0.15rem;
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--garis);
+}
+
+.jelajah-daftar-baris {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 0.2rem 0;
+  font-size: 0.9rem;
+}
+
+.jelajah-daftar-nomor {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.jelajah-daftar-baris[data-status='selesai'] .jelajah-daftar-nomor {
+  color: var(--putih);
+  background: var(--status-benar);
+}
+
+.jelajah-daftar-baris[data-status='dibuka'] .jelajah-daftar-nomor {
+  color: var(--putih);
+  background: var(--aksen);
+}
+
+@keyframes jelajah-zoom {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes jelajah-langkah {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Gerak dihentikan bila pengguna memintanya (aksesibilitas + baterai). */
+@media (prefers-reduced-motion: reduce) {
+  .jelajah-foto,
+  .jelajah-penanda-orang {
+    animation: none;
   }
 }

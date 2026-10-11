@@ -9,13 +9,15 @@
  * ditampilkan dengan renderer yang sama seperti ulangan, jawaban disimpan lewat
  * endpoint attempt yang sama, dan skor latihan hanya masuk laporan tema materi.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import PemutarMateri from './PemutarMateri.jsx'
+import PetaPerjalanan from './PetaPerjalanan.jsx'
+import { kenaikanUntuk } from './perjalanan.js'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import {
   bolehDibuka,
@@ -39,6 +41,15 @@ export default function HalamanMateriMurid() {
   const [hasilLatihan, setHasilLatihan] = useState(
     /** @type {import('../attempt/api.js').DataHasil|null} */ (null),
   )
+  /** Perayaan kenaikan pos/tingkat dari perbandingan peta sebelum & sesudah. */
+  const [kenaikan, setKenaikan] = useState(
+    /** @type {ReturnType<typeof kenaikanUntuk>} */ (null),
+  )
+  // Peta sebelum satu langkah ditutup: disimpan saat murid menekan tombol, lalu
+  // dibandingkan dengan peta terbaru dari server (bukan dihitung di klien).
+  const petaSebelumnya = useRef(
+    /** @type {import('./perjalanan.js').DataPerjalanan|null} */ (null),
+  )
 
   const daftar = useQuery({ queryKey: ['materi-saya'], queryFn: materiSaya })
   const progres = useQuery({
@@ -56,6 +67,7 @@ export default function HalamanMateriMurid() {
       setAttempt(data.attempt)
       setJawaban({})
       setHasilLatihan(null)
+      setKenaikan(null)
       void queryClient.invalidateQueries({ queryKey: ['materi-progres', terpilihId] })
     },
     onError: (error) => setGalat(pesanGalatApi(error)),
@@ -71,8 +83,25 @@ export default function HalamanMateriMurid() {
       setHasilLatihan(null)
       void queryClient.invalidateQueries({ queryKey: ['materi-progres', terpilihId] })
     },
-    onError: (error) => setGalat(pesanGalatApi(error)),
+    onError: (error) => {
+      petaSebelumnya.current = null
+      setGalat(pesanGalatApi(error))
+    },
   })
+
+  // Kenaikan diumumkan HANYA setelah server mengirim peta terbaru, jadi pesannya
+  // tidak pernah mendahului keadaan yang sebenarnya tersimpan.
+  useEffect(() => {
+    const baru = progres.data?.perjalanan
+    const lama = petaSebelumnya.current
+
+    if (!baru || !lama) return
+
+    const peristiwa = kenaikanUntuk(lama, baru)
+    petaSebelumnya.current = null
+
+    if (peristiwa) setKenaikan(peristiwa)
+  }, [progres.data])
 
   const kumpulkan = useMutation({
     mutationFn: async () => {
@@ -159,6 +188,18 @@ export default function HalamanMateriMurid() {
               <div className="progress mb-3" role="progressbar" aria-valuenow={progres.data.persen}>
                 <div className="progress-bar" style={{ width: `${progres.data.persen}%` }} />
               </div>
+
+              {kenaikan && (
+                <Banner jenis="sukses" judul={kenaikan.judul}>
+                  {kenaikan.pesan}
+                </Banner>
+              )}
+
+              {progres.data.perjalanan.langkah.length > 0 && (
+                <div className="mb-3">
+                  <PetaPerjalanan perjalanan={progres.data.perjalanan} />
+                </div>
+              )}
 
               <ol className="list-unstyled mb-3">
                 {bagian.map((satu, indeks) => {
@@ -280,7 +321,10 @@ export default function HalamanMateriMurid() {
                   <Tombol
                     memuat={selesai.isPending}
                     disabled={(blokAktif.tipe === 'kuis' && hasilLatihan === null) || sisaSisipan > 0}
-                    onClick={() => selesai.mutate(blokAktif.block_id)}
+                    onClick={() => {
+                      petaSebelumnya.current = progres.data?.perjalanan ?? null
+                      selesai.mutate(blokAktif.block_id)
+                    }}
                   >
                     Tandai bagian ini selesai
                   </Tombol>

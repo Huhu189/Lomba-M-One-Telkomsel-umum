@@ -420,6 +420,258 @@ export function IkonBendera(props) {
   )
 }
 
+/* =========================================================================
+ * Ikon jenis soal (editor bank soal, papan 11 revisi).
+ *
+ * Satu ikon per tipe supaya pemilih jenis soal bisa dipadatkan jadi petak
+ * berikon di bawah formulir. Gaya tetap sama: viewBox 24x24, garis 2px,
+ * warna mengikuti currentColor.
+ * ========================================================================= */
+
+/** Ikon pilihan ganda — satu pilihan terpilih dari beberapa baris. @param {PropsIkon} props */
+export function IkonTipePilihanGanda(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <circle cx="7" cy="7" r="3" />
+      <circle cx="7" cy="7" r="1.1" fill="currentColor" />
+      <circle cx="7" cy="17" r="3" />
+      <path d="M14 7h7" />
+      <path d="M14 17h7" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon benar/salah — centang dan silang berdampingan. @param {PropsIkon} props */
+export function IkonTipeBenarSalah(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 13l4 4 7-8" />
+      <path d="M15 9l6 6" />
+      <path d="M21 9l-6 6" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon isian singkat — kalimat pendek lalu satu kotak jawaban. @param {PropsIkon} props */
+export function IkonTipeIsianSingkat(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 11h9" />
+      <rect x="4" y="14" width="16" height="6" rx="1.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon uraian — lembar jawaban berbaris. @param {PropsIkon} props */
+export function IkonTipeUraian(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M6 3h8l4 4v14H6z" />
+      <path d="M14 3v4h4" />
+      <path d="M9 12h6M9 16h6" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon menjodohkan — dua kolom yang sebagian tersambung. @param {PropsIkon} props */
+export function IkonTipeMenjodohkan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <circle cx="6" cy="7" r="1.8" />
+      <circle cx="6" cy="17" r="1.8" />
+      <circle cx="18" cy="7" r="1.8" />
+      <circle cx="18" cy="17" r="1.8" />
+      <path d="M7.8 7h8.4" />
+      <path d="M7.8 17 16.2 7" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon mengurutkan — daftar dengan panah turun (atur ulang). @param {PropsIkon} props */
+export function IkonTipeMengurutkan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M4 7h10M4 12h10M4 17h10" />
+      <path d="M19 5v14" />
+      <path d="M16.5 16.5 19 19l2.5-2.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon letak kata — kata yang disisipkan ke dalam celah kalimat. @param {PropsIkon} props */
+export function IkonTipeLetakKata(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 12h4" />
+      <path d="M17 12h4" />
+      <rect x="7" y="8" width="10" height="8" rx="1.5" />
+      <path d="M10 12h4" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon hubung kata — dua label yang dihubungkan garis. @param {PropsIkon} props */
+export function IkonTipeHubungKata(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="2" y="9" width="7" height="6" rx="1.5" />
+      <rect x="15" y="9" width="7" height="6" rx="1.5" />
+      <path d="M9 12h6" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon pilihan ganda kompleks — kotak centang (boleh lebih dari satu). @param {PropsIkon} props */
+export function IkonTipePilihanGandaKompleks(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="5" width="7" height="7" rx="1.5" />
+      <path d="M5 8.5 6.5 10 9 7" />
+      <rect x="3" y="15" width="7" height="7" rx="1.5" />
+      <path d="M14 8h7M14 18h7" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon benar/salah majemuk — beberapa pernyataan dengan centang & silang. @param {PropsIkon} props */
+export function IkonTipeBenarSalahMajemuk(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 7h6M3 17h6" />
+      <path d="M13 9l2 2 4-4" />
+      <path d="M13 16l4 4M17 16l-4 4" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon isian angka — papan angka. @param {PropsIkon} props */
+export function IkonTipeIsianAngka(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M8 7h8" />
+      <path d="M9 11.5h.01M12 11.5h.01M15 11.5h.01" />
+      <path d="M9 16h.01M12 16h.01M15 16h.01" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon pilihan gambar — gambar dengan satu pilihan terpilih. @param {PropsIkon} props */
+export function IkonTipePilihanGambar(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="4" width="12" height="12" rx="1.5" />
+      <path d="M5 13l3-3 2 2 3-4" />
+      <circle cx="17.5" cy="17" r="3" />
+      <circle cx="17.5" cy="17" r="1.1" fill="currentColor" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon urut gambar — dua gambar dengan panah urutan. @param {PropsIkon} props */
+export function IkonTipeUrutGambar(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="2" y="6" width="8" height="8" rx="1.5" />
+      <rect x="12" y="6" width="8" height="8" rx="1.5" />
+      <path d="M6 18h12" />
+      <path d="M15.5 15.5 18 18l-2.5 2.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon susun huruf — keping huruf yang disusun. @param {PropsIkon} props */
+export function IkonTipeSusunHuruf(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="4" width="6" height="6" rx="1.5" />
+      <rect x="15" y="4" width="6" height="6" rx="1.5" />
+      <rect x="9" y="14" width="6" height="6" rx="1.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon isian rumpang — kalimat dengan satu bagian kosong. @param {PropsIkon} props */
+export function IkonTipeIsianRumpang(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 11h5" />
+      <path d="M11 11h4" strokeDasharray="2 2" />
+      <path d="M17 11h3" />
+      <path d="M4 16h16" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon klasifikasi — beberapa kotak kategori. @param {PropsIkon} props */
+export function IkonTipeKlasifikasi(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="4" width="7" height="6" rx="1.5" />
+      <rect x="14" y="4" width="7" height="6" rx="1.5" />
+      <rect x="3" y="14" width="7" height="6" rx="1.5" />
+      <rect x="14" y="14" width="7" height="6" rx="1.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon tabel isian — tabel berpetak. @param {PropsIkon} props */
+export function IkonTipeTabelIsian(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="1.5" />
+      <path d="M3 10h18M3 15h18" />
+      <path d="M9 4v16M15 4v16" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon garis bilangan — garis dengan penanda dan panah. @param {PropsIkon} props */
+export function IkonTipeGarisBilangan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M2 12h20" />
+      <path d="M6 9.5v5M12 9.5v5M18 9.5v5" />
+      <path d="M19.5 9.5 22 12l-2.5 2.5" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon hotspot gambar — gambar dengan bidik sasaran. @param {PropsIkon} props */
+export function IkonTipeHotspotGambar(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="1.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 6.5v11M6.5 12h11" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon tugas unggah — berkas diunggah ke atas. @param {PropsIkon} props */
+export function IkonTipeTugasUnggah(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M12 15V4" />
+      <path d="M7 9l5-5 5 5" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </KerangkaIkon>
+  )
+}
+
+/** Ikon teka silang mini — petak silang dengan sebagian kotak hitam. @param {PropsIkon} props */
+export function IkonTipeTekaSilangMini(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="1.5" />
+      <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+      <path d="M15 15h6v6h-6z" fill="currentColor" stroke="none" />
+    </KerangkaIkon>
+  )
+}
+
 /** Peta nama ikon untuk demo dan pemakaian dinamis. */
 export const daftarIkon = {
   rumah: IkonRumah,

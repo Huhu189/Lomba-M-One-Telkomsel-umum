@@ -22,6 +22,9 @@
  *   track: number,
  *   mulai_detik: number,
  *   durasi_detik: number,
+ *   fase: string,
+ *   penjelasan_teks: string,
+ *   penjelasan_kode: string,
  *   tampilan?: Record<string, string|number>,
  * }} BarisBlok
  */
@@ -29,8 +32,27 @@
 /** Durasi bawaan satu klip (detik) — sama dengan bawaan server. */
 export const DURASI_BAWAAN = 10
 
+/**
+ * Durasi klip terpendek yang diizinkan (detik). Klip boleh dipangkas sangat
+ * tipis (0,1 detik) — batas ini juga yang dipakai server saat menyimpan.
+ */
+export const DURASI_MINIMUM = 0.1
+
+/**
+ * Panjang timeline minimal saat isinya masih kosong/kurang dari ini (detik).
+ * Timeline mengikuti panjang isi sungguhan (mis. durasi video yang diunggah).
+ */
+export const TIMELINE_MINIMUM = 5
+
 /** Jumlah track/lapisan bawaan yang selalu ditampilkan di timeline. */
 export const JUMLAH_TRACK = 3
+
+/**
+ * Panjang maksimum teks penjelasan setelah kuis — sama dengan batas di server
+ * (`MateriService::MAKS_PENJELASAN`), supaya ketikan yang kepanjangan tidak
+ * diam-diam terpotong saat disimpan.
+ */
+export const MAKS_PENJELASAN = 5000
 
 /** Track audio (paling bawah) selalu tersedia untuk komentar/narasi. */
 export const TRACK_AUDIO = 'audio'
@@ -43,16 +65,11 @@ export const TIPE_BLOK = /** @type {Array<{nilai: TipeBlok, label: string, ikon:
 ])
 
 /**
- * Daftar template materi. SENGAJA dikosongkan dulu: guru menyusun dari nol,
- * panel template hanya menampilkan keadaan kosong sampai template disiapkan.
- * @type {Array<{ id: string, nama: string, deskripsi: string }>}
+ * Nama langkah perjalanan (pos) untuk klip ini. Kosong = pakai nama bawaan tema
+ * (lihat `perjalanan.js`), jadi guru hanya perlu mengisi yang ingin diganti.
+ * Dikirim ke server sebagai `fase`.
  */
-export const TEMPLATE_MATERI = []
-
-/** Apakah sudah ada template yang bisa dipakai? */
-export function adaTemplate() {
-  return TEMPLATE_MATERI.length > 0
-}
+export const FASE_KOSONG = ''
 
 /**
  * Baris klip baru untuk satu tipe blok.
@@ -71,6 +88,9 @@ export function blokBaru(tipe, isi) {
     track: 0,
     mulai_detik: 0,
     durasi_detik: DURASI_BAWAAN,
+    fase: FASE_KOSONG,
+    penjelasan_teks: '',
+    penjelasan_kode: '',
     ...isi,
   }
 }
@@ -86,6 +106,12 @@ export function dariServer(blok) {
     // kosong), sehingga pratinjau media tak pernah muncul — persis keluhan
     // "video tidak jalan". Perlakukan seperti durasi bawaan.
     const durasi = typeof satu.durasi_detik === 'number' && satu.durasi_detik > 0 ? satu.durasi_detik : DURASI_BAWAAN
+    // Penjelasan setelah kuis (blok kuis); bentuk apa pun selain objek dibaca
+    // sebagai belum diisi supaya data lama/null tidak menjatuhkan editor.
+    const penjelasan =
+      satu.penjelasan !== null && typeof satu.penjelasan === 'object'
+        ? /** @type {Record<string, unknown>} */ (satu.penjelasan)
+        : {}
 
     return {
       tipe: /** @type {TipeBlok} */ (String(satu.tipe ?? 'teks')),
@@ -97,6 +123,9 @@ export function dariServer(blok) {
       track: typeof satu.track === 'number' ? satu.track : 0,
       mulai_detik: typeof satu.mulai_detik === 'number' ? satu.mulai_detik : indeks * DURASI_BAWAAN,
       durasi_detik: durasi,
+      fase: typeof satu.fase === 'string' ? satu.fase : FASE_KOSONG,
+      penjelasan_teks: typeof penjelasan.teks === 'string' ? penjelasan.teks : '',
+      penjelasan_kode: typeof penjelasan.unggahan_kode === 'string' ? penjelasan.unggahan_kode : '',
       tampilan:
         satu.tampilan && typeof satu.tampilan === 'object'
           ? /** @type {Record<string, string|number>} */ (satu.tampilan)
@@ -130,14 +159,35 @@ export function muatanBlok(blok) {
         ? { teks: satu.teks }
         : satu.tipe === 'media'
           ? { unggahan_kode: satu.unggahan_kode, keterangan: satu.keterangan }
-          : undefined,
+          : penjelasanTerisi(satu)
+            ? {
+                penjelasan: {
+                  teks: satu.penjelasan_teks.trim().slice(0, MAKS_PENJELASAN),
+                  unggahan_kode: satu.penjelasan_kode === '' ? null : satu.penjelasan_kode,
+                },
+              }
+            : undefined,
     quiz_id: satu.tipe === 'kuis' ? Number(satu.quiz_id) || null : null,
     track: Math.max(0, Math.round(satu.track)),
     mulai_detik: Math.max(0, satu.mulai_detik),
-    durasi_detik: Math.max(0.5, satu.durasi_detik),
+    durasi_detik: Math.max(DURASI_MINIMUM, satu.durasi_detik),
+    // Nama pos hanya dikirim bila guru memang menggantinya.
+    ...(satu.fase.trim() === '' ? {} : { fase: satu.fase.trim() }),
     // Hanya dikirim bila guru pernah mengaturnya; selalu dalam bentuk ternormalkan.
     ...(satu.tampilan !== undefined && satu.tipe !== 'teks' ? { tampilan: tampilanKlip(satu) } : {}),
   }))
+}
+
+/**
+ * Apakah klip ini punya penjelasan setelah kuis (teks atau media). Klip kuis
+ * tanpa keduanya tidak mengirim kunci `penjelasan` sama sekali, supaya materi
+ * lama tidak ikut berubah saat disimpan ulang.
+ *
+ * @param {Pick<BarisBlok, 'penjelasan_teks'|'penjelasan_kode'>} satu
+ * @returns {boolean}
+ */
+export function penjelasanTerisi(satu) {
+  return satu.penjelasan_teks.trim() !== '' || satu.penjelasan_kode !== ''
 }
 
 /**
@@ -213,6 +263,12 @@ export function susunTrack(blok) {
 
 /**
  * Panjang total timeline (detik): titik akhir terjauh dari semua klip.
+ *
+ * Mengikuti isi sungguhan, bukan angka tetap: dulu hasilnya selalu dinaikkan ke
+ * 60 detik sehingga tombol play menampilkan "01:00" walaupun videonya cuma 8
+ * detik. Kini timeline berhenti tepat di ujung klip terakhir (dibulatkan 0,1
+ * detik), dengan panjang minimum kecil untuk timeline yang masih kosong.
+ *
  * @param {BarisBlok[]} blok
  * @returns {number}
  */
@@ -222,8 +278,21 @@ export function durasiTotal(blok) {
     0,
   )
 
-  // Minimal satu menit supaya penggaris tetap punya ukuran yang masuk akal.
-  return Math.max(60, Math.ceil(akhir))
+  return Math.max(TIMELINE_MINIMUM, Math.round(akhir * 10) / 10)
+}
+
+/**
+ * Ubah durasi satu klip (detik), dijepit ke durasi minimum dan dibulatkan ke
+ * 0,1 detik supaya klip bisa dipendekkan sedikit demi sedikit dari inspector.
+ * @param {BarisBlok[]} blok
+ * @param {number} indeks
+ * @param {number} durasiBaru
+ * @returns {BarisBlok[]}
+ */
+export function setDurasi(blok, indeks, durasiBaru) {
+  const durasi = Math.max(DURASI_MINIMUM, Math.round(durasiBaru * 10) / 10)
+
+  return blok.map((satu, urutan) => (urutan === indeks ? { ...satu, durasi_detik: durasi } : satu))
 }
 
 /**
@@ -255,6 +324,51 @@ export function setMulai(blok, indeks, mulaiBaru) {
   const mulai = Math.max(0, Math.round(mulaiBaru * 10) / 10)
 
   return blok.map((satu, urutan) => (urutan === indeks ? { ...satu, mulai_detik: mulai } : satu))
+}
+
+/**
+ * Pangkas sisi KIRI klip (gagang `|` kiri di timeline): titik mulai digeser,
+ * sedangkan ujung kanannya tetap di tempat — jadi durasi ikut berubah.
+ *
+ * Beda dengan `setMulai()` yang menggeser klip tanpa mengubah durasinya. Dua
+ * tindakan ini gampang tertukar, jadi keduanya dipisah sebagai fungsi sendiri.
+ *
+ * @param {BarisBlok[]} blok
+ * @param {number} indeks
+ * @param {number} detikBaru titik mulai yang diinginkan (detik)
+ * @returns {BarisBlok[]}
+ */
+export function pangkasKiri(blok, indeks, detikBaru) {
+  const baris = blok[indeks]
+  if (baris === undefined) return blok
+
+  const ujung = baris.mulai_detik + baris.durasi_detik
+  const batas = Math.max(0, ujung - DURASI_MINIMUM)
+  const mulai = Math.min(Math.max(0, Math.round(detikBaru * 10) / 10), batas)
+  const durasi = Math.max(DURASI_MINIMUM, Math.round((ujung - mulai) * 10) / 10)
+
+  return blok.map((satu, urutan) =>
+    urutan === indeks ? { ...satu, mulai_detik: mulai, durasi_detik: durasi } : satu,
+  )
+}
+
+/**
+ * Pangkas sisi KANAN klip (gagang `|` kanan di timeline): titik mulai tetap,
+ * ujung kanan digeser. Dibaca sebagai posisi ujung (bukan panjang), sesuai
+ * gagang yang dipegang guru; durasinya tidak pernah lebih pendek dari minimum.
+ *
+ * @param {BarisBlok[]} blok
+ * @param {number} indeks
+ * @param {number} detikBaru posisi ujung kanan yang diinginkan (detik)
+ * @returns {BarisBlok[]}
+ */
+export function pangkasKanan(blok, indeks, detikBaru) {
+  const baris = blok[indeks]
+  if (baris === undefined) return blok
+
+  const durasi = Math.max(DURASI_MINIMUM, Math.round((detikBaru - baris.mulai_detik) * 10) / 10)
+
+  return blok.map((satu, urutan) => (urutan === indeks ? { ...satu, durasi_detik: durasi } : satu))
 }
 
 /**

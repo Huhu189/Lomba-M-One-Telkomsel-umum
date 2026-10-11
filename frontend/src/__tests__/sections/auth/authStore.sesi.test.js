@@ -18,8 +18,12 @@ import {
   sudahDitampilkanSebagaiTunggu,
   useAuthStore,
 } from '../../../sections/auth/authStore.js'
+import { useRiwayatJawaban } from '../../../sections/attempt/riwayatJawaban.js'
 import { useSimpananJawaban } from '../../../sections/attempt/simpananJawaban.js'
 import { klienQuery } from '../../../shared/store/klienQuery.js'
+
+/** Kunci salinan soal mode luring (isi tidak penting: yang diuji jejaknya). */
+const KUNCI_SNAPSHOT = 'ulangan-snapshot-attempt-v1'
 
 const userContoh = {
   id: 1,
@@ -36,16 +40,37 @@ describe('jejak sesi di perangkat bersama', () => {
     vi.clearAllMocks()
     useAuthStore.setState({ user: userContoh, sesiSiap: true, detikTunggu: 0 })
     useSimpananJawaban.setState({ perAttempt: {} })
+    useRiwayatJawaban.setState({ perAttempt: {} })
     localStorage.clear()
     klienQuery.clear()
   })
 
-  /** Isi jejak murid sebelumnya di perangkat: cadangan jawaban + cache query. */
+  /**
+   * Isi jejak murid sebelumnya di perangkat: cadangan jawaban, riwayat jawaban,
+   * salinan soal mode luring, dan cache query.
+   */
   function tinggalkanJejak() {
     useSimpananJawaban.getState().catat(7, 21, 'B')
+    useRiwayatJawaban.getState().catat(7, {
+      soal_id: 21,
+      nomor: 1,
+      tipe: 'pilihan_ganda',
+      jawaban: 'B',
+      server_at: new Date().toISOString(),
+    })
+    localStorage.setItem(KUNCI_SNAPSHOT, '{"7":{"disimpanAt":1,"attempt":{}}}')
     klienQuery.setQueryData(['attempt', 7], { jawaban: 'B', nama: 'Rina' })
 
     expect(localStorage.getItem('ulangan-cadangan-jawaban-v1')).toContain('"21"')
+    expect(localStorage.getItem(KUNCI_SNAPSHOT)).not.toBeNull()
+  }
+
+  /** Seluruh jejak data murid harus hilang dari perangkat bersama. */
+  function harapJejakBersih() {
+    expect(useSimpananJawaban.getState().perAttempt).toEqual({})
+    expect(useRiwayatJawaban.getState().perAttempt).toEqual({})
+    expect(localStorage.getItem(KUNCI_SNAPSHOT)).toBeNull()
+    expect(klienQuery.getQueryData(['attempt', 7])).toBeUndefined()
   }
 
   // S-14: komputer lab dipakai bergantian — murid berikutnya tidak boleh bisa
@@ -57,9 +82,8 @@ describe('jejak sesi di perangkat bersama', () => {
     await useAuthStore.getState().keluar()
 
     expect(useAuthStore.getState().user).toBeNull()
-    expect(useSimpananJawaban.getState().perAttempt).toEqual({})
     expect(localStorage.getItem('ulangan-cadangan-jawaban-v1')).not.toContain('"21"')
-    expect(klienQuery.getQueryData(['attempt', 7])).toBeUndefined()
+    harapJejakBersih()
   })
 
   it('sesi habis sendiri (401/419) membersihkan jejak yang sama', () => {
@@ -69,8 +93,7 @@ describe('jejak sesi di perangkat bersama', () => {
     window.dispatchEvent(new Event('auth:sesi-habis'))
 
     expect(useAuthStore.getState().user).toBeNull()
-    expect(useSimpananJawaban.getState().perAttempt).toEqual({})
-    expect(klienQuery.getQueryData(['attempt', 7])).toBeUndefined()
+    harapJejakBersih()
   })
 
   it('server menolak keluar pun, jejak tetap dibersihkan', async () => {
@@ -80,8 +103,7 @@ describe('jejak sesi di perangkat bersama', () => {
     await expect(useAuthStore.getState().keluar()).rejects.toThrow('jaringan')
 
     expect(useAuthStore.getState().user).toBeNull()
-    expect(useSimpananJawaban.getState().perAttempt).toEqual({})
-    expect(klienQuery.getQueryData(['attempt', 7])).toBeUndefined()
+    harapJejakBersih()
   })
 })
 

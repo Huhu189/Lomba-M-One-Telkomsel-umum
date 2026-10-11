@@ -7,6 +7,7 @@ namespace App\Sections\Material\Services;
 use App\Sections\Attempt\Enums\StatusAttempt;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\ProgresMateri;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Report\Services\LaporanTagService;
 use App\Sections\School\Models\Murid;
 
@@ -20,7 +21,10 @@ use App\Sections\School\Models\Murid;
  */
 class LaporanMateriService
 {
-    public function __construct(private readonly LaporanTagService $tag) {}
+    public function __construct(
+        private readonly LaporanTagService $tag,
+        private readonly TemaMateriService $temaMateri,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -50,6 +54,7 @@ class LaporanMateriService
             $barisMurid = $progres->get($satuMurid->getKey()) ?? collect();
 
             $perBlok = [];
+            $statusPerBlok = [];
             $temaMentah = [];
             $jumlahWajib = 0;
             $selesaiWajib = 0;
@@ -100,6 +105,8 @@ class LaporanMateriService
                     }
                 }
 
+                $statusPerBlok[(int) $satuBlok->getKey()] = $status;
+
                 $perBlok[] = [
                     'block_id' => $satuBlok->getKey(),
                     'urutan' => $satuBlok->urutan,
@@ -137,9 +144,24 @@ class LaporanMateriService
             // Terlemah dulu supaya guru langsung menunjuk tema kritis.
             usort($tema, static fn (array $a, array $b): int => $a['persen'] <=> $b['persen']);
 
+            $petaPerjalanan = $this->temaMateri->perjalanan($materi, $statusPerBlok);
+
             $daftar[] = [
                 'murid_id' => (int) $satuMurid->getKey(),
                 'nama' => $satuMurid->user?->name,
+                // Ringkas saja per murid: laporan sekelas tidak perlu memuat
+                // seluruh peta tiap anak, cukup sampai pos mana ia berjalan.
+                'perjalanan' => [
+                    'posisi' => $petaPerjalanan['posisi'],
+                    'selesai' => $petaPerjalanan['selesai'],
+                    'total' => $petaPerjalanan['total'],
+                    'persen' => $petaPerjalanan['persen'],
+                    'tuntas' => $petaPerjalanan['tuntas'],
+                    'tingkat_nomor' => $petaPerjalanan['tingkat']['nomor'],
+                    'tingkat_nama' => $petaPerjalanan['tingkat']['nama'],
+                    'puncak' => $petaPerjalanan['tingkat']['puncak'],
+                    'langkah_aktif' => $this->namaLangkah($petaPerjalanan, $petaPerjalanan['posisi']),
+                ],
                 'blok_selesai' => (int) collect($perBlok)->where('status', 'selesai')->count(),
                 'jumlah_blok' => count($perBlok),
                 'selesai_wajib' => $selesaiWajib,
@@ -165,6 +187,8 @@ class LaporanMateriService
             ];
         }
 
+        $konfigurasi = TemaPerjalanan::konfigurasi($materi->tema);
+
         return [
             'materi' => [
                 'id' => $materi->getKey(),
@@ -174,9 +198,41 @@ class LaporanMateriService
                 'kelas_nama' => $materi->kelas?->nama,
                 'tema_nama' => $materi->tag?->nama,
             ],
+            // Peta perjalanan kelas: nama pos yang sesungguhnya (termasuk nama
+            // yang diganti guru), supaya kolom laporan dan peta anak tidak beda.
+            'perjalanan' => [
+                'kode' => $konfigurasi['kode'],
+                'nama' => $konfigurasi['nama'],
+                // `true` = materi tanpa peta: laporan tidak menampilkan kolom pos
+                // dan tingkat, karena materi itu memang daftar bagian biasa.
+                'tanpa' => $konfigurasi['tanpa'],
+                'adegan' => $konfigurasi['adegan'],
+                'satuan' => $konfigurasi['satuan'],
+                'video_kode' => $konfigurasi['video_kode'],
+                'langkah' => $this->temaMateri->langkah($blok, $materi->tema),
+            ],
             'ambang' => $ambang,
             'blok' => $blokRingkas,
             'murid' => $daftar,
         ];
+    }
+
+    /**
+     * Nama pos dengan nomor tertentu dari peta perjalanan seorang murid.
+     *
+     * @param  array<string, mixed>  $peta
+     */
+    private function namaLangkah(array $peta, int $nomor): ?string
+    {
+        /** @var array<int, array<string, mixed>> $langkah */
+        $langkah = is_array($peta['langkah'] ?? null) ? $peta['langkah'] : [];
+
+        foreach ($langkah as $satu) {
+            if ((int) $satu['nomor'] === $nomor) {
+                return (string) $satu['nama'];
+            }
+        }
+
+        return null;
     }
 }

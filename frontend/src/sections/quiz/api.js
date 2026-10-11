@@ -30,10 +30,11 @@ export const skemaKuis = z.object({
   deskripsi: z.string().nullable(),
   status: z.string(),
   status_label: z.string().optional(),
-  subject_id: z.number().optional(),
-  class_id: z.number().optional(),
-  mapel_nama: z.string().optional(),
-  kelas_nama: z.string().optional(),
+  // Kuis draf boleh belum punya mapel/kelas → server mengirim null.
+  subject_id: z.number().nullable().optional(),
+  class_id: z.number().nullable().optional(),
+  mapel_nama: z.string().nullable().optional(),
+  kelas_nama: z.string().nullable().optional(),
   mulai_at: z.string().nullable(),
   selesai_at: z.string().nullable(),
   durasi_menit: z.number(),
@@ -45,13 +46,15 @@ export const skemaKuis = z.object({
 })
 
 /**
+ * Muatan kuis: mapel dan kelas boleh `null` selagi draf — keduanya baru wajib
+ * saat kuis diterbitkan.
  * @typedef {z.infer<typeof skemaKuis>} DataKuis
  * @typedef {z.infer<typeof skemaSoalTampil>} DataSoalTampil
  * @typedef {{
  *   judul: string,
  *   deskripsi?: string,
- *   subject_id: number,
- *   class_id: number,
+ *   subject_id: number|null,
+ *   class_id: number|null,
  *   durasi_menit: number,
  *   mulai_at?: string|null,
  *   selesai_at?: string|null,

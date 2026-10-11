@@ -39,6 +39,7 @@ class ProgresMateriService
     public function __construct(
         private readonly AttemptService $attempt,
         private readonly PenyimpananMateri $penyimpanan,
+        private readonly TemaMateriService $tema,
     ) {}
 
     /**
@@ -90,7 +91,7 @@ class ProgresMateriService
             $progres = $selesai[$satu->getKey()] ?? null;
             $isi = is_array($satu->isi) ? $satu->isi : [];
 
-            $blok[] = [
+            $baris = [
                 'block_id' => $satu->getKey(),
                 'urutan' => $satu->urutan,
                 'tipe' => $satu->tipe->value,
@@ -109,10 +110,26 @@ class ProgresMateriService
                     ->diff($selesaiId)
                     ->isEmpty(),
             ];
+
+            // Penjelasan setelah kuis (opsional) — bentuknya sama dengan yang
+            // dikirim saat satu blok dibuka, supaya pemutar murid membaca satu
+            // bentuk saja.
+            $penjelasan = $satu->tipe->berkuis() ? $this->penjelasanBlok($isi) : null;
+
+            if ($penjelasan !== null) {
+                $baris['penjelasan'] = $penjelasan;
+            }
+
+            $blok[] = $baris;
         }
 
         $jumlahWajib = $materi->blok->where('wajib', true)->count();
         $selesaiWajib = collect($blok)->where('status', StatusProgres::Selesai->value)->where('wajib', true)->count();
+
+        /** @var array<int, string> $statusPerBlok */
+        $statusPerBlok = collect($blok)->mapWithKeys(
+            static fn (array $satu): array => [(int) $satu['block_id'] => (string) $satu['status']],
+        )->all();
 
         return [
             'materi' => [
@@ -124,6 +141,8 @@ class ProgresMateriService
                 'rasio' => $materi->rasio ?? '16:9',
             ],
             'blok' => $blok,
+            // Peta perjalanan (tema + pos yang sudah dilewati) untuk layar murid.
+            'perjalanan' => $this->tema->perjalanan($materi, $statusPerBlok),
             'jumlah_blok' => count($blok),
             'selesai_wajib' => $selesaiWajib,
             'jumlah_wajib' => $jumlahWajib,
@@ -265,9 +284,46 @@ class ProgresMateriService
                 'judul' => $blok->kuis->judul,
                 'jumlah_soal' => $blok->kuis->soal()->count(),
             ];
+
+            // Penjelasan opsional yang ditulis guru: murid melihatnya SESUDAH
+            // kuis selesai. Bukan kunci jawaban.
+            $penjelasan = $this->penjelasanBlok($isi);
+
+            if ($penjelasan !== null) {
+                $payload['penjelasan'] = $penjelasan;
+            }
         }
 
         return $payload;
+    }
+
+    /**
+     * Penjelasan setelah kuis (opsional) siap kirim: teks + media bertanda
+     * tangan. Dipakai daftar progres maupun pemuatan satu blok supaya bentuknya
+     * satu sumber; `null` berarti guru tidak menulis apa pun.
+     *
+     * @param  array<string, mixed>  $isi
+     * @return array{teks: string, media: array<string, mixed>|null}|null
+     */
+    private function penjelasanBlok(array $isi): ?array
+    {
+        $penjelasan = $isi['penjelasan'] ?? null;
+
+        if (! is_array($penjelasan)) {
+            return null;
+        }
+
+        $teks = (string) ($penjelasan['teks'] ?? '');
+        $kodeMedia = trim((string) ($penjelasan['unggahan_kode'] ?? ''));
+
+        if ($teks === '' && $kodeMedia === '') {
+            return null;
+        }
+
+        return [
+            'teks' => $teks,
+            'media' => $kodeMedia === '' ? null : $this->payloadMedia($kodeMedia, ''),
+        ];
     }
 
     /**

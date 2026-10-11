@@ -41,6 +41,18 @@ class BlokResource extends JsonResource
             'durasi_detik' => (float) ($isi['durasi_detik'] ?? 0),
             // Pengaturan tampilan: media (fit/fokus/zoom) dan kuis (mode/tata).
             'tampilan' => is_array($isi['tampilan'] ?? null) ? $isi['tampilan'] : null,
+            // Nama pos perjalanan yang diberikan guru (kosong = pakai bawaan tema).
+            'fase' => is_string($isi['fase'] ?? null) ? $isi['fase'] : null,
+            // Penjelasan opsional setelah kuis (blok kuis): teks + kode media.
+            // Media memakai pustaka unggahan materi yang sama seperti blok media.
+            'penjelasan' => $this->tipe->berkuis() && is_array($isi['penjelasan'] ?? null)
+                ? [
+                    'teks' => (string) ($isi['penjelasan']['teks'] ?? ''),
+                    'unggahan_kode' => is_string($isi['penjelasan']['unggahan_kode'] ?? null)
+                        ? $isi['penjelasan']['unggahan_kode']
+                        : null,
+                ]
+                : null,
             'kuis_judul' => $this->whenLoaded('kuis', fn () => $this->kuis->judul),
             'jumlah_soal' => $this->whenLoaded('kuis', fn () => $this->kuis->soal()->count()),
         ];

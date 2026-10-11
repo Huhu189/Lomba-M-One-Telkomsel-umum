@@ -9,6 +9,12 @@
 import { z } from 'zod'
 import { client, ambilCsrfCookie } from '../../shared/api/client.js'
 import { skemaAttempt } from '../attempt/api.js'
+import {
+  skemaKonfigurasiTema,
+  skemaPerjalanan,
+  skemaTemaKatalog,
+  skemaTemaMateri,
+} from './perjalanan.js'
 
 /** Satu berkas materi yang sudah selesai diunggah. */
 export const skemaUnggahan = z.object({
@@ -49,6 +55,16 @@ export const skemaBlokMateri = z.object({
   durasi_detik: z.number().optional(),
   // Media: fit/fokus_x/fokus_y/zoom. Kuis: mode/tata.
   tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
+  // Nama pos perjalanan yang diganti guru (kosong = bawaan tema).
+  fase: z.string().nullable().optional(),
+  // Penjelasan opsional setelah kuis (blok kuis saja): teks + kode media.
+  penjelasan: z
+    .object({
+      teks: z.string(),
+      unggahan_kode: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   kuis_judul: z.string().nullable().optional(),
   jumlah_soal: z.number().nullable().optional(),
 })
@@ -65,6 +81,9 @@ export const skemaMateri = z.object({
   tag_id: z.number().nullable().optional(),
   urutan: z.number().optional(),
   rasio: z.string().optional(),
+  // Tema perjalanan: pilihan guru + konfigurasi lengkap (nama pos & tingkat).
+  tema: skemaTemaMateri.nullable().optional(),
+  perjalanan: skemaKonfigurasiTema.optional(),
   mapel_nama: z.string().nullable().optional(),
   kelas_nama: z.string().nullable().optional(),
   tema_nama: z.string().nullable().optional(),
@@ -100,8 +119,35 @@ export const skemaProgresBlok = z.object({
   tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
   // Kuis yang tayang di dalam video: id blok video tuannya.
   host_id: z.number().nullable().optional(),
+  // Penjelasan guru yang tampil SESUDAH kuis selesai (blok kuis, opsional).
+  penjelasan: z
+    .object({
+      teks: z.string(),
+      media: z
+        .object({
+          kode: z.string(),
+          nama: z.string().optional(),
+          kategori: z.string().optional(),
+          kategori_label: z.string().optional(),
+          tampil_langsung: z.boolean().optional(),
+          mime: z.string().optional(),
+          ukuran_manusia: z.string().optional(),
+          url: z.string().optional(),
+          tersedia: z.boolean().optional(),
+        })
+        .nullable()
+        .optional(),
+    })
+    .nullable()
+    .optional(),
   // Pertimbangan server (aturan urutan berbasis timeline); klien hanya menampilkan.
   boleh_dibuka: z.boolean().optional(),
+})
+
+/** Katalog tema perjalanan dari server (GET /materi/tema). */
+export const skemaKatalogTema = z.object({
+  tema: z.array(skemaTemaKatalog),
+  bawaan: z.string(),
 })
 
 /** Ringkasan progres murid pada satu materi. */
@@ -115,6 +161,8 @@ export const skemaRingkasanMateri = z.object({
     rasio: z.string().optional(),
   }),
   blok: z.array(skemaProgresBlok),
+  // Peta perjalanan (tema + pos yang sudah dilewati) untuk layar murid.
+  perjalanan: skemaPerjalanan,
   jumlah_blok: z.number(),
   selesai_wajib: z.number(),
   jumlah_wajib: z.number(),
@@ -165,6 +213,27 @@ export const skemaLaporanMateri = z.object({
     kelas_nama: z.string().nullable().optional(),
     tema_nama: z.string().nullable().optional(),
   }),
+  // Peta perjalanan kelas: nama pos sesungguhnya (termasuk yang diganti guru).
+  perjalanan: z.object({
+    kode: z.string(),
+    nama: z.string(),
+    // `true` = materi tanpa peta (daftar bagian biasa).
+    tanpa: z.boolean(),
+    adegan: z.string(),
+    satuan: z.string(),
+    video_kode: z.string().nullable(),
+    langkah: z.array(
+      z.object({
+        block_id: z.number(),
+        nomor: z.number(),
+        nama: z.string(),
+        ikon: z.string(),
+        warna: z.string(),
+        bawaan: z.string().optional(),
+        wajib: z.boolean(),
+      }),
+    ),
+  }),
   blok: z.array(
     z.object({
       block_id: z.number(),
@@ -180,6 +249,17 @@ export const skemaLaporanMateri = z.object({
     z.object({
       murid_id: z.number(),
       nama: z.string().nullable(),
+      perjalanan: z.object({
+        posisi: z.number(),
+        selesai: z.number(),
+        total: z.number(),
+        persen: z.number(),
+        tuntas: z.boolean(),
+        tingkat_nomor: z.number(),
+        tingkat_nama: z.string(),
+        puncak: z.boolean(),
+        langkah_aktif: z.string().nullable(),
+      }),
       blok_selesai: z.number(),
       jumlah_blok: z.number(),
       selesai_wajib: z.number(),
@@ -229,6 +309,7 @@ export const skemaResponsPotongan = z.object({
  * @typedef {z.infer<typeof skemaRingkasanMateri>} DataRingkasanMateri
  * @typedef {z.infer<typeof skemaIsiBlok>} DataIsiBlok
  * @typedef {z.infer<typeof skemaLaporanMateri>} DataLaporanMateri
+ * @typedef {z.infer<typeof skemaKatalogTema>} DataKatalogTema
  * @typedef {{
  *   judul: string,
  *   deskripsi?: string,
@@ -237,9 +318,15 @@ export const skemaResponsPotongan = z.object({
  *   tag_id?: number|null,
  * }} MuatanMateri
  * @typedef {{
+ *   kode?: string,
+ *   nama?: string,
+ *   video_kode?: string|null,
+ * }} MuatanTema
+ * @typedef {{
  *   tipe: 'teks'|'media'|'kuis',
  *   wajib: boolean,
- *   isi?: Record<string, unknown>,
+ *   isi?: Record<string, unknown>, // kuis: `{penjelasan: {teks, unggahan_kode}}`
+ *   fase?: string,
  *   quiz_id?: number|null,
  *   track?: number,
  *   mulai_detik?: number,
@@ -344,11 +431,30 @@ export async function hapusMateri(id) {
  * @param {number} id
  * @param {MuatanBlok[]} blok
  * @param {string} [rasio] rasio bingkai pratinjau (16:9, 9:16, 1:1, 4:3)
+ * @param {MuatanTema} [tema] tema perjalanan (nama ganti + video latar)
  */
-export async function sinkronBlok(id, blok, rasio) {
+export async function sinkronBlok(id, blok, rasio, tema) {
   await ambilCsrfCookie()
-  const respons = await client.put(`/v1/materi/${id}/blok`, rasio ? { blok, rasio } : { blok })
+
+  /** @type {Record<string, unknown>} */
+  const muatan = { blok }
+
+  if (rasio) muatan.rasio = rasio
+  if (tema) muatan.tema = tema
+
+  const respons = await client.put(`/v1/materi/${id}/blok`, muatan)
   return skemaMateri.parse(respons.data)
+}
+
+/**
+ * Katalog template tema perjalanan (untuk panel Template di editor).
+ *
+ * Diambil dari server supaya nama fase/tingkat hanya punya satu sumber
+ * kebenaran; editor tidak menyalin daftarnya sendiri.
+ */
+export async function ambilTemaMateri() {
+  const respons = await client.get('/v1/materi/tema')
+  return skemaKatalogTema.parse(respons.data)
 }
 
 /** @param {number} id */

@@ -19,10 +19,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Materi pelajaran: judul + tema (tag) + urutan blok.
+ *
+ * Kolom `tema` menyimpan pilihan tema perjalanan guru (`kode`, `nama`,
+ * `video_kode`); lihat Registry\TemaPerjalanan untuk isi fasenya. Materi lama
+ * yang belum punya tema otomatis memakai tema bawaan, jadi peta perjalanan
+ * selalu bisa ditampilkan.
  */
 #[Fillable([
     'school_id', 'subject_id', 'class_id', 'tag_id', 'judul', 'deskripsi',
-    'status', 'urutan', 'publikasi_at', 'dibuat_oleh',
+    'status', 'urutan', 'rasio', 'tema', 'publikasi_at', 'dibuat_oleh',
 ])]
 class Materi extends Model
 {
@@ -40,6 +45,7 @@ class Materi extends Model
         'status' => StatusMateri::class,
         'publikasi_at' => 'datetime',
         'urutan' => 'integer',
+        'tema' => 'array',
     ];
 
     /** @return BelongsTo<Sekolah, $this> */

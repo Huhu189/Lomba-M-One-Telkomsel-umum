@@ -29,8 +29,9 @@ class KuisResource extends JsonResource
             'status_label' => $this->status->label(),
             'subject_id' => $this->subject_id,
             'class_id' => $this->class_id,
-            'mapel_nama' => $this->whenLoaded('mapel', fn () => $this->mapel->nama),
-            'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->kelas->nama),
+            // Mapel/kelas boleh belum dipilih selagi kuis masih draf → null.
+            'mapel_nama' => $this->whenLoaded('mapel', fn () => $this->mapel?->nama),
+            'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->kelas?->nama),
             'mulai_at' => $this->mulai_at?->toIso8601String(),
             'selesai_at' => $this->selesai_at?->toIso8601String(),
             'durasi_menit' => $this->durasi_menit,

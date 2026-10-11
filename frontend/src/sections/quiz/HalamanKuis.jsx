@@ -5,23 +5,32 @@
  * Susunan langkah hanya alat bantu tampilan; yang menentukan tetap server:
  * kuis dibuat sebagai draf, susunan soal disinkronkan, dan publikasi diperiksa
  * kelengkapannya di backend (`KuisController@pub`).
+ *
+ * Draf dibuat hanya dengan judul: mapel, kelas, dan durasi boleh ditentukan
+ * belakangan, dan soal boleh ditulis langsung di langkah 2 lewat editor yang
+ * sama dengan bank soal — jadi guru tidak wajib punya stok soal lebih dulu.
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Link } from 'react-router-dom'
 import {
   IkonBuku,
   IkonCentang,
   IkonDaftar,
+  IkonGear,
   IkonKirim,
   IkonPanahKiri,
   IkonPensil,
   IkonSilang,
+  IkonTambah,
   IkonTongSampah,
 } from '../../icons.jsx'
+import { RUTE } from '../../routes.js'
 import { ambilKelas, ambilMapel } from '../school/api.js'
-import { ambilSoal } from '../question/api.js'
+import { ambilSoal, ambilTag, buatSoal } from '../question/api.js'
+import EditorSoal from '../question/EditorSoal.jsx'
 import { teksAman } from '../question/tipeSoal.js'
 import { skemaKuisForm } from '../question/validasi.js'
 import {
@@ -59,6 +68,16 @@ const nilaiAwal = {
 }
 
 /**
+ * Isi formulir angka → bilangan, atau `null` bila bidangnya sengaja dibiarkan
+ * kosong (server menyimpannya sebagai "belum ditentukan").
+ * @param {string|number} nilai
+ * @returns {number|null}
+ */
+function angkaAtauNull(nilai) {
+  return String(nilai).trim() === '' ? null : Number(nilai)
+}
+
+/**
  * Ringkas teks soal untuk daftar pilihan.
  * @param {Record<string, unknown>} konten
  */
@@ -75,11 +94,15 @@ export default function HalamanKuis() {
   const [langkah, setLangkah] = useState(0)
   const [soalTerpilih, setSoalTerpilih] = useState(/** @type {number[]} */ ([]))
   const [kuisDihapus, setKuisDihapus] = useState(/** @type {import('./api.js').DataKuis|null} */ (null))
+  // Editor soal dibuka langsung di langkah 2: guru tidak wajib menyiapkan soal
+  // di bank soal lebih dulu.
+  const [soalBaru, setSoalBaru] = useState(false)
 
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
   const kelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
   const bankSoal = useQuery({ queryKey: ['soal', 'semua'], queryFn: () => ambilSoal({}) })
+  const tag = useQuery({ queryKey: ['tag'], queryFn: ambilTag })
 
   const {
     register,
@@ -101,30 +124,63 @@ export default function HalamanKuis() {
     await queryClient.invalidateQueries({ queryKey: ['kuis'] })
   }
 
+  /**
+   * Isi formulir → muatan API kuis. Mapel/kelas boleh kosong selagi draf
+   * (dikirim `null`); durasi kosong memakai bawaan 30 menit supaya server selalu
+   * menerima angka. `mapelPaksa` mengisi mapel yang belum ada — dipakai saat
+   * soal baru di langkah 2 memilih mapel lebih dulu daripada kuisnya.
+   *
+   * @param {import('../question/validasi.js').DataKuisForm} data
+   * @param {number} [mapelPaksa]
+   * @returns {import('./api.js').MuatanKuis}
+   */
+  function muatanKuis(data, mapelPaksa) {
+    return {
+      judul: data.judul,
+      deskripsi: data.deskripsi || undefined,
+      subject_id: mapelPaksa ?? angkaAtauNull(data.subject_id),
+      class_id: angkaAtauNull(data.class_id),
+      durasi_menit: angkaAtauNull(data.durasi_menit) ?? 30,
+      mulai_at: keIso(data.mulai_at),
+      selesai_at: keIso(data.selesai_at),
+      acak_soal: data.acak_soal,
+      acak_opsi: data.acak_opsi,
+    }
+  }
+
   const simpan = useMutation({
-    mutationFn: async (/** @type {import('../question/validasi.js').DataKuisForm} */ data) => {
-      /** @type {import('./api.js').MuatanKuis} */
-      const muatan = {
-        judul: data.judul,
-        deskripsi: data.deskripsi || undefined,
-        subject_id: Number(data.subject_id),
-        class_id: Number(data.class_id),
-        durasi_menit: Number(data.durasi_menit),
-        mulai_at: keIso(data.mulai_at),
-        selesai_at: keIso(data.selesai_at),
-        acak_soal: data.acak_soal,
-        acak_opsi: data.acak_opsi,
-      }
-      return editor === null || editor.id === null
-        ? buatKuis(muatan)
-        : ubahKuis(editor.id, muatan)
-    },
+    mutationFn: async (/** @type {import('../question/validasi.js').DataKuisForm} */ data) =>
+      editor === null || editor.id === null
+        ? buatKuis(muatanKuis(data))
+        : ubahKuis(editor.id, muatanKuis(data)),
     onSuccess: async (kuis) => {
       tampilkanToast('sukses', editor?.id === null ? 'Kuis dibuat sebagai draf.' : 'Kuis diperbarui.')
       setEditor({ id: kuis.id, judul: kuis.judul, status: kuis.status })
       // Langkah 2 langsung bisa dibuka: kuis (draf) sudah punya id di server.
       setLangkah(1)
       await segarkan()
+    },
+    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+  })
+
+  // Soal baru dari editor di langkah 2 langsung masuk ke susunan kuis.
+  const simpanSoalBaru = useMutation({
+    mutationFn: async (/** @type {import('../question/tipeSoal.js').MuatanSoal} */ muatan) =>
+      buatSoal(muatan),
+    onSuccess: async (soal) => {
+      setSoalTerpilih((sebelum) => (sebelum.includes(soal.id) ? sebelum : [...sebelum, soal.id]))
+      setSoalBaru(false)
+      tampilkanToast('sukses', 'Soal dibuat dan langsung masuk ke susunan kuis.')
+      await queryClient.invalidateQueries({ queryKey: ['soal'] })
+      await queryClient.invalidateQueries({ queryKey: ['tag'] })
+
+      // Kuis yang belum punya mapel mewarisi mapel soal barunya: guru memilih
+      // mapel sekali saja, dan di langkah 1 bidangnya sudah terisi.
+      if (editor?.id != null && nilai.subject_id === '' && soal.subject_id > 0) {
+        setValue('subject_id', String(soal.subject_id))
+        await ubahKuis(editor.id, muatanKuis(nilai, Number(soal.subject_id)))
+        await segarkan()
+      }
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
@@ -307,6 +363,10 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               onSubmit={handleSubmit((data) => simpan.mutate(data))}
             >
               <h2 id="langkah-1" className="judul-bagian">Info dan jadwal</h2>
+              <p className="teks-lembut small">
+                Cukup isi judulnya dulu. Mapel, kelas, dan jadwal boleh ditentukan belakangan —
+                yang penting sudah lengkap saat kuis diterbitkan.
+              </p>
 
               <div className="bidang mb-3">
                 <label className="form-label" htmlFor="kuis-judul">Judul kuis</label>
@@ -322,7 +382,9 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               <div className="row g-3 mb-3">
                 <div className="col-sm-6 col-lg-3">
                   <div className="bidang">
-                    <label className="form-label" htmlFor="kuis-mapel">Mapel</label>
+                    <label className="form-label" htmlFor="kuis-mapel">
+                      Mapel <span className="teks-lembut fw-normal">(boleh nanti)</span>
+                    </label>
                     <select id="kuis-mapel" className="form-select" {...register('subject_id')}>
                       <option value="">Pilih mapel…</option>
                       {(mapel.data ?? []).map((satu) => (
@@ -337,7 +399,9 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
 
                 <div className="col-sm-6 col-lg-3">
                   <div className="bidang">
-                    <label className="form-label" htmlFor="kuis-kelas">Kelas</label>
+                    <label className="form-label" htmlFor="kuis-kelas">
+                      Kelas <span className="teks-lembut fw-normal">(boleh nanti)</span>
+                    </label>
                     <select id="kuis-kelas" className="form-select" {...register('class_id')}>
                       <option value="">Pilih kelas…</option>
                       {(kelas.data ?? []).map((satu) => (
@@ -359,10 +423,13 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                       type="number"
                       min={1}
                       max={300}
+                      placeholder="30"
                       {...register('durasi_menit')}
                     />
-                    {errors.durasi_menit && (
+                    {errors.durasi_menit ? (
                       <p className="status-salah small mb-0">{teksGalat(errors.durasi_menit)}</p>
+                    ) : (
+                      <p className="teks-lembut small mb-0">Kosongkan untuk durasi bawaan 30 menit.</p>
                     )}
                   </div>
                 </div>
@@ -434,8 +501,9 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               </div>
 
               <p className="teks-lembut small">
-                Pengaturan lanjutan (percobaan ulang, peringkat, pengaman) mengikuti pengaturan
-                sekolah atau kelas, dan bisa diubah khusus untuk kuis ini di halaman Pengaturan.
+                Pengaturan lanjutan (percobaan ulang, peringkat, dan jenis anti-cheat) mengikuti
+                pengaturan sekolah atau kelas. Khusus kuis ini, atur sendiri di{' '}
+                <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis”.
               </p>
 
               <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
@@ -447,14 +515,47 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
             </form>
           )}
 
-          {langkah === 1 && (
+          {langkah === 1 && soalBaru && (
+            <>
+              <div className="d-flex flex-wrap align-items-center gap-2">
+                <div className="me-auto">
+                  <h2 className="judul-bagian mb-0">Soal baru untuk kuis ini</h2>
+                  <p className="teks-lembut small mb-0">
+                    Soalnya ikut tersimpan di bank soal dan langsung masuk ke susunan kuis.
+                  </p>
+                </div>
+                <Tombol varian="tepi" ikon={IkonPanahKiri} onClick={() => setSoalBaru(false)}>
+                  Kembali ke susunan
+                </Tombol>
+              </div>
+
+              <EditorSoal
+                key="soal-baru-di-kuis"
+                soal={null}
+                daftarMapel={mapel.data ?? []}
+                daftarTag={tag.data ?? []}
+                mapelAwal={nilai.subject_id}
+                sedangMenyimpan={simpanSoalBaru.isPending}
+                onSimpan={(muatan) => simpanSoalBaru.mutate(muatan)}
+                onBatal={() => setSoalBaru(false)}
+              />
+            </>
+          )}
+
+          {langkah === 1 && !soalBaru && (
             <>
               <div className="row g-4 align-items-start">
                 <div className="col-lg-6">
                   <div className="kartu-soft p-4 h-100">
-                    <h2 className="judul-bagian">Bank soal</h2>
-                    <p className="teks-lembut small">
-                      Pilih soal untuk dimasukkan ke kuis. Soal yang dipilih ditandai centang.
+                    <div className="d-flex flex-wrap align-items-center gap-2">
+                      <h2 className="judul-bagian flex-grow-1 mb-0">Bank soal</h2>
+                      <Tombol ukuran="sedang" ikon={IkonTambah} onClick={() => setSoalBaru(true)}>
+                        Buat soal baru
+                      </Tombol>
+                    </div>
+                    <p className="teks-lembut small mt-2">
+                      Centang soal yang mau dipakai, atau tulis soal baru langsung di sini — bank
+                      soal tidak wajib disiapkan lebih dulu.
                     </p>
 
                     {bankSoal.isPending && <Skeleton baris={4} label="Memuat bank soal…" />}
@@ -466,7 +567,10 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                     )}
                     {bankSoal.isSuccess && katalog.length === 0 && (
                       <div className="kotak-kosong">
-                        Bank soal masih kosong. Tambahkan soal dulu di halaman Bank Soal.
+                        <p className="mb-2">Bank soal masih kosong. Tulis soalnya langsung di sini.</p>
+                        <Tombol ikon={IkonTambah} onClick={() => setSoalBaru(true)}>
+                          Buat soal baru
+                        </Tombol>
                       </div>
                     )}
 
@@ -512,7 +616,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
 
                     {soalTerpilih.length === 0 && (
                       <div className="kotak-kosong mt-2">
-                        Belum ada soal. Pilih dari bank soal di sebelah kiri.
+                        Belum ada soal. Centang soal di sebelah kiri, atau buat soal baru.
                       </div>
                     )}
 

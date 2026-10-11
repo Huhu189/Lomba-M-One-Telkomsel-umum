@@ -6,6 +6,7 @@ import {
   buatPengirim,
   catat,
   kembalikan,
+  pulihkan,
 } from '../../../sections/attempt/antreanJawaban.js'
 
 describe('antrean nomor urut', () => {
@@ -66,6 +67,38 @@ describe('antrean nomor urut', () => {
     catat(antrean, 7, 'A')
 
     expect(adaSisa(antrean)).toBe(true)
+  })
+})
+
+describe('pulihkan antrean dari cadangan lokal', () => {
+  // Tanpa pemulihan ini, jawaban yang tersimpan saat luring hanya terlihat di
+  // layar (tampilan memakai cadangan) padahal server belum pernah menerimanya.
+  it('memasukkan kembali jawaban yang belum terkirim (kunci string dari JSON)', () => {
+    const antrean = buatAntrean()
+
+    expect(pulihkan(antrean, { 7: 'A', 8: true })).toBe(2)
+    expect(adaSisa(antrean)).toBe(true)
+    expect(antrean.entri.get('7')?.nilai).toBe('A')
+    expect(antrean.entri.get('8')?.nilai).toBe(true)
+    expect(antrean.entri.get('7')?.seq).toBe(1)
+  })
+
+  it('tidak melakukan apa pun saat tidak ada sisa', () => {
+    const antrean = buatAntrean()
+
+    expect(pulihkan(antrean, {})).toBe(0)
+    expect(pulihkan(antrean, undefined)).toBe(0)
+    expect(adaSisa(antrean)).toBe(false)
+  })
+
+  it('memulihkan ke antrean yang sudah berisi tanpa menimpa urutan', () => {
+    const antrean = buatAntrean()
+
+    catat(antrean, 7, 'B')
+
+    expect(pulihkan(antrean, { 7: 'A' })).toBe(1)
+    // Entri pulihan lebih baru daripada entri lama pada contoh ini.
+    expect(antrean.entri.get('7')?.nilai).toBe('A')
   })
 })
 

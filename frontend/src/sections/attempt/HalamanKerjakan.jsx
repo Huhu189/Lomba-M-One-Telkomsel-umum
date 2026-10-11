@@ -4,8 +4,14 @@
  * Aturan yang dijaga di sini:
  * - soal + urutan datang dari server (sudah diacak per attempt, tanpa kunci);
  * - timer hanya tampilan, dikoreksi `server_now` dari server;
- * - setiap perubahan langsung dicatat ke cadangan lokal, lalu dikirim diam-diam
- *   (autosave) dengan antrean ulang bila jaringan bermasalah;
+ * - setiap perubahan langsung dicatat ke cadangan lokal + riwayat lokal, lalu
+ *   dikirim diam-diam (autosave) dengan antrean ulang bila jaringan bermasalah;
+ * - SISTEM LURING: saat jaringan putus, jawaban tetap ditulis ke perangkat dan
+ *   pengiriman DITAHAN (bukan ditembakkan berulang), riwayat jawaban bisa
+ *   dibaca murid, lalu semuanya diborong begitu koneksi kembali. Sisa waktu
+ *   memakai jam monotonik sehingga jam perangkat yang dimundurkan tidak
+ *   menambah waktu pengerjaan, dan soal masih bisa dibuka dari salinan yang
+ *   tersimpan di perangkat;
  * - mengumpulkan memakai kunci idempotensi yang sama untuk attempt ini, jadi
  *   dobel klik atau dua tab tidak menggandakan hasil;
  * - proteksi anti-cheat (slice 07) hanya dipasang bila guru menyalakannya lewat
@@ -15,7 +21,7 @@
  * state lewat effect) supaya tidak ada setState di badan effect.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
@@ -29,7 +35,7 @@ import PanelLayarMurid from '../presence/PanelLayarMurid.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
 import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
-import { formatSisa, offsetAttemptMs, sisaDetikAttempt, tingkatWaktu } from './hitungMundur.js'
+import { formatSisa, hitungSisaAman, jamKlien, offsetAttemptMs, tingkatWaktu } from './hitungMundur.js'
 import {
   adaSisa,
   ambilUntukKirim,
@@ -37,11 +43,25 @@ import {
   buatPengirim,
   catat as catatAntrean,
   kembalikan,
+  pulihkan as pulihkanAntrean,
 } from './antreanJawaban.js'
 import { gabungJawaban, useSimpananJawaban } from './simpananJawaban.js'
 import { pesanKumpul, ringkasProgres } from './navigatorSoal.js'
 import { BATAS_PERCOBAAN_AUTO, harusMandek, jedaAutoMs } from './kebijakanKumpulAuto.js'
-import { pesanMulaiGagal, retryMulai } from './pesanMulai.js'
+import { pesanMulaiGagal, retryMulai, statusGalatApi } from './pesanMulai.js'
+import {
+  LURING,
+  keadaanJaringan,
+  layakKirim,
+  sadarDaring,
+  sadarGagal,
+  sadarPulih,
+  statusJaringan,
+  tundaKirimMs,
+} from './luring.js'
+import { STATUS_TERKIRIM, amanDicatat, useRiwayatJawaban } from './riwayatJawaban.js'
+import { ambilSnapshot, bersihkanSnapshot, simpanSnapshot } from './snapshot.js'
+import RiwayatJawaban from './RiwayatJawaban.jsx'
 import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
 import { adaProteksiAktif } from '../../security/pengaturanProteksi.js'
@@ -86,9 +106,10 @@ function tungguMilidetik(milidetik) {
  * @param {number} attemptId
  * @param {{ entri: Map<string, { nilai: unknown, seq: number }>, urut: number }} antrean
  * @param {(attemptId: number, questionId: number, nilaiTerkirim: unknown) => void} tandaiTerkirim
+ * @param {{ terkirim?: (questionId: number) => void, terputus?: (galat: unknown) => void }} [lapor]
  * @returns {Promise<number>} jumlah yang gagal
  */
-async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
+async function kirimAntrean(attemptId, antrean, tandaiTerkirim, lapor = {}) {
   const daftar = ambilUntukKirim(antrean)
   let gagal = 0
 
@@ -100,6 +121,7 @@ async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
       // Sertakan nilai yang benar-benar tersimpan: entri hanya dibuang bila
       // antrean masih memuat nilai itu (Q-03).
       tandaiTerkirim(attemptId, idSoal, nilai)
+      lapor.terkirim?.(idSoal)
     } catch (galat) {
       const respons = /** @type {{ status?: number }|undefined} */ (
         /** @type {{ response?: { status?: number } }} */ (galat).response
@@ -113,6 +135,7 @@ async function kirimAntrean(attemptId, antrean, tandaiTerkirim) {
         // baru dan murid dinilai dari isian yang sudah ia tinggalkan (Q-02).
         kembalikan(antrean, kunci, { nilai, seq })
         gagal += 1
+        lapor.terputus?.(galat)
       } else {
         // Server menolak permanen (mis. sudah lewat deadline) — beri tahu murid.
         tampilkanToast('salah', pesanGalatApi(galat))
@@ -127,16 +150,68 @@ export default function HalamanKerjakan() {
   const { kuisId } = useParams()
   const idKuis = Number(kuisId)
   const navigate = useNavigate()
+  const klienKueri = useQueryClient()
+
+  /** Attempt dibaca dari salinan perangkat (server tidak terjangkau). */
+  const [dariSalinan, setDariSalinan] = useState(false)
+
+  /**
+   * Buka attempt: dari server bila bisa, dari salinan perangkat bila jelas
+   * luring. Penolakan permanen (4xx, mis. "batas percobaan habis") TIDAK pernah
+   * ditambal salinan — kalau tidak, murid bisa masuk ke ulangan yang sudah
+   * ditutup hanya karena punya salinan lama.
+   */
+  const mulaiAttempt = useCallback(async () => {
+    try {
+      const data = await mulaiKuis(idKuis)
+
+      setDariSalinan(false)
+      simpanSnapshot(data)
+
+      return data
+    } catch (galat) {
+      const status = statusGalatApi(galat)
+      const putus = typeof navigator !== 'undefined' && navigator.onLine === false
+
+      if (putus && (status === undefined || status >= 500)) {
+        const salinan = ambilSnapshot(idKuis)
+
+        if (salinan !== null) {
+          setDariSalinan(true)
+
+          return salinan
+        }
+      }
+
+      throw galat
+    }
+  }, [idKuis])
 
   const mulainya = useQuery({
     queryKey: ['attempt-mulai', idKuis],
-    queryFn: () => mulaiKuis(idKuis),
+    queryFn: mulaiAttempt,
     enabled: Number.isInteger(idKuis) && idKuis > 0,
     // Jaringan/5xx dicoba sekali lagi; penolakan permanen (422/403) tidak (U-03).
     retry: retryMulai,
+    // Luring: query tetap harus dijalankan. Dengan mode bawaan ('online'),
+    // TanStack Query menahan queryFn saat `navigator.onLine` false sehingga
+    // layar macet di "Menyiapkan ulangan…" dan salinan perangkat tak pernah
+    // dicoba.
+    networkMode: 'always',
   })
 
   const attempt = mulainya.data
+  const refetchMulai = mulainya.refetch
+
+  /** Luring: lanjutkan dari salinan perangkat walau `navigator.onLine` masih bilang daring. */
+  const pakaiSalinan = useCallback(() => {
+    const salinan = ambilSnapshot(idKuis)
+
+    if (salinan === null) return
+
+    setDariSalinan(true)
+    klienKueri.setQueryData(['attempt-mulai', idKuis], salinan)
+  }, [idKuis, klienKueri])
 
   const catat = useSimpananJawaban((s) => s.catat)
   const tandaiTerkirim = useSimpananJawaban((s) => s.tandaiTerkirim)
@@ -144,8 +219,18 @@ export default function HalamanKerjakan() {
   const kunciIdempotensi = useSimpananJawaban((s) => s.kunciIdempotensi)
   const bersihkan = useSimpananJawaban((s) => s.bersihkan)
 
+  const perAttemptRiwayat = useRiwayatJawaban((s) => s.perAttempt)
+  const riwayatAktif = useRiwayatJawaban((s) => s.aktif)
+  const catatRiwayat = useRiwayatJawaban((s) => s.catat)
+  const tandaiRiwayatTerkirim = useRiwayatJawaban((s) => s.tandaiTerkirim)
+  const bersihkanRiwayat = useRiwayatJawaban((s) => s.bersihkan)
+  const nyalakanRiwayat = useRiwayatJawaban((s) => s.nyalakan)
+
   const [perubahan, setPerubahan] = useState(/** @type {Record<string, unknown>|null} */ (null))
-  const [sekarang, setSekarang] = useState(() => Date.now())
+  // Jam klien disimpan berpasangan: jam dinding (bisa diubah murid lewat setelan
+  // waktu) dan jam monotonik (hanya naik, tidak bisa dipengaruhi) — lihat
+  // `hitungSisaAman` di hitungMundur.js.
+  const [sekarang, setSekarang] = useState(jamKlien)
   const [sedangKirim, setSedangKirim] = useState(false)
   const [sudahKumpul, setSudahKumpul] = useState(false)
   const [sudahSetujuProteksi, setSudahSetujuProteksi] = useState(false)
@@ -154,8 +239,8 @@ export default function HalamanKerjakan() {
   const [soalAktif, setSoalAktif] = useState(0)
   const [ragu, setRagu] = useState(/** @type {Record<string, boolean>} */ ({}))
   const [dialogKumpul, setDialogKumpul] = useState(false)
-  const [daring, setDaring] = useState(
-    () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  const [jaringan, setJaringan] = useState(() =>
+    keadaanJaringan(typeof navigator === 'undefined' || navigator.onLine !== false),
   )
   const kartuSoalRef = useRef(/** @type {HTMLElement|null} */ (null))
   const pindahPertama = useRef(true)
@@ -169,7 +254,17 @@ export default function HalamanKerjakan() {
   const timerUlang = useRef(0)
   const sedangKirimRef = useRef(false)
   const peringatanTersiar = useRef(false)
-  const jalankanRef = useRef(/** @type {() => Promise<void>} */ (async () => {}))
+  const jalankanRef = useRef(/** @type {(paksa?: boolean) => Promise<void>} */ (async () => {}))
+
+  // Riwayat jawaban milik attempt ini (daftar bukti yang dibaca murid).
+  const entriRiwayat = useMemo(
+    () => (attempt === undefined ? [] : (perAttemptRiwayat[String(attempt.id)]?.entri ?? [])),
+    [attempt, perAttemptRiwayat],
+  )
+  const tertundaRiwayat = useMemo(
+    () => entriRiwayat.filter((satu) => satu.status !== STATUS_TERKIRIM).length,
+    [entriRiwayat],
+  )
   // U-02: kunci fokus-lock bukan sekadar visual — fokus dipindah ke dialog dan
   // dikembalikan saat kunci selesai.
   const overlayKunci = useRef(/** @type {HTMLDivElement|null} */ (null))
@@ -204,22 +299,58 @@ export default function HalamanKerjakan() {
   // Q-01: offset jam server dihitung SEKALI per respons — `dataUpdatedAt` adalah
   // jam klien saat data benar-benar tiba. Menghitungnya ulang dengan Date.now()
   // yang berjalan membuat `sekarangMs` saling meniadakan dan timer membeku.
+  const dataTibaPada = mulainya.dataUpdatedAt
   const offsetMs = useMemo(
-    () => (attempt === undefined ? 0 : offsetAttemptMs(attempt, mulainya.dataUpdatedAt)),
-    [attempt, mulainya.dataUpdatedAt],
+    () => (attempt === undefined ? 0 : offsetAttemptMs(attempt, dataTibaPada)),
+    [attempt, dataTibaPada],
   )
 
-  const detik = attempt === undefined ? 0 : sisaDetikAttempt(attempt, sekarang, offsetMs)
+  // Acuan jam monotonik: dipasang sekali per payload attempt (respons server).
+  // `dataUpdatedAt` adalah jam klien saat data benar-benar diterima, dan jam
+  // monotonik di sini praktis sama momennya — keduanya dipakai bersama oleh
+  // `sekarangTerkunci` supaya jam dinding yang diubah murid tidak menambah waktu.
+  // Diturunkan (bukan diset lewat effect) supaya tidak ada render berantai.
+  const acuanJam = useMemo(
+    () => (attempt === undefined ? null : { ms: dataTibaPada, monoton: jamKlien().monoton }),
+    [attempt, dataTibaPada],
+  )
+
+  // Waktu "sekarang" dari jam monotonik: jam dinding yang dimundurkan murid
+  // tidak menambah sisa waktu, dan saat luring server tidak bisa ditanyai lagi.
+  const { sisa: detik, tergeser } = hitungSisaAman({
+    attempt: attempt ?? null,
+    offsetMs,
+    acuan: acuanJam,
+    kini: sekarang,
+  })
+
+  // Luring = `navigator.onLine` bilang putus ATAU kirim terakhir gagal
+  // (luring.js). Dua sumber dipakai bersama: wifi yang masih tersambung tetapi
+  // gerbangnya mati tidak terlihat `navigator.onLine`, sedangkan kegagalan kirim
+  // selalu terlihat.
+  const luring = statusJaringan(jaringan, sekarang.dinding) === LURING
+
+  /** Perkiraan jam server sekarang (ISO) untuk cap waktu riwayat jawaban. */
+  function perkiraanJamServerIso() {
+    const jam = hitungSisaAman({
+      attempt: attempt ?? null,
+      offsetMs,
+      acuan: acuanJam,
+      kini: jamKlien(),
+    })
+
+    return new Date(jam.ms + offsetMs).toISOString()
+  }
 
   // Detak 1 detik + peringatan sisa 5 menit (semua efek di dalam callback).
   useEffect(() => {
     if (attempt === undefined) return
 
     const id = window.setInterval(() => {
-      const kini = Date.now()
+      const kini = jamKlien()
       setSekarang(kini)
 
-      const sisa = sisaDetikAttempt(attempt, kini, offsetMs)
+      const sisa = hitungSisaAman({ attempt, offsetMs, acuan: acuanJam, kini }).sisa
 
       if (!peringatanTersiar.current && sisa > 0 && sisa <= AMBANG_PERINGATAN) {
         peringatanTersiar.current = true
@@ -228,24 +359,85 @@ export default function HalamanKerjakan() {
     }, 1000)
 
     return () => window.clearInterval(id)
-  }, [attempt, offsetMs])
+    // `acuanJam` ikut jadi dependensi: detak yang sudah berjalan harus langsung
+    // memakai acuan baru begitu payload attempt tiba.
+  }, [attempt, acuanJam, offsetMs])
 
-  const jalankanAntrean = useCallback(async () => {
-    if (attempt === undefined) return
+  /**
+   * Laporan hasil kirim satu jawaban: riwayat ditandai dan keadaan jaringan
+   * diperbarui dari bukti nyata (permintaan yang gagal/berhasil).
+   */
+  const laporKirim = useMemo(
+    () => ({
+      /** @param {number} soalId */
+      terkirim: (soalId) => {
+        tandaiRiwayatTerkirim(attempt?.id ?? 0, soalId)
+        // Permintaan berhasil = koneksi hidup, apa pun kata event terakhir.
+        setJaringan((lama) => sadarPulih(sadarDaring(lama, true)))
+      },
+      terputus: () => setJaringan((lama) => sadarGagal(lama, Date.now())),
+    }),
+    [attempt, tandaiRiwayatTerkirim],
+  )
 
-    await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
+  /**
+   * Borong antrean jawaban. `paksa` dipakai saat jaringan baru dinyatakan pulih
+   * (event `online`): keadaan jaringan di state belum sempat diperbarui, jadi
+   * gerbang luring dilewati sekali.
+   *
+   * @param {boolean} [paksa]
+   */
+  const jalankanAntrean = useCallback(
+    async (paksa = false) => {
+      if (attempt === undefined) return
 
-    if (adaSisa(antrean.current) && timerUlang.current === 0) {
-      timerUlang.current = window.setTimeout(() => {
-        timerUlang.current = 0
-        void jalankanRef.current()
-      }, JEDA_ULANG)
-    }
-  }, [attempt, tandaiTerkirim])
+      // Luring: jangan tembak server yang jelas tidak bisa dijangkau. Jawaban
+      // sudah aman di perangkat dan akan diborong saat koneksi kembali.
+      if (!paksa && !layakKirim(jaringan, Date.now())) return
+
+      await pengirim.current(() =>
+        kirimAntrean(attempt.id, antrean.current, tandaiTerkirim, laporKirim),
+      )
+
+      if (adaSisa(antrean.current) && timerUlang.current === 0) {
+        const tunda = tundaKirimMs(jaringan, Date.now())
+
+        // ∞ berarti `navigator` bilang putus: tidak ada jadwal ulang sama sekali.
+        // Event `online` yang membangunkan antrean — bukan timer yang menembak
+        // permintaan gagal tiap 5 detik sampai baterai habis.
+        if (Number.isFinite(tunda)) {
+          timerUlang.current = window.setTimeout(() => {
+            timerUlang.current = 0
+            void jalankanRef.current()
+          }, Math.max(JEDA_ULANG, tunda))
+        }
+      }
+    },
+    [attempt, jaringan, laporKirim, tandaiTerkirim],
+  )
 
   useEffect(() => {
     jalankanRef.current = jalankanAntrean
   }, [jalankanAntrean])
+
+  /** Attempt yang cadangan lokalnya sudah dimasukkan kembali ke antrean kirim. */
+  const dipulihkan = useRef(0)
+
+  // Pemulihan antrean setelah layar digambar ulang (muat ulang, pindah halaman,
+  // atau luring): jawaban yang masih berstatus `belumTerkirim` di perangkat
+  // dimasukkan lagi ke antrean kirim. Tanpa ini, murid melihat jawabannya
+  // sendiri (tampilan memakai cadangan) sementara server tidak pernah
+  // menerimanya — dan jawaban itu hilang saat dikumpulkan.
+  useEffect(() => {
+    if (attempt === undefined || attempt.status !== 'berjalan') return
+    if (dipulihkan.current === attempt.id) return
+
+    dipulihkan.current = attempt.id
+
+    if (pulihkanAntrean(antrean.current, ambilCadangan(attempt.id).belumTerkirim) === 0) return
+
+    if (layakKirim(jaringan, Date.now())) void jalankanRef.current()
+  }, [attempt, ambilCadangan, jaringan])
 
   const kumpulkan = useCallback(
     async (/** @type {boolean} */ otomatis) => {
@@ -260,7 +452,9 @@ export default function HalamanKerjakan() {
       }
 
       try {
-        let sisa = await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
+        let sisa = await pengirim.current(() =>
+          kirimAntrean(attempt.id, antrean.current, tandaiTerkirim, laporKirim),
+        )
 
         // Kumpul MANUAL: beri jaringan kesempatan pulih dulu. Tanpa ini, jawaban
         // terakhir yang belum terkirim hilang diam-diam — server hanya menilai
@@ -268,7 +462,9 @@ export default function HalamanKerjakan() {
         if (!otomatis) {
           for (let percobaan = 1; percobaan < PERCOBAAN_SEBELUM_KUMPUL && sisa > 0; percobaan++) {
             await tungguMilidetik(JEDA_SEBELUM_KUMPUL)
-            sisa = await pengirim.current(() => kirimAntrean(attempt.id, antrean.current, tandaiTerkirim))
+            sisa = await pengirim.current(() =>
+              kirimAntrean(attempt.id, antrean.current, tandaiTerkirim, laporKirim),
+            )
           }
 
           if (sisa > 0) {
@@ -287,6 +483,11 @@ export default function HalamanKerjakan() {
         // Cadangan lokal hanya dihapus bila seluruh jawaban benar-benar tersimpan
         // (kumpul otomatis saat waktu habis tetap mengirim apa adanya).
         if (sisa === 0) bersihkan(attempt.id)
+
+        // Riwayat jawaban dan salinan soal adalah alat kerja luring, bukan
+        // arsip: begitu hasil final diterima, keduanya hilang dari perangkat ini.
+        bersihkanRiwayat(attempt.id)
+        bersihkanSnapshot(attempt.quiz_id)
         setSudahKumpul(true)
         tampilkanToast('sukses', otomatis ? 'Waktu habis — jawaban terkumpul otomatis.' : 'Jawaban terkumpul.')
         navigate(ruteHasil(attempt.id), { replace: true })
@@ -305,7 +506,15 @@ export default function HalamanKerjakan() {
         setSedangKirim(false)
       }
     },
-    [attempt, bersihkan, kunciIdempotensi, navigate, tandaiTerkirim],
+    [
+      attempt,
+      bersihkan,
+      bersihkanRiwayat,
+      kunciIdempotensi,
+      laporKirim,
+      navigate,
+      tandaiTerkirim,
+    ],
   )
 
   // Waktu habis → kumpulkan otomatis (server tetap penentu akhir). Kegagalan
@@ -355,17 +564,27 @@ export default function HalamanKerjakan() {
     }
   }, [terkunci])
 
-  // Keadaan jaringan: murid perlu tahu jawabannya masih aman saat koneksi putus.
+  // Keadaan jaringan: murid perlu tahu jawabannya masih aman saat koneksi
+  // putus. Saat kembali daring, tiga hal terjadi sekaligus: antrean jawaban
+  // diborong, attempt diambil ulang dari server (server jadi acuan lagi,
+  // termasuk jam dan status), dan riwayat ditandai terkirim satu per satu.
   useEffect(() => {
-    const naik = () => setDaring(true)
-    const turun = () => setDaring(false)
+    const naik = () => {
+      setJaringan((lama) => sadarDaring(lama, true))
+      void jalankanRef.current(true)
+
+      if (attempt !== undefined && attempt.status === 'berjalan') void refetchMulai()
+    }
+    const turun = () => setJaringan((lama) => sadarDaring(lama, false))
+
     window.addEventListener('online', naik)
     window.addEventListener('offline', turun)
+
     return () => {
       window.removeEventListener('online', naik)
       window.removeEventListener('offline', turun)
     }
-  }, [])
+  }, [attempt, refetchMulai])
 
   // Pindah soal: fokus dipindah ke kartu soal dan halaman digulir ke atas supaya
   // pembaca layar membacakan soal yang baru (bukan diam-diam berubah).
@@ -380,6 +599,11 @@ export default function HalamanKerjakan() {
 
   /**
    * Simpan jawaban lokal + jadwalkan autosave.
+   *
+   * Urutannya penting: VALIDASI → tulis ke perangkat (cadangan + riwayat) →
+   * baru jadwalkan kirim. Saat luring langkah terakhir dilewati, jadi tidak ada
+   * permintaan yang ditembakkan hanya untuk gagal.
+   *
    * @param {number} soalId
    * @param {unknown} nilai
    */
@@ -387,8 +611,29 @@ export default function HalamanKerjakan() {
     if (attempt === undefined) return
 
     setPerubahan((lama) => ({ ...(lama ?? jawaban), [String(soalId)]: nilai }))
-    catat(attempt.id, soalId, nilai)
+
+    if (amanDicatat(nilai)) {
+      catat(attempt.id, soalId, nilai)
+
+      const soal = attempt.soal.find((satu) => satu.id === soalId)
+
+      catatRiwayat(attempt.id, {
+        soal_id: soalId,
+        nomor: soal?.nomor ?? 0,
+        tipe: soal?.tipe ?? '',
+        jawaban: nilai,
+        server_at: perkiraanJamServerIso(),
+      })
+    } else {
+      // Nilai yang tidak bisa dibaca kembali (mis. terlalu besar untuk kuota
+      // penyimpanan perangkat) tidak ditulis setengah-setengah ke perangkat.
+      tampilkanToast('salah', 'Jawaban ini terlalu besar untuk disimpan di perangkat ini.')
+    }
+
     catatAntrean(antrean.current, soalId, nilai)
+
+    // Luring: jawaban sudah aman di perangkat; event `online` yang memborong antrean.
+    if (!layakKirim(jaringan, Date.now())) return
 
     if (timerKirim.current === 0) {
       timerKirim.current = window.setTimeout(() => {
@@ -411,6 +656,9 @@ export default function HalamanKerjakan() {
     // U-03: tampilkan alasan dari server (mis. "Kuis belum dimulai", "Bukan
     // untuk kelasmu", "Batas percobaan habis") dan bedakan galat sementara.
     const galatMulai = pesanMulaiGagal(mulainya.error)
+    // Luring: kalau perangkat masih menyimpan salinan soal, murid jangan
+    // ditahan di layar galat — jawaban dan riwayatnya masih ada di sana.
+    const salinanLokal = ambilSnapshot(idKuis)
 
     return (
       <Banner jenis="salah" judul={galatMulai.judul}>
@@ -423,6 +671,11 @@ export default function HalamanKerjakan() {
               onClick={() => void mulainya.refetch()}
             >
               Coba lagi
+            </Tombol>
+          )}
+          {salinanLokal !== null && (
+            <Tombol varian="tepi" onClick={pakaiSalinan}>
+              Lanjutkan dari salinan di perangkat
             </Tombol>
           )}
           <TombolTaut to={RUTE.kuis} varian="tepi">
@@ -512,11 +765,30 @@ export default function HalamanKerjakan() {
       )}
 
       <div className="col-lg-8 col-xl-9" inert={terkunci}>
-        {!daring && (
-          <Banner jenis="peringatan" judul="Koneksi putus">
+        {luring && (
+          <Banner jenis="peringatan" judul="Koneksi putus — mode luring">
             <p className="mb-0">
-              Jawabanmu aman di sini dan akan terkirim sendiri begitu koneksi kembali. Jangan tutup
-              halaman ini.
+              Jawabanmu tersimpan di perangkat ini
+              {tertundaRiwayat > 0 ? ` (${tertundaRiwayat} jawaban menunggu terkirim)` : ''} dan
+              akan terkirim sendiri begitu koneksi kembali. Jangan tutup halaman ini.
+            </p>
+          </Banner>
+        )}
+
+        {dariSalinan && (
+          <Banner jenis="info" judul="Melanjutkan dari salinan di perangkat">
+            <p className="mb-0">
+              Server belum bisa dihubungi, jadi soal dibaca dari salinan terakhir di perangkat ini.
+              Semuanya disamakan dengan server begitu koneksi kembali.
+            </p>
+          </Banner>
+        )}
+
+        {tergeser && (
+          <Banner jenis="info" judul="Jam perangkat berubah">
+            <p className="mb-0">
+              Waktu pengerjaan tetap dihitung dari jam server sejak ulangan dibuka, jadi mengubah jam
+              komputermu tidak menambah sisa waktu.
             </p>
           </Banner>
         )}
@@ -665,9 +937,19 @@ export default function HalamanKerjakan() {
           </div>
         </section>
 
-        <p className="teks-lembut mb-4" role="status">
-          Jawabanmu tersimpan otomatis.
+        <p className="teks-lembut mb-3" role="status">
+          {luring
+            ? 'Jawabanmu tersimpan di perangkat ini sampai koneksi kembali.'
+            : 'Jawabanmu tersimpan otomatis.'}
         </p>
+
+        <RiwayatJawaban
+          entri={entriRiwayat}
+          tertunda={tertundaRiwayat}
+          aktif={riwayatAktif}
+          luring={luring}
+          onNyalakan={nyalakanRiwayat}
+        />
 
         <details className="navigator-lipat kartu-soft p-3 mb-4 d-lg-none">
           <summary className="fw-bold">Daftar soal</summary>

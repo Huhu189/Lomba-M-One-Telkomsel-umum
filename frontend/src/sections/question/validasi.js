@@ -52,18 +52,21 @@ export const skemaTagForm = z.object({
   deskripsi: z.string().trim().max(255, 'Deskripsi maksimal 255 karakter.').optional(),
 })
 
-/** Kuis: judul, mapel, kelas, durasi, dan jadwal opsional. */
+/**
+ * Kuis: judul wajib; mapel, kelas, dan durasi boleh kosong saat draf (guru
+ * menyusun soal dulu, kelengkapannya dijaga server saat publikasi).
+ */
 export const skemaKuisForm = z
   .object({
     judul: z.string().trim().min(3, 'Judul minimal 3 karakter.').max(150, 'Judul maksimal 150 karakter.'),
     deskripsi: z.string().trim().max(1000, 'Deskripsi maksimal 1000 karakter.').optional(),
-    subject_id: z.string().trim().min(1, 'Pilih mapel.'),
-    class_id: z.string().trim().min(1, 'Pilih kelas.'),
+    subject_id: z.string().trim(),
+    class_id: z.string().trim(),
     durasi_menit: z
       .string()
       .trim()
-      .regex(/^\d+$/, 'Durasi harus berupa angka menit.')
-      .refine((nilai) => Number(nilai) >= 1 && Number(nilai) <= 300, 'Durasi 1 sampai 300 menit.'),
+      .regex(/^\d*$/, 'Durasi harus berupa angka menit.')
+      .refine((nilai) => nilai === '' || (Number(nilai) >= 1 && Number(nilai) <= 300), 'Durasi 1 sampai 300 menit.'),
     mulai_at: z.string().trim(),
     selesai_at: z.string().trim(),
     acak_soal: z.boolean(),

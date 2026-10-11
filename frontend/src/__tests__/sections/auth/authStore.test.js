@@ -6,6 +6,10 @@
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { pasangListenerSesi, useAuthStore } from '../../../sections/auth/authStore.js'
+import { useRiwayatJawaban } from '../../../sections/attempt/riwayatJawaban.js'
+
+/** Kunci penyimpanan milik mode luring — semuanya wajib kosong saat sesi berakhir. */
+const KUNCI_LURING = ['ulangan-cadangan-jawaban-v1', 'ulangan-riwayat-jawaban-v1']
 
 /**
  * Stub jsdom CustomEvent.detail agar terbaca store (jsdom turunkan ke Event).
@@ -39,20 +43,38 @@ describe('alur sesi (401/419 & 429)', () => {
       },
     })
 
+    // Jejak kerja luring yang bisa ditinggalkan murid di komputer bersama.
+    useRiwayatJawaban.getState().catat(7, {
+      soal_id: 21,
+      nomor: 1,
+      tipe: 'pilihan_ganda',
+      jawaban: 'B',
+      server_at: new Date().toISOString(),
+    })
+
+    expect(useRiwayatJawaban.getState().perAttempt['7']).toBeDefined()
+
     siarkan('auth:sesi-habis')
 
     expect(useAuthStore.getState().user).toBeNull()
 
-    // Sesi tetap hidup di cookie httpOnly, bukan di localStorage. Satu kunci
-    // boleh ada — cadangan jawaban yang MEMANG harus dikosongkan saat sesi
-    // berakhir (S-14) — dan isinya wajib kosong tanpa data murid.
+    // Sesi tetap hidup di cookie httpOnly, bukan di localStorage. Kunci yang
+    // boleh tersisa hanya milik mode luring — cadangan jawaban, riwayat jawaban,
+    // salinan soal — dan ketiganya WAJIB kosong saat sesi berakhir (S-14).
+    const kunciTersisa = [...Array(window.localStorage.length)].map(
+      (_, i) => window.localStorage.key(i) ?? '',
+    )
+
+    expect(kunciTersisa.filter((satu) => !KUNCI_LURING.includes(satu))).toEqual([])
+    expect(useRiwayatJawaban.getState().perAttempt).toEqual({})
+    expect(window.localStorage.getItem('ulangan-snapshot-attempt-v1')).toBeNull()
+
     let semua = ''
 
     for (let i = 0; i < window.localStorage.length; i++) {
       semua += window.localStorage.getItem(window.localStorage.key(i) ?? '') ?? ''
     }
 
-    expect(window.localStorage.length).toBeLessThanOrEqual(1)
     expect(semua).not.toContain('Rina')
     expect(semua).not.toContain('token')
   })

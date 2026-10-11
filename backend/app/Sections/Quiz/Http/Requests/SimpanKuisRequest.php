@@ -15,6 +15,10 @@ class SimpanKuisRequest extends FormRequest
     }
 
     /**
+     * Mapel dan kelas tidak wajib saat kuis masih draf: guru boleh menyusun soal
+     * lebih dulu dan baru memilih keduanya sebelum menerbitkan. Kewajiban itu
+     * ditegakkan `KuisService::galatKelengkapan()` pada saat publikasi.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -22,9 +26,11 @@ class SimpanKuisRequest extends FormRequest
         return [
             'judul' => ['required', 'string', 'min:3', 'max:150'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
-            'subject_id' => ['required', 'integer', Rule::exists('subjects', 'id')],
-            'class_id' => ['required', 'integer', Rule::exists('classes', 'id')],
-            'durasi_menit' => ['required', 'integer', 'min:1', 'max:300'],
+            'subject_id' => ['nullable', 'integer', Rule::exists('subjects', 'id')],
+            'class_id' => ['nullable', 'integer', Rule::exists('classes', 'id')],
+            // Durasi boleh tidak dikirim: kolomnya punya bawaan 30 menit, dan guru
+            // yang menyusun draf cukup mengisi judulnya dulu.
+            'durasi_menit' => ['nullable', 'integer', 'min:1', 'max:300'],
             'mulai_at' => ['nullable', 'date'],
             'selesai_at' => ['nullable', 'date', 'after:mulai_at'],
             'acak_soal' => ['nullable', 'boolean'],

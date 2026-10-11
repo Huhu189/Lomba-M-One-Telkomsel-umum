@@ -8,6 +8,31 @@
  * dikoreksi guru pada antrean koreksi manual.
  */
 
+import {
+  IkonJam,
+  IkonTipeBenarSalah,
+  IkonTipeBenarSalahMajemuk,
+  IkonTipeGarisBilangan,
+  IkonTipeHotspotGambar,
+  IkonTipeHubungKata,
+  IkonTipeIsianAngka,
+  IkonTipeIsianRumpang,
+  IkonTipeIsianSingkat,
+  IkonTipeKlasifikasi,
+  IkonTipeLetakKata,
+  IkonTipeMenjodohkan,
+  IkonTipeMengurutkan,
+  IkonTipePilihanGambar,
+  IkonTipePilihanGanda,
+  IkonTipePilihanGandaKompleks,
+  IkonTipeSusunHuruf,
+  IkonTipeTabelIsian,
+  IkonTipeTekaSilangMini,
+  IkonTipeTugasUnggah,
+  IkonTipeUraian,
+  IkonTipeUrutGambar,
+} from '../../icons.jsx'
+
 /** Nilai tipe soal — harus sama persis dengan enum backend. */
 export const TIPE = {
   pilihanGanda: 'pilihan_ganda',
@@ -92,11 +117,55 @@ export const TIPE_BERTINGKAT = [TIPE.isianSingkat, TIPE.uraian, TIPE.tugasUnggah
  */
 export const TIPE_TANPA_TEKS = [TIPE.pilihanGambar, TIPE.urutGambar, TIPE.susunHuruf]
 
-/** Isi <select> tipe soal pada editor. */
+/**
+ * Ikon petak per jenis soal. Dipakai pemilih jenis ringkas di editor bank soal
+ * (semua tipe tampil sekaligus sebagai petak berikon) dan sekaligus menjadi
+ * penanda tipe di daftar. Kuncinya sama dengan nilai `TIPE`.
+ * @type {Record<string, import('react').ComponentType<{ size?: number, className?: string }>>}
+ */
+export const IKON_TIPE = {
+  [TIPE.pilihanGanda]: IkonTipePilihanGanda,
+  [TIPE.benarSalah]: IkonTipeBenarSalah,
+  [TIPE.isianSingkat]: IkonTipeIsianSingkat,
+  [TIPE.uraian]: IkonTipeUraian,
+  [TIPE.menjodohkan]: IkonTipeMenjodohkan,
+  [TIPE.mengurutkan]: IkonTipeMengurutkan,
+  [TIPE.letakKata]: IkonTipeLetakKata,
+  [TIPE.hubungKata]: IkonTipeHubungKata,
+  [TIPE.pilihanGandaKompleks]: IkonTipePilihanGandaKompleks,
+  [TIPE.benarSalahMajemuk]: IkonTipeBenarSalahMajemuk,
+  [TIPE.isianAngka]: IkonTipeIsianAngka,
+  [TIPE.pilihanGambar]: IkonTipePilihanGambar,
+  [TIPE.urutGambar]: IkonTipeUrutGambar,
+  [TIPE.susunHuruf]: IkonTipeSusunHuruf,
+  [TIPE.isianRumpang]: IkonTipeIsianRumpang,
+  [TIPE.klasifikasi]: IkonTipeKlasifikasi,
+  [TIPE.tabelIsian]: IkonTipeTabelIsian,
+  [TIPE.garisBilangan]: IkonTipeGarisBilangan,
+  [TIPE.hotspotGambar]: IkonTipeHotspotGambar,
+  [TIPE.bacaJam]: IkonJam,
+  [TIPE.tugasUnggah]: IkonTipeTugasUnggah,
+  [TIPE.tekaSilangMini]: IkonTipeTekaSilangMini,
+}
+
+/**
+ * Ikon satu jenis soal; `undefined` bila tipenya belum dikenal.
+ * @param {string} nilai
+ * @returns {import('react').ComponentType<{ size?: number, className?: string }>|undefined}
+ */
+export function ikonTipe(nilai) {
+  return IKON_TIPE[nilai]
+}
+
+/** @typedef {{ nilai: string, label: string, objektif: boolean, ikon?: import('react').ComponentType<{ size?: number, className?: string }> }} BarisTipe */
+
+/** Isi <select> tipe soal pada editor dan sumber pemilih jenis ringkas. */
+/** @type {BarisTipe[]} */
 export const DAFTAR_TIPE = Object.keys(LABEL_TIPE).map((nilai) => ({
   nilai,
   label: LABEL_TIPE[nilai],
   objektif: TIPE_OBJEKTIF.includes(nilai),
+  ikon: IKON_TIPE[nilai],
 }))
 
 /** Batas opsi pilihan ganda (cermin PenanganPilihanGanda). */

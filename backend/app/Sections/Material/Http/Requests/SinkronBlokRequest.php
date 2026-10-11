@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sections\Material\Http\Requests;
 
 use App\Sections\Material\Enums\TipeBlok;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,8 +27,15 @@ class SinkronBlokRequest extends FormRequest
         return [
             'blok' => ['present', 'array', 'max:200'],
             'rasio' => ['nullable', Rule::in(self::RASIO)],
+            // Tema perjalanan materi (template tema video: mis. “Mendaki Gunung”).
+            'tema' => ['nullable', 'array'],
+            'tema.kode' => ['nullable', 'string', Rule::in(TemaPerjalanan::kodeSemua())],
+            // Nama boleh kosong: server jatuh ke nama bawaan tema.
+            'tema.nama' => ['nullable', 'string', 'max:'.TemaPerjalanan::MAKS_NAMA],
+            'tema.video_kode' => ['nullable', 'string', 'max:64'],
             'blok.*.tipe' => ['required', Rule::enum(TipeBlok::class)],
             'blok.*.wajib' => ['nullable', 'boolean'],
+            'blok.*.fase' => ['nullable', 'string', 'max:'.TemaPerjalanan::MAKS_LANGKAH],
             'blok.*.isi' => ['nullable', 'array'],
             'blok.*.quiz_id' => ['nullable', 'integer'],
             // Penempatan klip di timeline editor (gaya video editor). Disimpan di
@@ -51,6 +59,19 @@ class SinkronBlokRequest extends FormRequest
         $rasio = $this->validated('rasio');
 
         return is_string($rasio) ? $rasio : null;
+    }
+
+    /**
+     * Pilihan tema perjalanan, atau `null` bila guru tidak mengirimnya (tema
+     * yang sudah tersimpan dibiarkan apa adanya).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function tema(): ?array
+    {
+        $tema = $this->validated('tema');
+
+        return is_array($tema) ? $tema : null;
     }
 
     /**

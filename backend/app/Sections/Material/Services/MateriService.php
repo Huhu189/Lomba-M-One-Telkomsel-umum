@@ -11,6 +11,7 @@ use App\Sections\Material\Enums\TipeBlok;
 use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\UnggahanMateri;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Sekolah;
@@ -27,7 +28,10 @@ use Illuminate\Validation\ValidationException;
  */
 class MateriService
 {
-    public function __construct(private readonly PenyimpananMateri $penyimpanan) {}
+    public function __construct(
+        private readonly PenyimpananMateri $penyimpanan,
+        private readonly TemaMateriService $tema,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -82,17 +86,26 @@ class MateriService
      * Blok dicocokkan berdasarkan nomor urut (bukan dihapus lalu dibuat ulang),
      * supaya progres murid pada blok yang tidak berubah tidak ikut terhapus.
      *
+     * Pilihan tema perjalanan (`$tema`) ikut disimpan di sini karena guru
+     * menyusun tema dan klip dalam satu penyimpanan; `null` berarti tema yang
+     * sudah tersimpan dibiarkan.
+     *
      * @param  array<int, array<string, mixed>>  $blok
+     * @param  array<string, mixed>|null  $tema
      *
      * @throws ValidationException
      */
-    public function sinkronBlok(Materi $materi, array $blok, ?string $rasio = null): Materi
+    public function sinkronBlok(Materi $materi, array $blok, ?string $rasio = null, ?array $tema = null): Materi
     {
         $bersih = array_values($blok);
 
-        DB::transaction(function () use ($materi, $bersih, $rasio): void {
+        DB::transaction(function () use ($materi, $bersih, $rasio, $tema): void {
             if ($rasio !== null) {
                 $materi->forceFill(['rasio' => $rasio])->save();
+            }
+
+            if ($tema !== null) {
+                $materi->forceFill(['tema' => $this->tema->siapkan($materi, $tema)])->save();
             }
 
             foreach ($bersih as $indeks => $satu) {
@@ -104,13 +117,18 @@ class MateriService
                 // khusus tipe. Disimpan di dalam kolom JSON `isi`.
                 $waktu = $this->validasiWaktu($satu, $urutan);
                 $tampilan = $this->validasiTampilan($tipe, $satu['tampilan'] ?? null);
-                $isi = $waktu + $tampilan;
+                $fase = $this->validasiFase($satu['fase'] ?? null);
+                $isi = $waktu + $tampilan + $fase;
                 $kuisId = null;
 
                 if ($tipe->berkuis()) {
                     $kuisId = $this->validasiKuis($materi, (int) ($satu['quiz_id'] ?? 0));
+                    // Penjelasan opsional yang tampil SESUDAH kuis selesai. Isinya
+                    // bukan kunci jawaban, jadi aman dikirim ke klien; kunci
+                    // tetap hanya ada di server.
+                    $isi += $this->validasiPenjelasan($materi, (array) ($satu['isi'] ?? []));
                 } else {
-                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? [])) + $waktu + $tampilan;
+                    $isi = $this->validasiIsi($materi, $tipe, (array) ($satu['isi'] ?? [])) + $waktu + $tampilan + $fase;
                 }
 
                 BlokMateri::query()->updateOrCreate(
@@ -199,6 +217,19 @@ class MateriService
     public const DURASI_BAWAAN = 10.0;
 
     /**
+     * Durasi klip terpendek yang boleh disimpan (detik). Sama dengan batas di
+     * editor (`DURASI_MINIMUM`), supaya klip yang dipangkas tipis tidak diam-diam
+     * dinaikkan server.
+     */
+    public const DURASI_MINIMUM = 0.1;
+
+    /**
+     * Panjang maksimum teks penjelasan setelah kuis (blok kuis). Cukup untuk
+     * beberapa paragraf; lebih dari ini sebaiknya jadi media.
+     */
+    public const MAKS_PENJELASAN = 5000;
+
+    /**
      * Penempatan satu blok di timeline: track (lapisan), titik mulai, dan durasi.
      * Semuanya dibatasi agar satu permintaan nakal tidak menyimpan angka ekstrem.
      * Bila klien tidak mengirim, blok disusun berurutan seperti sebelumnya.
@@ -215,7 +246,7 @@ class MateriService
         return [
             'track' => $track,
             'mulai_detik' => round(max(0.0, min($mulai, 86400.0)), 2),
-            'durasi_detik' => round(max(0.5, min($durasi, 86400.0)), 2),
+            'durasi_detik' => round(max(self::DURASI_MINIMUM, min($durasi, 86400.0)), 2),
         ];
     }
 
@@ -250,6 +281,72 @@ class MateriService
             'mode' => in_array($mode, ['jeda', 'berjalan'], true) ? $mode : 'jeda',
             'tata' => in_array($tata, ['vertikal', 'horizontal'], true) ? $tata : 'vertikal',
         ]];
+    }
+
+    /**
+     * Nama langkah perjalanan yang diberikan guru untuk satu klip.
+     *
+     * Hanya nama tampilan (pos ke berapa), tanpa efek apa pun pada aturan
+     * membuka blok — murid tidak bisa memakainya untuk melompat urutan.
+     *
+     * @return array<string, mixed>
+     */
+    private function validasiFase(mixed $mentah): array
+    {
+        $fase = trim((string) (is_string($mentah) ? $mentah : ''));
+
+        return $fase === '' ? [] : ['fase' => mb_substr($fase, 0, TemaPerjalanan::MAKS_LANGKAH)];
+    }
+
+    /**
+     * Penjelasan opsional yang tampil SESUDAH kuis selesai (blok kuis saja).
+     *
+     * Bentuknya `isi.penjelasan = {teks, unggahan_kode}`. Kosongkan keduanya
+     * berarti tidak ada penjelasan; kunci `penjelasan` sengaja tidak ditulis
+     * supaya blok lama tidak ikut berubah. Media memakai pustaka unggahan
+     * materi yang sama seperti blok media (kategori & hak pakai berkas tetap
+     * satu jalur), jadi kode unggahan di sini divalidasi dengan aturan yang
+     * sama.
+     *
+     * @param  array<string, mixed>  $isi
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    private function validasiPenjelasan(Materi $materi, array $isi): array
+    {
+        $mentah = $isi['penjelasan'] ?? null;
+
+        if (! is_array($mentah)) {
+            return [];
+        }
+
+        $teks = mb_substr(trim((string) ($mentah['teks'] ?? '')), 0, self::MAKS_PENJELASAN);
+        $kode = trim((string) ($mentah['unggahan_kode'] ?? ''));
+
+        if ($teks === '' && $kode === '') {
+            return [];
+        }
+
+        $unggahanKode = null;
+
+        if ($kode !== '') {
+            $unggahan = UnggahanMateri::query()
+                ->where('kode', $kode)
+                ->where('school_id', $materi->school_id)
+                ->where('status', StatusUnggahan::Selesai->value)
+                ->first();
+
+            if ($unggahan === null) {
+                throw ValidationException::withMessages([
+                    'blok' => 'Media penjelasan belum selesai diunggah.',
+                ]);
+            }
+
+            $unggahanKode = (string) $unggahan->kode;
+        }
+
+        return ['penjelasan' => ['teks' => $teks, 'unggahan_kode' => $unggahanKode]];
     }
 
     /**

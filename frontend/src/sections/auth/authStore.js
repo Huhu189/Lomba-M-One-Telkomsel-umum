@@ -7,6 +7,8 @@ import { create } from 'zustand'
 import { resetStatusSiaran } from '../../shared/api/client.js'
 import { klienQuery } from '../../shared/store/klienQuery.js'
 import { useSimpananJawaban } from '../attempt/simpananJawaban.js'
+import { useRiwayatJawaban } from '../attempt/riwayatJawaban.js'
+import { bersihkanSemuaSnapshot } from '../attempt/snapshot.js'
 import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.js'
 
 /**
@@ -49,13 +51,19 @@ let timerThrottle = /** @type {ReturnType<typeof setInterval>|null} */ (null)
  *    Kuncinya tidak memuat identitas pengguna, jadi tanpa dibuang murid
  *    berikutnya melihat data murid sebelumnya.
  * 2. `useSimpananJawaban` — cadangan jawaban di localStorage (tanpa akun).
- * 3. `resetStatusSiaran` — penanda "sudah pernah diberi tahu" di klien HTTP,
+ * 3. `useRiwayatJawaban` — riwayat jawaban lokal (sistem luring): daftar soal
+ *    yang dikerjakan murid sebelumnya, lengkap dengan ringkasan jawabannya.
+ * 4. `bersihkanSemuaSnapshot` — salinan soal untuk mode luring; tanpa dibuang,
+ *    murid berikutnya bisa membacanya lewat tombol "Lanjutkan dari salinan".
+ * 5. `resetStatusSiaran` — penanda "sudah pernah diberi tahu" di klien HTTP,
  *    supaya toast sesi berakhir/429 muncul lagi untuk sesi berikutnya.
  */
 export function bersihkanJejakSesi() {
   resetStatusSiaran()
   klienQuery.clear()
   useSimpananJawaban.getState().bersihkanSemua()
+  useRiwayatJawaban.getState().bersihkanSemua()
+  bersihkanSemuaSnapshot()
 }
 
 /**

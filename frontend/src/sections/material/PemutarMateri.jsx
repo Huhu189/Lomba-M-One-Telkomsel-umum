@@ -24,6 +24,71 @@ import { gayaMedia, rasioAngka, tampilanKlip } from './editorMateri.js'
 import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from './pemutarMateri.js'
 
 /**
+ * Penjelasan guru yang muncul SETELAH kuis selesai (opsional).
+ *
+ * Teks ditampilkan apa adanya (baris baru dipertahankan), media memakai aturan
+ * yang sama dengan blok media: kategori yang boleh tampil langsung dirender
+ * sesuai mime-nya, sisanya jadi tautan unduh. Tidak ada kunci jawaban di sini —
+ * penjelasan ditulis guru dan tidak masuk penilaian.
+ *
+ * @param {{ penjelasan: import('./api.js').DataIsiBlok['penjelasan'] }} props
+ */
+function PenjelasanKuis({ penjelasan }) {
+  if (penjelasan === undefined || penjelasan === null) return null
+
+  const teks = (penjelasan.teks ?? '').trim()
+  const media = penjelasan.media ?? null
+
+  if (teks === '' && media === null) return null
+
+  return (
+    <section className="pm-penjelasan" aria-label="Penjelasan setelah kuis">
+      <h4 className="h6 fw-bold mb-2">Penjelasan</h4>
+
+      {teks !== '' && (
+        <p className="mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+          {teks}
+        </p>
+      )}
+
+      {media !== null && media.tersedia === false && (
+        <p className="small teks-lembut mb-0">Media penjelasan sudah tidak tersedia.</p>
+      )}
+
+      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('image/') && (
+        <img
+          className="pm-penjelasan-media"
+          src={media.url}
+          alt={media.nama ?? 'Media penjelasan'}
+          loading="lazy"
+          decoding="async"
+        />
+      )}
+
+      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('video/') && (
+        <video className="pm-penjelasan-media" src={media.url} controls playsInline preload="metadata" />
+      )}
+
+      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('audio/') && (
+        <audio className="pm-penjelasan-audio" src={media.url} controls preload="metadata" />
+      )}
+
+      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime === 'application/pdf' && (
+        <a className="btn btn-tepi btn-sedang" href={media.url} target="_blank" rel="noreferrer">
+          Buka dokumen PDF penjelasan
+        </a>
+      )}
+
+      {media !== null && media.tersedia !== false && media.tampil_langsung !== true && (
+        <a className="btn btn-tepi btn-sedang" href={media.url} download>
+          Unduh media penjelasan ({media.kategori_label ?? 'berkas'})
+        </a>
+      )}
+    </section>
+  )
+}
+
+/**
  * @param {{
  *   blok: import('./api.js').DataIsiBlok,
  *   ringkasan: import('./api.js').DataRingkasanMateri,
@@ -228,6 +293,9 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
                 <Banner jenis="sukses" judul="Latihan selesai">
                   Skor {hasil.skor} dari {hasil.skor_maksimal}.
                 </Banner>
+                {/* Penjelasan guru (opsional) tampil di sini — sesudah kuis
+                    selesai, sebelum murid melanjutkan video. */}
+                <PenjelasanKuis penjelasan={aktif.penjelasan} />
                 <Tombol memuat={sibuk} onClick={() => void lanjutkan()}>
                   {tampilanKuis.mode === 'jeda' ? 'Lanjutkan video' : 'Tutup kuis'}
                 </Tombol>

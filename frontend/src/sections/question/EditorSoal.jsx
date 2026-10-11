@@ -8,13 +8,14 @@
  * memakai renderer yang sama dengan layar murid — jadi yang dilihat guru persis
  * yang dilihat murid.
  */
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
-import { IkonTambah, IkonTongSampah } from '../../icons.jsx'
+import { IkonTambah, IkonTipeIsianSingkat, IkonTongSampah } from '../../icons.jsx'
 import RendererSoal from './render/RendererSoal.jsx'
 import {
   DAFTAR_TIPE,
+  LABEL_TIPE,
   MAKS_AREA_HOTSPOT,
   MAKS_BUTIR_RUBRIK,
   MAKS_GAMBAR,
@@ -42,6 +43,7 @@ import {
   TIPE,
   TIPE_TANPA_TEKS,
   idBerikut,
+  ikonTipe,
   muatanDariState,
   nomorLubangDariTeks,
   pisahKata,
@@ -50,6 +52,18 @@ import {
   stateSoalKosong,
 } from './tipeSoal.js'
 import { kelengkapanSoal, siapSoal, validasiSoal } from './validasi.js'
+
+/**
+ * Elemen ikon untuk satu jenis soal. Sengaja mengembalikan **elemen** (lewat
+ * `createElement`) dan bukan komponen bernama besar, supaya ikon dinamis ini
+ * tidak dibaca React Compiler sebagai komponen yang dibuat di dalam render.
+ * @param {string} tipe
+ * @param {number} ukuran
+ * @returns {import('react').ReactNode}
+ */
+function ikonJenis(tipe, ukuran = 22) {
+  return createElement(ikonTipe(tipe) ?? IkonTipeIsianSingkat, { size: ukuran })
+}
 
 /**
  * Fieldset pasangan kiri–kanan untuk menjodohkan & hubung kata. Backend memakai
@@ -187,6 +201,10 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
 }
 
 /**
+ * `mapelAwal` adalah mapel yang sudah dipilih di luar editor (mis. mapel kuis
+ * yang sedang disusun). Soal baru mewarisinya supaya guru tidak ditanya dua
+ * kali; soal yang sedang diubah tetap memakai mapelnya sendiri.
+ *
  * @param {{
  *   soal: import('./api.js').DataSoal | null,
  *   daftarMapel: { id: number, nama: string }[],
@@ -194,6 +212,7 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
  *   sedangMenyimpan: boolean,
  *   onSimpan: (muatan: import('./tipeSoal.js').MuatanSoal) => void,
  *   onBatal: () => void,
+ *   mapelAwal?: string,
  * }} props
  */
 export default function EditorSoal({
@@ -203,10 +222,13 @@ export default function EditorSoal({
   sedangMenyimpan,
   onSimpan,
   onBatal,
+  mapelAwal = '',
 }) {
   // Panggung (parent) memberi `key` per soal, jadi state selalu mulai bersih
   // saat guru berpindah soal — tanpa perlu effect penyusun ulang.
-  const [state, setState] = useState(() => (soal === null ? stateSoalKosong() : stateDariSoal(soal)))
+  const [state, setState] = useState(() =>
+    soal === null ? { ...stateSoalKosong(), subject_id: mapelAwal } : stateDariSoal(soal),
+  )
   const [galat, setGalat] = useState(/** @type {string[]} */ ([]))
 
   /**
@@ -716,35 +738,7 @@ export default function EditorSoal({
       <div className="col-lg-8">
         <div className="d-flex flex-column gap-4">
           <section className="kartu-soft p-4" aria-labelledby="soal-judul-1">
-            <h2 id="soal-judul-1" className="judul-bagian">1. Pilih jenis soal</h2>
-            <p className="teks-lembut small">
-              Enam tipe objektif dinilai pasti oleh server; isian singkat dan uraian bisa perlu
-              koreksi guru.
-            </p>
-
-            <div role="radiogroup" aria-label="Jenis soal" className="d-flex flex-wrap gap-2">
-              {DAFTAR_TIPE.map((tipe) => {
-                const aktif = state.tipe === tipe.nilai
-
-                return (
-                  <button
-                    key={tipe.nilai}
-                    type="button"
-                    role="radio"
-                    aria-checked={aktif}
-                    className="pil-tipe"
-                    onClick={() => ubah({ tipe: tipe.nilai })}
-                  >
-                    {tipe.label}
-                    {tipe.objektif ? '' : ' · perlu tinjau'}
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-
-          <section className="kartu-soft p-4" aria-labelledby="soal-judul-2">
-            <h2 id="soal-judul-2" className="judul-bagian">2. Tulis soalnya</h2>
+            <h2 id="soal-judul-1" className="judul-bagian">1. Tulis soalnya</h2>
 
             <div className="row g-3">
               <div className="col-sm-6">
@@ -2042,8 +2036,8 @@ export default function EditorSoal({
               ))}
           </section>
 
-          <section className="kartu-soft p-4" aria-labelledby="soal-judul-3">
-            <h2 id="soal-judul-3" className="judul-bagian">3. Pengaturan soal</h2>
+          <section className="kartu-soft p-4" aria-labelledby="soal-judul-2">
+            <h2 id="soal-judul-2" className="judul-bagian">2. Pengaturan soal</h2>
 
             <div className="row g-3 align-items-end">
               <div className="col-sm-4">
@@ -2137,6 +2131,55 @@ export default function EditorSoal({
                 </Banner>
               </div>
             )}
+          </section>
+
+          {/*
+            Pemilih jenis soal diletakkan paling bawah dan bisa dilipat: semua
+            tipe tampil sekaligus sebagai petak berikon (lebih ringkas daripada
+            deretan pil), sedangkan ringkasannya tetap memperlihatkan tipe yang
+            sedang aktif walau lipatan ditutup.
+          */}
+          <section className="kartu-soft p-4" aria-labelledby="soal-judul-3">
+            <details className="pemilih-jenis" open>
+              <summary>
+                <h2 id="soal-judul-3" className="judul-bagian mb-0">3. Pilih jenis soal</h2>
+                <span className="pemilih-jenis-terpilih">
+                  <span className="petak-tipe-ikon" aria-hidden="true">
+                    {ikonJenis(state.tipe, 20)}
+                  </span>
+                  {LABEL_TIPE[state.tipe] ?? state.tipe}
+                </span>
+                <span className="teks-lembut small">{DAFTAR_TIPE.length} tipe · buka/tutup</span>
+              </summary>
+
+              <p className="teks-lembut small mt-2 mb-0">
+                Tipe objektif dinilai pasti oleh server; tipe bertingkat (isian singkat, uraian,
+                tugas unggah) bisa perlu koreksi guru.
+              </p>
+
+              <div role="radiogroup" aria-label="Jenis soal" className="petak-tipe">
+                {DAFTAR_TIPE.map((tipe) => {
+                  const aktif = state.tipe === tipe.nilai
+
+                  return (
+                    <button
+                      key={tipe.nilai}
+                      type="button"
+                      role="radio"
+                      aria-checked={aktif}
+                      className="petak-tipe-tombol"
+                      onClick={() => ubah({ tipe: tipe.nilai })}
+                    >
+                      <span className="petak-tipe-ikon" aria-hidden="true">
+                        {ikonJenis(tipe.nilai)}
+                      </span>
+                      <span className="petak-tipe-label">{tipe.label}</span>
+                      {tipe.objektif ? null : <span className="petak-tipe-tanda">perlu tinjau</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </details>
           </section>
         </div>
       </div>

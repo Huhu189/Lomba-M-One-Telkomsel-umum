@@ -93,6 +93,52 @@ function kerjakan05(object $ctx, Kuis $kuis, Murid $murid, array $jawaban = []):
     return Attempt::query()->findOrFail($attemptId);
 }
 
+it('draf kuis bisa dibuat hanya dengan judul, mapel dan kelas menyusul', function (): void {
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $respons = $this->postJson('/api/v1/kuis', ['judul' => 'Ulangan Bab 4'])->assertCreated();
+
+    expect($respons->json('subject_id'))->toBeNull()
+        ->and($respons->json('class_id'))->toBeNull()
+        ->and($respons->json('status'))->toBe('draf')
+        ->and($respons->json('durasi_menit'))->toBe(30);
+
+    $kuis = Kuis::query()->findOrFail($respons->json('id'));
+
+    // Mapel/kelas menyusul: keduanya dikirim belakangan dalam satu permintaan.
+    $this->putJson("/api/v1/kuis/{$kuis->id}", [
+        'judul' => 'Ulangan Bab 4',
+        'subject_id' => $this->mapel->id,
+        'class_id' => $this->kelas->id,
+        'durasi_menit' => 45,
+    ])->assertOk()->assertJsonPath('class_id', $this->kelas->id);
+});
+
+it('kuis tanpa mapel atau kelas tidak bisa diterbitkan', function (): void {
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $draf = $this->postJson('/api/v1/kuis', ['judul' => 'Draf tanpa kelas'])->assertCreated();
+
+    $this->postJson("/api/v1/kuis/{$draf->json('id')}/publikasi")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['subject_id', 'class_id']);
+
+    // Begitu mapel dan kelas diisi, penjaga itu tidak lagi menghalangi.
+    $this->putJson("/api/v1/kuis/{$draf->json('id')}", [
+        'judul' => 'Draf tanpa kelas',
+        'subject_id' => $this->mapel->id,
+        'class_id' => $this->kelas->id,
+        'durasi_menit' => 30,
+    ])->assertOk();
+
+    // Yang masih kurang tinggal soal + jadwal (bukan lagi mapel/kelas).
+    $this->postJson("/api/v1/kuis/{$draf->json('id')}/publikasi")
+        ->assertStatus(422)
+        ->assertJsonMissingValidationErrors(['subject_id', 'class_id']);
+});
+
 it('respons mulai menyertakan attempt_no dan asli', function (): void {
     $siap = siapkanKuis05($this);
 

@@ -14,7 +14,7 @@
  *   status: string,
  *   sedang_berjalan: boolean,
  *   mulai_at: string|null,
- *   kelas_nama?: string,
+ *   kelas_nama?: string|null,
  *   jumlah_soal?: number,
  * }} KuisRingkas
  *

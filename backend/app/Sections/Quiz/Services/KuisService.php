@@ -168,18 +168,41 @@ class KuisService
             $galat['durasi_menit'] = 'Durasi kuis minimal 1 menit.';
         }
 
+        // Mapel dan kelas sengaja tidak wajib saat menyusun draf (guru boleh
+        // membuat soal lebih dulu), tapi tidak boleh kosong saat kuis terbit:
+        // tanpa kelas kuis tidak akan pernah muncul di daftar murid mana pun.
+        if ($kuis->subject_id === null) {
+            $galat['subject_id'] = 'Mapel wajib dipilih sebelum kuis diterbitkan.';
+        }
+
+        if ($kuis->class_id === null) {
+            $galat['class_id'] = 'Kelas wajib dipilih sebelum kuis diterbitkan.';
+        }
+
         return $galat;
     }
 
     /**
+     * Mapel, kelas, dan durasi diterima apa adanya dari permintaan; nilai null
+     * punya arti berbeda per kolom.
+     *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function rapikan(array $data): array
     {
-        return Arr::only($data, [
+        $bersih = Arr::only($data, [
             'subject_id', 'class_id', 'judul', 'deskripsi', 'mulai_at',
             'selesai_at', 'durasi_menit', 'acak_soal', 'acak_opsi',
         ]);
+
+        // Kolom mapel/kelas boleh null (draf belum memilihnya), tapi durasi TIDAK:
+        // null di sana berarti "pakai bawaan", jadi kuncinya dibuang supaya nilai
+        // kolom (30 menit) atau nilai sebelumnya yang bertahan.
+        if (array_key_exists('durasi_menit', $bersih) && $bersih['durasi_menit'] === null) {
+            unset($bersih['durasi_menit']);
+        }
+
+        return $bersih;
     }
 }

@@ -25,6 +25,46 @@ import {
  */
 
 /**
+ * Peta perjalanan seperti dikirim server (nama pos bawaan tema).
+ * @param {BarisBlokUji[]} blok
+ */
+function perjalanan(blok) {
+  const langkah = blok.map((satu, indeks) => ({
+    block_id: satu.block_id,
+    nomor: indeks + 1,
+    nama: `Pos ${indeks + 1}`,
+    ikon: 'tanda',
+    warna: 'kelabu',
+    bawaan: `Pos ${indeks + 1}`,
+    wajib: satu.wajib,
+    status: satu.status,
+    selesai: satu.status === 'selesai',
+  }))
+
+  const wajib = langkah.filter((satu) => satu.wajib)
+  const selesai = wajib.filter((satu) => satu.selesai).length
+  const persen = wajib.length > 0 ? Math.round((selesai / wajib.length) * 100) : 0
+
+  return {
+    kode: 'mendaki-gunung',
+    nama: 'Mendaki Gunung',
+    tanpa: false,
+    adegan: 'gunung',
+    satuan: 'pos',
+    video_url: null,
+    langkah,
+    jumlah_langkah: langkah.length,
+    posisi: 1,
+    selesai,
+    total: wajib.length,
+    persen,
+    tuntas: wajib.length > 0 && selesai === wajib.length,
+    tingkat: { nomor: 1, nama: 'Pendaki Pemula', min: 0, puncak: persen >= 100 },
+    tingkat_berikut: null,
+  }
+}
+
+/**
  * Ringkasan progres materi seperti dikirim server.
  * @param {BarisBlokUji[]} blok
  */
@@ -32,6 +72,7 @@ function ringkasan(blok) {
   return {
     materi: { id: 1, judul: 'Penjumlahan', deskripsi: null, mapel_nama: 'Matematika', tema_nama: 'Penjumlahan' },
     blok,
+    perjalanan: perjalanan(blok),
     jumlah_blok: blok.length,
     selesai_wajib: blok.filter((satu) => satu.wajib && satu.status === 'selesai').length,
     jumlah_wajib: blok.filter((satu) => satu.wajib).length,
@@ -207,6 +248,46 @@ describe('progres tema murid', () => {
     expect(data.attempt?.jenis).toBe('latihan')
   })
 
+  it('membaca penjelasan setelah kuis beserta media bertanda tangannya', () => {
+    const data = skemaBukaBlok.parse({
+      blok: {
+        block_id: 2,
+        urutan: 2,
+        tipe: 'kuis',
+        tipe_label: 'Kuis sisipan',
+        wajib: true,
+        status: 'dibuka',
+        status_label: 'Sedang dibuka',
+        skor: 0,
+        kuis: { id: 9, judul: 'Latihan Penjumlahan', jumlah_soal: 3 },
+        penjelasan: {
+          teks: 'Baca ulang bab 3.',
+          media: {
+            kode: 'kode-1',
+            nama: 'penjelasan.png',
+            kategori: 'umum',
+            kategori_label: 'Gambar',
+            tampil_langsung: true,
+            mime: 'image/png',
+            url: 'https://contoh.test/berkas?signature=abc',
+            tersedia: true,
+          },
+        },
+      },
+      attempt: null,
+    })
+
+    expect(data.blok.penjelasan?.teks).toBe('Baca ulang bab 3.')
+    expect(data.blok.penjelasan?.media?.url).toContain('signature')
+    expect(data.blok.penjelasan?.media?.tampil_langsung).toBe(true)
+  })
+
+  it('boleh tidak punya penjelasan sama sekali (opsional)', () => {
+    const data = skemaRingkasanMateri.parse(ringkasan([blok(1, true, 'belum')]))
+
+    expect(data.blok[0].penjelasan).toBeUndefined()
+  })
+
   it('menerima blok teks tanpa attempt (bukan blok kuis)', () => {
     const data = skemaBukaBlok.parse({
       blok: {
@@ -262,6 +343,17 @@ describe('kontrak materi & laporan guru', () => {
   it('membaca laporan tema materi untuk guru', () => {
     const data = skemaLaporanMateri.parse({
       materi: { id: 1, judul: 'Penjumlahan', status: 'publikasi', kelas_nama: '3A' },
+      perjalanan: {
+        kode: 'mendaki-gunung',
+        nama: 'Mendaki Gunung',
+        tanpa: false,
+        adegan: 'gunung',
+        satuan: 'pos',
+        video_kode: null,
+        langkah: [
+          { block_id: 5, nomor: 1, nama: 'Basecamp', ikon: 'tenda', warna: 'hijau', bawaan: 'Basecamp', wajib: true },
+        ],
+      },
       ambang: { ambang_paham: 80, ambang_mulai_paham: 60, data_minimum: 3 },
       blok: [
         { block_id: 5, urutan: 1, tipe: 'kuis', tipe_label: 'Kuis sisipan', wajib: true, kuis_id: 9 },
@@ -270,6 +362,17 @@ describe('kontrak materi & laporan guru', () => {
         {
           murid_id: 7,
           nama: 'Ayu',
+          perjalanan: {
+            posisi: 1,
+            selesai: 1,
+            total: 1,
+            persen: 100,
+            tuntas: true,
+            tingkat_nomor: 4,
+            tingkat_nama: 'Penakluk Puncak',
+            puncak: true,
+            langkah_aktif: 'Basecamp',
+          },
           blok_selesai: 1,
           jumlah_blok: 1,
           selesai_wajib: 1,
@@ -306,5 +409,8 @@ describe('kontrak materi & laporan guru', () => {
 
     expect(data.murid[0].tema[0].tingkat_label).toBe('Paham')
     expect(data.murid[0].skor_latihan).toBe(4)
+    // Peta perjalanan ikut di laporan: nama pos yang sama dengan peta murid.
+    expect(data.perjalanan.langkah[0].nama).toBe('Basecamp')
+    expect(data.murid[0].perjalanan.tingkat_nama).toBe('Penakluk Puncak')
   })
 })

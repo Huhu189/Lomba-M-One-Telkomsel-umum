@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sections\Material\Http\Resources;
 
 use App\Sections\Material\Models\Materi;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,6 +37,11 @@ class MateriResource extends JsonResource
             'publikasi_at' => $this->publikasi_at?->toIso8601String(),
             'jumlah_blok' => $this->whenCounted('blok'),
             'rasio' => $this->rasio ?? '16:9',
+            // Tema perjalanan: pilihan mentah guru + konfigurasi lengkap (nama
+            // bawaan fase/tingkat) supaya editor bisa menggambar peta sebelum
+            // perubahan disimpan.
+            'tema' => $this->tema,
+            'perjalanan' => TemaPerjalanan::konfigurasi($this->tema),
             'blok' => BlokResource::collection($this->whenLoaded('blok')),
             'unggahan' => UnggahanResource::collection($this->whenLoaded('unggahan')),
         ];

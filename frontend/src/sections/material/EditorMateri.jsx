@@ -27,17 +27,21 @@ import { RUTE } from '../../routes.js'
 import { ambilKuis } from '../quiz/api.js'
 import {
   ambilMateriDetail,
+  ambilTemaMateri,
   laporanMateri,
   publikasiMateri,
   sinkronBlok,
   unggahBerkas,
 } from './api.js'
+import PetaPerjalanan from './PetaPerjalanan.jsx'
+import { faseKe, petaLokal, tanpaPeta, terapkanTema } from './perjalanan.js'
 import {
+  DURASI_BAWAAN,
+  DURASI_MINIMUM,
+  MAKS_PENJELASAN,
   RASIO_BAWAAN,
   RASIO_CANVAS,
-  TEMPLATE_MATERI,
   TIPE_BLOK,
-  adaTemplate,
   blokBaru,
   ciriKlip,
   dariServer,
@@ -50,7 +54,11 @@ import {
   kuisPadaWaktu,
   muatanBlok,
   offsetMedia,
+  pangkasKanan,
+  pangkasKiri,
+  penjelasanTerisi,
   rasioAngka,
+  setDurasi,
   setMulai,
   sisipBlok,
   susunTrack,
@@ -60,6 +68,95 @@ import {
 
 /** Langkah detik saat penempatan klip digeser lewat tombol di inspector. */
 const LANGKAH_WAKTU = 0.5
+
+/** Langkah tipis untuk memendekkan/memanjangkan durasi satu klip. */
+const LANGKAH_TIPIS = 0.1
+
+/** Dua sisi gagang pangkas `|` pada klip yang sedang dipilih. */
+const SISI_PANGKAS = /** @type {const} */ (['kiri', 'kanan'])
+
+/**
+ * Ujung kanan sebuah klip (detik). Dipakai gagang kanan, "Mulai + Durasi", dan
+ * dipakai guru saat membayangkan panjang klip.
+ * @param {import('./editorMateri.js').BarisBlok|undefined} baris
+ * @returns {number}
+ */
+function ujungKlip(baris) {
+  if (baris === undefined) return 0
+
+  return Math.round((baris.mulai_detik + baris.durasi_detik) * 10) / 10
+}
+
+/**
+ * Durasi asli sebuah berkas media (detik) dibaca dari metadatanya sendiri.
+ *
+ * Dipakai saat berkas baru disisipkan supaya klip media otomatis sepanjang
+ * videonya (bukan 10 detik bawaan lagi). Elemen `<video>` dipakai untuk semua
+ * jenis media — berkas audio pun bisa membacakan `duration` lewat elemen ini.
+ * Berkas yang bukan media (PDF, PPTX) menghasilkan `null`: durasinya tetap
+ * bawaan dan guru bisa mengaturnya sendiri.
+ *
+ * @param {string} url
+ * @returns {Promise<number|null>}
+ */
+function bacaDurasiMedia(url) {
+  return new Promise((selesai) => {
+    const el = document.createElement('video')
+    el.preload = 'metadata'
+
+    let sudah = false
+    const batas = window.setTimeout(() => tutup(null), 5000)
+
+    /** @param {number|null} durasi */
+    function tutup(durasi) {
+      if (sudah) return
+      sudah = true
+      window.clearTimeout(batas)
+      el.onloadedmetadata = null
+      el.ondurationchange = null
+      el.removeAttribute('src')
+      el.load()
+      selesai(durasi)
+    }
+
+    const lapor = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) tutup(el.duration)
+    }
+
+    el.onloadedmetadata = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        tutup(el.duration)
+        return
+      }
+
+      // Sebagian berkas (webm/mkv hasil rekaman) baru melaporkan durasinya
+      // setelah digeser jauh ke depan. Tanpa ini klipnya jatuh ke durasi bawaan
+      // walau panjang videonya jelas.
+      el.ondurationchange = lapor
+      el.currentTime = 1e101
+    }
+
+    el.ondurationchange = lapor
+    el.onerror = () => tutup(null)
+    el.src = url
+  })
+}
+
+/**
+ * Durasi klip media dari berkas lokal yang baru diunggah (belum punya URL
+ * publik), dibaca dari objek berkasnya; `null` bila metadatanya tak terbaca.
+ * @param {File} berkas
+ * @returns {Promise<number|null>}
+ */
+async function bacaDurasiBerkas(berkas) {
+  const url = URL.createObjectURL(berkas)
+
+  try {
+    return await bacaDurasiMedia(url)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
 
 /**
  * Posisi aman: tidak pernah negatif dan tidak melewati durasi media (bila sudah
@@ -227,6 +324,81 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
 }
 
 /**
+ * Pemilih kuis untuk klip sisipan: pencarian + baris ringkas (jumlah soal,
+ * mapel, kelas, status) supaya guru tidak menebak dari judul saja, dan kuis
+ * tanpa soal langsung terlihat sebelum dipakai.
+ *
+ * @param {{
+ *   daftarKuis: import('../quiz/api.js').DataKuis[],
+ *   terpilih: number|string,
+ *   onPilih: (id: number) => void,
+ * }} props
+ */
+function PemilihKuis({ daftarKuis, terpilih, onPilih }) {
+  const [kata, setKata] = useState('')
+  const kunci = kata.trim().toLowerCase()
+  const hasil =
+    kunci === ''
+      ? daftarKuis
+      : daftarKuis.filter((satu) =>
+          [satu.judul, satu.mapel_nama ?? '', satu.kelas_nama ?? '', satu.status].some((teks) =>
+            String(teks).toLowerCase().includes(kunci),
+          ),
+        )
+
+  return (
+    <div className="nle-pemilih-kuis">
+      <label className="form-label small mb-1" htmlFor="nle-cari-kuis">
+        Kuis untuk klip ini
+      </label>
+      <input
+        id="nle-cari-kuis"
+        type="search"
+        className="form-control form-control-sm mb-2"
+        value={kata}
+        onChange={(e) => setKata(e.target.value)}
+        placeholder="Cari kuis (judul, mapel, atau kelas)…"
+      />
+
+      {daftarKuis.length === 0 && (
+        <p className="small teks-lembut mb-0">
+          Belum ada kuis. Buat kuis dulu di menu Kuis, lalu kembali ke editor ini.
+        </p>
+      )}
+
+      {daftarKuis.length > 0 && hasil.length === 0 && (
+        <p className="small teks-lembut mb-0">Tidak ada kuis yang cocok dengan “{kata}”.</p>
+      )}
+
+      <ul className="list-unstyled mb-0 nle-pemilih-daftar">
+        {hasil.map((satu) => {
+          const dipilih = String(satu.id) === String(terpilih)
+          const kosong = (satu.jumlah_soal ?? 0) === 0
+
+          return (
+            <li key={satu.id}>
+              <button
+                type="button"
+                className={`nle-pemilih-baris${dipilih ? ' aktif' : ''}`}
+                aria-pressed={dipilih}
+                onClick={() => onPilih(satu.id)}
+              >
+                <span className="fw-semibold small d-block">{satu.judul}</span>
+                <span className="small teks-lembut d-block">
+                  {satu.jumlah_soal ?? 0} soal · {satu.mapel_nama ?? '—'} · {satu.kelas_nama ?? '—'} ·{' '}
+                  {satu.status_label ?? satu.status}
+                </span>
+                {kosong && <span className="small nle-pemilih-peringatan d-block">Belum ada soal.</span>}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/**
  * Lapisan kuis sisipan di atas bingkai (pratinjau). Soal sungguhan dirender
  * di sisi murid; di editor guru cukup melihat tata letak dan perilakunya.
  *
@@ -321,6 +493,10 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const [trackEkstra, setTrackEkstra] = useState(0)
   const [menuTambah, setMenuTambah] = useState(false)
   const [rasio, setRasio] = useState(materi.rasio ?? RASIO_BAWAAN)
+  // Tema perjalanan: pilihan guru, disimpan bersama susunan klip.
+  const [temaKode, setTemaKode] = useState(materi.tema?.kode ?? materi.perjalanan?.kode ?? '')
+  const [temaNama, setTemaNama] = useState(materi.tema?.nama ?? materi.perjalanan?.nama ?? '')
+  const [videoKode, setVideoKode] = useState(materi.tema?.video_kode ?? '')
   // Indeks kuis "jeda" yang sedang menahan pemutaran pratinjau (null = tidak ada).
   const [kuisTertahan, setKuisTertahan] = useState(/** @type {number|null} */ (null))
   const inputBerkas = useRef(/** @type {HTMLInputElement|null} */ (null))
@@ -330,6 +506,11 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const dilewatiRef = useRef(/** @type {Set<number>} */ (new Set()))
   const penggarisRef = useRef(/** @type {HTMLDivElement|null} */ (null))
   const sedangGeserRef = useRef(false)
+  // Gagang pangkas `|`: rel timeline dipakai untuk menerjemahkan geseran ke detik,
+  // dan `total` dibekukan selama seret supaya penggaris tidak "mengejar" tangan.
+  const relRef = useRef(/** @type {HTMLDivElement|null} */ (null))
+  const pangkasRef = useRef(/** @type {'kiri'|'kanan'|null} */ (null))
+  const pangkasTotalRef = useRef(0)
 
   const laporan = useQuery({
     queryKey: ['materi-laporan', materi.id],
@@ -337,10 +518,27 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     enabled: materi.status === 'publikasi',
   })
 
+  // Katalog template tema: jarang berubah, sekali ambil cukup.
+  const katalog = useQuery({
+    queryKey: ['materi-tema'],
+    queryFn: ambilTemaMateri,
+    staleTime: Infinity,
+  })
+
   const simpanBlok = useMutation({
-    mutationFn: async () => sinkronBlok(materi.id, muatanBlok(blok), rasio),
-    onSuccess: () => {
+    mutationFn: async () =>
+      sinkronBlok(materi.id, muatanBlok(blok), rasio, {
+        kode: temaKode,
+        nama: temaNama,
+        video_kode: videoKode === '' ? null : videoKode,
+      }),
+    onSuccess: (data) => {
       setGalat('')
+      // Server boleh menormalkan pilihan kita (nama kosong → nama bawaan tema,
+      // video asing → animasi bawaan), jadi tampilkan yang benar-benar tersimpan.
+      setTemaKode(data.tema?.kode ?? '')
+      setTemaNama(data.perjalanan?.nama ?? '')
+      setVideoKode(data.tema?.video_kode ?? '')
       tampilkanToast('sukses', 'Susunan materi tersimpan.')
       onTersimpan()
     },
@@ -467,6 +665,77 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     },
   }
 
+  /**
+   * Geseran gagang pangkas → titik mulai/ujung klip yang sedang dipilih.
+   * @param {number} klienX
+   */
+  function geserPangkas(klienX) {
+    const sisi = pangkasRef.current
+    const kotak = relRef.current?.getBoundingClientRect()
+    if (sisi === null || !kotak) return
+
+    const detikBaru = detikDariX(klienX, kotak, pangkasTotalRef.current)
+    setBlok((sebelum) =>
+      sisi === 'kiri'
+        ? pangkasKiri(sebelum, aktif, detikBaru)
+        : pangkasKanan(sebelum, aktif, detikBaru),
+    )
+  }
+
+  /**
+   * Properti seret gagang pangkas (mirip `gagangJarum`, tetapi hanya sisi yang
+   * sedang dipegang yang bergerak). Panjang timeline dibekukan saat mulai seret
+   * supaya pangkas tidak berubah-ubah karena penggaris ikut memanjang.
+   * @param {'kiri'|'kanan'} sisi
+   */
+  function seretPangkas(sisi) {
+    return {
+      onPointerDown: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+        pangkasRef.current = sisi
+        pangkasTotalRef.current = total
+        geserPangkas(e.clientX)
+      },
+      onPointerMove: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+        if (pangkasRef.current === null) return
+        e.preventDefault()
+        geserPangkas(e.clientX)
+      },
+      onPointerUp: (/** @type {import('react').PointerEvent<HTMLElement>} */ e) => {
+        if (pangkasRef.current === null) return
+        pangkasRef.current = null
+        e.currentTarget.releasePointerCapture?.(e.pointerId)
+      },
+      onPointerCancel: () => {
+        pangkasRef.current = null
+      },
+      // Gagang ada di dalam lane yang detaknya bisa dipakai menyeret klip.
+      onClick: (/** @type {import('react').MouseEvent<HTMLElement>} */ e) => e.stopPropagation(),
+    }
+  }
+
+  /**
+   * Pangkas lewat papan tombol (gagang juga harus bisa dipakai tanpa tetikus).
+   * @param {'kiri'|'kanan'} sisi
+   * @param {import('react').KeyboardEvent<HTMLElement>} e
+   */
+  function tekanPangkas(sisi, e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+
+    e.preventDefault()
+    const baris = blok[aktif]
+    if (baris === undefined) return
+
+    const arah = e.key === 'ArrowLeft' ? -LANGKAH_TIPIS : LANGKAH_TIPIS
+    setBlok((sebelum) =>
+      sisi === 'kiri'
+        ? pangkasKiri(sebelum, aktif, baris.mulai_detik + arah)
+        : pangkasKanan(sebelum, aktif, baris.mulai_detik + baris.durasi_detik + arah),
+    )
+  }
+
   /** @param {number} indeks @param {Partial<import('./editorMateri.js').BarisBlok>} ubah */
   function ubahBaris(indeks, ubah) {
     setBlok((sebelum) =>
@@ -490,16 +759,78 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     return hasil.indeks
   }
 
+  /**
+   * Unggah berkas ke satu klip media. Setelah terkirim, panjang klip mengikuti
+   * berkasnya sendiri (video/audio) — bukan 10 detik bawaan — supaya penggaris
+   * timeline dan tombol play sesuai isi sungguhan. Durasi yang sudah diatur guru
+   * (bukan bawaan) tidak ditimpa.
+   * @param {number} indeks
+   * @param {File} berkas
+   */
+  function unggahKeKlip(indeks, berkas) {
+    unggah.mutate({ indeks, berkas })
+
+    void bacaDurasiBerkas(berkas).then((durasi) => {
+      if (durasi === null) return
+
+      setBlok((sebelum) => {
+        const baris = sebelum[indeks]
+
+        return baris !== undefined && baris.tipe === 'media' && baris.durasi_detik === DURASI_BAWAAN
+          ? setDurasi(sebelum, indeks, durasi)
+          : sebelum
+      })
+    })
+  }
+
   /** Impor media: sisipkan klip media lalu unggah berkas ke klip itu. @param {File} berkas */
   function imporMedia(berkas) {
-    const indeks = tambahBlok('media')
-    unggah.mutate({ indeks, berkas })
+    unggahKeKlip(tambahBlok('media'), berkas)
+  }
+
+  /**
+   * Sisipkan berkas pustaka sebagai klip media baru. Durasinya dibaca dari
+   * berkasnya sendiri supaya klip langsung sepanjang videonya.
+   * @param {import('./api.js').DataUnggahan} satu
+   */
+  function sisipkanMedia(satu) {
+    const indeks = tambahBlok('media', { unggahan_kode: satu.kode })
+
+    if (satu.url === null) return
+
+    void bacaDurasiMedia(satu.url).then((durasi) => {
+      if (durasi !== null) setBlok((sebelum) => setDurasi(sebelum, indeks, durasi))
+    })
   }
 
   const berkasSiap = (materi.unggahan ?? []).filter((satu) => satu.status === 'selesai')
 
   const cariUnggahan = (/** @type {string} */ kode) =>
     berkasSiap.find((satu) => satu.kode === kode)
+
+  const daftarTema = katalog.data?.tema ?? []
+  const videoTema = berkasSiap.find((satu) => satu.kode === videoKode)
+  // Tema yang sedang dipakai: pilihan lokal dulu (belum tentu tersimpan), lalu
+  // konfigurasi dari server untuk materi yang sudah punya tema.
+  const temaAktif = daftarTema.find((satu) => satu.kode === temaKode) ?? materi.perjalanan
+
+  // Pratinjau peta dihitung dari klip yang BELUM disimpan, jadi guru langsung
+  // melihat hasil penamaan pos tanpa menekan Simpan dulu. Hitungannya murah
+  // (hanya menyusun nama pos), jadi tidak perlu memo manual.
+  const petaPratinjau = petaLokal(blok, temaAktif, {
+    nama: temaNama,
+    videoUrl: videoTema?.tampil_langsung ? videoTema.url : null,
+  })
+
+  /**
+   * Pasang satu template tema: nama tema + nama bawaan setiap pos.
+   * @param {import('./perjalanan.js').DataTemaKatalog} satu
+   */
+  function pakaiTema(satu) {
+    setTemaKode(satu.kode)
+    setTemaNama(satu.nama)
+    setBlok((sebelum) => terapkanTema(sebelum, satu))
+  }
 
   const aktif = Math.min(terpilih, Math.max(blok.length - 1, 0))
   const klipAktif = blok[aktif]
@@ -525,7 +856,10 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const belumTersimpan =
     JSON.stringify(muatanBlok(blok)) !== JSON.stringify(muatanBlok(dariServer(materi.blok))) ||
-    rasio !== (materi.rasio ?? RASIO_BAWAAN)
+    rasio !== (materi.rasio ?? RASIO_BAWAAN) ||
+    temaKode !== (materi.tema?.kode ?? materi.perjalanan?.kode ?? '') ||
+    temaNama !== (materi.tema?.nama ?? materi.perjalanan?.nama ?? '') ||
+    videoKode !== (materi.tema?.video_kode ?? '')
 
   const tandaDetik = useMemo(() => {
     const langkah = total <= 120 ? 5 : total <= 300 ? 10 : 30
@@ -614,19 +948,75 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
           ))}
         </div>
 
-        <h2 className="nle-judul">Template</h2>
-        {adaTemplate() ? (
-          <ul className="list-unstyled mb-0">
-            {TEMPLATE_MATERI.map((satu) => (
-              <li key={satu.id} className="py-1">
-                <span className="fw-semibold small">{satu.nama}</span>
-                <span className="d-block small teks-lembut">{satu.deskripsi}</span>
-              </li>
+        <h2 className="nle-judul">Template tema</h2>
+        <p className="small teks-lembut mb-2">
+          Opsional — pilih template bila materi ingin tampil sebagai perjalanan berpeta, atau pilih
+          “Tanpa tema” untuk daftar bagian biasa.
+        </p>
+        {katalog.isLoading && <p className="small teks-lembut">Memuat template…</p>}
+        {katalog.isError && (
+          <Banner jenis="salah">Gagal memuat template tema. Muat ulang halaman.</Banner>
+        )}
+        <div className="d-grid gap-2 mb-3">
+          {daftarTema.map((satu) => (
+            <button
+              key={satu.kode}
+              type="button"
+              className={`nle-template${temaKode === satu.kode ? ' aktif' : ''}`}
+              aria-pressed={temaKode === satu.kode}
+              onClick={() => pakaiTema(satu)}
+            >
+              <span className="fw-semibold small d-block">{satu.nama}</span>
+              <span className="small teks-lembut d-block">{satu.deskripsi}</span>
+              <span className="small teks-lembut d-block">
+                {satu.fase.length === 0
+                  ? 'Daftar bagian biasa'
+                  : `${satu.fase.length} fase · ${satu.tingkat.length} tingkat`}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <label className="form-label small mb-1" htmlFor="nle-tema-nama">
+          Nama tema (boleh diganti)
+        </label>
+        <input
+          id="nle-tema-nama"
+          className="form-control form-control-sm"
+          value={temaNama}
+          maxLength={60}
+          disabled={tanpaPeta(petaPratinjau)}
+          onChange={(e) => setTemaNama(e.target.value)}
+        />
+
+        <label className="form-label small mb-1 mt-2" htmlFor="nle-tema-video">
+          Latar tema
+        </label>
+        <select
+          id="nle-tema-video"
+          className="form-select form-select-sm"
+          value={videoKode}
+          disabled={tanpaPeta(petaPratinjau)}
+          onChange={(e) => setVideoKode(e.target.value)}
+        >
+          <option value="">Animasi bawaan (tanpa video)</option>
+          {berkasSiap
+            .filter((satu) => (satu.mime ?? '').startsWith('video/'))
+            .map((satu) => (
+              <option key={satu.kode} value={satu.kode}>
+                {satu.nama_asli} · {satu.ukuran_manusia}
+              </option>
             ))}
-          </ul>
-        ) : (
-          <p className="small teks-lembut mb-0">
-            Belum ada template (dikosongkan dulu). Susun materi dari nol.
+        </select>
+        {tanpaPeta(petaPratinjau) && (
+          <p className="small teks-lembut mb-0 mt-1">
+            Materi ini berjalan sebagai daftar bagian biasa: tidak ada peta, pos, atau tingkat. Nama
+            tema dan latar tidak dipakai.
+          </p>
+        )}
+        {!tanpaPeta(petaPratinjau) && videoKode !== '' && !videoTema?.tampil_langsung && (
+          <p className="small teks-lembut mb-0 mt-1">
+            Video itu belum selesai diunggah, jadi animasi bawaan yang dipakai.
           </p>
         )}
 
@@ -663,6 +1053,11 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             </button>
           ))}
         </div>
+
+        <PetaPerjalanan
+          perjalanan={petaPratinjau}
+          judul={tanpaPeta(petaPratinjau) ? undefined : temaNama}
+        />
 
         <div className="nle-canvas" aria-label="Pratinjau hasil">
           <div
@@ -769,7 +1164,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             ))}
           </div>
 
-          <div className="nle-lane-wrap">
+          <div className="nle-lane-wrap" ref={relRef}>
             <div className="nle-playhead" style={{ left: posisiPersen(detik) }}>
               <span
                 className="nle-playhead-kepala"
@@ -826,6 +1221,43 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     </button>
                   )
                 })}
+                {/*
+                  Gagang pangkas `|` di kedua sisi klip yang sedang dipilih.
+                  Sengaja diletakkan di lane (bukan di dalam tombol klip) supaya
+                  tidak ada kontrol interaktif bersarang di dalam tombol — dan
+                  supaya seretannya tidak bertabrakan dengan seret-klip native.
+                */}
+                {klipAktif && satu.track === klipAktif.track && (
+                  <span
+                    className="nle-pangkas-grup"
+                    style={{
+                      left: posisiPersen(klipAktif.mulai_detik),
+                      width: posisiPersen(klipAktif.durasi_detik),
+                    }}
+                  >
+                    {SISI_PANGKAS.map((sisi) => (
+                      <span
+                        key={sisi}
+                        className={`nle-pangkas nle-pangkas-${sisi}`}
+                        role="slider"
+                        tabIndex={0}
+                        title="Seret tanda | untuk mengubah awal/akhir klip"
+                        aria-label={`${sisi === 'kiri' ? 'Titik mulai' : 'Titik akhir'} klip ${aktif + 1}`}
+                        aria-valuemin={0}
+                        aria-valuemax={total}
+                        aria-valuenow={sisi === 'kiri' ? klipAktif.mulai_detik : ujungKlip(klipAktif)}
+                        aria-valuetext={
+                          sisi === 'kiri'
+                            ? `${klipAktif.mulai_detik} detik`
+                            : `${ujungKlip(klipAktif)} detik`
+                        }
+                        {...seretPangkas(sisi)}
+                        onKeyDown={(e) => tekanPangkas(sisi, e)}
+                      />
+                    ))}
+                  </span>
+                )}
+
                 {satu.klip.length === 0 && <span className="nle-lane-kosong">kosong</span>}
               </div>
             ))}
@@ -938,13 +1370,32 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                   id="nle-durasi"
                   className="form-control form-control-sm"
                   type="number"
-                  min={0.5}
-                  step={LANGKAH_WAKTU}
+                  min={DURASI_MINIMUM}
+                  step={LANGKAH_TIPIS}
                   value={klipAktif.durasi_detik}
-                  onChange={(e) =>
-                    ubahBaris(aktif, { durasi_detik: Math.max(0.5, Number(e.target.value)) })
-                  }
+                  onChange={(e) => setBlok(setDurasi(blok, aktif, Number(e.target.value)))}
                 />
+                {/* Klip bisa dipangkas tipis (0,1 detik) tanpa menghitung sendiri. */}
+                <div className="d-flex gap-1 mt-1">
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    onClick={() =>
+                      setBlok(setDurasi(blok, aktif, klipAktif.durasi_detik - LANGKAH_TIPIS))
+                    }
+                  >
+                    −0,1
+                  </Tombol>
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    onClick={() =>
+                      setBlok(setDurasi(blok, aktif, klipAktif.durasi_detik + LANGKAH_TIPIS))
+                    }
+                  >
+                    +0,1
+                  </Tombol>
+                </div>
               </div>
               <div className="col-6 col-lg-3">
                 <label className="form-label small mb-1" htmlFor="nle-track">
@@ -983,6 +1434,28 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
               </div>
             </div>
 
+            <div className="row g-2 mb-2 ">
+              <div className="col-12 col-lg-6">
+                <label className="form-label small mb-1" htmlFor="nle-fase">
+                  {tanpaPeta(petaPratinjau) ? 'Nama bagian' : 'Nama pos perjalanan'}
+                </label>
+                <input
+                  id="nle-fase"
+                  className="form-control form-control-sm"
+                  value={klipAktif.fase}
+                  maxLength={40}
+                  placeholder={faseKe(temaAktif, aktif, '').nama}
+                  onChange={(e) => ubahBaris(aktif, { fase: e.target.value })}
+                />
+              </div>
+              <div className="col-12 col-lg-6 d-flex align-items-end">
+                <p className="small teks-lembut mb-0">
+                  Urutan {tanpaPeta(petaPratinjau) ? 'bagian' : 'pos'} mengikuti timeline. Kosongkan
+                  untuk memakai nama “{faseKe(temaAktif, aktif, '').bawaan}”.
+                </p>
+              </div>
+            </div>
+
             {klipAktif.tipe === 'teks' && (
               <textarea
                 className="form-control"
@@ -1002,7 +1475,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     aria-label={`Unggah berkas klip ${aktif + 1}`}
                     onChange={(e) => {
                       const berkas = e.target.files?.[0]
-                      if (berkas) unggah.mutate({ indeks: aktif, berkas })
+                      if (berkas) unggahKeKlip(aktif, berkas)
                     }}
                   />
                   {unggah.isPending && (
@@ -1080,21 +1553,14 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             )}
 
             {klipAktif.tipe === 'kuis' && (
-              <>
-                <select
-                  className="form-select form-select-sm"
-                  aria-label={`Pilih kuis untuk klip ${aktif + 1}`}
-                  value={klipAktif.quiz_id}
-                  onChange={(e) => ubahBaris(aktif, { quiz_id: e.target.value })}
-                >
-                  <option value="">Pilih kuis dari bank soal…</option>
-                  {daftarKuis.map((satuKuis) => (
-                    <option key={satuKuis.id} value={satuKuis.id}>
-                      {satuKuis.judul} ({satuKuis.jumlah_soal ?? 0} soal)
-                    </option>
-                  ))}
-                </select>
-                <div className="row g-2 mt-1 align-items-end">
+              <div className="nle-kuis-atur mt-2">
+                <PemilihKuis
+                  daftarKuis={daftarKuis}
+                  terpilih={klipAktif.quiz_id}
+                  onPilih={(id) => ubahBaris(aktif, { quiz_id: id })}
+                />
+
+                <div className="row g-2 mt-2 align-items-end">
                   <div className="col-12 col-lg-4">
                     <label className="form-label small mb-1" htmlFor="nle-mode">
                       Saat kuis muncul
@@ -1133,7 +1599,62 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     </Tombol>
                   </div>
                 </div>
-              </>
+
+                <fieldset className="nle-penjelasan mt-3">
+                  <legend className="small fw-semibold mb-1">
+                    Penjelasan setelah kuis <span className="teks-lembut fw-normal">(opsional)</span>
+                  </legend>
+                  <p className="small teks-lembut mb-2">
+                    Tampil untuk seluruh kelas tepat setelah murid menyelesaikan kuis ini — mis. kenapa
+                    jawabannya begitu. Boleh teks, media, atau keduanya.
+                  </p>
+                  <textarea
+                    className="form-control form-control-sm"
+                    rows={4}
+                    maxLength={MAKS_PENJELASAN}
+                    aria-label={`Teks penjelasan setelah kuis untuk klip ${aktif + 1}`}
+                    placeholder="Tulis penjelasan lengkap di sini…"
+                    value={klipAktif.penjelasan_teks}
+                    onChange={(e) => ubahBaris(aktif, { penjelasan_teks: e.target.value })}
+                  />
+                  <div className="row g-2 mt-1 align-items-end">
+                    <div className="col-12 col-lg-8">
+                      <label className="form-label small mb-1" htmlFor="nle-penjelasan-media">
+                        Media penjelasan
+                      </label>
+                      <select
+                        id="nle-penjelasan-media"
+                        className="form-select form-select-sm"
+                        value={klipAktif.penjelasan_kode}
+                        onChange={(e) => ubahBaris(aktif, { penjelasan_kode: e.target.value })}
+                      >
+                        <option value="">Tanpa media</option>
+                        {berkasSiap.map((satu) => (
+                          <option key={satu.kode} value={satu.kode}>
+                            {satu.nama_asli} · {satu.ukuran_manusia} · {satu.kategori_label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-12 col-lg-4">
+                      <Tombol
+                        varian="tepi"
+                        ukuran="sedang"
+                        disabled={!penjelasanTerisi(klipAktif)}
+                        onClick={() => ubahBaris(aktif, { penjelasan_teks: '', penjelasan_kode: '' })}
+                      >
+                        Kosongkan penjelasan
+                      </Tombol>
+                    </div>
+                  </div>
+                  {berkasSiap.length === 0 && (
+                    <p className="small teks-lembut mb-0 mt-1">
+                      Belum ada berkas di materi ini. Unggah lewat area klip media untuk menyisipkan media
+                      penjelasan.
+                    </p>
+                  )}
+                </fieldset>
+              </div>
             )}
           </div>
         )}
@@ -1154,7 +1675,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     varian="teks"
                     ukuran="sedang"
                     className="ms-auto"
-                    onClick={() => tambahBlok('media', { unggahan_kode: satu.kode })}
+                    onClick={() => sisipkanMedia(satu)}
                   >
                     Sisipkan
                   </Tombol>
@@ -1168,7 +1689,10 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
           <div className="mt-4">
             <h2 className="h6 fw-bold">Hasil murid</h2>
             <p className="small teks-lembut">
-              Skor latihan masuk laporan tema materi ini dan tidak menghitung ranking.
+              {laporan.data.perjalanan.tanpa
+                ? 'Tanpa peta perjalanan'
+                : `Tema perjalanan “${laporan.data.perjalanan.nama}”`}{' '}
+              · skor latihan masuk laporan tema materi ini dan tidak menghitung ranking.
             </p>
             <TabelData
               label="Hasil murid pada materi ini"
@@ -1185,6 +1709,19 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                   kunci: 'skor_latihan',
                   judul: 'Skor latihan',
                   sel: (satu) => `${satu.skor_latihan}/${satu.skor_latihan_maksimal}`,
+                },
+                {
+                  kunci: 'perjalanan',
+                  judul: 'Perjalanan',
+                  sel: (satu) =>
+                    `${satu.perjalanan.langkah_aktif ?? '—'} (${satu.perjalanan.posisi}/${satu.perjalanan.total})`,
+                },
+                {
+                  kunci: 'tingkat',
+                  judul: 'Tingkat',
+                  // Materi tanpa peta tidak punya tingkat: cukup persentasenya.
+                  sel: (satu) =>
+                    `${satu.perjalanan.tingkat_nama ? `${satu.perjalanan.tingkat_nama} · ` : ''}${satu.perjalanan.persen}%`,
                 },
                 {
                   kunci: 'tema',

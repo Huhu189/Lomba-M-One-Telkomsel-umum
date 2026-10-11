@@ -10,6 +10,7 @@ use App\Sections\Material\Http\Requests\SimpanMateriRequest;
 use App\Sections\Material\Http\Requests\SinkronBlokRequest;
 use App\Sections\Material\Http\Resources\MateriResource;
 use App\Sections\Material\Models\Materi;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Material\Services\MateriService;
 use App\Sections\Material\Services\ProgresMateriService;
 use App\Sections\School\Services\SekolahService;
@@ -81,6 +82,23 @@ class MateriController extends Controller
         return response()->json($progres->ringkasan($materi, $pengguna));
     }
 
+    /**
+     * Katalog tema perjalanan yang bisa dipilih guru (template tema materi).
+     *
+     * Dikirim server, bukan disalin di klien, supaya nama fase/tingkat hanya punya
+     * satu sumber kebenaran: registry yang juga dipakai saat menyimpan dan saat
+     * menyusun peta murid.
+     */
+    public function tema(): JsonResponse
+    {
+        $this->authorize('viewAny', Materi::class);
+
+        return response()->json([
+            'tema' => TemaPerjalanan::semua(),
+            'bawaan' => TemaPerjalanan::BAWAAN,
+        ]);
+    }
+
     public function store(SimpanMateriRequest $request, SekolahService $sekolah, MateriService $service): JsonResponse
     {
         $this->authorize('create', Materi::class);
@@ -119,7 +137,7 @@ class MateriController extends Controller
     {
         $this->authorize('update', $materi);
 
-        $materi = $service->sinkronBlok($materi, $request->daftarBlok(), $request->rasio());
+        $materi = $service->sinkronBlok($materi, $request->daftarBlok(), $request->rasio(), $request->tema());
 
         return new MateriResource($materi->load(['mapel', 'kelas', 'tag', 'blok.kuis', 'unggahan'])->loadCount('blok'));
     }

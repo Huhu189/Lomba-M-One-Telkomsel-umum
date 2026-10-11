@@ -24,6 +24,22 @@ const KODE_VIDEO = 'XZhNiQ6Q9FlH2IYEvN2dxS1IFnKYi36c'
 /** Detik jatuh kuis di dalam video; harus di dalam jendela klip media (0–60). */
 const DETIK_KUIS = 20
 
+/**
+ * Pemilih daftar bagian materi murid.
+ *
+ * Sejak tema perjalanan (A.34) halaman murid memuat DUA daftar `<ol>`: daftar pos
+ * peta (`.jelajah-daftar`) dan daftar bagian materi. Pemilih `ol li` yang lama
+ * ikut menghitung pos peta, sehingga harness membaca halaman yang salah. Yang ini
+ * sengaja mengecualikan daftar pos.
+ */
+const SEL_DAFTAR_BAGIAN = 'ol.list-unstyled:not(.jelajah-daftar) > li'
+
+/**
+ * Teks penjelasan setelah kuis yang disimpan "guru" di harness ini (A.38).
+ * Dipakai untuk membuktikan penjelasan muncul HANYA sesudah kuis dikumpulkan.
+ */
+const PENJELASAN_UJI = 'SMOKE-MATERI: 5 + 5 = 10 karena 5 ditambah 5.'
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** Alat bantu di sisi halaman (disuntik ulang setiap navigasi). */
@@ -240,6 +256,8 @@ async function main() {
         tipe: 'kuis',
         wajib: true,
         quiz_id: idKuisUji,
+        // Penjelasan opsional setelah kuis (A.38): teks saja, tanpa media.
+        isi: { penjelasan: { teks: PENJELASAN_UJI, unggahan_kode: null } },
         track: 1,
         mulai_detik: DETIK_KUIS,
         durasi_detik: 10,
@@ -260,6 +278,11 @@ async function main() {
       'blok teks tidak punya pengaturan tampilan (diabaikan server)',
       sinkron.isi?.blok?.[2]?.tampilan === null,
       `tampilan ${JSON.stringify(sinkron.isi?.blok?.[2]?.tampilan)}`,
+    )
+    catat(
+      'penjelasan setelah kuis tersimpan di blok kuis',
+      sinkron.isi?.blok?.[1]?.penjelasan?.teks === PENJELASAN_UJI,
+      `teks “${sinkron.isi?.blok?.[1]?.penjelasan?.teks ?? '—'}”`,
     )
 
     const terbit = await apiJson(`/v1/materi/${idMateri}/publikasi`, 'POST')
@@ -302,10 +325,10 @@ async function main() {
     catat('materi uji tampil di daftar materi murid', adaMateri)
 
     await evalJs(`window.__alat.klik('SMOKE-MATERI Pemutar Video')`)
-    await tunggu(`document.querySelectorAll('ol li').length > 0`, 15000)
+    await tunggu(`document.querySelectorAll('${SEL_DAFTAR_BAGIAN}').length > 0`, 15000)
 
     const daftarBagian = await evalJs(
-      `[...document.querySelectorAll('ol li')].map((li) => li.innerText.split('\\n').join(' ').trim())`,
+      `[...document.querySelectorAll('${SEL_DAFTAR_BAGIAN}')].map((li) => li.innerText.split('\\n').join(' ').trim())`,
     )
     catat(
       'kuis sisipan TIDAK dihitung sebagai bagian sendiri',
@@ -313,7 +336,9 @@ async function main() {
       `bagian ${JSON.stringify(daftarBagian)}`,
     )
 
-    await evalJs(`document.querySelectorAll('ol li')[0].querySelector('button')?.click(); true`)
+    await evalJs(
+      `document.querySelectorAll('${SEL_DAFTAR_BAGIAN}')[0].querySelector('button')?.click(); true`,
+    )
     const adaPemutar = await tunggu(`document.querySelectorAll('.pm-bingkai').length === 1`, 15000)
     catat('pemutar video memasang bingkai rasio terkunci', adaPemutar)
 
@@ -371,6 +396,27 @@ async function main() {
     })()`)
     catat('panel kuis memuat soal latihan dari bank soal', isiKuis.adaSoal === true, isiKuis.teks.slice(0, 120))
     catat('mode "jeda": video berhenti di titik kuis', isiKuis.dijeda === true, `paused = ${isiKuis.dijeda}`)
+
+    // Penjelasan guru (opsional) harus MUNCUL hanya sesudah kuis dikumpulkan.
+    catat(
+      'penjelasan belum tampil sebelum kuis dikumpulkan',
+      (await evalJs(`document.querySelectorAll('.pm-penjelasan').length`)) === 0,
+    )
+    await evalJs(`document.querySelector('.pm-kuis input[value="B"]').click(); true`)
+    catat(
+      'murid memilih jawaban kuis sisipan',
+      await tunggu(`document.querySelector('.pm-kuis input[value="B"]').checked === true`),
+    )
+    catat('murid mengumpulkan latihan sisipan', await tunggu(`window.__alat.klik('Simpan jawaban & kumpulkan')`))
+
+    const adaPenjelasan = await tunggu(
+      `(document.querySelector('.pm-penjelasan')?.innerText ?? '').includes(${JSON.stringify(PENJELASAN_UJI)})`,
+      20000,
+    )
+    const isiPenjelasan = await evalJs(
+      `(document.querySelector('.pm-penjelasan')?.innerText ?? '').split('\\n').join(' ').slice(0, 160)`,
+    )
+    catat('penjelasan guru tampil setelah kuis selesai', adaPenjelasan, isiPenjelasan)
 
     // Server tetap penentu: video belum boleh ditutup sebelum kuis wajibnya selesai.
     const tutupVideo = await apiJson(`/v1/materi/${idMateri}/blok/${idVideo}/selesai`, 'POST')
