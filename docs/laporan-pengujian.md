@@ -3353,3 +3353,154 @@ Diubah — tes:
 
 Diubah — dokumentasi:
 - `docs/laporan-pengujian.md` (A.39 ini), `docs/handoff-sesi.md`
+
+---
+
+## A.40 Siswa Tamu: Guru Mengizinkan Kuis Tanpa Akun, Tamu Cukup Mengetik Nama (11 Oktober 2026)
+
+Permintaan putaran ini: *"tambahkan setting guru bisa mengizinkan siswa guest (gak perlu login) namun harus
+diberikan nama"* — plus permintaan meng-commit & men-push pekerjaan yang menumpuk. Jadi putaran ini
+menambah satu fitur utuh (bukan sapuan) sekaligus menutup utang commit.
+
+### A.40.1 Yang dikerjakan
+
+- **Saklar pengaturan baru `izinkan_tamu`** (`KunciPengaturan::IzinkanTamu`, boolean, bawaan **mati**,
+  kelompok tampilan *"Siswa tamu"*). Karena pengaturan aplikasi ini tiga lapis, guru memakai saklarnya di
+  **lapis kuis miliknya** (satu kuis dibuka untuk tamu, kuis lain tetap tertutup), sementara admin bisa
+  menyalakannya untuk sekolah/kelas. Halaman pengaturan yang sudah ada langsung menampilkan saklar ini
+  tanpa perubahan UI — nilainya memang dikirim server.
+- **Section baru `Tamu`**: `TamuService` (menentukan ketersediaan tamu, izin per kuis, daftar kuis terbuka,
+  dan masuk dengan nama), `MasukTamuRequest` (nama 2–60 karakter, dirapikan sebelum divalidasi),
+  `TamuController` (info publik, masuk, dan panel hasil tamu untuk guru), serta `LaporanTamuService`.
+- **Jalur publik**: `GET /v1/tamu` (apakah halaman masuk perlu menawarkan pintu tamu) dan
+  `POST /v1/auth/tamu` (masuk dengan nama; kena `throttle:auth` seperti jalur auth lain).
+- **Akun tamu tetap akun sungguhan**: baris `users` (peran `murid`, `is_tamu = true`, status aktif, email
+  verifikasi dianggap beres karena tidak ada kotak surat) + baris `students` di kelas penampung
+  **"Tamu (tanpa akun)"** yang dibuat sekali per sekolah. Karena itu policy IDOR, pengacakan, snapshot soal,
+  penilaian mesin, koreksi guru, dan presence bekerja **tanpa cabang baru** — hanya satu aturan yang diganti.
+- **Gerbang pengerjaan** (`AttemptService::mulai`): untuk tamu, pemeriksaan *"kuis ini harus kelasmu"*
+  diganti dengan *"kuis ini memang dibuka gurunya untuk tamu"*; mode tim ditolak dengan pesan yang jelas
+  (tim selalu disusun dari murid kelas). Murid dengan akun tetap melewati jalur lama yang sama ketatnya.
+- **Pagar bacaan**: `KuisPolicy::view` menerima tamu hanya bila kuisnya terbit **dan** izin tamunya menyala;
+  `KuisController::index` untuk tamu mengembalikan **hanya** kuis terbit yang dibuka untuk tamu (kuis draf
+  tidak pernah terlihat); halaman peringkat **ditutup** untuk tamu (`RankingController` 403) dan baris
+  mereka **tidak masuk** peringkat kelas (`RankingService` menyaring `users.is_tamu = false`).
+- **Panel guru**: `GET /v1/kuis/{kuis}/tamu` (pemilik kuis saja, memakai policy `laporan` yang sama) berisi
+  satu baris per attempt tamu (nama, skor, benar, percobaan ke-, waktu kumpul) + penanda apakah pintu
+  tamunya masih terbuka. Di UI muncul sebagai bagian *"Siswa tamu"* di halaman laporan kuis.
+- **UI murid**: formulir *"Atau ikut sebagai siswa tamu"* di halaman masuk (hanya muncul bila server
+  mengizinkannya), navigasi khusus tamu di kerangka umum (Beranda + Ulangan Tamu), salinan halaman kuis &
+  beranda yang menyebut mode tamu, dan tautan Peringkat disembunyikan untuk tamu.
+
+### A.40.2 Temuan nyata saat verifikasi (2, dua-duanya diperbaiki)
+
+1. **Kolom baru `users.is_tamu` membuat endpoint yang mengembalikan user BARU dibuat melempar 500.**
+   Aplikasi menyalakan `Model::preventAccessingMissingAttributes()` di non-produksi, dan Eloquent hanya
+   mengisi atribut yang benar-benar dikirim saat `create()` — jadi `$user->is_tamu` pada user yang baru
+   dibuat melempar `MissingAttributeException`. Ketemu dari tes debug `/auth/saya` untuk murid biasa yang
+   dijawab **500** (bukan karena tamu). Dampaknya bukan main-main: `POST /auth/daftar` membalas
+   `UserResource($hasil['user'])` dari user yang baru dibuat, jadi pendaftaran murid akan 500 di produksi.
+   Diperbaiki dengan nilai bawaan model (`protected $attributes = ['is_tamu' => false]`), bukan dengan
+   menambal tiap pemanggil; tes debug mengonfirmasi kembali 200 sesudah perbaikan.
+2. **Panel hasil tamu 500 karena enum di-cast ke string.** `LaporanTamuService` memakai select mentah
+   (`'attempts.jenis'`), sedangkan model `Attempt` meng-cast kolom itu ke enum; `(string) $satu->jenis`
+   melempar *"Object of class JenisAttempt could not be converted to string"*. Diperbaiki dengan membaca
+   `->value` dari enum-nya; tes `TamuTest` menutup jalur ini dari sisi guru pemilik.
+
+### A.40.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test --filter=TamuTest` | **15 passed (120 assertions)** — termasuk tamu mengerjakan sampai dikumpulkan (skor 10/10) |
+| `php artisan test` (seluruh suite) | **309 passed (2894 assertions)**, 17,2 s |
+| `npx vitest run` | **64 berkas / 627 tes passed** (+3 tes `masukTamu.test.jsx`) |
+| `npm run check` (checkJs) | **bersih** (0 error) |
+| `npm run lint` (ESLint) | **0 error** (2 warning lama di `HalamanDaftar.jsx`) |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest · Pint **347 berkas** · checkJs · ESLint · Vitest 64/627 · realtime 15 tes |
+| `git push` | `d2c0dff..6e04be6 main -> main` + commit fitur tamu menyusul di putaran yang sama |
+
+Yang dibuktikan tes itu penting untuk diringkas: default **mati** (tanpa izin guru, `POST /auth/tamu` ditolak
+422 dan **tidak ada** akun tamu yang dibuat), pintu terbuka setelah guru menyimpan saklar lapis kuisnya,
+tamu hanya melihat/mengerjakan kuis yang dibuka (kuis draf & kuis guru lain 403), murid berkelas lain tetap
+ditolak walau izin tamu menyala, mode tim ditolak untuk tamu, akun tamu tidak bisa menyentuh jalur guru,
+tamu tidak bisa membuka peringkat kelas, dan guru pemilik melihat hasil tamunya sementara guru lain 403.
+
+### A.40.4 Keputusan teknis (satu kalimat per keputusan)
+
+- **Saklar di lapis kuis** (bukan kolom baru di kuis): memakai sistem pengaturan tiga lapis yang sudah ada,
+  jadi guru dapat mengizinkan tamu **per kuis** tanpa memberikan hak sekolah/kelas (yang tetap admin).
+- **Nama = identitas**: nama yang sama masuk lagi memakai akun tamu yang sama (alamat emailnya diturunkan
+  dari nama), sehingga batas percobaan, riwayat jawaban, dan hasil tetap satu orang — bukan akun baru tiap
+  masuk; konsekuensinya jujur (dua anak bernama persis sama berbagi identitas) dan itu ditulis di formulir
+  serta dokumen ini.
+- **Email sintetis `tamu+<slug>@tamu.invalid`** (TLD `.invalid` dijamin RFC 2606) supaya akun tamu tidak
+  mungkin bertabrakan dengan surat sungguhan maupun pendaftaran murid, sekaligus asalnya jelas.
+- **Tamu tetap punya baris `users` + `students`** di kelas penampung "Tamu (tanpa akun)": policy, penilaian,
+  dan koreksi guru bekerja apa adanya, dan tamu tidak tercampur dengan kelas sungguhan.
+- **Verifikasi email dilewati** untuk tamu (tidak ada kotak surat) tetapi status tetap `aktif`, supaya
+  middleware `akun-aktif` tidak menutup semua endpoint untuknya.
+- **Mode tim ditolak** untuk tamu, bukan dibiarkan gagal dengan pesan "kamu belum masuk tim".
+- **Tamu di luar ranking kelas** dan **tidak boleh membuka peringkat**: nama anak kelas bukan untuk orang
+  tanpa akun, sementara nilainya tetap bisa dilihat guru lewat panel siswa tamu.
+- **Laporan kelas tidak diubah bentuknya**; hasil tamu diberi jalur sendiri supaya skema laporan yang sudah
+  ada (dan tesnya) tetap utuh.
+
+### A.40.5 Batasan jujur (yang belum selesai)
+
+- **Belum diuji di peramban sungguhan**: jalur tamu dibuktikan lewat HTTP (Pest) dan formulirnya lewat
+  jsdom (Vitest); belum ada uji klik/screenshot di browser.
+- **Dua anak dengan nama sama berbagi satu identitas tamu** — konsekuensi sadar dari "nama = identitas";
+  mitigasinya hanya petunjuk di formulir (minta nama yang khas), belum ada mekanisme pembeda (mis. kode
+  kelas) dan belum ada uji yang memaksa pilihan lain.
+- **Akun tamu tidak dibersihkan otomatis**: belum ada jadwal hapus akun tamu lama, jadi sekolah yang sering
+  memakai mode ini akan menumpuk akun tamu.
+- **Fitur berakun tetap tertutup untuk tamu** (materi, lencana, progres tema, avatar): navigasi tamu memang
+  dipersempit supaya tidak ada tautan yang menabrak 403, bukan karena jalurnya diberi hak baru.
+- **Guru hanya bisa menyalakan izin tamu per kuis**; membukanya untuk seluruh sekolah/kelas tetap keputusan
+  admin (aturan pengaturan tiga lapis yang sudah ada).
+- Belum ada tes yang menyapu perilaku tamu pada mode luring (salinan soal) dan pada lampiran jawaban;
+  tamu memakai jalur murid yang sama, jadi risiko terbesarnya adalah nilai yang belum tersinkron.
+
+### A.40.6 Berkas yang dibuat/diubah
+
+Dibuat — kode produk backend:
+- `backend/database/migrations/2026_10_11_000001_tambah_akun_tamu.php`
+- `backend/app/Sections/Tamu/Services/TamuService.php`
+- `backend/app/Sections/Tamu/Services/LaporanTamuService.php`
+- `backend/app/Sections/Tamu/Http/Requests/MasukTamuRequest.php`
+- `backend/app/Sections/Tamu/Http/Controllers/TamuController.php`
+
+Dibuat — UI:
+- `frontend/src/sections/auth/MasukTamu.jsx`
+
+Dibuat — tes:
+- `backend/tests/Feature/TamuTest.php` (15 tes)
+- `frontend/src/__tests__/sections/auth/masukTamu.test.jsx` (3 tes)
+
+Diubah — kode produk backend:
+- `backend/app/Sections/Settings/Enums/KunciPengaturan.php` (kunci `izinkan_tamu`)
+- `backend/app/Models/User.php` (`is_tamu`, `isTamu()`, nilai bawaan model)
+- `backend/app/Sections/Auth/Http/Resources/UserResource.php` (`isTamu`)
+- `backend/app/Sections/Attempt/Services/AttemptService.php` (gerbang tamu + tolak mode tim)
+- `backend/app/Sections/Quiz/Policies/KuisPolicy.php` (baca kuis untuk tamu)
+- `backend/app/Sections/Quiz/Http/Controllers/KuisController.php` (daftar kuis tamu)
+- `backend/app/Sections/Report/Services/RankingService.php` (tamu di luar peringkat kelas)
+- `backend/app/Sections/Report/Http/Controllers/RankingController.php` (peringkat ditutup untuk tamu)
+- `backend/routes/api.php` (2 jalur publik + panel tamu guru)
+- `backend/database/factories/UserFactory.php` (state `tamu()`)
+
+Diubah — UI:
+- `frontend/src/sections/auth/api.js` (`skemaInfoTamu`, `ambilInfoTamu`, `masukTamu`, `isTamu` pada `skemaUser`)
+- `frontend/src/sections/auth/authStore.js` (`masukTamu`, tipe `DataUser`)
+- `frontend/src/sections/auth/validasi.js` (`skemaTamu`)
+- `frontend/src/sections/auth/HalamanMasuk.jsx` (formulir tamu + info publik)
+- `frontend/src/App.jsx` (tamu diantar ke daftar ulangan)
+- `frontend/src/shared/layout/KerangkaUmum.jsx` (menu + label siswa tamu)
+- `frontend/src/sections/home/Beranda.jsx` (beranda tamu tanpa pintasan akun)
+- `frontend/src/sections/quiz/HalamanKuisMurid.jsx` (salinan + sembunyikan Peringkat)
+- `frontend/src/sections/report/api.js` + `HalamanLaporan.jsx` (panel siswa tamu)
+- `frontend/src/theme/theme.css` (gaya blok `.auth-tamu`)
+- `frontend/src/__tests__/sections/auth/authStore.sesi.test.js` (`isTamu: false` pada fixture)
+
+Diubah — dokumentasi:
+- `docs/laporan-pengujian.md` (A.40 ini), `docs/penjelasan-fitur.md`, `docs/catatan-demo.md`, `docs/handoff-sesi.md`

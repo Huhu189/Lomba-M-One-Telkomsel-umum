@@ -7,6 +7,7 @@ namespace App\Sections\Quiz\Policies;
 use App\Models\User;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\Quiz\Models\Kuis;
+use App\Sections\Tamu\Services\TamuService;
 
 /**
  * Kuis: guru/admin mengelola; murid hanya melihat kuis terbit kelasnya.
@@ -34,6 +35,13 @@ class KuisPolicy
 
         if ($kuis->status !== StatusKuis::Publikasi) {
             return false;
+        }
+
+        // Siswa tamu tidak punya kelas: pagarnya bukan "kelasmu" melainkan izin
+        // tamu pada kuis itu sendiri, yang ditetapkan guru lewat pengaturan
+        // `izinkan_tamu` (resolusi tiga lapis)
+        if ($user->isTamu()) {
+            return app(TamuService::class)->izinkanKuis($kuis);
         }
 
         $kelasMurid = $user->murid?->class_id;

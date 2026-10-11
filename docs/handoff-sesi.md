@@ -9,8 +9,10 @@ koreksi manual, A.33 — sistem luring: simpan jawaban saat internet putus + riw
 + validasi jam monotonik, A.34 — materi berjalan: template tema + peta beranimasi + kenaikan
 pos/tingkat, A.35 — editor soal: pemilih jenis ringkas berikon di paling bawah, dan
 **A.36 — editor materi: gagang pangkas `|` di kedua sisi klip**, termasuk putaran lanjutan A.36.7 yang
-membuktikan tanda itu juga berlaku untuk klip **kuis** dan **media**, dan **A.39 — sapuan dasar:** 22 tipe soal
-lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 temuan nyata yang sudah diperbaiki).
+membuktikan tanda itu juga berlaku untuk klip **kuis** dan **media**, **A.39 — sapuan dasar:** 22 tipe soal
+lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 temuan nyata yang sudah diperbaiki,
+**A.40 — siswa tamu:** guru membuka kuis untuk anak tanpa akun lewat pengaturan `izinkan_tamu` dan tamu cukup
+mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39)).
 
 ## 1. Status verifikasi terakhir
 
@@ -19,6 +21,12 @@ lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 tem
 | `./verify.sh` (root) — ulang di putaran A.36 | HIJAU (exit 0) — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **63 berkas / 610 test** · realtime 15 test |
 | `php artisan test` (ulang di A.39, sesudah perbaikan) | **294 passed (2774 assertions)**, 16,5 s |
 | `php artisan test --filter=AlurTipeSoalTest` (A.39) | **22 passed (242 assertions)** — satu tes per tipe soal, lewat HTTP |
+| `php artisan test --filter=TamuTest` (**A.40**) | **15 passed (120 assertions)** — default mati, masuk dengan nama, tamu menyelesaikan ulangan (skor 10/10), kuis draf/kuis guru lain 403, murid berkelas lain tetap ditolak, mode tim ditolak, akun tamu tidak masuk jalur guru, tamu di luar peringkat kelas, panel guru pemilik vs guru lain |
+| `php artisan test` (**A.40**, seluruh suite) | **309 passed (2894 assertions)**, 17,2 s |
+| `npm run check` + `npm run lint` (**A.40**) | checkJs **bersih**; ESLint **0 error** (2 warning lama) |
+| `npx vitest run src/__tests__/sections/auth/masukTamu.test.jsx` (**A.40**) | **3 passed** — nama dirapikan & sesi terbuka, nama terlalu pendek tidak menembak server, pesan penolakan server ditampilkan apa adanya |
+| `./verify.sh` (**A.40**, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest 309 · Pint **347 berkas** · checkJs · ESLint · Vitest **64 berkas / 627 tes** · realtime 15 tes |
+| `git push` (**A.40**) | `d2c0dff..6e04be6 main -> main` (dua commit: materi luring/tema/editor + perbaikan 3 temuan A.39), lalu commit A.40 |
 | `./verify.sh` (ulang di A.39) | **SEMUA HIJAU (exit 0)** — Pest 294 · Pint **341 berkas** · checkJs · ESLint · Vitest **63 berkas / 624 tes** · realtime 15 tes |
 | `docs/jalankan-smoke-ui.sh durasi-klip` (ulang di A.36) | **11/11 lulus, exit 0** — termasuk seret tetikus sungguhan pada tanda `|` kiri/kanan |
 | `node docs/smoke-ui-durasi-klip.mjs` (putaran lanjutan A.36.7) | **15/15 lulus, exit 0** — bagian 4 baru: klip **kuis** (materi #20) dan klip **media** (materi #1) juga punya tanda `|` yang bisa diseret |
@@ -162,8 +170,15 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 
 ## 3. Kondisi git (`git status`)
 
-- `HEAD` = **`a859f78`** — "Jadikan materi bergaya video editor dengan kuis sisipan di dalam klip"
-  (17 berkas: 13 modifikasi + `PemutarMateri.jsx`, `pemutarMateri.js`, migrasi `rasio`, 2 tes baru).
+- `HEAD` = **`6e04be6`** — "Perbaiki tiga temuan tipe soal dan rapikan kontrol kepemilikan laporan materi"
+  (putaran A.39). Sebelumnya `534e506` — "Lengkapi materi bergaya video editor: luring, peta perjalanan,
+  gagang pangkas, penjelasan setelah kuis" (A.33–A.38, 68 berkas). **Keduanya sudah di-push** ke
+  `origin/main` (`d2c0dff..6e04be6`), jadi repo online sudah memuat seluruh pekerjaan sampai A.39.
+- **A.40 (dikomit di putaran ini, sesudah dokumen ini)**: saklar `izinkan_tamu`, section `Tamu`
+  (service + controller + request + laporan tamu), gerbang tamu di `AttemptService`/`KuisPolicy`/
+  `RankingService`, panel siswa tamu di laporan, formulir `MasukTamu.jsx`, navigasi & salinan tamu,
+  tes `TamuTest.php` + `masukTamu.test.jsx`, dan pembaruan dokumentasi — semuanya **sudah dikomit & di-push**
+  bila `git status` bersih; kalau tidak, lihat pesan commit terbaru untuk daftar tepatnya.
 - **Belum dikomit di working tree** (urutan putaran: A.33 dan putaran-putaran sebelumnya): modifikasi
   backend (kuis/materi) + frontend (kuis, soal, materi, pengaturan, tema) dari putaran sebelum A.33, plus
   berkas baru A.33 (9 berkas: 4 modul + 4 tes di `frontend/src/sections/attempt/` & `__tests__`, dan
@@ -199,9 +214,8 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   `Http/Resources/BlokResource.php`, `tests/Feature/Slice08Test.php`, `sections/material/EditorMateri.jsx`,
   `editorMateri.js`, `PemutarMateri.jsx`, `api.js`, `theme/theme.css`, tes `editorMateri.test.js` +
   `api.test.js`, `docs/smoke-ui-materi.mjs` (pemilih daftar bagian) — plus dokumentasi A.38.
-- Belum dikomit dan **sengaja ditinggalkan**: `docs/log-mentah/log-claude-eksternal.md` dan
-  `docs/log-mentah/prompt-claude-eksternal.md` (catatan mentah eksternal, bukan bagian kode fitur).
-- **Tidak** ada `git push` untuk pekerjaan ini (tidak diminta).
+- `docs/log-mentah/log-claude-eksternal.md` dan `docs/log-mentah/prompt-claude-eksternal.md` ikut
+  tersapu commit A.33–A.39 (catatan mentah eksternal; sudah ada di repo, isinya tidak diubah).
 - Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
 
 ## 4. Batasan jujur (yang belum selesai)
@@ -242,6 +256,11 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 - **Smoke UI tidak ikut `verify.sh`** (butuh empat layanan hidup).
 - **`docs/word/` disegarkan sebagian**: tiga berkas yang sumbernya berubah (laporan-pengujian, penjelasan-fitur, jurnal-prompt) sudah diekspor ulang lewat `python3 docs/export_docx.py`. Langkah penyegaran log mentah di dalam `export-word.sh` (`docs/export-log-sesi.py`, butuh snapshot sesi chat) **belum** dijalankan supaya transkrip byte-exact tidak berubah tanpa alasan; `log-mentah.docx` dan `catatan-demo.docx` karenanya masih dari ekspor sebelumnya (sumbernya memang tidak berubah).
 - **Belum ada deploy publik dan Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan).
+- **Mode tamu (A.40) belum diuji di peramban sungguhan**: jalur tamu dibuktikan lewat HTTP (Pest) dan
+  formulirnya lewat jsdom (Vitest); belum ada smoke UI/CDP untuk tamu. Juga belum ada pembersihan akun tamu
+  lama (sekolah yang sering memakai mode ini akan menumpuk akun tamu), dan **dua anak dengan nama sama
+  berbagi satu identitas** (nama = identitas, konsekuensi sadar yang ditulis di formulir). Guru hanya bisa
+  menyalakan izin tamu **per kuis**; membukanya untuk sekolah/kelas tetap keputusan admin.
 - Lima soal sisa `SMOKE-` (id 57–60, 150) masih tertahan di bank soal dev karena sudah dipakai/dijawab.
 
 ## 5. Cara melanjutkan
@@ -261,4 +280,5 @@ python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx   # konvers
 ```
 
 Langkah berikutnya yang masuk akal: **menambah tema perjalanan kedua/ketiga** (mis. "Menjelajah Laut",
-"Ruang Angkasa") memakai katalog yang sudah ada, lalu **deteksi tamper sisi klien (2B–2D)**.
+"Ruang Angkasa") memakai katalog yang sudah ada, **smoke UI mode tamu** (buka kuis untuk tamu → masuk dengan
+nama → kerjakan → panel guru), lalu **deteksi tamper sisi klien (2B–2D)**.

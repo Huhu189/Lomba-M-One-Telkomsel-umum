@@ -1,24 +1,31 @@
 /**
  * Halaman kuis untuk murid (slice 03) — hanya kuis terbit kelasnya yang
  * dikirim server, tanpa kunci jawaban dan tanpa daftar soal (K-02).
+ *
+ * Siswa tamu (mode tamu tanpa login) memakai halaman yang sama: server hanya
+ * mengirim kuis yang dibuka guru untuk tamu, dan di sini judulnya disesuaikan
+ * supaya jelas bahwa yang tampil bukan kuis kelasnya.
  */
 import { useQuery } from '@tanstack/react-query'
+import { useAuthStore } from '../auth/authStore.js'
 import { RUTE, ruteKerjakanKuis, rutePeringkat } from '../../routes.js'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { ambilKuis } from './api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
 
 export default function HalamanKuisMurid() {
+  const tamu = Boolean(useAuthStore((s) => s.user?.isTamu))
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
 
   return (
     <div className="row justify-content-center">
       <div className="col-lg-9">
         <div className="kartu-soft p-4 p-md-5">
-          <h1 className="h5 fw-bold mb-1">Ulangan Saya</h1>
+          <h1 className="h5 fw-bold mb-1">{tamu ? 'Ulangan Tamu' : 'Ulangan Saya'}</h1>
           <p className="text-body-secondary">
-            Kuis muncul di sini setelah gurumu menerbitkannya. Soalnya baru terbuka saat kamu menekan
-            “Kerjakan sekarang”.
+            {tamu
+              ? 'Kuis yang dibuka gurumu untuk siswa tamu muncul di sini. Namamu yang tadi kamu tulis dipakai sebagai identitas hasil ulangan.'
+              : 'Kuis muncul di sini setelah gurumu menerbitkannya. Soalnya baru terbuka saat kamu menekan “Kerjakan sekarang”.'}
           </p>
 
           {daftarKuis.isLoading && <p className="text-body-secondary">Memuat ulangan…</p>}
@@ -26,7 +33,9 @@ export default function HalamanKuisMurid() {
 
           {daftarKuis.data && daftarKuis.data.length === 0 && (
             <p className="text-body-secondary">
-              Belum ada ulangan untuk kelasmu. Tenang, gurumu akan segera menerbitkannya.
+              {tamu
+                ? 'Belum ada ulangan yang dibuka untuk tamu. Tanyakan ke gurumu, atau minta tautan yang benar.'
+                : 'Belum ada ulangan untuk kelasmu. Tenang, gurumu akan segera menerbitkannya.'}
             </p>
           )}
 
@@ -59,7 +68,11 @@ export default function HalamanKuisMurid() {
                     <TombolTaut varian="tepi" to={`${RUTE.kuis}/${kuis.id}`}>
                       Lihat detail
                     </TombolTaut>
-                    <TombolTaut varian="teks" to={rutePeringkat(kuis.id)}>Peringkat</TombolTaut>
+                    {/* Peringkat kelas tidak dibuka untuk tamu (nama murid kelas
+                        bukan untuk orang tanpa akun), jadi tautannya tidak ada. */}
+                    {!tamu && (
+                      <TombolTaut varian="teks" to={rutePeringkat(kuis.id)}>Peringkat</TombolTaut>
+                    )}
                   </div>
                 </div>
               )

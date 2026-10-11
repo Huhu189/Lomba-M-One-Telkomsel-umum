@@ -169,6 +169,45 @@ export async function ambilLaporanKuis(kuisId) {
   return skemaLaporan.parse(respons.data)
 }
 
+/** Satu baris hasil siswa tamu (mode tamu tanpa login). */
+export const skemaTamuKuis = z.object({
+  attempt_id: z.number(),
+  murid_id: z.number(),
+  nama: z.string(),
+  jenis: z.string(),
+  attempt_no: z.number(),
+  asli: z.boolean(),
+  status: z.string(),
+  skor: z.number(),
+  skor_maksimal: z.number(),
+  persen: z.number(),
+  jumlah_benar: z.number(),
+  jumlah_soal: z.number(),
+  mulai_at: z.string().nullable(),
+  dikumpulkan_at: z.string().nullable(),
+})
+
+/** Hasil siswa tamu satu kuis + penanda apakah pintu tamunya masih terbuka. */
+export const skemaLaporanTamu = z.object({
+  kuis_id: z.number(),
+  judul_kuis: z.string(),
+  izin_tamu: z.boolean(),
+  jumlah: z.number(),
+  tamu: z.array(skemaTamuKuis),
+})
+
+/**
+ * Hasil siswa tamu pada satu kuis (guru pemilik kuis). Laporan kelas biasa
+ * tidak memuat tamu — mereka di luar kelas dan di luar ranking kelas.
+ *
+ * @param {number} kuisId
+ * @returns {Promise<z.infer<typeof skemaLaporanTamu>>}
+ */
+export async function ambilLaporanTamu(kuisId) {
+  const respons = await client.get(`/v1/kuis/${kuisId}/tamu`)
+  return skemaLaporanTamu.parse(respons.data)
+}
+
 /**
  * @returns {Promise<DataBadge>}
  */

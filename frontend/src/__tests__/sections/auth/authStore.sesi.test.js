@@ -33,6 +33,8 @@ const userContoh = {
   status: 'aktif',
   statusLabel: 'Aktif',
   emailTerverifikasi: true,
+  // Akun murid biasa: bukan siswa tamu (mode tamu tanpa login).
+  isTamu: false,
 }
 
 describe('jejak sesi di perangkat bersama', () => {

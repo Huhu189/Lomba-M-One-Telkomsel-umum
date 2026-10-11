@@ -14,6 +14,9 @@ export const skemaUser = z.object({
   status: z.string(),
   statusLabel: z.string(),
   emailTerverifikasi: z.boolean(),
+  // Akun siswa tamu (masuk tanpa akun, cukup nama). Bawaan `false` supaya
+  // penanda ini aman dipakai walau respons lama belum memuatnya.
+  isTamu: z.boolean().optional().default(false),
 })
 
 /** Skema pesan generik backend. */
@@ -35,6 +38,12 @@ export const skemaResponAturUlang = z.object({
 
 /** Skema diagnostik /v1/sesi. */
 export const skemaSesi = z.object({ terautentikasi: z.boolean() })
+
+/**
+ * Skema info mode tamu (publik, tanpa sesi): apakah halaman masuk perlu
+ * menampilkan formulir "masuk sebagai siswa tamu".
+ */
+export const skemaInfoTamu = z.object({ diizinkan: z.boolean() })
 
 /**
  * Skema respons pendaftaran: murid LANGSUNG masuk, tinggal verifikasi email.
@@ -120,6 +129,29 @@ export async function masuk(data) {
     email: emailBersih(data.email),
     password: data.password,
   })
+  const badan = z.object({ message: z.string(), user: skemaUser }).parse(respons.data)
+  return badan.user
+}
+
+/**
+ * Info mode tamu: apakah sekolah ini menerima siswa tamu (guru membukanya lewat
+ * pengaturan `izinkan_tamu`). Dipanggil tanpa sesi.
+ * @returns {Promise<z.infer<typeof skemaInfoTamu>>}
+ */
+export async function ambilInfoTamu() {
+  const respons = await client.get('/v1/tamu')
+  return skemaInfoTamu.parse(respons.data)
+}
+
+/**
+ * Masuk sebagai siswa tamu: cukup nama. Server yang menentukan identitas (akun
+ * tamu dengan nama itu, tanpa kata sandi) dan langsung membuka sesinya.
+ * @param {string} nama
+ * @returns {Promise<z.infer<typeof skemaUser>>} user hasil parse Zod
+ */
+export async function masukTamu(nama) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/tamu', { nama: nama.trim() })
   const badan = z.object({ message: z.string(), user: skemaUser }).parse(respons.data)
   return badan.user
 }

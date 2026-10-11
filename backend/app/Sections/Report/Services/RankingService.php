@@ -64,6 +64,10 @@ class RankingService
             ->where('attempts.jenis', JenisAttempt::Ulangan->value)
             ->where('attempts.asli', true)
             ->whereNotNull('attempts.dikumpulkan_at')
+            // Siswa tamu tidak masuk peringkat kelas: mereka bukan murid kelas
+            // itu, dan namanya tidak boleh muncul di daftar yang dilihat anak
+            // lain. Nilai tamu tetap terlihat guru lewat panel siswa tamu.
+            ->where('users.is_tamu', false)
             // Seri: waktu selesai lebih cepat menang, lalu nama.
             ->orderByDesc('attempts.skor')
             ->orderBy('attempts.dikumpulkan_at')

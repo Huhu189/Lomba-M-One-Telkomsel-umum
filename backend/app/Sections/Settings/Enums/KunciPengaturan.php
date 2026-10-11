@@ -40,6 +40,11 @@ enum KunciPengaturan: string
     // Saklar izin rekam diri (slice 09). Default MATI: murid tidak boleh diminta
     // merekam dirinya sebelum sekolah/guru menyalakannya (izin sekolah/orang tua).
     case RekamDiri = 'rekam_diri';
+    // Saklar siswa tamu (mode tamu tanpa login). Default MATI: kuis tidak pernah
+    // terbuka untuk orang tanpa akun sebelum guru membukanya. Karena pengaturan
+    // ini tiga lapis, guru memakainya pada **lapis kuis** miliknya sendiri
+    // (admin bisa menyalakannya untuk sekolah/kelas).
+    case IzinkanTamu = 'izinkan_tamu';
 
     /** Tipe nilai yang diterima ('boolean' | 'integer'). */
     public function tipe(): string
@@ -83,6 +88,8 @@ enum KunciPengaturan: string
             self::AmbangMulaiPaham => 60,
             self::MinimalDataTag => 3,
             self::RekamDiri => false,
+            // Kuis hanya terbuka untuk orang tanpa akun bila guru memintanya.
+            self::IzinkanTamu => false,
             default => true,
         };
     }
@@ -97,6 +104,7 @@ enum KunciPengaturan: string
             self::BlockTranslate, self::ExamMode => 'Anti-cheat',
             self::AmbangPaham, self::AmbangMulaiPaham, self::MinimalDataTag => 'Laporan & pemahaman',
             self::LayarGuru, self::ModeTim, self::Ranking => 'Tampilan & laporan',
+            self::IzinkanTamu => 'Siswa tamu',
             default => 'Aturan ulangan',
         };
     }
@@ -126,6 +134,7 @@ enum KunciPengaturan: string
             self::AmbangMulaiPaham => 'Ambang mulai paham (%)',
             self::MinimalDataTag => 'Data minimum per tema (jumlah soal)',
             self::RekamDiri => 'Izinkan rekam diri jawaban (izin sekolah/orang tua)',
+            self::IzinkanTamu => 'Izinkan siswa tamu ikut kuis ini tanpa akun (cukup nama)',
         };
     }
 }

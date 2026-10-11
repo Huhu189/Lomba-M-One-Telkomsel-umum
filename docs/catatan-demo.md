@@ -478,3 +478,61 @@ curl -b cookie-murid-lain.txt http://localhost:8000/api/v1/kuis/1/layar   # 403
 (11 test). Yang diuji lewat test, bukan hanya dijelaskan: kunci jawaban tidak pernah ikut terkirim, murid
 kelas lain 403, saklar `layar_guru` mematikan jalur guru dan menyembunyikan layar dari murid, tiket SSE murid
 sekali pakai, dan setiap perubahan naik versi + disiarkan ke kanal kuis.
+
+## Demo Mode Tamu — Siswa Tanpa Akun (putaran A.40, 11 Oktober 2026)
+
+Tujuan demo: menunjukkan bahwa **guru** yang memegang izinnya, **tamu** hanya menulis nama, dan
+**tidak ada** kunci jawaban maupun data kelas lain yang ikut terbuka.
+
+1. Sebagai guru: buka **Pengaturan**, pilih lingkup **Kuis: <judul kuismu>**, lalu nyalakan
+   *"Izinkan siswa tamu ikut kuis ini tanpa akun (cukup nama)"* di kelompok **Siswa tamu**.
+   Tunjukkan juga bahwa saklar itu **mati secara bawaan** dan bahwa halaman pengaturan menampilkan
+   *Sumber: kuis* setelah disimpan.
+2. Buka jendela privat (tanpa sesi) ke halaman **Masuk**: muncul blok **"Atau ikut sebagai siswa tamu"**.
+   Bandingkan dengan sebelum saklar dinyalakan — blok itu tidak ada sama sekali.
+3. Tulis nama, mis. `Rara`, lalu **Masuk sebagai tamu**. Perhatikan: tanpa email, tanpa kata sandi, dan
+   setelah masuk tamu langsung dibawa ke **Ulangan Tamu** (menu tamu hanya Beranda + Ulangan Tamu).
+4. Kerjakan kuisnya sampai **Kumpulkan** → halaman hasil menampilkan skor seperti murid biasa. Coba juga
+   buka **Peringkat** — tautannya tidak ada, dan `GET /kuis/{id}/ranking` menjawab 403.
+5. Buktikan pagarnya satu per satu (opsional, cepat):
+   - Kuis lain yang tidak dibuka: tamu dapat 403 saat membukanya, dan tidak muncul di daftar.
+   - Kuis **draf** yang saklar tamunya menyala: tetap tidak muncul untuk tamu.
+   - Masuk lagi dengan nama `Rara`: identitasnya sama (akun tamu yang sama), bukan murid baru.
+6. Sebagai guru: buka **laporan kuis** itu → bagian **Siswa tamu** menampilkan nama, skor, benar,
+   percobaan ke-, dan waktu mengumpulkan, plus penanda *"Pintu tamu untuk kuis ini masih terbuka"*.
+7. Selesai demo: matikan kembali saklar izin tamunya. Hasil tamu yang sudah masuk tetap tersimpan.
+
+### Bukti lewat API (curl)
+
+```bash
+# Info publik: apakah halaman masuk perlu menawarkan pintu tamu?
+curl -H 'Accept: application/json' http://localhost:8000/api/v1/tamu
+
+# Guru membuka kuis (44) untuk tamu — lapis KUIS miliknya
+curl -b cookie-guru.txt -X PUT http://localhost:8000/api/v1/pengaturan \
+  -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -d '{"lingkup":"kuis","lingkup_id":44,"kunci":"izinkan_tamu","nilai":true}'
+
+# Tamu masuk hanya dengan nama (sesi cookie; throttle auth berlaku)
+curl -c cookie-tamu.txt -X POST http://localhost:8000/api/v1/auth/tamu \
+  -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -d '{"nama":"Rara"}'
+
+# Daftar kuis tamu: hanya kuis terbit yang dibuka untuk tamu
+curl -b cookie-tamu.txt http://localhost:8000/api/v1/kuis
+
+# Peringkat kelas: 403 untuk tamu
+curl -b cookie-tamu.txt http://localhost:8000/api/v1/kuis/44/ranking
+
+# Guru pemilik melihat hasil tamunya (guru lain 403)
+curl -b cookie-guru.txt http://localhost:8000/api/v1/kuis/44/tamu
+```
+
+### Bukti otomatis
+
+`php artisan test --filter=TamuTest` (**15 test / 120 assertion**) dan
+`npx vitest run src/__tests__/sections/auth/masukTamu.test.jsx` (3 test). Yang diuji lewat test, bukan hanya
+dijelaskan: default mati (tanpa izin, tidak ada akun tamu yang dibuat), pintu terbuka sesudah guru menyimpan
+saklar lapis kuisnya, tamu menyelesaikan ulangan sampai skor, kuis draf/kuis guru lain 403, murid berkelas
+lain tetap ditolak, mode tim ditolak untuk tamu, akun tamu tidak bisa menyentuh jalur guru, tamu di luar
+peringkat kelas, dan guru pemilik melihat panel tamunya sementara guru lain 403.

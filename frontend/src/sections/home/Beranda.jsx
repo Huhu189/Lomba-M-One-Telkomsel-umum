@@ -24,6 +24,7 @@ import {
   IkonTambah,
 } from '../../icons.jsx'
 import { RUTE, ruteKerjakanKuis, ruteKoreksiKuis, ruteKuisDetail, ruteMonitorKuis } from '../../routes.js'
+import Banner from '../../shared/ui/Banner.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
@@ -350,6 +351,9 @@ function SkeletonKartuJadwal() {
 function BerandaMurid({ user }) {
   const kuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const daftar = kuis.data ?? []
+  // Siswa tamu tidak punya akun sekolah: pintasan materi, progres tema, dan
+  // lencana semuanya terikat kelas/akun, jadi tidak ditawarkan ke mereka.
+  const tamu = Boolean(user.isTamu)
   const berjalan = daftar.find((satu) => satu.sedang_berjalan) ?? null
   const berikutnya =
     daftar
@@ -367,9 +371,18 @@ function BerandaMurid({ user }) {
     <div className="muncul">
       <HeaderHalaman
         judul={`${sapaanWaktu()}, ${namaDepan(user.name)}!`}
-        jejak={`${user.role} · ${tanggalPanjang()}`}
+        jejak={`${tamu ? 'siswa tamu' : user.role} · ${tanggalPanjang()}`}
         deskripsi="Ulangan dan materimu ada di sini."
       />
+
+      {tamu && (
+        <div className="mb-4">
+          <Banner jenis="info" judul="Kamu masuk sebagai siswa tamu">
+            Hasil ulanganmu tercatat atas nama <strong>{user.name}</strong>. Materi, lencana, dan
+            progres tema butuh akun sekolah — minta gurumu bila kamu ingin menyimpannya permanen.
+          </Banner>
+        </div>
+      )}
 
       {kuis.isPending && <Skeleton judul baris={2} label="Memuat ulanganmu…" />}
 
@@ -386,8 +399,9 @@ function BerandaMurid({ user }) {
 
             {(berjalan ?? berikutnya) === null ? (
               <KosongData judul="Belum ada ulangan" ikon={IkonBuku}>
-                Ulangan akan muncul di sini setelah gurumu menerbitkannya. Sementara itu, kamu bisa
-                membaca materi atau melihat progresmu.
+                {tamu
+                  ? 'Belum ada kuis yang dibuka untuk siswa tamu. Tanyakan ke gurumu, lalu muat ulang halaman ini.'
+                  : 'Ulangan akan muncul di sini setelah gurumu menerbitkannya. Sementara itu, kamu bisa membaca materi atau melihat progresmu.'}
               </KosongData>
             ) : (
               <article className="kartu-soft p-3 p-md-4 d-flex flex-wrap align-items-center gap-3">
@@ -409,20 +423,22 @@ function BerandaMurid({ user }) {
             )}
           </section>
 
-          <section aria-labelledby="judul-pintasan">
-            <h2 id="judul-pintasan" className="judul-bagian mb-3">
-              Lanjut belajar
-            </h2>
-            <div className="row g-3">
-              {pintasan.map(({ to, ikon: Ikon, label }) => (
-                <div key={label} className="col-md-4">
-                  <TombolTaut to={to} varian="tepi" ikon={Ikon} className="w-100 justify-content-center">
-                    {label}
-                  </TombolTaut>
-                </div>
-              ))}
-            </div>
-          </section>
+          {!tamu && (
+            <section aria-labelledby="judul-pintasan">
+              <h2 id="judul-pintasan" className="judul-bagian mb-3">
+                Lanjut belajar
+              </h2>
+              <div className="row g-3">
+                {pintasan.map(({ to, ikon: Ikon, label }) => (
+                  <div key={label} className="col-md-4">
+                    <TombolTaut to={to} varian="tepi" ikon={Ikon} className="w-100 justify-content-center">
+                      {label}
+                    </TombolTaut>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

@@ -6,9 +6,10 @@
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { skemaMasuk } from './validasi.js'
-import { pesanGalatApi, teksGalat } from './api.js'
+import { ambilInfoTamu, pesanGalatApi, teksGalat } from './api.js'
 import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Isian from '../../shared/ui/Isian.jsx'
@@ -17,6 +18,7 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { IkonKunci, IkonPengguna, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
 import KartuAuth from './KartuAuth.jsx'
+import MasukTamu from './MasukTamu.jsx'
 import PeringatanTunggu from './PeringatanTunggu.jsx'
 
 /**
@@ -25,6 +27,10 @@ import PeringatanTunggu from './PeringatanTunggu.jsx'
 export default function HalamanMasuk({ berhasil }) {
   const masuk = useAuthStore((s) => s.masuk)
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
+
+  // Server yang menentukan apakah pintu tamu terbuka; halaman ini hanya
+  // menampilkan formulirnya bila memang ada kuis/izin tamu dari guru.
+  const infoTamu = useQuery({ queryKey: ['tamu-info'], queryFn: ambilInfoTamu, staleTime: 60_000 })
 
   const {
     register,
@@ -115,6 +121,8 @@ export default function HalamanMasuk({ berhasil }) {
       <TombolTaut to={RUTE.daftar} varian="tepi" lebar>
         Daftar sebagai murid
       </TombolTaut>
+
+      {infoTamu.data?.diizinkan && <MasukTamu berhasil={berhasil} />}
     </KartuAuth>
   )
 }

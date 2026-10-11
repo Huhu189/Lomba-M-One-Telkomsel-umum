@@ -37,6 +37,7 @@ use App\Sections\School\Http\Controllers\MuridController;
 use App\Sections\School\Http\Controllers\SekolahController;
 use App\Sections\Scoring\Http\Controllers\KoreksiController;
 use App\Sections\Settings\Http\Controllers\PengaturanController;
+use App\Sections\Tamu\Http\Controllers\TamuController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -52,7 +53,17 @@ Route::prefix('v1')->group(function (): void {
         // Kirim ulang tautan verifikasi tanpa sesi (akun pending belum bisa masuk).
         Route::post('/auth/kirim-ulang-verifikasi-publik', [AuthController::class, 'kirimUlangVerifikasiPublik'])
             ->name('auth.kirim-ulang-verifikasi-publik');
+
+        // Siswa tamu (tanpa akun): cukup nama, ditentukan guru lewat pengaturan
+        // `izinkan_tamu`. Throttle sama dengan jalur masuk lain supaya nama tidak
+        // bisa dipakai membuat akun tamu beruntun.
+        Route::post('/auth/tamu', [TamuController::class, 'masuk'])->name('auth.tamu');
     });
+
+    // Info publik mode tamu: dipakai halaman masuk untuk memutuskan apakah
+    // formulir "masuk sebagai siswa tamu" ditampilkan. Tanpa sesi dan tanpa data
+    // pribadi, jadi tidak ikut throttle jalur auth.
+    Route::get('/tamu', [TamuController::class, 'info'])->name('tamu.info');
 
     // Tautan verifikasi dari email (bertanda tangan, dibatasi jumlah klik).
     // Nama rute WAJIB 'verification.verify' — dipakai notifikasi VerifyEmail bawaan.
@@ -199,6 +210,9 @@ Route::prefix('v1')->group(function (): void {
         // Ekspor nilai kuis ke CSV (slice 10) — buku nilai guru, sesi cookie.
         Route::get('/kuis/{kuis}/ekspor-nilai', [LaporanController::class, 'eksporNilai'])->name('kuis.ekspor_nilai');
         Route::get('/kuis/{kuis}/laporan', [LaporanController::class, 'show'])->name('laporan.show');
+        // Hasil siswa tamu satu kuis (guru pemilik kuis): laporan kelas tidak
+        // memuat tamu, jadi guru perlu jalur ini untuk melihat nilainya.
+        Route::get('/kuis/{kuis}/tamu', [TamuController::class, 'kuis'])->name('tamu.kuis');
         // Badge & progres murid yang sedang masuk. GET adalah jalur resmi;
         // POST disediakan sebagai alias yang setara (dua-duanya hanya membaca)
         // supaya klien tidak menabrak 405 saat tersalah kirim POST.

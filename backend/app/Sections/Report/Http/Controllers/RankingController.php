@@ -32,6 +32,13 @@ class RankingController extends Controller
             abort(401, 'Sesi tidak ditemukan.');
         }
 
+        // Peringkat berisi nama seluruh murid kelas ini. Siswa tamu bukan
+        // bagian kelas itu, jadi jalur ini ditutup untuknya walau kuisnya
+        // memang terbuka bagi tamu — nilainya tetap dilihat guru.
+        if ($pengguna->isTamu()) {
+            abort(403, 'Peringkat kelas tidak dibuka untuk siswa tamu.');
+        }
+
         $pengguna->loadMissing('murid');
         $top = $request->integer('top');
         $murid = $pengguna->murid;

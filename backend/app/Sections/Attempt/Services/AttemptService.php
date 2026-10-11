@@ -24,6 +24,7 @@ use App\Sections\Scoring\Services\PenilaiAiService;
 use App\Sections\Scoring\Services\PenilaiSoal;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Services\PengaturanService;
+use App\Sections\Tamu\Services\TamuService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,7 @@ class AttemptService
         private readonly PenilaiAiService $ai,
         private readonly TimService $tim,
         private readonly PresenceService $presence,
+        private readonly TamuService $tamu,
     ) {}
 
     /**
@@ -75,7 +77,18 @@ class AttemptService
             throw ValidationException::withMessages(['kuis' => 'Kuis belum diterbitkan oleh guru.']);
         }
 
-        if ((int) $profil->class_id !== (int) $kuis->class_id) {
+        // Siswa tamu tidak punya kelas: aturan "kuis ini harus kelasmu" diganti
+        // dengan "kuis ini memang dibuka gurumu untuk tamu". Dua-duanya dijaga
+        // server, dan tamu tidak pernah mendapat pengecualian lain.
+        $tamu = $murid->isTamu();
+
+        if ($tamu) {
+            if (! $this->tamu->izinkanKuis($kuis)) {
+                throw ValidationException::withMessages([
+                    'kuis' => 'Kuis ini tidak dibuka untuk siswa tamu. Minta gurumu membukanya atau masuk dengan akun murid.',
+                ]);
+            }
+        } elseif ((int) $profil->class_id !== (int) $kuis->class_id) {
             throw ValidationException::withMessages(['kuis' => 'Kuis ini bukan untuk kelasmu.']);
         }
 
@@ -98,6 +111,14 @@ class AttemptService
         $tim = null;
 
         if ($this->tim->modeTim($kuis)) {
+            // Tamu tidak mungkin punya tim (tim disusun guru dari murid kelasnya),
+            // jadi tolak dengan pesan yang jelas alih-alih "kamu belum masuk tim".
+            if ($tamu) {
+                throw ValidationException::withMessages([
+                    'kuis' => 'Kuis ini mode tim, jadi tidak bisa diikuti siswa tamu. Minta gurumu menyiapkan tim atau pakai akun murid.',
+                ]);
+            }
+
             $tim = $this->tim->timUntukMurid($kuis, (int) $profil->getKey());
 
             if ($tim === null) {

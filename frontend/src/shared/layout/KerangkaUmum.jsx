@@ -122,6 +122,23 @@ const GRUP_GURU = /** @type {GrupMenu[]} */ ([
   },
 ])
 
+/**
+ * Menu siswa tamu (masuk tanpa akun) — hanya yang benar-benar bisa dipakai.
+ *
+ * Materi, avatar, progres tema, dan lencana semuanya terikat pada akun murid dan
+ * kelas, jadi tamu yang menekannya hanya akan menabrak 403. Menu ini menyisakan
+ * beranda dan daftar ulangan yang memang dibuka guru untuk tamu.
+ */
+const GRUP_TAMU = /** @type {GrupMenu[]} */ ([
+  {
+    nama: 'Mode tamu',
+    item: [
+      { to: RUTE.beranda, ikon: IkonRumah, label: 'Beranda' },
+      { to: RUTE.kuis, ikon: IkonLembarSoal, label: 'Ulangan Tamu' },
+    ],
+  },
+])
+
 /** Menu murid — lebih ringkas, tanpa alat guru. */
 const GRUP_MURID = /** @type {GrupMenu[]} */ ([
   {
@@ -183,7 +200,7 @@ export default function KerangkaUmum() {
     return () => window.removeEventListener('keydown', tekan)
   }, [laci])
 
-  const grup = !user ? [] : user.role === 'murid' ? GRUP_MURID : GRUP_GURU
+  const grup = !user ? [] : user.isTamu ? GRUP_TAMU : user.role === 'murid' ? GRUP_MURID : GRUP_GURU
   const adaMenu = grup.length > 0
 
   async function keluarSesi() {
@@ -215,7 +232,9 @@ export default function KerangkaUmum() {
               </span>
               <span className="d-none d-md-block lh-sm">
                 <strong className="d-block">{user.name}</strong>
-                <small className="teks-lembut text-capitalize">{user.role}</small>
+                <small className="teks-lembut text-capitalize">
+                  {user.isTamu ? 'siswa tamu' : user.role}
+                </small>
               </span>
               <Tombol varian="tepi" ikon={IkonKeluar} onClick={keluarSesi} className="px-3">
                 <span className="d-none d-sm-inline">Keluar</span>

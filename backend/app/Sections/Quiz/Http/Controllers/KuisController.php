@@ -13,6 +13,7 @@ use App\Sections\Quiz\Http\Resources\KuisResource;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Quiz\Services\KuisService;
 use App\Sections\School\Services\SekolahService;
+use App\Sections\Tamu\Services\TamuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,9 +21,10 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class KuisController extends Controller
 {
     /**
-     * Guru melihat semua kuis sekolah; murid hanya kuis terbit kelasnya.
+     * Guru melihat semua kuis sekolah; murid hanya kuis terbit kelasnya; siswa
+     * tamu hanya kuis yang memang dibuka untuk tamu.
      */
-    public function index(Request $request, SekolahService $sekolah): AnonymousResourceCollection
+    public function index(Request $request, SekolahService $sekolah, TamuService $tamu): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Kuis::class);
 
@@ -45,6 +47,13 @@ class KuisController extends Controller
                 ->get();
 
             return KuisResource::collection($daftar);
+        }
+
+        // Tamu tidak punya kelas, jadi daftarnya bukan "kuis kelasmu" melainkan
+        // kuis terbit yang izin tamunya menyala (aturan yang sama dengan yang
+        // dipakai `KuisPolicy::view` saat ia membuka satu kuis).
+        if ($pengguna !== null && $pengguna->isTamu()) {
+            return KuisMuridResource::collection($tamu->kuisTerbuka($sekolah->tunggal()->id));
         }
 
         $kelasId = $pengguna?->murid?->class_id;

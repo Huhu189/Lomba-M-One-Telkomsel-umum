@@ -45,6 +45,14 @@ export const skemaMasuk = z.object({
   password: skemaSandi,
 })
 
+/**
+ * Form masuk sebagai siswa tamu — hanya nama (server menolak bila guru belum
+ * membuka kuis untuk tamu, jadi tidak ada aturan tambahan di sini).
+ */
+export const skemaTamu = z.object({
+  nama: skemaNama,
+})
+
 /** Form lupa sandi. */
 export const skemaLupaSandi = z.object({
   email: skemaEmail,

@@ -193,7 +193,16 @@ export default function App() {
           <Route element={<HanyaTamu />}>
             <Route
               path={RUTE.masuk}
-              element={<HalamanMasuk berhasil={() => navigate(RUTE.beranda, { replace: true })} />}
+              element={
+                <HalamanMasuk
+                  // Siswa tamu langsung diantar ke daftar ulangan tamu: beranda
+                  // murid memuat pintasan (materi, progres, lencana) yang butuh
+                  // akun sekolah dan pasti ditolak untuk tamu.
+                  berhasil={(user) =>
+                    navigate(user.isTamu ? RUTE.kuis : RUTE.beranda, { replace: true })
+                  }
+                />
+              }
             />
             <Route
               path={RUTE.daftar}

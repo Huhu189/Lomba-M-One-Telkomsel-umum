@@ -883,6 +883,21 @@ a {
   background-color: var(--garis);
 }
 
+/* Blok "masuk sebagai siswa tamu" di halaman masuk: satu pemisah + satu isian. */
+.auth-tamu {
+  text-align: start;
+}
+
+.auth-tamu .auth-pemisah {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--teks);
+}
+
+.auth-tamu .isian:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
 .auth-poin {
   list-style: none;
   padding: 0;

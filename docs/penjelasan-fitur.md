@@ -503,6 +503,51 @@ internet mati tetap butuh koneksi ke server. Pembahasan lengkap ada di `laporan-
 ---
 
 
+## 18. Siswa tamu: ikut ulangan tanpa akun, cukup nama
+
+### Apa ini
+
+Guru bisa membuka kuis untuk **siswa tamu** — anak yang belum punya akun sekolah — lewat pengaturan
+*"Izinkan siswa tamu ikut kuis ini tanpa akun (cukup nama)"*. Di halaman masuk, tamu memilih **Masuk sebagai
+tamu** dan hanya menuliskan namanya, tanpa email dan tanpa kata sandi. Saklarnya ada di sistem pengaturan
+tiga lapis, jadi guru membukanya **per kuis** (kuis lain di sekolah yang sama tetap tertutup), sementara
+admin bisa membukanya untuk seluruh sekolah atau satu kelas. Bawaannya **mati**: instalasi baru tidak pernah
+diam-diam membuka ulangannya untuk orang tanpa akun.
+
+### Cara kerjanya
+
+1. Guru menyalakan saklar di **Pengaturan → Siswa tamu** pada lingkup kuis miliknya.
+2. Halaman masuk menanyakan `GET /v1/tamu`; bila server menjawab boleh, muncul formulir tamu.
+3. Tamu menulis nama → `POST /v1/auth/tamu` membuat (atau memakai kembali) akun tamu, lalu langsung
+   membuka sesinya. Nama itu yang tercatat sebagai identitas hasil ulangannya.
+4. Halaman **Ulangan Tamu** hanya memuat kuis terbit yang benar-benar dibuka untuk tamu; mengerjakan,
+autosave, dan mengumpulkan memakai jalur murid yang sama (waktu, pengacakan, dan nilai semuanya dari server).
+5. Guru melihat hasil tamu di halaman laporan kuis, bagian **Siswa tamu** (nama, skor, benar, percobaan,
+waktu mengumpulkan) beserta penanda apakah pintu tamunya masih terbuka.
+
+### Mengapa aman
+
+- **Tanpa izin guru, tidak ada pintu sama sekali**: sampai saklarnya dinyalakan, permintaan masuk tamu
+ditolak dan tidak ada akun yang dibuat.
+- **Izin dibaca per kuis** dan dicek di server pada tiga titik (baca kuis, daftar kuis, mulai attempt);
+murid berkelas lain tetap ditolak walau izin tamu menyala, dan kuis draf tidak pernah terlihat tamu.
+- **Tamu tidak mendapat hak apa pun yang lain**: akunnya berperan `murid` seperti biasa, jalur guru (bank
+soal, pengaturan, laporan, koreksi) tetap 403, ia **tidak boleh membuka peringkat kelas**, dan namanya tidak
+masuk peringkat kelas.
+- **Satu nama = satu identitas**: masuk lagi dengan nama yang sama melanjutkan akun dan percobaan yang sama,
+jadi batas percobaan dan retry tetap berlaku (tidak bisa diakali dengan keluar-masuk).
+- **Nama dirapikan server**: spasi berlebih, tab, dan karakter kendali dibuang/dirapatkan, dan panjangnya
+2–60 karakter.
+
+### Manfaat untuk anak SD dan guru
+
+- Anak yang lupa kata sandi, lupa email, atau memakai perangkat baru tetap bisa ikut latihan gurunya.
+- Guru bisa memakai satu kuis sebagai **latihan terbuka** (mis. saat pameran sekolah atau jam pengganti) tanpa
+membuat puluhan akun, lalu tetap melihat nilai siapa pun yang mengerjakannya.
+- Karena mode ini hanya membuka kuis **yang dipilih guru**, kelas sungguhan tidak ikut terbuka.
+
+---
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**

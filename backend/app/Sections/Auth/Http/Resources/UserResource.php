@@ -28,6 +28,9 @@ class UserResource extends JsonResource
             'status' => $this->status?->value,
             'statusLabel' => $this->status?->label(),
             'emailTerverifikasi' => $this->hasVerifiedEmail(),
+            // Akun siswa tamu (tanpa login): klien perlu tahu untuk menampilkan
+            // lencana "tamu" dan menyembunyikan menu yang butuh akun sekolah.
+            'isTamu' => $this->isTamu(),
         ];
     }
 }

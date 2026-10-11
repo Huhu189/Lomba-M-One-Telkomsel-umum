@@ -61,6 +61,15 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Akun siswa tamu (mode tamu tanpa login): namanya sendiri, tanpa kelas.
+     * Dipakai test yang butuh tamu tanpa melewati formulir masuk.
+     */
+    public function tamu(): static
+    {
+        return $this->state(fn () => ['is_tamu' => true]);
+    }
+
     /** Akun ditangguhkan (untuk test blokir). */
     public function suspended(): static
     {

@@ -17,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'status', 'role'])]
+#[Fillable(['name', 'email', 'password', 'status', 'role', 'is_tamu'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,10 +34,25 @@ class User extends Authenticatable
      */
     protected $guard_name = 'web';
 
+    /**
+     * Nilai bawaan yang selalu ada di memori.
+     *
+     * Eloquent hanya mengisi atribut yang benar-benar dikirim saat `create()`,`
+     * sehingga user yang baru dibuat tanpa menyebut `is_tamu` (pendaftaran murid,
+     * impor, akun buatan guru) TIDAK punya atribut itu di memori — dan membaca
+     * `$user->is_tamu` langsung melempar MissingAttributeException pada
+     * `Model::preventAccessingMissingAttributes` (aktif di non-produksi).
+     * Bawaan di sini membuat hasilnya `false` seperti kolomnya di database.
+     */
+    protected $attributes = [
+        'is_tamu' => false,
+    ];
+
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'status' => UserStatus::class,
+        'is_tamu' => 'boolean',
     ];
 
     /**
@@ -83,6 +98,17 @@ class User extends Authenticatable
     public function isMurid(): bool
     {
         return $this->hasRole('murid');
+    }
+
+    /**
+     * Akun siswa tamu (mode tamu tanpa login) — membuat namanya sendiri, tanpa
+     * kata sandi, dan tidak terdaftar di kelas mana pun. Dipakai untuk
+     * mengecualikannya dari aturan "kuis harus kelasmu" dan menggantinya dengan
+     * izin tamu pada kuis itu sendiri (lihat `TamuService`).
+     */
+    public function isTamu(): bool
+    {
+        return (bool) $this->is_tamu;
     }
 
     /**

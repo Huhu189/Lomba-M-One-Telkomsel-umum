@@ -9,7 +9,13 @@ import { klienQuery } from '../../shared/store/klienQuery.js'
 import { useSimpananJawaban } from '../attempt/simpananJawaban.js'
 import { useRiwayatJawaban } from '../attempt/riwayatJawaban.js'
 import { bersihkanSemuaSnapshot } from '../attempt/snapshot.js'
-import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.js'
+import {
+  ambilSaya,
+  cekTerautentikasi,
+  keluar,
+  masuk as apiMasuk,
+  masukTamu as apiMasukTamu,
+} from './api.js'
 
 /**
  * @typedef {{
@@ -20,6 +26,7 @@ import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.j
  *   status: string,
  *   statusLabel: string,
  *   emailTerverifikasi: boolean,
+ *   isTamu?: boolean,
  * }} DataUser
  */
 
@@ -30,6 +37,7 @@ import { ambilSaya, cekTerautentikasi, keluar, masuk as apiMasuk } from './api.j
  *   detikTunggu: number,
  *   aturUser: (user: DataUser | null) => void,
  *   masuk: (data: { email: string, password: string }) => Promise<DataUser>,
+ *   masukTamu: (nama: string) => Promise<DataUser>,
  *   keluar: () => Promise<void>,
  *   mulaiTungguThrottle: (detik: number) => void,
  *   muatUser: () => Promise<void>,
@@ -85,6 +93,17 @@ function buatStoreAuth(set, get) {
 
     masuk: async (data) => {
       const user = await apiMasuk(data)
+      set({ user })
+      return user
+    },
+
+    /**
+     * Masuk sebagai siswa tamu: identitasnya cukup nama (tanpa email/kata sandi),
+     * dan hanya jalan bila guru sudah membuka kuis untuk tamu — server yang
+     * memutuskan, klien tidak menghitung apa pun.
+     */
+    masukTamu: async (nama) => {
+      const user = await apiMasukTamu(nama)
       set({ user })
       return user
     },
