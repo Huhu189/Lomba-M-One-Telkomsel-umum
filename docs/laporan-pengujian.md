@@ -3402,6 +3402,11 @@ menambah satu fitur utuh (bukan sapuan) sekaligus menutup utang commit.
    `UserResource($hasil['user'])` dari user yang baru dibuat, jadi pendaftaran murid akan 500 di produksi.
    Diperbaiki dengan nilai bawaan model (`protected $attributes = ['is_tamu' => false]`), bukan dengan
    menambal tiap pemanggil; tes debug mengonfirmasi kembali 200 sesudah perbaikan.
+1b. **Catatan operasional dari smoke HTTP sungguhan:** kolom itu baru, jadi **`php artisan migrate` wajib dijalankan**
+   sebelum backend lama dipakai lagi. Terbukti saat smoke: `POST /auth/masuk` pada basis data dev yang belum
+   dimigrasi dijawab **500** (respons login membaca `is_tamu`), dan langsung **200** sesudah `migrate`.
+   Di produksi (`preventAccessingMissingAttributes` tidak aktif) pembacaan kolom hilang hanya menghasilkan
+   `false`, bukan 500 — jadi ini pagar keselamatan yang berbicara, bukan kerapuhan baru.
 2. **Panel hasil tamu 500 karena enum di-cast ke string.** `LaporanTamuService` memakai select mentah
    (`'attempts.jenis'`), sedangkan model `Attempt` meng-cast kolom itu ke enum; `(string) $satu->jenis`
    melempar *"Object of class JenisAttempt could not be converted to string"*. Diperbaiki dengan membaca
@@ -3417,7 +3422,8 @@ menambah satu fitur utuh (bukan sapuan) sekaligus menutup utang commit.
 | `npm run check` (checkJs) | **bersih** (0 error) |
 | `npm run lint` (ESLint) | **0 error** (2 warning lama di `HalamanDaftar.jsx`) |
 | `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest · Pint **347 berkas** · checkJs · ESLint · Vitest 64/627 · realtime 15 tes |
-| `git push` | `d2c0dff..6e04be6 main -> main` + commit fitur tamu menyusul di putaran yang sama |
+| `git push` | `d2c0dff..6e04be6 main -> main`, lalu `6e04be6..77dc2eb` (fitur tamu), lalu `77dc2eb..1239ebd` (catatan hash) — repo online memuat semuanya |
+| Smoke HTTP **sungguhan** (`php artisan serve` :8011 + curl, sesi cookie + CSRF) | backend :8011 + basis data dev: `GET /v1/tamu` `{"diizinkan":false}` → sesudah admin menyimpan saklar lapis kuis → `true`; `POST /auth/tamu {"nama":"Tamu Smoke Rara"}` **201** (`role: murid`, `isTamu: true`); `GET /v1/kuis` **hanya 1 kuis** (yang dibuka); `GET /v1/kuis/108` **200**; `GET /v1/kuis/108/ranking` **403**; `POST /kuis/108/mulai` **422 "Waktu kuis sudah berakhir"** (pagar jadwal berlaku juga untuk tamu); `GET /kuis/108/tamu` sebagai tamu **403** dan sebagai admin **200** (`izin_tamu: true`); masuk lagi dengan nama yang sama → **id sama (153)**, nama dirapikan — sesudah itu akun tamu uji, baris pengaturannya, dan kelas penampungnya dibersihkan lagi (dev DB kembali ke keadaan semula) |
 
 Yang dibuktikan tes itu penting untuk diringkas: default **mati** (tanpa izin guru, `POST /auth/tamu` ditolak
 422 dan **tidak ada** akun tamu yang dibuat), pintu terbuka setelah guru menyimpan saklar lapis kuisnya,
