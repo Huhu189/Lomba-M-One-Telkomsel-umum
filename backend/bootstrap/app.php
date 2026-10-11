@@ -32,6 +32,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'akun-aktif' => EnsureAccountUsable::class,
         ]);
+
+        // Proxy tepercaya (K-06) TIDAK dipasang di sini: callback ini berjalan
+        // sebelum config tersedia (`Target class [config] does not exist`), jadi
+        // daftarnya dibaca di AppServiceProvider::boot() lewat TrustProxies::at().
+        // Lihat config/app.php → `trusted_proxies` dan TRUSTED_PROXIES di .env.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

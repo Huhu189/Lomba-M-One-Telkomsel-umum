@@ -9,6 +9,7 @@ import { klienQuery } from '../../shared/store/klienQuery.js'
 import { useSimpananJawaban } from '../attempt/simpananJawaban.js'
 import { useRiwayatJawaban } from '../attempt/riwayatJawaban.js'
 import { bersihkanSemuaSnapshot } from '../attempt/snapshot.js'
+import { lupakanKodePerangkat } from './perangkat.js'
 import {
   ambilSaya,
   cekTerautentikasi,
@@ -98,9 +99,13 @@ function buatStoreAuth(set, get) {
     },
 
     /**
-     * Masuk sebagai siswa tamu: identitasnya cukup nama (tanpa email/kata sandi),
-     * dan hanya jalan bila guru sudah membuka kuis untuk tamu — server yang
-     * memutuskan, klien tidak menghitung apa pun.
+     * Masuk sebagai siswa tamu: cukup nama yang dia ketik sendiri (tanpa email
+     * dan tanpa kata sandi), dan hanya jalan bila guru sudah membuka kuis untuk
+     * tamu — server yang memutuskan, klien tidak menghitung apa pun.
+     *
+     * Identitas akunnya bukan nama itu melainkan kode perangkat yang disimpan
+     * peramban (`perangkat.js`), sehingga dua anak bernama sama tidak berbagi
+     * akun dan tidak ada nama yang bisa diambil alih.
      */
     masukTamu: async (nama) => {
       const user = await apiMasukTamu(nama)
@@ -109,9 +114,17 @@ function buatStoreAuth(set, get) {
     },
 
     keluar: async () => {
+      // Tamu yang keluar dari komputer bersama: kode perangkatnya ikut dibuang
+      // supaya anak berikutnya di perangkat itu mulai sebagai dirinya sendiri.
+      // Sesi tamu yang berakhir sendiri (cookie kedaluwarsa) tidak sampai ke
+      // sini, jadi pekerjaan anak yang sama tidak hilang karena itu.
+      const tamuSebelumnya = get().user?.isTamu === true
+
       try {
         await keluar()
       } finally {
+        if (tamuSebelumnya) lupakanKodePerangkat()
+
         // Dibersihkan walau server menolak: murid yang menekan "Keluar" di
         // komputer lab bersama harus meninggalkan perangkat tanpa data apa pun.
         bersihkanJejakSesi()

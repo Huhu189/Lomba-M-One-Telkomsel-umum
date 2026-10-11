@@ -519,7 +519,9 @@ diam-diam membuka ulangannya untuk orang tanpa akun.
 1. Guru menyalakan saklar di **Pengaturan → Siswa tamu** pada lingkup kuis miliknya.
 2. Halaman masuk menanyakan `GET /v1/tamu`; bila server menjawab boleh, muncul formulir tamu.
 3. Tamu menulis nama → `POST /v1/auth/tamu` membuat (atau memakai kembali) akun tamu, lalu langsung
-   membuka sesinya. Nama itu yang tercatat sebagai identitas hasil ulangannya.
+   membuka sesinya. Nama itu yang tertulis di daftar nilai; **identitas akunnya adalah kode perangkat**
+   yang dibuat dan disimpan peramban sekali per perangkat (`sections/auth/perangkat.js`), dikirim bersama
+   nama setiap kali masuk.
 4. Halaman **Ulangan Tamu** hanya memuat kuis terbit yang benar-benar dibuka untuk tamu; mengerjakan,
 autosave, dan mengumpulkan memakai jalur murid yang sama (waktu, pengacakan, dan nilai semuanya dari server).
 5. Guru melihat hasil tamu di halaman laporan kuis, bagian **Siswa tamu** (nama, skor, benar, percobaan,
@@ -534,10 +536,17 @@ murid berkelas lain tetap ditolak walau izin tamu menyala, dan kuis draf tidak p
 - **Tamu tidak mendapat hak apa pun yang lain**: akunnya berperan `murid` seperti biasa, jalur guru (bank
 soal, pengaturan, laporan, koreksi) tetap 403, ia **tidak boleh membuka peringkat kelas**, dan namanya tidak
 masuk peringkat kelas.
-- **Satu nama = satu identitas**: masuk lagi dengan nama yang sama melanjutkan akun dan percobaan yang sama,
-jadi batas percobaan dan retry tetap berlaku (tidak bisa diakali dengan keluar-masuk).
+- **Satu perangkat = satu identitas**: masuk lagi dari perangkat yang sama melanjutkan akun dan percobaan
+yang sama, jadi batas percobaan dan retry tetap berlaku (tidak bisa diakali dengan keluar-masuk).
+- **Nama tidak bisa diambil alih**: dua anak yang menulis nama sama tetap dua akun berbeda, dan nama yang
+tidak bisa dibuat slug (emoji, aksara non-Latin) tetap punya akunnya sendiri. Akun tamu bertaut pada kode
+perangkat yang di-hash di kolom email, jadi tidak ada nama yang "sudah dipakai" dan tidak ada nama yang
+membuka pekerjaan anak lain tanpa kata sandi.
 - **Nama dirapikan server**: spasi berlebih, tab, dan karakter kendali dibuang/dirapatkan, dan panjangnya
 2–60 karakter.
+- **Pintu tamu tidak dikunci alamat sekolah**: pembatas lajunya berkunci kode perangkat (5 permintaan per
+menit per anak) dengan batas per alamat IP yang longgar sebagai pagar penyalahgunaan, sehingga satu kelas
+yang berbagi satu jaringan sekolah bisa masuk serentak.
 
 ### Manfaat untuk anak SD dan guru
 

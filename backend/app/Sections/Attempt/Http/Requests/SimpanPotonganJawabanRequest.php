@@ -24,10 +24,23 @@ class SimpanPotonganJawabanRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'potongan' => ['nullable', 'file', 'max:10240'],
-            'isi_base64' => ['nullable', 'string'],
+            // Batas byte potongan (bukan "10 MB", yang membuat tiap potongan boleh
+            // sebesar apa pun): satu potongan memang sebesar `chunk_byte`.
+            'potongan' => ['nullable', 'file', 'max:'.max(1, (int) ceil(config('jawaban.chunk_byte') / 1024))],
+            // base64 memakan 4 karakter untuk setiap 3 byte isi; `isi_base64`
+            // sebelumnya tanpa batas, jadi hanya `post_max_size` PHP yang menahan
+            // panjangnya sebelum ditulis ke disk.
+            'isi_base64' => ['nullable', 'string', 'max:'.$this->maksBase64()],
             'hash' => ['nullable', 'string', 'size:64'],
         ];
+    }
+
+    /** Panjang maksimum `isi_base64` yang setara dengan satu potongan penuh. */
+    private function maksBase64(): int
+    {
+        $chunkByte = max(1, (int) config('jawaban.chunk_byte'));
+
+        return (int) ceil($chunkByte / 3) * 4 + 8;
     }
 
     public function isi(): string

@@ -105,6 +105,29 @@ class PenyimpananMateri
             throw ValidationException::withMessages(['potongan' => 'Nomor potongan di luar rentang.']);
         }
 
+        // Ukuran potongan tidak boleh dipercaya (K-16, sekelas K-13 di lampiran
+        // jawaban). Tanpa pagar ini, satu indeks bisa membawa blob raksasa yang
+        // langsung ditulis ke disk sebelum totalnya diperiksa di `selesai()`.
+        $chunkByte = max(1, (int) config('material.chunk_byte'));
+        $ukuranMasuk = strlen($isi);
+
+        if ($ukuranMasuk > $chunkByte) {
+            throw ValidationException::withMessages([
+                'potongan' => 'Potongan terlalu besar ('.$this->ukuranManusia($ukuranMasuk).'); maksimal '.$this->ukuranManusia($chunkByte).' per potongan.',
+            ]);
+        }
+
+        $sudahTersimpan = (int) PotonganUnggahan::query()
+            ->where('upload_id', $unggahan->getKey())
+            ->where('indeks', '!=', $indeks)
+            ->sum('ukuran');
+
+        if ($sudahTersimpan + $ukuranMasuk > (int) $unggahan->ukuran_total) {
+            throw ValidationException::withMessages([
+                'potongan' => 'Total potongan melebihi ukuran berkas yang didaftarkan ('.$this->ukuranManusia((int) $unggahan->ukuran_total).').',
+            ]);
+        }
+
         $hash = hash('sha256', $isi);
 
         if ($hashDiklaim !== null && ! hash_equals($hash, mb_strtolower($hashDiklaim))) {

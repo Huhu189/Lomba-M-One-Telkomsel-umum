@@ -107,6 +107,38 @@ describe('jejak sesi di perangkat bersama', () => {
     expect(useAuthStore.getState().user).toBeNull()
     harapJejakBersih()
   })
+
+  // Identitas tamu adalah kode perangkat, jadi tamu yang menekan Keluar di
+  // komputer bersama harus meninggalkan kodenya: tanpa itu anak berikutnya di
+  // perangkat itu masuk ke akun (dan hasil ulangan) anak sebelumnya.
+  it('tamu yang keluar membuang kode perangkatnya', async () => {
+    vi.mocked(keluarApi).mockResolvedValue(undefined)
+    useAuthStore.setState({ user: { ...userContoh, id: 9, isTamu: true } })
+    localStorage.setItem('ulangan:perangkat-tamu', 'perangkat-tamu-0001')
+
+    await useAuthStore.getState().keluar()
+
+    expect(localStorage.getItem('ulangan:perangkat-tamu')).toBeNull()
+  })
+
+  it('sesi tamu yang habis sendiri TIDAK membuang kode perangkat (pekerjaannya tidak hilang)', () => {
+    useAuthStore.setState({ user: { ...userContoh, id: 9, isTamu: true } })
+    localStorage.setItem('ulangan:perangkat-tamu', 'perangkat-tamu-0001')
+    pasangListenerSesi()
+
+    window.dispatchEvent(new Event('auth:sesi-habis'))
+
+    expect(localStorage.getItem('ulangan:perangkat-tamu')).toBe('perangkat-tamu-0001')
+  })
+
+  it('murid biasa yang keluar tidak menyentuh kode perangkat tamu', async () => {
+    vi.mocked(keluarApi).mockResolvedValue(undefined)
+    localStorage.setItem('ulangan:perangkat-tamu', 'perangkat-tamu-0001')
+
+    await useAuthStore.getState().keluar()
+
+    expect(localStorage.getItem('ulangan:perangkat-tamu')).toBe('perangkat-tamu-0001')
+  })
 })
 
 describe('pulihkanSesi', () => {

@@ -19,11 +19,64 @@ const JEDA_KIRIM = 1500
 /** Lama mengunci layar saat `focus_lock` menangkap keluar jendela (detik). */
 const KUNCI_LAYAR_DETIK = 60
 
+/**
+ * Masa tenggang sebelum mengunci layar (ms).
+ *
+ * Anak yang berpindah aplikasi sekilas (notifikasi, keyboard ponsel, pilih foto)
+ * tidak boleh langsung terkunci 60 detik. Kalau dia kembali dalam masa tenggang,
+ * tidak ada kunci sama sekali — hanya kepergian yang benar-benar lama yang dikunci.
+ */
+const TENGGANG_KUNCI_MS = 8000
+
 /** Lama mengaburkan layar saat deteksi ringan (detik). */
 const BLUR_RINGAN_DETIK = 3
 
 /** Selisih ukuran jendela yang dicurigai devtools (px). */
 const AMBANG_DEVTOOLS_PX = 200
+
+/**
+ * Perubahan lebar minimum yang dianggap "jendela benar-benar diubah" (px).
+ *
+ * Di ponsel, keyboard virtual dan bar alamat yang menyusut/muncul hanya
+ * mengubah TINGGI jendela. Dulu setiap resize mengaburkan layar 3 detik,
+ * sehingga anak yang mengetuk kolom jawaban melihat layarnya kabur tiap kali
+ * keyboard muncul.
+ */
+const AMBANG_RESIZE_LEBAR_PX = 25
+
+/** Jeda penggabungan resize (ms) supaya satu gerakan tidak memasang banyak timer. */
+const JEDA_RESIZE_MS = 150
+
+/** Sedang mengetik di kolom isian? Keyboard ponsel = perubahan tinggi, bukan pelanggaran. */
+function sedangMengetik() {
+  try {
+    const aktif = document.activeElement
+
+    return (
+      aktif instanceof HTMLElement &&
+      (aktif.tagName === 'INPUT' || aktif.tagName === 'TEXTAREA' || aktif.isContentEditable === true)
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Jendela kehilangan fokus karena membuka dialog pilih berkas (lampiran)?
+ *
+ * Peramban mengalihkan fokus ke `<input type="file">` saat dialognya terbuka,
+ * jadi itu bisa dikenali tanpa bantuan halaman pemanggil. Anak yang memilih foto
+ * jawaban tidak boleh dihitung keluar dari ulangan.
+ */
+function karenaDialogBerkas() {
+  try {
+    const aktif = document.activeElement
+
+    return aktif instanceof HTMLInputElement && aktif.type === 'file'
+  } catch {
+    return false
+  }
+}
 
 /** Label saklar untuk modal pemberitahuan. */
 const LABEL_SAKLAR = {
@@ -35,7 +88,7 @@ const LABEL_SAKLAR = {
   block_devtools: 'Alat pengembang peramban dicatat.',
   detect_window_resize: 'Perubahan ukuran jendela dikaburkan sebentar.',
   block_tab_switch: 'Berpindah tab atau keluar jendela dicatat.',
-  focus_lock: 'Keluar jendela mengunci layar 60 detik.',
+  focus_lock: 'Keluar jendela lebih dari 8 detik mengunci layar 60 detik.',
   block_translate: 'Terjemahan otomatis diblokir.',
 }
 
@@ -68,6 +121,7 @@ export default function useExamSecurity(opsi) {
   /** @type {import('react').MutableRefObject<ReturnType<typeof buatPengirimKejadian>|null>} */
   const pengirimRef = useRef(null)
   const timerKirim = useRef(0)
+  const timerKabur = useRef(0)
 
   /** Kirim antrean sekarang juga dan (bila gagal) biarkan tersimpan lokal. */
   const jalankanKirim = useCallback(async () => {
@@ -148,6 +202,10 @@ export default function useExamSecurity(opsi) {
 
   /**
    * Kabur sebentar (deteksi ringan) tanpa mengirim ke backend.
+   *
+   * Timernya tunggal dan selalu yang terakhir menang: tanpa ini, kejadian baru
+   * bisa "dicabut" oleh timer kejadian lama yang kebetulan belum habis.
+   *
    * @param {number} detik
    */
   const kaburkan = useCallback(
@@ -156,7 +214,13 @@ export default function useExamSecurity(opsi) {
      */
     (detik) => {
       setKabur(true)
-      window.setTimeout(() => setKabur(false), detik * 1000)
+
+      if (timerKabur.current !== 0) window.clearTimeout(timerKabur.current)
+
+      timerKabur.current = window.setTimeout(() => {
+        timerKabur.current = 0
+        setKabur(false)
+      }, detik * 1000)
     },
     [],
   )
@@ -276,7 +340,35 @@ export default function useExamSecurity(opsi) {
     if (efektif.detect_window_resize === true) {
       // Perubahan ukuran jendela hanya mengaburkan sebentar dan TIDAK dikirim
       // ke backend (chunk anticheat).
-      pasang(window, 'resize', () => kaburkan(BLUR_RINGAN_DETIK))
+      //
+      // Dua pagar agar ini tidak menghukum anak di ponsel (T5):
+      // 1. yang dianggap sinyal hanya perubahan LEBAR — keyboard virtual dan bar
+      //    alamat hanya mengubah tinggi;
+      // 2. saat kolom isian sedang terfokus, resize diabaikan sekali lagi, karena
+      //    sebagian peramban tetap menggeser lebar saat keyboard muncul.
+      let lebarSebelumnya = window.innerWidth
+      let timerResize = 0
+
+      const tanganiResize = () => {
+        const lebar = window.innerWidth
+        const berubahLebar = Math.abs(lebar - lebarSebelumnya) >= AMBANG_RESIZE_LEBAR_PX
+        lebarSebelumnya = lebar
+
+        if (!berubahLebar || sedangMengetik()) return
+
+        // Digabung: menggulir-resize cepat dulu memasang satu timer per event.
+        if (timerResize !== 0) window.clearTimeout(timerResize)
+
+        timerResize = window.setTimeout(() => {
+          timerResize = 0
+          kaburkan(BLUR_RINGAN_DETIK)
+        }, JEDA_RESIZE_MS)
+      }
+
+      pasang(window, 'resize', tanganiResize)
+      bersihkan.push(() => {
+        if (timerResize !== 0) window.clearTimeout(timerResize)
+      })
     }
 
     if (efektif.block_screenshot === true) {
@@ -309,6 +401,7 @@ export default function useExamSecurity(opsi) {
         // memasang beberapa interval yang berjalan bersamaan sehingga hitungan
         // 60 detik habis jauh lebih cepat dari yang tertulis.
         let timerKunci = 0
+        let timerTenggang = 0
 
         const mulaiKunci = () => {
           setKunciDetik(KUNCI_LAYAR_DETIK)
@@ -327,12 +420,40 @@ export default function useExamSecurity(opsi) {
           }, 1000)
         }
 
-        pasang(window, 'blur', mulaiKunci)
+        // Kepergian dihitung dulu sebagai "masa tenggang": anak yang kembali
+        // cepat (notifikasi, pilih foto, pindah aplikasi sekilas) tidak dikunci.
+        const tanganiBlur = () => {
+          if (timerTenggang !== 0) return
+
+          timerTenggang = window.setTimeout(() => {
+            timerTenggang = 0
+
+            // Dialog pilih berkas melepas fokus jendela tanpa anak pergi.
+            if (karenaDialogBerkas()) return
+
+            mulaiKunci()
+          }, TENGGANG_KUNCI_MS)
+        }
+
+        const tanganiFokusKembali = () => {
+          if (timerTenggang === 0) return
+
+          window.clearTimeout(timerTenggang)
+          timerTenggang = 0
+        }
+
+        pasang(window, 'blur', tanganiBlur)
+        pasang(window, 'focus', tanganiFokusKembali)
         bersihkan.push(() => {
           if (timerKunci !== 0) window.clearInterval(timerKunci)
+          if (timerTenggang !== 0) window.clearTimeout(timerTenggang)
         })
       } else {
-        pasang(window, 'blur', () => catat('window_blur', {}))
+        // Membuka dialog berkas bukan pelanggaran: catatan palsu hanya membuat
+        // guru menanyai anak yang sebenarnya sedang melampirkan fotonya.
+        pasang(window, 'blur', () => {
+          if (!karenaDialogBerkas()) catat('window_blur', {})
+        })
       }
     }
 
@@ -355,10 +476,11 @@ export default function useExamSecurity(opsi) {
     }
   }, [aktif, menyala, efektif, catat, kaburkan])
 
-  // Bersihkan timer kirim saat meninggalkan halaman.
+  // Bersihkan timer kirim & timer kabur saat meninggalkan halaman.
   useEffect(() => {
     return () => {
       if (timerKirim.current !== 0) window.clearTimeout(timerKirim.current)
+      if (timerKabur.current !== 0) window.clearTimeout(timerKabur.current)
     }
   }, [])
 

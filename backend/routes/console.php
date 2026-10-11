@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Sections\Attempt\Jobs\SapuUnggahanJawabanYatim;
 use App\Sections\Attempt\Jobs\TutupAttemptBasi;
 use App\Sections\Material\Jobs\SapuUnggahanYatim;
+use App\Sections\Presence\Jobs\PangkasTiketSse;
 use App\Sections\Presence\Jobs\SapuPresence;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -34,3 +35,7 @@ Schedule::job(new SapuUnggahanYatim)->everyFifteenMinutes()->withoutOverlapping(
 // Sama untuk lampiran jawaban (slice 09): foto kanvas berukuran megabyte yang
 // ditinggalkan di tengah jalan harus ikut dibuang, bukan menumpuk diam-diam.
 Schedule::job(new SapuUnggahanJawabanYatim)->everyFifteenMinutes()->withoutOverlapping()->name('sapu-unggahan-jawaban-yatim');
+
+// Tiket SSE (K-10): tiap tiket menulis satu baris yang tadinya tidak pernah
+// dibuang siapa pun. TTL-nya hanya 45 detik, jadi cukup dipangkas per jam.
+Schedule::job(new PangkasTiketSse)->hourly()->withoutOverlapping()->name('pangkas-tiket-sse');

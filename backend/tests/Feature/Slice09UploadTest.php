@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Sections\Attempt\Jobs\SapuUnggahanJawabanYatim;
 use App\Sections\Attempt\Models\UnggahanJawaban;
 use App\Sections\Attempt\Services\PenyimpananJawaban;
+use App\Sections\Material\Enums\StatusUnggahan;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Models\Tag;
 use App\Sections\Quiz\Models\Kuis;
@@ -24,6 +25,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -275,6 +277,54 @@ it('hanya mengizinkan rekaman diri bila sekolah menyalakan izinnya', function ()
     ])->assertStatus(422)->assertJsonValidationErrors(['durasi_detik']);
 });
 
+it('menolak gambar kanvas yang dimensinya melewati batas, sebelum didekode (K-12)', function (): void {
+    // Batas lama 40 juta piksel = ~160 MB setelah didekode, di atas memory_limit
+    // 128 MB yang lazim — dan kegagalan alokasi PHP tidak bisa ditangkap: proses
+    // mati, bukan menjawab 422. Nilai bawaannya kini 12 juta piksel.
+    expect((int) config('jawaban.batas_piksel_kanvas'))->toBeLessThanOrEqual(12_000_000);
+
+    $ctx = m09Attempt($this);
+
+    // Batas dikecilkan supaya bom dekompresinya murah dibuat di test: 1500x1500
+    // = 2,25 juta piksel, tetapi berkas PNG-nya hanya puluhan kilobyte karena
+    // warnanya rata.
+    config(['jawaban.batas_piksel_kanvas' => 1_000_000]);
+
+    $bom = m09Png(1500, 1500);
+
+    expect(strlen($bom))->toBeLessThan(100_000)
+        ->and(1500 * 1500)->toBeGreaterThan((int) config('jawaban.batas_piksel_kanvas'));
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/attempt/{$ctx['attempt']}/lampiran", [
+        'question_id' => $ctx['soal'],
+        'jenis' => 'gambar',
+        'nama' => 'coretan.png',
+        'ukuran' => strlen($bom),
+    ])->assertCreated();
+
+    $kode = (string) $mulai->json('kode');
+
+    $this->putJson("/api/v1/lampiran/{$kode}/potongan/0", [
+        'isi_base64' => base64_encode($bom),
+        'hash' => hash('sha256', $bom),
+    ])->assertOk();
+
+    $this->postJson("/api/v1/lampiran/{$kode}/selesai")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['unggahan']);
+
+    // Ditolak sebelum didekode: tidak ada gambar final yang ditulis, sesinya
+    // tetap menunggu (bukan selesai), dan guru tidak pernah melihat lampirannya.
+    $unggahan = UnggahanJawaban::query()->where('kode', $kode)->firstOrFail();
+    $berkas = Storage::disk(PenyimpananJawaban::DISK)->allFiles("jawaban/{$this->sekolah->id}/{$kode}");
+
+    expect($unggahan->status)->not->toBe(StatusUnggahan::Selesai)
+        ->and(collect($berkas)->filter(fn (string $satu): bool => str_ends_with($satu, '.png')))->toBeEmpty();
+});
+
 it('menolak berkas melebihi batas ukuran dan lampiran di luar batas jumlah', function (): void {
     $ctx = m09Attempt($this);
 
@@ -419,4 +469,79 @@ it('menolak URL berkas lampiran yang tanda tangannya kedaluwarsa', function (): 
     auth()->forgetGuards();
 
     $this->get(rtrim((string) config('app.url'), '/').$kedaluwarsa)->assertStatus(403);
+});
+
+it('menolak potongan lampiran yang melebihi ukuran berkas yang didaftarkan (K-13)', function (): void {
+    $ctx = m09Attempt($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    // Berkas didaftarkan 10 byte, tetapi yang dikirim 20 byte.
+    $mulai = $this->postJson("/api/v1/attempt/{$ctx['attempt']}/lampiran", [
+        'question_id' => $ctx['soal'],
+        'jenis' => 'berkas',
+        'nama' => 'jawaban.txt',
+        'ukuran' => 10,
+    ])->assertCreated();
+
+    $kode = (string) $mulai->json('kode');
+    $muatan = str_repeat('A', 20);
+
+    $this->putJson("/api/v1/lampiran/{$kode}/potongan/0", [
+        'isi_base64' => base64_encode($muatan),
+        'hash' => hash('sha256', $muatan),
+    ])->assertStatus(422)->assertJsonValidationErrors(['potongan']);
+
+    $unggahan = UnggahanJawaban::query()->where('kode', $kode)->firstOrFail();
+
+    // Yang penting bukan hanya 422-nya, melainkan byte-nya tidak pernah ditulis:
+    // dulu blob ditulis ke disk lebih dulu, totalnya baru diperiksa di `selesai`.
+    expect($unggahan->potongan()->count())->toBe(0)
+        ->and(Storage::disk(PenyimpananJawaban::DISK)
+            ->exists('jawaban/'.$unggahan->school_id.'/'.$kode.'/potongan/0.part'))->toBeFalse();
+});
+
+it('menolak isi_base64 yang lebih panjang dari satu potongan (K-13)', function (): void {
+    $ctx = m09Attempt($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/attempt/{$ctx['attempt']}/lampiran", [
+        'question_id' => $ctx['soal'],
+        'jenis' => 'berkas',
+        'nama' => 'jawaban.txt',
+        'ukuran' => 100,
+    ])->assertCreated();
+
+    $chunkByte = (int) config('jawaban.chunk_byte');
+
+    // Tanpa batas ini, panjang `isi_base64` hanya dibatasi `post_max_size` PHP.
+    // Dilebihkan jelas di atas satu potongan supaya yang menolak memang aturan
+    // panjang permintaan, bukan pemeriksaan ukuran di dalam service.
+    $this->putJson('/api/v1/lampiran/'.$mulai->json('kode').'/potongan/0', [
+        'isi_base64' => base64_encode(str_repeat('A', $chunkByte + 4096)),
+    ])->assertStatus(422)->assertJsonValidationErrors(['isi_base64']);
+});
+
+it('pagar ukuran potongan ditegakkan di service, bukan hanya di validasi permintaan (K-13)', function (): void {
+    $ctx = m09Attempt($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/attempt/{$ctx['attempt']}/lampiran", [
+        'question_id' => $ctx['soal'],
+        'jenis' => 'berkas',
+        'nama' => 'jawaban.txt',
+        'ukuran' => 10,
+    ])->assertCreated();
+
+    $unggahan = UnggahanJawaban::query()->where('kode', $mulai->json('kode'))->firstOrFail();
+
+    expect(fn () => app(PenyimpananJawaban::class)->simpanPotongan($unggahan, 0, str_repeat('B', 20)))
+        ->toThrow(ValidationException::class);
+
+    expect($unggahan->potongan()->count())->toBe(0);
 });

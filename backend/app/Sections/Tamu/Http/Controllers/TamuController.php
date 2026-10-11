@@ -34,14 +34,27 @@ class TamuController extends Controller
     }
 
     /**
-     * Masuk sebagai siswa tamu (throttle `auth` di rute).
+     * Masuk sebagai siswa tamu (throttle `tamu` di rute).
+     *
+     * Balasannya memuat `kode_perangkat`: klien menyimpannya dan mengirimkannya
+     * lagi saat masuk ulang, supaya anak yang sama kembali ke akunnya — sementara
+     * anak lain yang kebetulan menulis nama yang sama tidak ikut masuk ke sana.
      */
     public function masuk(MasukTamuRequest $request, SekolahService $sekolah, TamuService $tamu): JsonResponse
     {
-        $user = $tamu->masuk((string) $request->validated('nama'), $sekolah->tunggal()->id);
+        $kode = $request->validated('kode_perangkat');
+
+        $hasil = $tamu->masuk(
+            (string) $request->validated('nama'),
+            $sekolah->tunggal()->id,
+            is_string($kode) ? $kode : null,
+        );
+
+        $user = $hasil['user'];
 
         return response()->json([
-            'message' => 'Kamu masuk sebagai siswa tamu. Hasil ulanganmu tercatat atas nama '.$user->name.'.',
+            'message' => 'Kamu masuk sebagai siswa tamu di perangkat ini. Hasil ulanganmu tercatat atas nama '.$user->name.'.',
+            'kode_perangkat' => $hasil['kode'],
             'user' => new UserResource($user),
         ], 201);
     }

@@ -46,9 +46,6 @@ class PenyimpananJawaban
     /** Disk tempat berkas jawaban disimpan (di luar folder publik). */
     public const DISK = 'local';
 
-    /** Batas dimensi gambar kanvas sebelum diencode ulang (piksel total). */
-    public const BATAS_PIKSEL = 40_000_000;
-
     public function __construct(private readonly KlasifikasiBerkas $klasifikasi) {}
 
     public function disk(): Filesystem
@@ -158,6 +155,35 @@ class PenyimpananJawaban
 
         if ($indeks < 0 || $indeks >= (int) $unggahan->jumlah_potongan) {
             throw ValidationException::withMessages(['potongan' => 'Nomor potongan di luar rentang.']);
+        }
+
+        // Ukuran potongan tidak boleh dipercaya (K-13).
+        //
+        // Sebelumnya isi potongan tidak dibandingkan dengan apa pun: satu indeks
+        // bisa membawa blob raksasa dan tiap blob langsung ditulis ke disk,
+        // sementara batas total baru diperiksa di `selesai()` — yaitu SETELAH
+        // byte-nya menempel di storage. Dua pagar di bawah menutup jendela itu:
+        // satu potongan tidak boleh melebihi `chunk_byte`, dan jumlah seluruh
+        // potongan tidak boleh melebihi ukuran berkas yang dideklarasikan klien
+        // (ukuran itu sendiri sudah dibatasi `mulai()`).
+        $chunkByte = max(1, (int) config('jawaban.chunk_byte'));
+        $ukuranMasuk = strlen($isi);
+
+        if ($ukuranMasuk > $chunkByte) {
+            throw ValidationException::withMessages([
+                'potongan' => 'Potongan terlalu besar ('.$this->ukuranManusia($ukuranMasuk).'); maksimal '.$this->ukuranManusia($chunkByte).' per potongan.',
+            ]);
+        }
+
+        $sudahTersimpan = (int) PotonganUnggahanJawaban::query()
+            ->where('upload_id', $unggahan->getKey())
+            ->where('indeks', '!=', $indeks)
+            ->sum('ukuran');
+
+        if ($sudahTersimpan + $ukuranMasuk > (int) $unggahan->ukuran_total) {
+            throw ValidationException::withMessages([
+                'potongan' => 'Total potongan melebihi ukuran berkas yang didaftarkan ('.$this->ukuranManusia((int) $unggahan->ukuran_total).').',
+            ]);
         }
 
         $hash = hash('sha256', $isi);
@@ -389,7 +415,13 @@ class PenyimpananJawaban
             ]);
         }
 
-        if (((int) $info[0] * (int) $info[1]) > self::BATAS_PIKSEL) {
+        // Batasnya dari konfigurasi (K-12), bukan angka tetap: puncak pemakaian
+        // memori mengikuti batas ini (~4 byte per piksel), jadi nilainya harus
+        // bisa disesuaikan dengan `memory_limit` server masing-masing. Angka
+        // lamanya (40 juta piksel) melampaui `memory_limit` lazim.
+        $batasPiksel = (int) config('jawaban.batas_piksel_kanvas');
+
+        if ($batasPiksel > 0 && ((int) $info[0] * (int) $info[1]) > $batasPiksel) {
             throw ValidationException::withMessages([
                 'unggahan' => 'Gambar jawaban terlalu besar dimensinya.',
             ]);

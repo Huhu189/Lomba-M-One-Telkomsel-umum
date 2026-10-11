@@ -5,9 +5,10 @@
  * (`izinkan_tamu`) — server yang memutuskan lewat `GET /v1/tamu`, jadi klien
  * tidak menebak dan tidak pernah menawarkan pintu yang pasti ditolak.
  *
- * Satu isian saja: nama. Nama itu menjadi identitas tamu di daftar nilai, dan
- * karena itu pemakaian ulang nama yang sama akan melanjutkan identitas yang
- * sama (bukan murid baru) — makanya pemilihan nama dijelaskan di bantuan isian.
+ * Satu isian saja: nama yang dia ketik sendiri. Nama itu **hanya nama tampilan**
+ * di daftar nilai — identitas sesungguhnya adalah kode perangkat yang dibuat
+ * dan disimpan peramban (`perangkat.js`), sehingga dua anak bernama sama tidak
+ * pernah berbagi akun dan tidak ada nama yang bisa diambil alih orang lain.
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -56,7 +57,8 @@ export default function MasukTamu({ berhasil }) {
       </h2>
       <p className="teks-lembut small">
         Gurumu sudah membuka kuis untuk tamu? Tulis namamu — tanpa akun dan tanpa kata
-        sandi. Nama itu dipakai di daftar nilai, jadi pakai ejaan yang khas milikmu.
+        sandi. Hasil ulanganmu tersimpan di perangkat ini, jadi pakai perangkat yang sama
+        sampai selesai ya; kamu bisa lanjut kembali walau halamannya sempat tertutup.
       </p>
 
       <form onSubmit={kirim} noValidate>
@@ -72,7 +74,7 @@ export default function MasukTamu({ berhasil }) {
           autoComplete="name"
           maxLength={60}
           placeholder="Contoh: Rara"
-          bantuan="Tanpa akun: hasil ulanganmu tetap tercatat atas nama ini."
+          bantuan="Tanpa akun: hasil ulanganmu tersimpan di perangkat ini dan tetap tercatat atas nama ini."
           galat={teksGalat(errors.nama)}
           {...register('nama')}
         />

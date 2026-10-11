@@ -24,10 +24,18 @@ class SimpanPotonganRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'potongan' => ['nullable', 'file', 'max:10240'],
-            'isi_base64' => ['nullable', 'string'],
+            'potongan' => ['nullable', 'file', 'max:'.max(1, (int) ceil(config('material.chunk_byte') / 1024))],
+            'isi_base64' => ['nullable', 'string', 'max:'.$this->maksBase64()],
             'hash' => ['nullable', 'string', 'size:64'],
         ];
+    }
+
+    /** Panjang maksimum `isi_base64` yang setara dengan satu potongan penuh. */
+    private function maksBase64(): int
+    {
+        $chunkByte = max(1, (int) config('material.chunk_byte'));
+
+        return (int) ceil($chunkByte / 3) * 4 + 8;
     }
 
     public function isi(): string

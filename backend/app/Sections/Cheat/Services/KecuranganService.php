@@ -29,6 +29,19 @@ class KecuranganService
     public const BATAS_BERKELOMPOK = 50;
 
     /**
+     * Pagar terakhir jumlah catatan klien per attempt (K-09).
+     *
+     * Throttle rute dan cooldown di perangkat murid keduanya bisa dilewati
+     * (klien bisa menembak API langsung). Batas ini ditegakkan di dalam service
+     * supaya jumlah baris `cheat_events` satu attempt tetap terbatas apa pun
+     * yang dilakukan klien.
+     */
+    public function batasKlienPerAttempt(): int
+    {
+        return (int) config('kecurangan.maks_kejadian_per_attempt');
+    }
+
+    /**
      * Simpan kejadian dari perangkat murid.
      *
      * Kategori turunan server DITOLAK di sini, supaya murid tidak bisa
@@ -76,6 +89,23 @@ class KecuranganService
 
         if ($baris === []) {
             return 0;
+        }
+
+        // Kuota per attempt (K-09): dihitung SEBELUM menulis, dan sisanya dipotong
+        // supaya satu kiriman besar tidak melewati batas dalam sekali jalan.
+        $batas = $this->batasKlienPerAttempt();
+
+        if ($batas > 0) {
+            $sudahAda = KejadianKecurangan::query()
+                ->where('attempt_id', $attempt->getKey())
+                ->where('dari_klien', true)
+                ->count();
+
+            $baris = array_slice($baris, 0, max(0, $batas - $sudahAda));
+
+            if ($baris === []) {
+                return 0;
+            }
         }
 
         // `insertOrIgnore` membuat kiriman ulang (retry) idempoten lewat unique
@@ -250,7 +280,17 @@ class KecuranganService
             }
         }
 
-        return $bersih === [] ? null : $bersih;
+        if ($bersih === []) {
+            return null;
+        }
+
+        // Urutan kunci diseragamkan. Rincian yang isinya sama tetapi urutan
+        // kuncinya berbeda dulu menghasilkan sidik berbeda — dan unique index
+        // attempt_id + sidik jadi tidak menangkapnya: satu tombol tempel yang
+        // ditekan berulang dengan urutan kunci bergeser tetap menumpuk baris.
+        ksort($bersih);
+
+        return $bersih;
     }
 
     /**

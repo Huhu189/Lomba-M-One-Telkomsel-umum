@@ -25,22 +25,35 @@ use Illuminate\Validation\ValidationException;
  * **lapis kuis** miliknya; admin bisa menyalakannya untuk sekolah/kelas). Tamu
  * cukup mengetik nama, lalu mengerjakan kuis itu seperti murid biasa.
  *
- * Dua hal yang sengaja TIDAK dilonggarkan:
+ * ## Identitas: satu kode per perangkat, bukan satu nama
  *
- * 1. Nama adalah identitasnya. Nama yang sama masuk lagi memakai akun yang sama
- *    (alamat emailnya diturunkan dari nama), jadi batas percobaan/retry, riwayat
- *    jawaban, dan hasilnya tetap satu orang — bukan akun baru tiap kali masuk.
- *    Konsekuensinya jujur: dua anak dengan nama persis sama akan berbagi satu
- *    identitas, makanya formulir tamu meminta nama yang unik.
- * 2. Tamu tetap punya baris `users` + `students` (di kelas penampung tamu),
- *    sehingga policy IDOR, penilaian, koreksi guru, dan laporan bekerja tanpa
- *    cabang baru. Yang berbeda hanya satu: pemeriksaan "kuis ini harus kelasmu"
- *    diganti dengan "kuis ini memang dibuka untuk tamu".
+ * Setiap pengunjung membawa **kode perangkat** yang dibuat sekali lalu disimpan
+ * di perangkatnya (klien yang membuat dan menyimpannya; server hanya menurunkan
+ * akun dari kode itu). Akun tamu = kode perangkat, sedangkan **nama yang dia
+ * ketik hanya nama tampilan** — jadi:
+ *
+ * 1. nama yang sama di dua perangkat berbeda tetap dua anak berbeda (tidak ada
+ *    pembajakan akun dan tidak ada "nama sudah dipakai");
+ * 2. nama non-Latin atau beremoji tetap punya akun sendiri (dulu slug kosong
+ *    membuat semua anak seperti itu berbagi satu akun `tamu+tamu@`);
+ * 3. anak yang sama masuk lagi dari perangkat yang sama melanjutkan akun yang
+ *    sama — batas percobaan/retry, riwayat jawaban, dan hasilnya tetap satu
+ *    orang, bukan akun baru tiap kali masuk;
+ * 4. pembatas laju bisa dikunci per kode perangkat, bukan per alamat IP, jadi
+ *    satu kelas SD di balik satu NAT sekolah tidak saling mengunci.
+ *
+ * Tamu tetap punya baris `users` + `students` (di kelas penampung tamu),
+ * sehingga policy IDOR, penilaian, koreksi guru, dan laporan bekerja tanpa
+ * cabang baru. Yang berbeda hanya satu: pemeriksaan "kuis ini harus kelasmu"
+ * diganti dengan "kuis ini memang dibuka untuk tamu".
  */
 class TamuService
 {
     /** Kelas penampung akun tamu — dibuat sekali per sekolah saat tamu pertama masuk. */
     public const NAMA_KELAS = 'Tamu (tanpa akun)';
+
+    /** Panjang kode perangkat yang dibuat server bila klien belum punya. */
+    private const PANJANG_KODE = 40;
 
     /**
      * Domain email khusus akun tamu.
@@ -115,12 +128,19 @@ class TamuService
     }
 
     /**
-     * Masuk sebagai siswa tamu: pakai akun tamu yang sudah ada (nama sama) atau
+     * Masuk sebagai siswa tamu: pakai akun tamu milik kode perangkat itu, atau
      * buat baru, lalu langsung buka sesinya.
+     *
+     * Kode perangkat yang tidak dikirim (klien lama, penyimpanan diblokir) TIDAK
+     * ditolak: server membuatkan kode acak baru dan mengembalikannya untuk
+     * disimpan klien. Akibatnya jujur: pengunjung tanpa kode mendapat akun baru,
+     * bukan menumpang akun orang lain yang kebetulan namanya sama.
+     *
+     * @return array{user: User, kode: string}
      *
      * @throws ValidationException
      */
-    public function masuk(string $nama, int $sekolahId): User
+    public function masuk(string $nama, int $sekolahId, ?string $kodePerangkat = null): array
     {
         if (! $this->tersedia($sekolahId)) {
             throw ValidationException::withMessages([
@@ -129,7 +149,8 @@ class TamuService
         }
 
         $nama = $this->rapikanNama($nama);
-        $email = $this->emailUntuk($nama);
+        $kode = $this->kodeSah($kodePerangkat) ?? Str::random(self::PANJANG_KODE);
+        $email = $this->emailUntukKode($kode);
 
         $user = DB::transaction(function () use ($nama, $email, $sekolahId): User {
             $user = User::query()->where('email', $email)->first();
@@ -147,7 +168,8 @@ class TamuService
                     'name' => $nama,
                     'email' => $email,
                     // Kata sandi acak: akun tamu tidak pernah dimasuki lewat
-                    // kata sandi, identitasnya nama yang ia ketik.
+                    // kata sandi — identitasnya kode perangkat, nama yang dia
+                    // ketik hanya tampilan.
                     'password' => Str::password(32),
                     'status' => UserStatus::Aktif->value,
                     'is_tamu' => true,
@@ -159,7 +181,8 @@ class TamuService
                 $user->forceFill(['email_verified_at' => now()])->save();
                 $user->tetapkanPeran('murid');
             } else {
-                // Nama yang sama boleh datang dengan huruf besar/kecil berbeda.
+                // Perangkat yang sama boleh datang dengan ejaan nama yang sudah
+                // diperbaiki; akunnya tetap yang itu.
                 $user->forceFill(['name' => $nama])->save();
             }
 
@@ -170,21 +193,38 @@ class TamuService
 
         $this->login->masukOtomatis($user);
 
-        return $user;
+        return ['user' => $user, 'kode' => $kode];
     }
 
     /**
-     * Alamat email akun tamu dari namanya (stabil: nama sama = akun sama).
+     * Kode perangkat yang diterima apa adanya: panjang 8–128 dan hanya huruf,
+     * angka, serta `.-_:`. Bentuk yang tidak sah diperlakukan sebagai "tidak
+     * dikirim" supaya kode aneh dari klien tidak pernah dipakai sebagai kunci
+     * penyimpanan (dan tidak bisa dipakai menebak akun tamu orang lain).
      */
-    public function emailUntuk(string $nama): string
+    public function kodeSah(?string $kode): ?string
     {
-        $slug = Str::slug($nama);
+        $kode = trim((string) $kode);
 
-        if ($slug === '') {
-            $slug = 'tamu';
+        if (preg_match('/^[A-Za-z0-9._:-]{8,128}$/', $kode) !== 1) {
+            return null;
         }
 
-        return 'tamu+'.mb_substr($slug, 0, 60).'@'.self::DOMAIN_EMAIL;
+        return $kode;
+    }
+
+    /**
+     * Alamat email akun tamu dari kode perangkatnya.
+     *
+     * Di-hash, bukan dibaca apa adanya: kode perangkat adalah kunci masuk akun
+     * tamu, jadi tidak boleh tersimpan mentah di kolom yang tampil di panel
+     * admin/laporan. Nama tidak ikut ke sini — dengan begitu dua anak bernama
+     * sama tetap dua akun, dan satu anak yang memperbaiki ejaan namanya tetap
+     * satu akun.
+     */
+    public function emailUntukKode(string $kode): string
+    {
+        return 'tamu+'.substr(hash('sha256', $kode), 0, 32).'@'.self::DOMAIN_EMAIL;
     }
 
     /**

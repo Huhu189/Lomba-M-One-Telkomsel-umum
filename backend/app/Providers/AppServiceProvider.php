@@ -37,6 +37,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Gate;
@@ -55,6 +56,37 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Proxy tepercaya (K-06).
+     *
+     * Tanpa daftar ini, di belakang nginx/Cloudflare/Octane-proxy seluruh sekolah
+     * terlihat berasal dari SATU alamat: limiter `auth` (120/menit per IP) dan
+     * `verifikasi` (3/menit per IP) menolak murid yang sah, dan sinyal anti-cheat
+     * "sesi ganda dari IP sama" menuduh semua murid.
+     *
+     * Bawaannya KOSONG — tidak ada proxy yang dipercaya — karena percaya semua
+     * proxy (`at: '*'`) justru membuat klien bisa memalsukan IP-nya sendiri lewat
+     * header X-Forwarded-For. Pengelola deploy mengisi TRUSTED_PROXIES dengan
+     * alamat proxy miliknya sendiri (lihat config/app.php dan .env.example).
+     *
+     * Dipasang di sini, bukan di bootstrap/app.php: callback `withMiddleware`
+     * berjalan sebelum container punya `config`, jadi `config()` di sana meledak.
+     */
+    private function pasangProxyTepercaya(): void
+    {
+        $mentah = trim((string) config('app.trusted_proxies'));
+
+        if ($mentah === '') {
+            return;
+        }
+
+        $proxies = array_values(array_filter(array_map('trim', preg_split('/[,\s]+/', $mentah) ?: [])));
+
+        if ($proxies !== []) {
+            TrustProxies::at($proxies);
+        }
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
@@ -62,6 +94,8 @@ class AppServiceProvider extends ServiceProvider
         // Pagar mutu: model ketat di semua lingkungan non-produksi.
         Model::shouldBeStrict(! $this->app->isProduction());
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        $this->pasangProxyTepercaya();
 
         // Respons resource tanpa pembungkus "data" (skema flat untuk klien).
         JsonResource::withoutWrapping();
@@ -174,6 +208,46 @@ class AppServiceProvider extends ServiceProvider
         // ModerasiAvatarService.
         RateLimiter::for('avatar', function (Request $request) {
             return Limit::perMinute(20)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
+
+        // Tiket SSE (K-10). Tanpa batas, satu akun bisa memutar panggilan tiket
+        // tanpa henti: tiap panggilan menulis satu baris `sse_tickets` + satu kunci
+        // Redis, jadi tabel dan Redis tumbuh mengikuti kecepatan klien. Batasnya
+        // per AKUN (bukan per IP — satu kelas berbagi satu alamat) dan sengaja
+        // longgar: tiket tetap harus bisa diterbitkan ulang setiap kali SSE putus
+        // dan klien menyambung lagi.
+        RateLimiter::for('tiket', function (Request $request) {
+            return Limit::perMinute(30)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
+
+        // Masuk sebagai siswa tamu (T1). Jalur ini SENGAJA tidak memakai limiter
+        // `auth`: limiter itu berkunci per IP+email, sedangkan tamu tidak punya
+        // email — akibatnya seluruh kelas yang berbagi satu NAT sekolah dihitung
+        // sebagai satu orang dan murid ke-6 ditolak 429 di jam pelajaran mulai.
+        //
+        // Kuncinya sekarang kode perangkat unik milik tiap pengunjung (klien yang
+        // membuat & menyimpannya), jadi batas 5/menit berlaku per ANAK, bukan per
+        // sekolah. Batas per IP tetap dipasang sebagai pagar penyalahgunaan,
+        // dan sengaja longgar karena satu sekolah = satu alamat.
+        RateLimiter::for('tamu', function (Request $request) {
+            $kode = trim((string) $request->input('kode_perangkat'));
+            $perPengunjung = $kode === '' ? 'tamu|ip:'.$request->ip() : 'tamu|'.$kode;
+
+            return [
+                Limit::perMinute(5)->by($perPengunjung),
+                Limit::perMinute(120)->by((string) $request->ip()),
+            ];
+        });
+
+        // Kejadian kecurangan (K-09). Klien mengirim antreannya 1,5 detik setelah
+        // kejadian terakhir (maksimal 50 entri per kiriman), jadi ~40 permintaan
+        // per menit sudah lebih dari cukup — termasuk saat antrean 200 entri yang
+        // menumpuk offline dikuras sekaligus (4 kiriman). Batas ini per AKUN,
+        // bukan per IP: satu kelas berbagi satu alamat NAT sekolah.
+        // Tanpa batas ini, satu murid bisa menembak endpoint berulang dan menulis
+        // puluhan ribu baris `cheat_events` dalam satu menit.
+        RateLimiter::for('kejadian', function (Request $request) {
+            return Limit::perMinute(60)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
         });
     }
 }

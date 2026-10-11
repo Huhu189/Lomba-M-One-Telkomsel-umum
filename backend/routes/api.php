@@ -53,12 +53,16 @@ Route::prefix('v1')->group(function (): void {
         // Kirim ulang tautan verifikasi tanpa sesi (akun pending belum bisa masuk).
         Route::post('/auth/kirim-ulang-verifikasi-publik', [AuthController::class, 'kirimUlangVerifikasiPublik'])
             ->name('auth.kirim-ulang-verifikasi-publik');
-
-        // Siswa tamu (tanpa akun): cukup nama, ditentukan guru lewat pengaturan
-        // `izinkan_tamu`. Throttle sama dengan jalur masuk lain supaya nama tidak
-        // bisa dipakai membuat akun tamu beruntun.
-        Route::post('/auth/tamu', [TamuController::class, 'masuk'])->name('auth.tamu');
     });
+
+    // Siswa tamu (tanpa akun): cukup nama, ditentukan guru lewat pengaturan
+    // `izinkan_tamu`. Throttle-nya SENDIRI (T1), bukan `auth`: limiter `auth`
+    // berkunci per IP+email, sehingga semua tamu dari satu sekolah berbagi satu
+    // kunci dan murid ke-6 ditolak. Limiter `tamu` berkunci per kode perangkat
+    // pengunjung, dengan batas per IP yang longgar sebagai pagar penyalahgunaan.
+    Route::post('/auth/tamu', [TamuController::class, 'masuk'])
+        ->middleware('throttle:tamu')
+        ->name('auth.tamu');
 
     // Info publik mode tamu: dipakai halaman masuk untuk memutuskan apakah
     // formulir "masuk sebagai siswa tamu" ditampilkan. Tanpa sesi dan tanpa data
@@ -239,20 +243,28 @@ Route::prefix('v1')->group(function (): void {
 
         // Anti-cheat + presence + Live Monitor (slice 07).
         // Murid: kirim kejadian berkelompok + ping kehadiran.
-        Route::post('/attempt/{attempt}/kejadian', [KecuranganController::class, 'catat'])->name('kecurangan.catat');
+        // Throttle `kejadian` (K-09): tanpa batas, satu akun bisa menembak rute ini
+        // berulang kali dan menulis puluhan ribu baris `cheat_events` per menit.
+        // Kuota per attempt di KecuranganService adalah pagar terakhirnya.
+        Route::post('/attempt/{attempt}/kejadian', [KecuranganController::class, 'catat'])
+            ->middleware('throttle:kejadian')->name('kecurangan.catat');
         Route::post('/attempt/{attempt}/hadir', [KehadiranController::class, 'ping'])->name('presence.ping');
 
         // Guru: catatan kejadian, tinjauan, snapshot Live Monitor, ticket SSE.
         Route::get('/kuis/{kuis}/kejadian', [KecuranganController::class, 'daftar'])->name('kecurangan.daftar');
         Route::put('/kejadian/{kejadian}', [KecuranganController::class, 'tinjau'])->name('kecurangan.tinjau');
         Route::get('/kuis/{kuis}/monitor', [MonitorController::class, 'show'])->name('monitor.show');
-        Route::post('/kuis/{kuis}/sse-tiket', [TiketSseController::class, 'terbitkan'])->name('sse.tiket');
+        // Throttle `tiket` (K-10): tiap panggilan menulis baris `sse_tickets` +
+        // kunci Redis, jadi tanpa batas ini satu akun bisa membengkakkan keduanya.
+        Route::post('/kuis/{kuis}/sse-tiket', [TiketSseController::class, 'terbitkan'])
+            ->middleware('throttle:tiket')->name('sse.tiket');
 
         // Layar guru → perangkat murid (slice 10). Satu endpoint dibaca dua arah:
         // guru mengendalikan (PUT), murid kelas itu mengikuti (GET + tiket SSE).
         Route::get('/kuis/{kuis}/layar', [LayarController::class, 'show'])->name('layar.show');
         Route::put('/kuis/{kuis}/layar', [LayarController::class, 'simpan'])->name('layar.simpan');
-        Route::post('/kuis/{kuis}/sse-tiket-murid', [TiketSseController::class, 'terbitkanMurid'])->name('sse.tiket_murid');
+        Route::post('/kuis/{kuis}/sse-tiket-murid', [TiketSseController::class, 'terbitkanMurid'])
+            ->middleware('throttle:tiket')->name('sse.tiket_murid');
     });
 });
 

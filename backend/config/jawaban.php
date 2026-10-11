@@ -38,6 +38,18 @@ return [
     // Umur sesi unggah yang ditinggalkan sebelum dibuang penjadwal (menit).
     'umur_yatim_menit' => (int) env('JAWABAN_UMUR_YATIM_MENIT', 180),
 
+    // Batas dimensi gambar kanvas (piksel total) sebelum di-encode ulang (K-12).
+    //
+    // Gambar diperiksa dimensinya dulu, baru didekode, jadi angka inilah yang
+    // menentukan puncak pemakaian memori: satu piksel truecolor memakan ~4 byte,
+    // sehingga batas lama 40 juta piksel bisa meminta ~160 MB — di atas
+    // `memory_limit` 128 MB yang lazim, dan kegagalan alokasi PHP **tidak bisa
+    // ditangkap** (prosesnya mati, bukan 422).
+    //
+    // 12 juta piksel (mis. 4000x3000) jauh lebih longgar daripada kebutuhan
+    // nyata gambar kanvas murid, tetapi tetap di bawah batas memori lazim.
+    'batas_piksel_kanvas' => (int) env('JAWABAN_BATAS_PIKSEL_KANVAS', 12_000_000),
+
     // Prefiks lokasi internal untuk header X-Accel-Redirect (kosong = alirkan sendiri).
     'x_accel_prefix' => env('JAWABAN_X_ACCEL_PREFIX'),
 ];

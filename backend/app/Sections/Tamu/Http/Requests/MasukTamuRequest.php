@@ -12,6 +12,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Nama divalidasi setelah dirapikan (spasi berlebih dirapatkan, karakter
  * kendali dibuang), jadi " A " ditolak sebagai nama satu huruf dan bukan lolos
  * sebagai tiga karakter.
+ *
+ * `kode_perangkat` opsional: klien yang punya menyimpan kode unik perangkatnya
+ * dan mengirimnya supaya masuk lagi memakai akun yang sama. Bentuknya dibatasi
+ * ketat karena kode itu menjadi kunci akun tamu dan kunci pembatas laju.
  */
 class MasukTamuRequest extends FormRequest
 {
@@ -28,6 +32,7 @@ class MasukTamuRequest extends FormRequest
     {
         return [
             'nama' => ['required', 'string', 'min:2', 'max:60'],
+            'kode_perangkat' => ['nullable', 'string', 'min:8', 'max:128', 'regex:/^[A-Za-z0-9._:-]+$/'],
         ];
     }
 
@@ -57,6 +62,9 @@ class MasukTamuRequest extends FormRequest
             'nama.required' => 'Tulis namamu dulu ya.',
             'nama.min' => 'Nama minimal 2 huruf.',
             'nama.max' => 'Nama maksimal 60 huruf.',
+            // Kode perangkat dibuat klien, jadi galat ini hanya muncul kalau ada
+            // yang mengutak-atik: pengguna cukup diminta masuk ulang.
+            'kode_perangkat.regex' => 'Kode perangkat tidak dikenal. Muat ulang halaman lalu coba lagi.',
         ];
     }
 }

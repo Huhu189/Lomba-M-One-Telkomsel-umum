@@ -9,7 +9,70 @@ import assert from 'node:assert/strict'
 import { after, describe, it } from 'node:test'
 import crypto from 'node:crypto'
 import http from 'node:http'
-import { buildApp } from '../src/server.js'
+import { buildApp, opsiLogger } from '../src/server.js'
+
+/**
+ * Pastikan app sudah mendengarkan, lalu kembalikan alamat dasarnya.
+ *
+ * Dipakai test yang membuka LEBIH DARI SATU koneksi pada satu instance:
+ * `app.listen()` dua kali akan melempar ERR_SERVER_ALREADY_LISTEN.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ */
+async function alamat(app) {
+  if (!app.server.listening) {
+    await app.listen({ port: 0, host: '127.0.0.1' })
+  }
+
+  return `http://127.0.0.1:${app.server.address().port}`
+}
+
+/**
+ * Buka aliran SSE dan biarkan tetap terbuka supaya pesan yang disebar bisa
+ * diamati — beda dengan `ambilAliran` yang langsung memutus koneksi.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ * @param {string} url
+ */
+async function bukaAliran(app, url) {
+  const basis = await alamat(app)
+  const pengawas = new AbortController()
+  const respons = await fetch(`${basis}${url}`, { signal: pengawas.signal })
+
+  let teks = ''
+  const pembaca = respons.body.getReader()
+
+  const aliran = (async () => {
+    try {
+      for (;;) {
+        const { value, done } = await pembaca.read()
+        if (done) break
+        teks += new TextDecoder().decode(value)
+      }
+    } catch {
+      // dihentikan oleh tutup()
+    }
+  })()
+
+  return {
+    status: respons.status,
+    body: respons.body,
+    teks: () => teks,
+    /** Tunggu sampai isi aliran cocok dengan pola (atau menyerah). */
+    async tunggu(pola, batasMs = 1000) {
+      const mulai = Date.now()
+      while (Date.now() - mulai < batasMs) {
+        if (pola.test(teks)) return true
+        await new Promise((selesai) => setTimeout(selesai, 10))
+      }
+      return false
+    },
+    async tutup() {
+      pengawas.abort()
+      await aliran
+    },
+  }
+}
 
 /**
  * Jalankan app di port acak lalu ambil potongan awal respons sambil menutup
@@ -82,7 +145,7 @@ async function ambilHeader(app, url, headers) {
 function redisTiruan({ isi, gagal = false }) {
   const pelanggan = []
   /** Jejak pemanggilan penutupan koneksi langganan. */
-  const jejak = { quit: 0, disconnect: 0, unsubscribeGagal: 0 }
+  const jejak = { quit: 0, disconnect: 0, unsubscribeGagal: 0, duplicate: 0 }
   const utama = {
     status: 'ready',
     on() {},
@@ -100,6 +163,7 @@ function redisTiruan({ isi, gagal = false }) {
       return nilai
     },
     duplicate() {
+      jejak.duplicate += 1
       const klien = {
         status: 'ready',
         pendengar: {},
@@ -288,13 +352,15 @@ describe('SSE Live Monitor', () => {
     process.removeListener('unhandledRejection', catatRejection)
 
     assert.deepEqual(rejection, [])
-    // Penutupan memakai quit() yang menyelesaikan antrean, bukan disconnect()
-    // yang membuang antrean dan melempar.
+    // Kanal ditinggalkan saat aliran terakhir pergi — lewat jalur yang menangkap
+    // penolakan `unsubscribe()` (K-11: koneksi langganan milik bersama).
     assert.equal(tiruan.jejak.unsubscribeGagal, 1)
-    assert.equal(tiruan.jejak.quit, 1)
     assert.equal(tiruan.jejak.disconnect, 0)
 
+    // Koneksi langganan bersama baru ditutup saat service berhenti, dan penutupan
+    // memakai quit() yang menyelesaikan antrean.
     await app.close()
+    assert.equal(tiruan.jejak.quit, 1)
   })
 
   it('tiket yang sama tidak bisa dipakai dua kali', async () => {
@@ -391,6 +457,107 @@ describe('SSE Live Monitor', () => {
     assert.equal(JSON.parse(respons.body).alasan, 'tiket-tidak-ada')
 
     await app.close()
+  })
+})
+
+describe('Batas sumber daya SSE (K-11)', () => {
+  /** Dua tiket guru untuk kuis yang sama. */
+  const tiketGanda = () => {
+    const tiket = ['a'.repeat(64), 'b'.repeat(64)]
+    const isi = {}
+    for (const satu of tiket) {
+      isi[`sse:tiket:${hashTiket(satu)}`] = JSON.stringify({ user_id: 7, quiz_id: 1, peran: 'guru' })
+    }
+    return { tiket, isi }
+  }
+
+  it('semua aliran berbagi satu koneksi langganan, dan pesan disebar ke semuanya', async () => {
+    const { tiket, isi } = tiketGanda()
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama })
+
+    const satu = await bukaAliran(app, `/sse/monitor?tiket=${tiket[0]}`)
+    const dua = await bukaAliran(app, `/sse/monitor?tiket=${tiket[1]}`)
+
+    assert.equal(satu.status, 200)
+    assert.equal(dua.status, 200)
+
+    // Inti K-11: jumlah koneksi Redis tidak tumbuh sebanding jumlah penonton.
+    assert.equal(tiruan.jejak.duplicate, 1)
+    assert.equal(tiruan.pelanggan.length, 1)
+
+    // Satu pesan Redis harus sampai ke KEDUA aliran, bukan hanya yang terakhir
+    // mendaftar — ini yang mudah rusak saat langganan dibagi bersama.
+    tiruan.pelanggan[0].klien.kirimPesan('halo-kelas')
+    assert.ok(await satu.tunggu(/data: halo-kelas/), 'aliran pertama tidak menerima pesan')
+    assert.ok(await dua.tunggu(/data: halo-kelas/), 'aliran kedua tidak menerima pesan')
+
+    await satu.tutup()
+    await dua.tutup()
+    await app.close()
+  })
+
+  it('menolak aliran berikutnya dari akun yang sama saat batasnya tercapai', async () => {
+    const { tiket, isi } = tiketGanda()
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama, maksAliranPerPengguna: 1 })
+
+    const pertama = await bukaAliran(app, `/sse/monitor?tiket=${tiket[0]}`)
+    assert.equal(pertama.status, 200)
+
+    const kedua = await app.inject({ method: 'GET', url: `/sse/monitor?tiket=${tiket[1]}` })
+
+    assert.equal(kedua.statusCode, 429)
+    assert.equal(JSON.parse(kedua.body).alasan, 'terlalu-banyak-koneksi')
+
+    await pertama.tutup()
+    await app.close()
+  })
+
+  it('menolak aliran baru saat kapasitas total penuh', async () => {
+    const { tiket, isi } = tiketGanda()
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama, maksAliranGlobal: 1 })
+
+    const pertama = await bukaAliran(app, `/sse/monitor?tiket=${tiket[0]}`)
+    const kedua = await app.inject({ method: 'GET', url: `/sse/monitor?tiket=${tiket[1]}` })
+
+    assert.equal(kedua.statusCode, 503)
+    assert.equal(JSON.parse(kedua.body).alasan, 'kapasitas-penuh')
+
+    await pertama.tutup()
+    await app.close()
+  })
+
+  it('menutup sendiri aliran yang melewati umur maksimum', async () => {
+    const { tiket, isi } = tiketGanda()
+    const tiruan = redisTiruan({ isi })
+    const app = buildApp({ logger: false, redis: tiruan.utama, umurAliranMs: 40 })
+
+    const basis = await alamat(app)
+    const respons = await fetch(`${basis}/sse/monitor?tiket=${tiket[0]}`)
+    assert.equal(respons.status, 200)
+
+    // Sebelum dibatasi, aliran yang ditinggalkan tanpa penutupan bersih menahan
+    // slot koneksi selamanya. Sekarang server yang menutup, dan klien tahu sebabnya.
+    const teks = await respons.text()
+
+    assert.match(teks, /event: akhir/)
+    assert.match(teks, /"alasan":"umur"/)
+
+    await app.close()
+  })
+
+  it('tiket dan cookie disunting dari log', () => {
+    const opsi = opsiLogger({ level: 'warn' })
+
+    // Tiket yang tercatat di berkas log sama nilainya dengan akses membuka
+    // aliran monitor kelas — jadi tidak boleh pernah tertulis.
+    assert.ok(opsi.redact.includes('req.query.tiket'))
+    assert.ok(opsi.redact.includes('req.headers.cookie'))
+    // Pengaturan pemanggil tidak dibuang.
+    assert.equal(opsi.level, 'warn')
+    assert.equal(opsiLogger(false), false)
   })
 })
 

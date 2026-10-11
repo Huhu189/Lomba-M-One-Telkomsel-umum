@@ -12,7 +12,18 @@
  * - **cek Origin**: hanya origin yang diizinkan yang boleh menyambung;
  * - **kanal per peran** (K-03): tiket guru hanya sah untuk `/sse/monitor` dan
  *   tiket murid hanya sah untuk `/sse/kuis`, dan masing-masing berlangganan
- *   kanal terpisah — murid tidak bisa lagi memantau siaran guru.
+ *   kanal terpisah — murid tidak bisa lagi memantau siaran guru;
+ * - **satu pelanggan Redis untuk semua aliran** (K-11): dulu tiap aliran SSE
+ *   membuat koneksi langganannya sendiri (`duplicate()`). Satu kelas dengan
+ *   Live Monitor terbuka berarti puluhan koneksi hanya untuk mendengarkan —
+ *   Redis `maxclients` (bawaan 10.000) habis dan setiap koneksi memakan
+ *   memori. Sekarang semua aliran berbagi SATU koneksi langganan dengan
+ *   penyebaran pesan manual;
+ * - **batas aliran** (K-11): satu akun hanya boleh membuka beberapa aliran
+ *   sekaligus, dan service menolak aliran baru saat kapasitas totalnya penuh;
+ * - **umur aliran dibatasi** (K-11): aliran lama dipaksa tutup supaya koneksi
+ *   yang tertinggal (tab mati, jaringan putus tanpa FIN) tidak menumpuk;
+ * - **log tanpa rahasia**: tiket dan cookie disunting dari log Fastify.
  */
 import crypto from 'node:crypto'
 import { pathToFileURL } from 'node:url'
@@ -21,6 +32,47 @@ import Redis from 'ioredis'
 
 /** Selang keepalive (ms). */
 export const KEEPALIVE_MS = 20000
+
+/**
+ * Umur maksimum satu aliran SSE (ms). Default 30 menit.
+ *
+ * Aliran yang sudah ditinggalkan tanpa penutupan bersih (tab dimatikan, jaringan
+ * putus mendadak, perangkat hilang sinyal) tetap memakan slot koneksi. Dengan
+ * batas ini, setiap slot paling lama terpakai setengah jam; klien yang masih
+ * aktif meminta tiket baru — sama seperti perilaku saat jaringan sempat putus.
+ */
+export const UMUR_ALIRAN_MS = 30 * 60 * 1000
+
+/** Batas jumlah aliran SSE serentak seluruh service (K-11). */
+export const MAKS_ALIRAN_GLOBAL = 300
+
+/** Batas jumlah aliran SSE serentak per akun (K-11). */
+export const MAKS_ALIRAN_PER_PENGGUNA = 3
+
+/**
+ * Jalur yang disunting dari log.
+ *
+ * Tiket SSE adalah kunci sekali pakai: siapa pun yang membacanya dari berkas
+ * log bisa menukarnya menjadi aliran monitor kelas — jadi tiket (dan cookie /
+ * token) tidak boleh pernah tercatat.
+ */
+export const LOG_REDACT = ['req.query.tiket', 'req.headers.cookie', 'req.headers.authorization']
+
+/**
+ * Opsi logger Fastify (diekspor untuk test).
+ *
+ * `logger: false` tetap berarti senyap; selain itu jalur rahasia selalu
+ * ditambahkan tanpa membuang pengaturan pemanggil.
+ *
+ * @param {boolean|object} [logger]
+ */
+export function opsiLogger(logger) {
+  if (logger === false) return false
+
+  const dasar = typeof logger === 'object' && logger !== null ? logger : {}
+
+  return { ...dasar, redact: [...LOG_REDACT, ...(dasar.redact ?? [])] }
+}
 
 /** Origin yang diizinkan menyambung (dipisah koma lewat env). */
 function daftarOrigin() {
@@ -59,10 +111,18 @@ export function kanalKuis(peran, kuisId) {
 /**
  * Bangun instance aplikasi Fastify (diekspor untuk test).
  *
- * @param {{ logger?: boolean, redis?: any }} [options]
+ * @param {{ logger?: boolean|object, redis?: any, maksAliranGlobal?: number,
+ *   maksAliranPerPengguna?: number, umurAliranMs?: number }} [options]
  */
 export function buildApp(options = {}) {
-  const app = Fastify({ logger: options.logger ?? true })
+  const app = Fastify({ logger: opsiLogger(options.logger ?? true) })
+
+  // Batas bisa diatur lewat opsi (test) atau env; bawaannya konstanta di atas.
+  const maksAliranGlobal = Number(options.maksAliranGlobal ?? process.env.SSE_MAKS_ALIRAN_GLOBAL ?? MAKS_ALIRAN_GLOBAL)
+  const maksAliranPerPengguna = Number(
+    options.maksAliranPerPengguna ?? process.env.SSE_MAKS_ALIRAN_PER_PENGGUNA ?? MAKS_ALIRAN_PER_PENGGUNA,
+  )
+  const umurAliranMs = Number(options.umurAliranMs ?? process.env.SSE_UMUR_ALIRAN_MS ?? UMUR_ALIRAN_MS)
 
   // Redis bisa disuntikkan pada test; bawaannya koneksi lazy ke REDIS_URL.
   const redis =
@@ -80,7 +140,101 @@ export function buildApp(options = {}) {
     })
   }
 
+  // ---- Satu pelanggan Redis untuk semua aliran (K-11) ----------------------
+  // Dulu setiap aliran memanggil `redis.duplicate()` sendiri sehingga jumlah
+  // koneksi naik sebanding dengan jumlah penonton. Sekarang satu koneksi
+  // berlangganan seluruh kanal aktif, lalu pesan disebar ke tiap aliran.
+  /** @type {Map<string, Set<(pesan: string) => void>>} */
+  const pelanggan = new Map()
+  /** Kanal yang sudah benar-benar di-SUBSCRIBE di Redis. */
+  const kanalAktif = new Set()
+  /** @type {any} */
+  let pendengarBersama = null
+
+  const buatPendengar = async () => {
+    if (pendengarBersama) return pendengarBersama
+
+    const koneksi = redis.duplicate()
+
+    // Penangkap error sendiri: tanpa ini satu gangguan Redis mematikan proses.
+    koneksi.on?.('error', (err) => {
+      app.log.warn({ err: err.message }, 'koneksi langganan bermasalah (fail-open)')
+    })
+
+    if (koneksi.status === 'waiting') {
+      await koneksi.connect()
+    }
+
+    koneksi.on('message', (kanal, pesan) => {
+      const tujuan = pelanggan.get(kanal)
+      if (!tujuan) return
+
+      for (const kirim of tujuan) {
+        try {
+          kirim(pesan)
+        } catch {
+          // Satu klien sudah pergi; aliran lain tetap dilayani.
+        }
+      }
+    })
+
+    pendengarBersama = koneksi
+
+    return koneksi
+  }
+
+  /**
+   * Daftarkan satu aliran ke sebuah kanal, lalu pastikan kanalnya dilanggan.
+   */
+  const langganan = async (kanal, kirim) => {
+    const tujuan = pelanggan.get(kanal) ?? new Set()
+    tujuan.add(kirim)
+    pelanggan.set(kanal, tujuan)
+
+    if (kanalAktif.has(kanal)) return
+
+    const koneksi = await buatPendengar()
+    await koneksi.subscribe(kanal)
+    kanalAktif.add(kanal)
+  }
+
+  /**
+   * Lepas satu aliran; kanal di-UNSUBSCRIBE hanya bila tak ada penonton lagi.
+   *
+   * Dipisah dari `langganan` supaya penutupan satu aliran tidak mengganggu
+   * aliran lain yang memakai kanal sama (satu kelas = satu kanal guru).
+   */
+  const batalLangganan = (kanal, kirim) => {
+    const tujuan = pelanggan.get(kanal)
+    if (!tujuan) return
+
+    tujuan.delete(kirim)
+
+    if (tujuan.size > 0) return
+
+    pelanggan.delete(kanal)
+
+    if (!kanalAktif.has(kanal) || pendengarBersama === null) return
+
+    kanalAktif.delete(kanal)
+    // Semua promise ditangani: `unsubscribe()` pada koneksi yang sudah tertutup
+    // menolak promise, dan rejection tanpa penangkap mematikan proses.
+    Promise.resolve()
+      .then(() => pendengarBersama.unsubscribe(kanal))
+      .catch(() => {})
+  }
+
+  /** Jumlah aliran SSE yang sedang terbuka. */
+  let aliranAktif = 0
+  /** @type {Map<number, number>} */
+  const aliranPerPengguna = new Map()
+
   app.addHook('onClose', async () => {
+    try {
+      pendengarBersama?.quit?.()
+    } catch {
+      // sudah tertutup
+    }
     redis.disconnect?.()
   })
 
@@ -132,6 +286,9 @@ export function buildApp(options = {}) {
    * (`/sse/monitor`, slice 07) dan murid yang mengikuti layar guru
    * (`/sse/kuis`, slice 10). `peranWajib` dibaca dari jalurnya, dan tiket yang
    * perannya tidak cocok ditolak — inilah yang menutup K-03.
+   *
+   * Batas sumber daya (K-11) juga ditegakkan di sini: jumlah aliran serentak
+   * per akun, kapasitas total, dan umur maksimum satu aliran.
    *
    * @param {'guru'|'murid'} peranWajib
    */
@@ -186,6 +343,20 @@ export function buildApp(options = {}) {
       return reply.code(403).send({ ok: false, alasan: 'peran-tidak-cocok' })
     }
 
+    // Batas sumber daya (K-11). Tiket sudah terpakai di titik ini — disengaja:
+    // klien yang ditolak cukup meminta tiket baru saat kapasitas longgar.
+    const userId = Number(pemilik?.user_id)
+
+    if (Number.isFinite(maksAliranGlobal) && maksAliranGlobal > 0 && aliranAktif >= maksAliranGlobal) {
+      return reply.code(503).send({ ok: false, alasan: 'kapasitas-penuh' })
+    }
+
+    const dipakai = Number.isInteger(userId) ? aliranPerPengguna.get(userId) ?? 0 : 0
+
+    if (Number.isInteger(userId) && dipakai >= maksAliranPerPengguna) {
+      return reply.code(429).send({ ok: false, alasan: 'terlalu-banyak-koneksi' })
+    }
+
     // Kita menulis langsung ke socket, jadi Fastify tidak boleh ikut mengirim
     // respons JSON apa pun setelah ini.
     reply.hijack()
@@ -204,10 +375,9 @@ export function buildApp(options = {}) {
 
     // Hanya kanal kuis ini DAN peran ini: guru tidak menerima kuis kelas lain,
     // dan perangkat murid tidak pernah menerima siaran guru (K-03).
-    const kanal = [kanalKuis(peranWajib, kuisId)]
-    const pendengar = redis.duplicate()
+    const kanal = kanalKuis(peranWajib, kuisId)
 
-    const teruskan = (_kanal, pesan) => {
+    const teruskan = (pesan) => {
       try {
         reply.raw.write(`data: ${pesan}\n\n`)
       } catch {
@@ -215,22 +385,19 @@ export function buildApp(options = {}) {
       }
     }
 
-    // Koneksi langganan harus punya penangkap error sendiri: tanpa ini, satu
-    // gangguan Redis melempar event 'error' tanpa penangkap dan mematikan proses.
-    pendengar.on?.('error', (err) => {
-      app.log.warn({ err: err.message }, 'koneksi langganan bermasalah (fail-open)')
-    })
-
     try {
-      if (pendengar.status === 'waiting') {
-        await pendengar.connect()
-      }
-      await pendengar.subscribe(...kanal)
-      pendengar.on('message', teruskan)
+      // Satu koneksi langganan dipakai bersama seluruh aliran (K-11):
+      // `langganan` hanya menyambung/melanggan sekali per kanal.
+      await langganan(kanal, teruskan)
     } catch {
       // Gagal berlangganan bukan alasan memutus: klien tetap mendapat siap +
       // keepalive, lalu polling di sisi klien melengkapi datanya.
       app.log.warn({ quizId: kuisId }, 'langganan pub/sub gagal (fail-open)')
+    }
+
+    aliranAktif += 1
+    if (Number.isInteger(userId)) {
+      aliranPerPengguna.set(userId, dipakai + 1)
     }
 
     const keepalive = setInterval(() => {
@@ -241,6 +408,19 @@ export function buildApp(options = {}) {
       }
     }, KEEPALIVE_MS)
 
+    // Umur aliran dibatasi (K-11): koneksi yatim tidak boleh menumpuk selamanya.
+    // Klien yang masih aktif menyambung ulang dengan tiket baru.
+    const pemaksaUmur = Number.isFinite(umurAliranMs) && umurAliranMs > 0
+      ? setTimeout(() => {
+          try {
+            reply.raw.write('event: akhir\ndata: {"alasan":"umur"}\n\n')
+            reply.raw.end()
+          } catch {
+            // klien sudah pergi
+          }
+        }, umurAliranMs)
+      : null
+
     let sudahBersih = false
 
     /**
@@ -250,26 +430,27 @@ export function buildApp(options = {}) {
      * menyisakan perintah di antrean membuat ioredis menolak promise yang tidak
      * ada penangkapnya (`Connection is closed.`) dan **seluruh service mati** —
      * padahal yang terjadi hanya seorang guru menutup tab.
-     * Karena itu: dijaga sekali jalan, semua promise ditangani, dan penutupan
-     * memakai `quit()` yang menyelesaikan antrean lebih dulu.
+     * Karena itu: dijaga sekali jalan, semua promise ditangani, dan koneksi
+     * langganan bersama baru ditutup saat service berhenti.
      */
     const bersihkan = () => {
       if (sudahBersih) return
       sudahBersih = true
 
       clearInterval(keepalive)
-      pendengar.removeListener?.('message', teruskan)
+      if (pemaksaUmur !== null) clearTimeout(pemaksaUmur)
 
-      Promise.resolve()
-        .then(() => pendengar.unsubscribe?.(...kanal))
-        .catch(() => {})
-        .finally(() => {
-          try {
-            pendengar.quit?.()
-          } catch {
-            // sudah tertutup
-          }
-        })
+      aliranAktif -= 1
+      if (Number.isInteger(userId)) {
+        const sisa = (aliranPerPengguna.get(userId) ?? 1) - 1
+        if (sisa <= 0) {
+          aliranPerPengguna.delete(userId)
+        } else {
+          aliranPerPengguna.set(userId, sisa)
+        }
+      }
+
+      batalLangganan(kanal, teruskan)
     }
 
     request.raw.on('close', bersihkan)

@@ -12,7 +12,9 @@ pos/tingkat, A.35 — editor soal: pemilih jenis ringkas berikon di paling bawah
 membuktikan tanda itu juga berlaku untuk klip **kuis** dan **media**, **A.39 — sapuan dasar:** 22 tipe soal
 lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 temuan nyata yang sudah diperbaiki,
 **A.40 — siswa tamu:** guru membuka kuis untuk anak tanpa akun lewat pengaturan `izinkan_tamu` dan tamu cukup
-mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39)).
+mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39), **A.42 — audit UI/UX & logika putaran 2:
+tamu beridentitas kode perangkat (bukan nama), limiter tamu per pengunjung, dan proteksi ulangan yang adil di
+ponsel.**)
 
 ## 1. Status verifikasi terakhir
 
@@ -43,6 +45,11 @@ mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39)).
 | `node docs/smoke-http-fitur.mjs` | **242/242 lulus** (butuh backend + realtime hidup) — juga dari putaran A.29 |
 | `node docs/smoke-ui-luring.mjs` (baru, putaran A.33) | **22/22 lulus, exit 0** (dua kali dengan versi final) — backend :8000 + vite :5173 + Chrome :9333 (realtime tidak perlu) |
 | `node docs/smoke-ui-slice04.mjs` + `slice07.mjs` (regresi sesudah A.33) | **18/18 dan 20/20 lulus, exit 0** (slice 07 butuh realtime hidup) |
+| `./verify.sh` (**A.42**, sesudah tamu per perangkat + proteksi mobile) | **SEMUA HIJAU (exit 0)** — Pest **331 passed (3126 assertions)** · Redis wajib 9 · Pint bersih · checkJs · ESLint · Vitest **66 berkas / 641 tes** · realtime **20 tes** |
+| `php artisan test --filter=TamuTest` (**A.42**) | **21 passed (172 assertions)** — termasuk perangkat sama = akun sama, nama sama dua perangkat = dua akun, nama emoji/non-Latin punya akun sendiri, 6 anak satu IP tanpa 429, dan per perangkat tetap 5/menit |
+| `npx vitest run src/__tests__/security/useExamSecurity.test.jsx` (**A.42**) | **6 passed** — resize tinggi (keyboard HP) tidak mengaburkan, masa tenggang kunci, dialog berkas tidak mengunci; dibuktikan bergigi lewat mutasi (4 dari 6 merah saat pagarnya dilepas) |
+| `npx vitest run src/__tests__/sections/auth/perangkat.test.js` (**A.42**) | **5 passed** — kode dibuat sekali per perangkat, tetap ada walau penyimpanan diblokir, kode server yang disimpan |
+| `npx vitest run src/__tests__/sections/auth/authStore.sesi.test.js` (**A.42**) | **12 passed** — termasuk tamu yang menekan Keluar membuang kode perangkatnya (komputer bersama), sedangkan sesi yang habis sendiri tidak |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
 
@@ -223,9 +230,11 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 ## 4. Batasan jujur (yang belum selesai)
 
 - **Katalog tema perjalanan (A.34) baru satu tema** ("Mendaki Gunung"). Bentuk katalog sudah siap menampung
-  banyak tema, tetapi tema lain belum dibuat; smoke hanya menguji tema bawaan. **A.37: tema hanya punya satu
-  foto** (`gunung.jpg`) dan adegan gambar buatan sudah dibuang — tema/adegan lain akan tampil sebagai
-  gradien sampai fotonya ditambahkan. Video latar hanya diuji dengan satu MP4 2 detik di jalur berpotongan,
+  banyak tema, tetapi tema lain belum dibuat; smoke hanya menguji tema bawaan. **A.37 membuat adegan gambar
+  buatan dibuang; keputusan itu DIBALIK atas permintaan pemilik produk:** adegan `gunung` kini ilustrasi
+  beranimasi yang digambar sendiri (`AdeganGunung.jsx`, sudut pandang mendongak dari kaki gunung) dan foto
+  `gunung.jpg` dihapus dari repo — jadi `frontend/public/tema/` sekarang kosong. Tema/adegan lain tetap tampil
+  sebagai gradien sampai medianya ditambahkan. Video latar hanya diuji dengan satu MP4 2 detik di jalur berpotongan,
   dan bukti "bergerak" dari DOM/CDP (`animationName` foto / `autoplay` video) — belum ada uji regresi
   visual/screenshot. Nama pos diganti per blok di editor (belum ada pengaturan massal), dan pos di  luar 6 fase template memakai nama generik "Pos n".
 - **Penjelasan setelah kuis (A.38) menempel pada KLIP kuis, bukan kuisnya.** Bila satu kuis disisipkan di dua

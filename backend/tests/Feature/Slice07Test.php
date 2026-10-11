@@ -9,6 +9,7 @@ use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Cheat\Enums\KategoriKecurangan;
 use App\Sections\Cheat\Enums\StatusTinjauan;
 use App\Sections\Cheat\Models\KejadianKecurangan;
+use App\Sections\Presence\Jobs\PangkasTiketSse;
 use App\Sections\Presence\Models\TiketSse;
 use App\Sections\Presence\Services\PenyiarRealtime;
 use App\Sections\Presence\Services\PresenceService;
@@ -111,6 +112,70 @@ it('murid mencatat kejadian berkelompok dan dedupe membuat kiriman ulang tidak m
     expect(KejadianKecurangan::query()->count())->toBe(2)
         ->and(KejadianKecurangan::query()->where('kategori', 'paste_attempt')->firstOrFail()->skor_risiko)->toBe(6)
         ->and(KejadianKecurangan::query()->where('kategori', 'tab_switch')->firstOrFail()->skor_risiko)->toBe(4);
+});
+
+it('rincian dengan urutan kunci berbeda tetap dianggap kejadian yang sama (dedupe K-09)', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+    $waktu = '2026-10-06T10:00:00+00:00';
+
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [[
+            'kategori' => 'paste_attempt',
+            'client_at' => $waktu,
+            'rincian' => ['sumber' => 'keyboard', 'panjang' => 120],
+        ]],
+    ])->assertCreated()->assertJsonPath('tersimpan', 1);
+
+    // Isi rincian sama, urutan kunci bergeser. Sebelum diurutkan, sidiknya ikut
+    // berubah sehingga unique index tidak menangkapnya dan catatan menumpuk.
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [[
+            'kategori' => 'paste_attempt',
+            'client_at' => $waktu,
+            'rincian' => ['panjang' => 120, 'sumber' => 'keyboard'],
+        ]],
+    ])->assertCreated()->assertJsonPath('tersimpan', 0);
+
+    expect(KejadianKecurangan::query()->count())->toBe(1);
+});
+
+it('jumlah catatan klien per attempt dibatasi kuota, termasuk kiriman sekali banyak (K-09)', function (): void {
+    config(['kecurangan.maks_kejadian_per_attempt' => 2]);
+
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+
+    // Satu kiriman besar tidak boleh melewati kuota dalam sekali jalan.
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [
+            ['kategori' => 'paste_attempt'],
+            ['kategori' => 'tab_switch'],
+            ['kategori' => 'window_blur'],
+        ],
+    ])->assertCreated()->assertJsonPath('tersimpan', 2);
+
+    // Sudah penuh: catatan berikutnya tidak menambah baris, tetapi permintaan
+    // tetap sukses — ini pagar penyimpanan, bukan hukuman bagi murid.
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [['kategori' => 'devtools_open']],
+    ])->assertCreated()->assertJsonPath('tersimpan', 0);
+
+    expect(KejadianKecurangan::query()->count())->toBe(2);
+});
+
+it('rute kejadian dibatasi per akun supaya satu murid tidak membanjiri tabel (K-09)', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+
+    $kiriman = ['kejadian' => [['kategori' => 'paste_attempt', 'client_at' => '2026-10-06T10:00:00+00:00']]];
+
+    // Batasnya 60 permintaan per menit per akun (satu kelas boleh berbagi IP).
+    for ($i = 0; $i < 60; $i++) {
+        $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", $kiriman)->assertCreated();
+    }
+
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", $kiriman)->assertStatus(429);
 });
 
 it('siaran kejadian kecurangan hanya ke kanal guru, bukan kanal murid (K-03)', function (): void {
@@ -530,4 +595,80 @@ it('mengumpulkan terlambat dicatat sebagai turunan server hanya bila anti-cheat 
         ->and($catatan[0]->attempt_id)->toBe((int) $attemptDua->id)
         ->and($catatan[0]->dari_klien)->toBeFalse()
         ->and($catatan[0]->skor_risiko)->toBe(3);
+});
+
+it('guru lain tidak bisa meninjau catatan kecurangan kuis guru pemilik (K-04)', function (): void {
+    $kuis = kuisBerjalan07($this);
+    $attempt = mulaiAttempt07($this->murid, $kuis);
+
+    $this->postJson("/api/v1/attempt/{$attempt->id}/kejadian", [
+        'kejadian' => [['kategori' => 'paste_attempt']],
+    ])->assertCreated();
+
+    $kejadian = KejadianKecurangan::query()->firstOrFail();
+    $guruLain = User::factory()->guru()->create();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($guruLain);
+
+    // Membaca sudah dibatasi pemilik; meninjau pun harus begitu. Sebelum ini
+    // guru mana pun bisa melumpuhkan bukti dengan menandainya tidak valid.
+    $this->getJson("/api/v1/kuis/{$kuis->id}/kejadian")->assertForbidden();
+
+    $this->putJson("/api/v1/kejadian/{$kejadian->id}", [
+        'status' => StatusTinjauan::TidakValid->value,
+        'catatan' => 'ditandai guru lain',
+    ])->assertForbidden();
+
+    expect($kejadian->refresh()->review_status)->toBe(StatusTinjauan::Menunggu)
+        ->and($kejadian->reviewed_by)->toBeNull();
+
+    // Pemilik kuis tetap boleh meninjau seperti biasa.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/kejadian/{$kejadian->id}", [
+        'status' => StatusTinjauan::Valid->value,
+        'catatan' => 'terlihat jelas',
+    ])->assertOk();
+
+    $kejadian->refresh();
+
+    expect($kejadian->review_status)->toBe(StatusTinjauan::Valid)
+        ->and($kejadian->reviewed_by)->toBe($this->guru->id);
+});
+
+it('tiket SSE kedaluwarsa dipangkas penjadwal dan penerbitannya dibatasi (K-10)', function (): void {
+    $kuis = kuisBerjalan07($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    // Satu tiket yang sudah lewat jauh di luar jeda, satu tiket yang masih segar.
+    $layanan = app(TokenSseService::class);
+    $lama = $layanan->terbitkan($this->guru, $kuis);
+    TiketSse::query()->where('token_hash', hash('sha256', $lama['tiket']))->update([
+        'expires_at' => now()->subMinutes(PangkasTiketSse::JEDA_MENIT + 5),
+    ]);
+
+    $this->postJson("/api/v1/kuis/{$kuis->id}/sse-tiket")->assertCreated();
+
+    (new PangkasTiketSse)->handle();
+
+    expect(TiketSse::query()->count())->toBe(1)
+        ->and(TiketSse::query()->where('token_hash', hash('sha256', $lama['tiket']))->exists())->toBeFalse();
+
+    // Tanpa batas, satu akun bisa memutar panggilan ini tanpa henti: tiap
+    // panggilan menulis satu baris `sse_tickets` + satu kunci Redis.
+    $terakhir = null;
+
+    for ($ke = 0; $ke < 30; $ke++) {
+        $terakhir = $this->postJson("/api/v1/kuis/{$kuis->id}/sse-tiket");
+    }
+
+    expect($terakhir?->status())->toBe(429);
+
+    // Ember limiter menempel pada id pengguna, dan id itu berulang tiap tes
+    // (basis data di-refresh), jadi dibersihkan supaya tidak menular ke tes lain.
+    Cache::flush();
 });

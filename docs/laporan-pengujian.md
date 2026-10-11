@@ -3616,3 +3616,90 @@ Diubah — dokumentasi:
 - `README.md` (prasyarat Redis + arti langkah gate yang merah)
 - `backend/.env.example` (phpredis, `REDIS_URL` untuk service Node, `REDIS_WAJIB`)
 - `docs/laporan-pengujian.md` (A.41 ini)
+
+---
+
+## A.42. Siswa tamu beridentitas kode perangkat + proteksi yang adil di ponsel
+
+Sumber: audit UI/UX & logika putaran kedua (`audit-ux-ui-logic-projectla.md`), temuan **T1** (limiter tamu per IP),
+**T2** (identitas tamu = slug nama), dan **T5** (false positive anti-cheat di HP). Arahan produk untuk A.42:
+sistem membuat **id unik per pengunjung** supaya pembatas laju tidak berkunci alamat IP bersama, tamu **tetap
+mengetik namanya sendiri**, dan proteksi ulangan dibuat **adaptif di perangkat sentuh**.
+
+### A.42.1 Yang dikerjakan
+
+- **Identitas tamu = kode perangkat (T2).** Peramban membuat satu kode acak sekali per perangkat
+  (`sections/auth/perangkat.js`, `crypto.randomUUID`) dan mengirimnya bersama nama pada setiap `POST /auth/tamu`.
+  Server menurunkan akun dari **hash kode itu** (`TamuService::emailUntukKode`), jadi: nama yang sama di dua
+  perangkat = dua akun, nama beremoji/non-Latin tetap punya akun sendiri (dulu slug kosong membuat semua anak
+  seperti itu berbagi `tamu+tamu@tamu.invalid`), dan tidak ada nama yang bisa "diambil alih" tanpa kata sandi.
+  Nama yang diketik tamu tetap menjadi nama tampilan — persis seperti yang diminta, hanya bukan identitas.
+  Klien tanpa kode tidak ditolak: server membuatkan kode baru dan mengembalikannya untuk disimpan (`kode_perangkat`).
+- **Limiter tamu sendiri (T1).** `/auth/tamu` keluar dari grup `throttle:auth` (yang berkunci `ip|email`,
+  sedangkan tamu tidak punya email — sehingga satu kelas di balik NAT sekolah berbagi satu kunci dan murid ke-6
+  ditolak 429). Limiter `tamu` berkunci kode perangkat (5/menit per anak) dengan batas per IP 120/menit sebagai
+  pagar penyalahgunaan.
+- **Proteksi adaptif di HP (T5)** — `security/useExamSecurity.js`:
+  - `detect_window_resize` kini hanya bereaksi pada perubahan **lebar** (keyboard virtual dan bar alamat hanya
+    mengubah tinggi), diabaikan lagi bila kolom isian sedang terfokus, dan timer kaburnya digabung + tunggal;
+  - `focus_lock` punya **masa tenggang 8 detik**: anak yang kembali cepat (notifikasi, pindah aplikasi sekilas)
+    tidak dikunci sama sekali, hanya kepergian yang benar-benar lama yang mengunci 60 detik (salinan modal
+    diperbarui);
+  - membuka **dialog pilih berkas** (input `type=file` terfokus) tidak lagi dihitung keluar dari ulangan, baik
+    untuk kunci layar maupun untuk catatan `window_blur`.
+
+### A.42.2 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test --filter=TamuTest` | **21 passed (172 assertions)** |
+| `npx vitest run src/__tests__/security/useExamSecurity.test.jsx` | **6 passed** |
+| `npx vitest run src/__tests__/sections/auth/perangkat.test.js` | **5 passed** |
+| `npx vitest run src/__tests__/sections/auth/authStore.sesi.test.js` | **12 passed** (3 baru: tamu keluar membuang kode perangkat, sesi habis sendiri tidak, murid biasa tidak menyentuhnya) |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **331 passed (3126 assertions)** · Redis wajib **9** · Pint · checkJs · ESLint · Vitest **66 berkas / 641 tes** · realtime **20 tes** |
+
+Tes barunya diuji-balik (mutasi sementara) supaya tidak hijau tanpa arti:
+
+| Mutasi yang dikembalikan | Tes yang merah |
+| --- | --- |
+| resize dianggap sinyal walau lebarnya tidak berubah | `resize yang hanya mengubah tinggi (keyboard ponsel) …` |
+| masa tenggang kunci layar dibuat 0 detik | `kembali cepat dalam masa tenggang tidak mengunci layar` |
+| pemeriksaan dialog berkas dimatikan | `membuka dialog pilih berkas tidak mengunci layar` |
+
+### A.42.3 Berkas yang dibuat/diubah
+
+Dibuat:
+- `frontend/src/sections/auth/perangkat.js` (kode perangkat: buat sekali, simpan, kirim)
+- `frontend/src/__tests__/sections/auth/perangkat.test.js` (5 tes)
+- `frontend/src/__tests__/security/useExamSecurity.test.jsx` (6 tes)
+
+Diubah:
+- `backend/app/Sections/Tamu/Services/TamuService.php` (identitas dari kode perangkat, `emailUntukKode`,
+  `kodeSah`)
+- `backend/app/Sections/Tamu/Http/Requests/MasukTamuRequest.php` (`kode_perangkat` divalidasi ketat)
+- `backend/app/Sections/Tamu/Http/Controllers/TamuController.php` (mengembalikan `kode_perangkat`)
+- `backend/app/Providers/AppServiceProvider.php` (limiter `tamu`)
+- `backend/routes/api.php` (`/auth/tamu` pakai `throttle:tamu`, keluar dari grup `auth`)
+- `frontend/src/sections/auth/api.js` (+`skemaResponTamu`, kirim & simpan kode perangkat)
+- `frontend/src/sections/auth/MasukTamu.jsx` (salinan bantuan menjelaskan perangkat, bukan nama unik)
+- `frontend/src/security/useExamSecurity.js` (T5)
+- `backend/tests/Feature/TamuTest.php` (+6 tes), `docs/penjelasan-fitur.md`, `docs/catatan-demo.md`,
+  `docs/handoff-sesi.md`
+
+### A.42.4 Batasan jujur
+
+- Deteksi "dialog berkas terbuka" adalah **heuristik** (input `type=file` sedang terfokus). Bila peramban tidak
+  memindahkan fokus ke input itu, jalur masa tenggang 8 detiknya yang menyelamatkan. **Belum diuji di perangkat
+  sentuh sungguhan** — hanya disimulasikan di jsdom.
+- **T4 belum disentuh**: `focus_lock` masih hanya bekerja bila `block_tab_switch` juga menyala, padahal modal
+  proteksi bisa menjanjikannya sendiri. Ini perubahan semantik saklar, jadi menunggu keputusan.
+- **Perangkat bersama tanpa Keluar**: kalau tamu A menutup peramban tanpa menekan *Keluar*, tamu B di
+  perangkat yang sama masih akan masuk ke akun A kalau A belum keluar. Aturannya: menekan **Keluar** membuang
+  kode perangkat (diuji), sedangkan sesi yang habis sendiri menyimpannya supaya pekerjaan anak yang sama tidak
+  hilang. Komputer lab sebaiknya tetap diminta menekan Keluar antar anak.
+- **Ganti perangkat/penyimpanan bersih** berarti identitas baru: pemulihan attempt lintas perangkat belum ada
+  (nama tidak lagi bisa dipakai sebagai kunci pemulihan — memang begitu trade-off yang dipilih).
+- Belum disentuh dari audit yang sama: **K1** (satu 401/419 menghapus cadangan jawaban), **T3/S4** (Redis putus
+  mematikan realtime; SSE murid tidak menyambung ulang), **T6/S1** (umpan balik submit & status simpan),
+  **S2/S3/S5/S6/S7** dan **R1–R6** (termasuk tipografi/target sentuh — bagian "adaptif di mobile" untuk UI,
+  bukan perilaku).

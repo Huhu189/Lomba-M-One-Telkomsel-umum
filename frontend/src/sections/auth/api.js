@@ -4,6 +4,7 @@
  */
 import { z } from 'zod'
 import { client, ambilCsrfCookie } from '../../shared/api/client.js'
+import { kodePerangkat, simpanKodePerangkat } from './perangkat.js'
 
 /** Skema user dari /auth/saya & respons login (UserResource). */
 export const skemaUser = z.object({
@@ -144,15 +145,37 @@ export async function ambilInfoTamu() {
 }
 
 /**
- * Masuk sebagai siswa tamu: cukup nama. Server yang menentukan identitas (akun
- * tamu dengan nama itu, tanpa kata sandi) dan langsung membuka sesinya.
+ * Respon masuk tamu: pesan + user + kode perangkat (dibuat server bila klien
+ * belum punya). Kode itu disimpan klien supaya masuk berikutnya dari perangkat
+ * ini kembali ke akun yang sama.
+ */
+export const skemaResponTamu = z.object({
+  message: z.string(),
+  kode_perangkat: z.string().min(8),
+  user: skemaUser,
+})
+
+/**
+ * Masuk sebagai siswa tamu: cukup nama yang dia ketik sendiri. Identitasnya
+ * BUKAN nama itu melainkan kode perangkat (lihat `perangkat.js`), jadi dua anak
+ * bernama sama tetap dua akun dan tidak ada nama yang bisa "diambil alih".
  * @param {string} nama
  * @returns {Promise<z.infer<typeof skemaUser>>} user hasil parse Zod
  */
 export async function masukTamu(nama) {
   await ambilCsrfCookie()
-  const respons = await client.post('/v1/auth/tamu', { nama: nama.trim() })
-  const badan = z.object({ message: z.string(), user: skemaUser }).parse(respons.data)
+
+  const respons = await client.post('/v1/auth/tamu', {
+    nama: nama.trim(),
+    kode_perangkat: kodePerangkat(),
+  })
+
+  const badan = skemaResponTamu.parse(respons.data)
+
+  // Server boleh mengembalikan kode yang berbeda (mis. klien lama tanpa kode);
+  // yang tersimpan selalu versi server supaya masuk berikutnya cocok.
+  simpanKodePerangkat(badan.kode_perangkat)
+
   return badan.user
 }
 

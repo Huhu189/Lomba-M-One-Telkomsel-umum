@@ -195,6 +195,55 @@ it('menolak potongan yang hash-nya tidak cocok', function (): void {
     expect(UnggahanMateri::query()->where('kode', $mulai->json('kode'))->firstOrFail()->potongan()->count())->toBe(0);
 });
 
+it('menolak potongan materi yang melebihi ukuran berkas yang didaftarkan (K-16)', function (): void {
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    // Berkas didaftarkan 10 byte, tetapi yang dikirim 20 byte.
+    $mulai = $this->postJson("/api/v1/materi/{$materi->id}/unggahan", [
+        'nama' => 'gambar.png',
+        'ukuran' => 10,
+    ])->assertCreated();
+
+    $kode = (string) $mulai->json('kode');
+    $muatan = "\x89PNG\r\n\x1a\n".str_repeat('a', 12);
+
+    $this->putJson('/api/v1/unggahan/'.$kode.'/potongan/0', [
+        'isi_base64' => base64_encode($muatan),
+        'hash' => hash('sha256', $muatan),
+    ])->assertStatus(422)->assertJsonValidationErrors(['potongan']);
+
+    $unggahan = UnggahanMateri::query()->where('kode', $kode)->firstOrFail();
+
+    // Bukan hanya 422-nya yang penting: byte-nya tidak boleh pernah ditulis ke
+    // disk (dulu potongan langsung ditulis, totalnya baru diperiksa di `selesai`).
+    expect($unggahan->potongan()->count())->toBe(0)
+        ->and(Storage::disk(PenyimpananMateri::DISK)
+            ->exists('materi/'.$unggahan->school_id.'/'.$kode.'/potongan/0.part'))->toBeFalse();
+});
+
+it('menolak isi_base64 materi yang lebih panjang dari satu potongan (K-16)', function (): void {
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $mulai = $this->postJson("/api/v1/materi/{$materi->id}/unggahan", [
+        'nama' => 'gambar.png',
+        'ukuran' => 100,
+    ])->assertCreated();
+
+    $chunkByte = (int) config('material.chunk_byte');
+
+    // Dilebihkan jelas di atas satu potongan supaya yang menolak memang aturan
+    // panjang permintaan, bukan pemeriksaan ukuran di dalam service.
+    $this->putJson('/api/v1/unggahan/'.$mulai->json('kode').'/potongan/0', [
+        'isi_base64' => base64_encode(str_repeat('A', $chunkByte + 4096)),
+    ])->assertStatus(422)->assertJsonValidationErrors(['isi_base64']);
+});
+
 it('menolak URL berkas yang tanda tangannya sudah kedaluwarsa', function (): void {
     $materi = m08Materi($this);
     $hasil = m08Unggah($this, $materi, 'peta.png', "\x89PNG\r\n\x1a\n".str_repeat('a', 50));

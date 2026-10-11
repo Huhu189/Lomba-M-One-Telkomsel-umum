@@ -5,6 +5,20 @@ Semua perintah dijalankan dari root repo `lomba_m`.
 
 ## Menjalankan ketiga layanan (slice 00)
 
+Cara yang dianjurkan — satu perintah dari root repo:
+
+```bash
+./nyalakan-local.sh          # nyalakan Redis + backend + realtime + frontend
+./nyalakan-local.sh status   # cek kesehatan
+./nyalakan-local.sh stop     # matikan semuanya
+```
+
+Skrip itu menjalankan `php artisan migrate` (BUKAN `migrate:fresh`), jadi data dan
+**sesi login tidak dihapus** — tidak perlu login ulang setiap kali local
+dinyalakan. Log ada di `.local/log/`.
+
+Kalau mau manual:
+
 ```bash
 # 1. Backend (Laravel, http://localhost:8000)
 cd backend && php artisan serve
@@ -16,8 +30,12 @@ cd frontend && npm run dev
 cd realtime && npm run dev
 ```
 
+> **Jangan** pakai `php artisan migrate:fresh --seed` saat local sudah dipakai.
+> Perintah itu menjatuhkan seluruh tabel — termasuk `sessions` — sehingga semua
+> yang sedang masuk langsung ter-logout dan harus login ulang.
+
 Pemeriksaan kesehatan:
-- Backend: `curl http://localhost:8000/api/health` → JSON `{"ok":true,...}`
+- Backend: `curl http://localhost:8000/api/v1/health` → JSON `{"ok":true,...}`
 - Frontend: buka http://localhost:5173 → halaman demo tema + toast + ikon
 - Realtime: `curl http://localhost:4000/health` → JSON `{"ok":true,...}`
 
@@ -49,11 +67,15 @@ Swoole, dan deploy (menunggu keputusan host).
 
 ## Demo Slice 02 — Sekolah, Kelas, Mapel, Murid, Impor/Ekspor CSV, Pengaturan Tiga Lapis
 
-Prasyarat: backend `php artisan serve` (port 8000) dan frontend `npm run dev` (port 5173) hidup; database sudah di-seed:
+Prasyarat: backend `php artisan serve` (port 8000) dan frontend `npm run dev` (port 5173) hidup; database sudah di-seed. Paling mudah dari root repo:
 
 ```bash
-cd backend && php artisan migrate:fresh --seed
+./nyalakan-local.sh
 ```
+
+(Kalau DB memang ingin direset dari nol — data lokal rela hilang — baru pakai
+`cd backend && php artisan migrate:fresh --seed`, sadar bahwa itu menghapus semua
+sesi login.)
 
 Seeder membuat sekolah contoh, 3 kelas (6A/6B/5A), 3 mapel, dan akun admin `admin@sekolah.test` / `Passw0rd!Aman`.
 
@@ -513,10 +535,17 @@ curl -b cookie-guru.txt -X PUT http://localhost:8000/api/v1/pengaturan \
   -H 'Accept: application/json' -H 'Content-Type: application/json' \
   -d '{"lingkup":"kuis","lingkup_id":44,"kunci":"izinkan_tamu","nilai":true}'
 
-# Tamu masuk hanya dengan nama (sesi cookie; throttle auth berlaku)
+# Tamu masuk hanya dengan nama (sesi cookie; throttle `tamu` berlaku).
+# `kode_perangkat` dibuat klien sekali per perangkat: tanpa itu server membuatkan kode baru,
+# dan pemanggil berikutnya dengan nama sama akan dapat akun BARU (bukan menumpang akun orang lain).
 curl -c cookie-tamu.txt -X POST http://localhost:8000/api/v1/auth/tamu \
   -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  -d '{"nama":"Rara"}'
+  -d '{"nama":"Rara","kode_perangkat":"demo-perangkat-0001"}'
+
+# Masuk ulang dari perangkat yang sama → akun & attempt yang sama
+curl -c cookie-tamu2.txt -X POST http://localhost:8000/api/v1/auth/tamu \
+  -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -d '{"nama":"Rara Sari","kode_perangkat":"demo-perangkat-0001"}'
 
 # Daftar kuis tamu: hanya kuis terbit yang dibuka untuk tamu
 curl -b cookie-tamu.txt http://localhost:8000/api/v1/kuis
@@ -530,9 +559,11 @@ curl -b cookie-guru.txt http://localhost:8000/api/v1/kuis/44/tamu
 
 ### Bukti otomatis
 
-`php artisan test --filter=TamuTest` (**15 test / 120 assertion**) dan
-`npx vitest run src/__tests__/sections/auth/masukTamu.test.jsx` (3 test). Yang diuji lewat test, bukan hanya
+`php artisan test --filter=TamuTest` (**21 test / 172 assertion**) dan
+`npx vitest run src/__tests__/sections/auth/` (masukTamu + perangkat). Yang diuji lewat test, bukan hanya
 dijelaskan: default mati (tanpa izin, tidak ada akun tamu yang dibuat), pintu terbuka sesudah guru menyimpan
 saklar lapis kuisnya, tamu menyelesaikan ulangan sampai skor, kuis draf/kuis guru lain 403, murid berkelas
 lain tetap ditolak, mode tim ditolak untuk tamu, akun tamu tidak bisa menyentuh jalur guru, tamu di luar
-peringkat kelas, dan guru pemilik melihat panel tamunya sementara guru lain 403.
+peringkat kelas, guru pemilik melihat panel tamunya sementara guru lain 403, **perangkat yang sama kembali ke
+akun yang sama**, **nama sama di dua perangkat tetap dua akun**, **nama emoji/non-Latin punya akun sendiri**,
+dan **enam anak dari satu alamat IP bisa masuk serentak tanpa 429**.

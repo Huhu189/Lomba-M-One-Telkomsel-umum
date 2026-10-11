@@ -37,6 +37,27 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Proxy Tepercaya (K-06)
+    |--------------------------------------------------------------------------
+    |
+    | Daftar IP/CIDR proxy yang boleh menyetel header X-Forwarded-* (mis. nginx
+    | atau Cloudflare di depan aplikasi), dipisah koma. Selama daftar ini kosong,
+    | Laravel memakai alamat koneksi apa adanya.
+    |
+    | Mengapa penting: seluruh limiter (`auth` 120/menit per IP, `verifikasi`
+    | 3/menit per IP, `berkas`) dan sinyal anti-cheat "IP sama" membaca
+    | `$request->ip()`. Di belakang proxy tanpa daftar ini, SELURUH sekolah terlihat
+    | sebagai satu IP — limit bersama jadi menolak murid yang sah, dan semua murid
+    | dituduh satu alamat. Salah satu tidak boleh ditebak: percaya SEMUA proxy
+    | membuat IP bisa dipalsukan klien, jadi isi hanya alamat proxy milikmu.
+    |
+    | Contoh: TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
     'timezone' => 'UTC',
 
     'locale' => env('APP_LOCALE', 'id'),

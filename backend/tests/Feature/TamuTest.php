@@ -85,12 +85,21 @@ function t04Kuis(object $ctx, array $ubah = []): Kuis
     return $kuis->refresh();
 }
 
-/** Masuk sebagai siswa tamu lewat HTTP (sesi cookie, seperti peramban). */
-function t04MasukTamu(string $nama): void
+/**
+ * Masuk sebagai siswa tamu lewat HTTP (sesi cookie, seperti peramban).
+ *
+ * `$kode` adalah kode perangkat: klien membuatnya sekali lalu mengirimkannya
+ * lagi setiap kali masuk. Bawaannya satu kode tetap supaya panggilan berulang di
+ * dalam satu test tetap dianggap perangkat yang sama.
+ */
+function t04MasukTamu(string $nama, string $kode = 'perangkat-uji-0001'): void
 {
     auth()->forgetGuards();
 
-    test()->postJson('/api/v1/auth/tamu', ['nama' => $nama])->assertCreated();
+    test()->postJson('/api/v1/auth/tamu', [
+        'nama' => $nama,
+        'kode_perangkat' => $kode,
+    ])->assertCreated();
 }
 
 it('mode tamu mati secara bawaan dan formulirnya tidak ditawarkan', function (): void {
@@ -151,20 +160,26 @@ it('masuk sebagai tamu cukup dengan nama: akun tamu + profil kelas penampung + s
     $this->getJson('/api/v1/auth/saya')->assertSuccessful()->assertJsonPath('isTamu', true);
 });
 
-it('nama tamu dirapikan: spasi berlebih dan huruf besar/kecil bukan identitas baru', function (): void {
+it('nama tamu dirapikan dan perangkat yang sama tetap satu akun', function (): void {
     $kuis = t04Kuis($this);
     t04SetIzin($this, $this->guru, $kuis);
 
     auth()->forgetGuards();
 
-    // Spasi ganda + tab/baris baru: nama yang sama tidak boleh jadi dua identitas.
-    $this->postJson('/api/v1/auth/tamu', ['nama' => "  Rara \t Sari \n"])
-        ->assertCreated()->assertJsonPath('user.name', 'Rara Sari');
+    // Spasi ganda + tab/baris baru dirapikan sebelum disimpan.
+    $this->postJson('/api/v1/auth/tamu', [
+        'nama' => "  Rara \t Sari \n",
+        'kode_perangkat' => 'perangkat-uji-0001',
+    ])->assertCreated()->assertJsonPath('user.name', 'Rara Sari');
 
     auth()->forgetGuards();
 
-    $this->postJson('/api/v1/auth/tamu', ['nama' => 'rara sari'])
-        ->assertCreated()->assertJsonPath('user.name', 'rara sari');
+    // Perangkat yang sama, ejaan nama diperbaiki: akunnya tetap satu, nama
+    // tampilannya yang diperbarui.
+    $this->postJson('/api/v1/auth/tamu', [
+        'nama' => 'rara sari',
+        'kode_perangkat' => 'perangkat-uji-0001',
+    ])->assertCreated()->assertJsonPath('user.name', 'rara sari');
 
     expect(User::query()->where('is_tamu', true)->count())->toBe(1);
 });
@@ -185,18 +200,149 @@ it('nama tamu yang kosong atau terlalu panjang ditolak', function (): void {
     expect(User::query()->where('is_tamu', true)->count())->toBe(0);
 });
 
-it('nama yang sama memakai identitas yang sama; hasilnya tetap satu baris attempt', function (): void {
+it('perangkat yang sama masuk lagi memakai akun dan attempt yang sama', function (): void {
     $kuis = t04Kuis($this);
     t04SetIzin($this, $this->guru, $kuis);
 
     t04MasukTamu('Budi');
     $pertama = User::query()->where('is_tamu', true)->firstOrFail();
 
-    t04MasukTamu('Budi');
+    $attemptId = (int) $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated()->json('id');
+
+    // Halaman dimuat ulang di perangkat yang sama: kode yang tersimpan membuat
+    // anak itu kembali ke akunnya, bukan dibuatkan murid baru.
+    t04MasukTamu('Budi', 'perangkat-uji-0001');
     $kedua = User::query()->where('is_tamu', true)->firstOrFail();
 
+    $this->getJson("/api/v1/attempt/{$attemptId}")->assertOk();
+
     expect($kedua->getKey())->toBe($pertama->getKey())
-        ->and(User::query()->where('is_tamu', true)->count())->toBe(1);
+        ->and(User::query()->where('is_tamu', true)->count())->toBe(1)
+        ->and(Attempt::query()->count())->toBe(1);
+});
+
+it('nama yang sama di perangkat berbeda tetap dua akun — tidak ada nama yang bisa diambil alih', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    // Anak pertama mengetik "Rara" di perangkatnya.
+    t04MasukTamu('Rara', 'perangkat-anak-1');
+    $pertama = User::query()->where('is_tamu', true)->firstOrFail();
+    $pertamaId = (int) $pertama->getKey();
+
+    // Anak kedua mengetik nama yang sama dari perangkat lain: dulu dia masuk ke
+    // akun yang sama tanpa kata sandi (bisa melanjutkan pekerjaan orang lain),
+    // sekarang dia mendapat akunnya sendiri.
+    auth()->forgetGuards();
+    $respons = $this->postJson('/api/v1/auth/tamu', [
+        'nama' => 'Rara',
+        'kode_perangkat' => 'perangkat-anak-2',
+    ])->assertCreated();
+
+    $keduaId = (int) $respons->json('user.id');
+
+    expect($keduaId)->not->toBe($pertamaId)
+        ->and(User::query()->where('is_tamu', true)->count())->toBe(2);
+
+    // Akun pertama tidak ikut berubah nama pemiliknya.
+    expect((string) User::query()->findOrFail($pertamaId)->name)
+        ->toBe((string) $pertama->name);
+});
+
+it('nama beremoji atau non-Latin tetap dapat akun sendiri', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    // Slug ASCII dari kedua nama ini kosong, sehingga akun tamu berbasis nama
+    // dulu membuat mereka berbagi satu akun `tamu+tamu@` — dan anak yang menulis
+    // namanya dengan emoji tidak terdaftar sebagai dirinya sendiri.
+    t04MasukTamu('🦖🦖', 'perangkat-emoji-1');
+    t04MasukTamu('李雷', 'perangkat-emoji-2');
+
+    $email = User::query()->where('is_tamu', true)->pluck('email')->all();
+
+    expect(User::query()->where('is_tamu', true)->count())->toBe(2)
+        ->and(array_unique($email))->toHaveCount(2)
+        // Kode perangkat tidak pernah tersimpan mentah di kolom email.
+        ->and(implode(' ', $email))->not->toContain('perangkat-emoji');
+});
+
+it('satu kelas di balik satu IP bisa masuk tamu serentak tanpa 429 (T1)', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    // Enam anak, satu alamat IP sekolah (semua permintaan test datang dari IP yang
+    // sama). Dulu semuanya berbagi kunci limiter `ip|` di jalur auth sehingga
+    // murid ke-6 ditolak 429 sebelum sempat menulis namanya.
+    for ($anak = 1; $anak <= 6; $anak++) {
+        auth()->forgetGuards();
+
+        $this->postJson('/api/v1/auth/tamu', [
+            'nama' => 'Anak '.$anak,
+            'kode_perangkat' => 'perangkat-kelas-6a-'.$anak,
+        ])->assertCreated();
+    }
+
+    expect(User::query()->where('is_tamu', true)->count())->toBe(6);
+});
+
+it('satu perangkat yang menembak berulang tetap dibatasi 5 per menit', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    // Batas per pengunjung tetap ada: yang longgar hanya batas per alamat sekolah.
+    for ($ke = 1; $ke <= 5; $ke++) {
+        t04MasukTamu('Rara', 'perangkat-boros-0001');
+    }
+
+    auth()->forgetGuards();
+
+    $this->postJson('/api/v1/auth/tamu', [
+        'nama' => 'Rara',
+        'kode_perangkat' => 'perangkat-boros-0001',
+    ])->assertStatus(429);
+
+    expect(User::query()->where('is_tamu', true)->count())->toBe(1);
+});
+
+it('kode perangkat yang bentuknya aneh ditolak validasi, bukan dipakai sebagai identitas', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    auth()->forgetGuards();
+
+    foreach (['pendek', 'spasi tidak boleh', str_repeat('a', 129), 'emoji-🦖-disini'] as $kode) {
+        $this->postJson('/api/v1/auth/tamu', [
+            'nama' => 'Rara',
+            'kode_perangkat' => $kode,
+        ])->assertStatus(422)->assertJsonValidationErrors(['kode_perangkat']);
+    }
+
+    expect(User::query()->where('is_tamu', true)->count())->toBe(0);
+});
+
+it('klien tanpa kode perangkat dapat akun baru, bukan menumpang akun orang lain', function (): void {
+    $kuis = t04Kuis($this);
+    t04SetIzin($this, $this->guru, $kuis);
+
+    auth()->forgetGuards();
+
+    $kodeKlien = 'perangkat-klien-lama-01';
+
+    t04MasukTamu('Rara', $kodeKlien);
+    $sebelum = (int) User::query()->where('is_tamu', true)->firstOrFail()->getKey();
+
+    // Klien lama (atau penyimpanan diblokir) tidak mengirim kode: respons tetap
+    // membawa kode yang dibuat server supaya klien bisa menyimpannya — dan
+    // pemanggil itu dapat akun BARU, bukan menumpang akun yang namanya sama.
+    auth()->forgetGuards();
+    $respons = $this->postJson('/api/v1/auth/tamu', ['nama' => 'Rara'])->assertCreated();
+
+    $kodeBaru = (string) $respons->json('kode_perangkat');
+
+    expect(mb_strlen($kodeBaru))->toBeGreaterThanOrEqual(8)
+        ->and((int) $respons->json('user.id'))->not->toBe($sebelum)
+        ->and(User::query()->where('is_tamu', true)->count())->toBe(2);
 });
 
 it('tamu hanya melihat kuis yang dibuka untuknya — kuis draf tidak pernah muncul', function (): void {
