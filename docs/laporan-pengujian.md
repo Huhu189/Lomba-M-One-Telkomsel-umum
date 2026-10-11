@@ -3750,12 +3750,19 @@ Sesudah runner diperbaiki, seluruh harness dijalankan ulang **di atas local yang
 | Harness | Hasil |
 | --- | --- |
 | `docs/jalankan-smoke-ui.sh tamu` | **9/9 lulus** |
-| `docs/jalankan-smoke-ui.sh slice06` | **28/28 lulus** |
-| `docs/jalankan-smoke-ui.sh slice07` | **20/20 lulus** |
-| `docs/jalankan-smoke-ui.sh kuis-manual` | **13/13 lulus** (harness ikut disunting di putaran A.43) |
+| `docs/jalankan-smoke-ui.sh slice03` · `slice04` · `slice05` | **9/9** · **18/18** · **20/20 lulus** |
+| `docs/jalankan-smoke-ui.sh slice06` · `slice07` | **28/28** · **20/20 lulus** |
+| `docs/jalankan-smoke-ui.sh susun` · `kuis-manual` | **42/42** · **13/13 lulus** |
+| `docs/jalankan-smoke-ui.sh nav` · `luring` | **14/14** · **22/22 lulus** |
+| `docs/jalankan-smoke-ui.sh pengaturan` · `sidebar` | **5/5** · **7/7 lulus** |
+| `docs/jalankan-smoke-ui.sh durasi-klip` | **15/15 lulus** |
+| `docs/jalankan-smoke-ui.sh cdp` | exit 0 (harness peninjau halaman, tanpa hitungan) |
 | `docs/jalankan-smoke-perjalanan.sh` | **52/52 lulus** (harness ikut disunting di putaran A.37 & A.43) |
 | `docs/jalankan-smoke-materi.sh` | **27/27 lulus** (sama dengan angka terakhir di A.38) |
 | `./nyalakan-local.sh status` sesudah semua itu | redis/backend/realtime/frontend **HIDUP** |
+
+Total **301 pemeriksaan** lulus di 15 harness berhitung, semuanya exit 0, dijalankan berurutan di atas satu
+local yang sedang dipakai.
 
 ---
 
@@ -3807,10 +3814,16 @@ harus bisa dijalankan **langsung** di atas local yang sedang dipakai.
 | `./nyalakan-local.sh status` sesudah semua smoke itu | redis/backend/realtime/frontend **HIDUP** (runner tidak mematikan layanan yang bukan miliknya) |
 | `docs/jalankan-smoke-ui.sh tamu` lagi, kali ini **tanpa** layanan hidup | menyalakan sendiri (vite=200 backend=204 realtime=200) · **9/9 lulus** · sesudahnya semua MATI tanpa sisa Chrome :9333 |
 
-Dua bug yang ditemukan saat verifikasi ini adalah bug **runner**, bukan produk: `$(curl -w '%{http_code}'
-|| echo 000)` menggandakan kode kegagalan menjadi `000000` sehingga pemeriksaan `!= 000` selalu menganggap
-layanan hidup (tamunya lalu menerima 502 dari proxy vite), dan `trap` lama yang menyapu semua proses
-`artisan serve`. Keduanya diperbaiki di tiga runner.
+Tiga bug yang ditemukan saat verifikasi ini adalah bug **runner**, bukan produk: (a) `$(curl -w
+'%{http_code}' || echo 000)` menggandakan kode kegagalan menjadi `000000` sehingga pemeriksaan `!= 000`
+selalu menganggap layanan hidup (tamunya lalu menerima 502 dari proxy vite); (b) `trap` lama yang menyapu
+semua proses `artisan serve` (ikut mematikan layanan pengembang); dan (c) **Chrome satu run belum benar-benar
+keluar saat run berikutnya mulai** — proses anaknya masih memegang :9333 beberapa detik, sehingga Chrome
+baru hidup **tanpa** memegang port debug dan harness-nya hanya mencetak `fetch failed`. Ketiganya diperbaiki
+di sumbernya (tiga runner), bukan dengan melewati pemeriksaan: runner kini menunggu :9333 bebas, membersihkan
+listener yang tidak menjawab CDP, mencoba sekali lagi, dan berhenti dengan pesan jelas + log Chrome bila tetap
+gagal. Gejalanya nyata sebelum perbaikan: urutan `luring → nav → pengaturan → sidebar` membuat dua harness
+terakhir gagal (`exit 1`), sesudah perbaikan urutan yang sama lulus semua.
 
 ### A.43.3 Batasan jujur
 

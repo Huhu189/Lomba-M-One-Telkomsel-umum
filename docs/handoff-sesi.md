@@ -55,6 +55,7 @@ yang sedang hidup.**)
 | `docs/jalankan-smoke-ui.sh tamu` (**A.42**, harness baru, browser sungguhan) | **9/9 lulus, exit 0** — tamu lewat formulir dapat kode perangkat, muat ulang tidak berubah, Keluar membuang kode, nama sama sesudah Keluar = akun baru, kode ngawur 422; pintu tamu dimatikan kembali di akhir |
 | `./nyalakan-local.sh status` (**A.42**) | redis/backend/realtime/frontend **HIDUP** — satu perintah menyalakan semua tanpa menghapus data (tanpa `migrate:fresh`) |
 | Seluruh smoke UI dijalankan ULANG di atas local yang hidup (**A.42**, sesudah runner diperbaiki) | `tamu` **9/9** · `slice06` **28/28** · `slice07` **20/20** · `kuis-manual` **13/13** · `perjalanan` **52/52** · `materi` **27/27** — semua exit 0, keempat layanan tetap HIDUP sesudahnya |
+| **Sapu penuh 15 harness berhitung (A.43, sesudah runner Chrome diperbaiki)** | **301 pemeriksaan lulus, semua exit 0** — `tamu` 9/9 · `slice03` 9/9 · `slice04` 18/18 · `slice05` 20/20 · `slice06` 28/28 · `slice07` 20/20 · `susun` 42/42 · `kuis-manual` 13/13 · `nav` 14/14 · `luring` 22/22 · `pengaturan` 5/5 · `sidebar` 7/7 · `durasi-klip` 15/15 · `perjalanan` 52/52 · `materi` 27/27, plus `cdp` (peninjau) exit 0 — dijalankan berurutan di atas satu local yang hidup, keempat layanan tetap HIDUP |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
 
@@ -86,11 +87,12 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   (`gap-3`/`p-3`/`row g-2`, teks bantuan panjang dibuang, kelas `.editor-soal` termasuk petak jenis 2/4/6
   kolom), dan `HalamanKuis.jsx` **tidak lagi menutup** editor soal sesudah satu soal tersimpan (editor
   di-`key` ulang + hitungan "Sudah ditambahkan N soal"). Tiga runner smoke kini **memakai layanan yang
-  sudah hidup** dan hanya mematikan proses miliknya sendiri (bug `000000` + `pkill -f "artisan serve"`
-  diperbaiki), dan `./nyalakan-local.sh` menyatukan penyalaan local tanpa menghapus sesi. Bukti: `verify.sh`
-  SEMUA HIJAU, dan `tamu` 9/9 · `slice06` 28/28 · `slice07` 20/20 · `kuis-manual` 13/13 · `perjalanan`
-  52/52 · `materi` 27/27 — semua exit 0 dengan keempat layanan tetap hidup sesudahnya. Rinciannya di
-  `laporan-pengujian.md` A.43.
+  sudah hidup** dan hanya mematikan proses miliknya sendiri (tiga bug runner diperbaiki: `000000` dari
+  `curl || echo 000`, `pkill -f "artisan serve"`, dan **Chrome run sebelumnya yang masih memegang :9333**
+  sehingga Chrome baru hidup tanpa port debug → harness cuma bilang `fetch failed`), dan
+  `./nyalakan-local.sh` menyatukan penyalaan local tanpa menghapus sesi. Bukti: `verify.sh` SEMUA HIJAU dan
+  **sapu penuh 301 pemeriksaan lulus** (15 harness, semua exit 0, keempat layanan tetap hidup). Rinciannya
+  di `laporan-pengujian.md` A.42.5 & A.43.
 
 - **A.30 — 22 tipe soal (objektif 1) tuntas**: kontrak `PenanganTipeSoal::bobot()` untuk penilaian
   parsial (8 tipe lama tetap biner lewat trait `BobotBiner`), 14 tipe baru (`pilihan_ganda_kompleks`,

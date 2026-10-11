@@ -34,6 +34,7 @@ kode_http() {
 hidup_backend() { [ "$(kode_http "$HTTP_BACKEND")" != "000" ]; }
 hidup_vite() { [ "$(kode_http "$HTTP_VITE")" = "200" ]; }
 hidup_chrome() { curl -s -o /dev/null --max-time 2 "$CDP/json/version" 2>/dev/null; }
+ada_listener_9333() { lsof -nP -iTCP:9333 -sTCP:LISTEN -t >/dev/null 2>&1; }
 
 PIDS=()
 CHROME_PID=""
@@ -78,9 +79,10 @@ if [ "$siap" != "1" ]; then
 fi
 echo "layanan siap: vite=$v backend=$b"
 
-if hidup_chrome; then
-  echo "chrome   :9333  sudah hidup — dipakai apa adanya"
-else
+# Chrome satu run biasanya belum benar-benar keluar saat run berikutnya mulai
+# (proses anaknya masih memegang :9333 beberapa detik). Chrome baru lalu hidup
+# TANPA memegang port debug, dan harness-nya hanya mencetak "fetch failed".
+nyalakan_chrome() {
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
     --headless --disable-gpu --no-first-run --no-proxy-server \
     --remote-debugging-port=9333 --user-data-dir=/tmp/chrome-smoke-materi \
@@ -88,10 +90,37 @@ else
     about:blank >/tmp/chrome-materi.log 2>&1 &
   CHROME_PID=$!
 
-  for _ in $(seq 1 20); do
-    hidup_chrome && break
+  for _ in $(seq 1 25); do
+    hidup_chrome && return 0
     sleep 1
   done
+  return 1
+}
+
+bersihkan_9333_bisu() {
+  # Listener ada tapi CDP tidak menjawab = sisa Chrome yang separuh mati.
+  for _ in $(seq 1 10); do
+    ada_listener_9333 || return 0
+    hidup_chrome && return 1
+    sleep 1
+  done
+  pkill -f "remote-debugging-port=9333" 2>/dev/null
+  sleep 1
+  return 0
+}
+
+if hidup_chrome; then
+  echo "chrome   :9333  sudah hidup — dipakai apa adanya"
+else
+  if ! bersihkan_9333_bisu; then
+    echo "chrome   :9333  sudah hidup — dipakai apa adanya"
+  elif nyalakan_chrome || { echo "   (Chrome pertama tidak memegang :9333 — mencoba sekali lagi)"; nyalakan_chrome; }; then
+    echo "chrome   :9333  siap"
+  else
+    echo "chrome   :9333  GAGAL dipakai (CDP tidak menjawab) — log terakhir:"
+    tail -5 /tmp/chrome-materi.log 2>/dev/null
+    exit 1
+  fi
 fi
 
 node "$ROOT/docs/smoke-ui-materi.mjs"

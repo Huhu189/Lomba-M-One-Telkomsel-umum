@@ -66,6 +66,16 @@ Cara kerjanya: `docs/jalankan-smoke-ui.sh <nama>` memakai layanan yang **sudah h
 proses yang benar-benar ia nyalakan. Jadi urutannya bebas: boleh dijalankan di atas local
 yang sedang dipakai, atau dari keadaan kosong.
 
+Sapu penuh (semua harness berurutan; 301 pemeriksaan, ±20 menit):
+
+```bash
+for s in tamu slice03 slice04 slice05 slice06 slice07 susun kuis-manual nav luring pengaturan sidebar durasi-klip; do
+  bash docs/jalankan-smoke-ui.sh "$s" || echo "GAGAL: $s"
+done
+docs/jalankan-smoke-perjalanan.sh
+docs/jalankan-smoke-materi.sh
+```
+
 ## Demo per slice (rencana)
 
 - **Slice 00**: ketiga layanan hidup; halaman demo tema (palet guru/murid, mode terang), toast, ikon SVG; hasil verify hijau.
