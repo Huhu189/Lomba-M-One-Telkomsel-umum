@@ -17,6 +17,7 @@ use App\Sections\School\Models\Sekolah;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -338,4 +339,50 @@ it('kuis draf dan kuis kelas lain tidak bisa dibuka murid', function (): void {
 
     $this->getJson("/api/v1/kuis/{$kuisDraf->id}")->assertStatus(403);
     $this->getJson("/api/v1/kuis/{$kuisKelasLain->id}")->assertStatus(403);
+});
+
+it('filter bank soal mencocokkan mapel dan tipe secara persis, bukan sebagian', function (): void {
+    Sanctum::actingAs($this->guru);
+
+    // Mapel kembar dan tipe kembar sengaja dipakai: filter teks biasa milik
+    // spatie memakai `LIKE %nilai%`, jadi `filter[subject_id]=1` ikut menarik
+    // mapel 12 dan `filter[tipe]=benar_salah` ikut menarik
+    // `benar_salah_majemuk`. Bank soal lalu menampilkan soal mapel/tipe lain.
+    $idUtama = (int) $this->mapel->getKey();
+    $idKembar = (int) ($idUtama.'2');
+
+    if (! DB::table('subjects')->where('id', $idKembar)->exists()) {
+        DB::table('subjects')->insert([
+            'id' => $idKembar,
+            'school_id' => $this->sekolah->id,
+            'nama' => 'Mapel Kembar',
+            'kode' => 'KM'.$idKembar,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    $mapelKembar = Mapel::query()->findOrFail($idKembar);
+
+    Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create(['tipe' => 'benar_salah']);
+    Soal::factory()->untukSekolah($this->sekolah, $mapelKembar)->milik($this->guru)
+        ->create(['tipe' => 'benar_salah_majemuk']);
+
+    $this->getJson("/api/v1/soal?filter[subject_id]={$idUtama}")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.tipe', 'benar_salah');
+
+    $this->getJson('/api/v1/soal?filter[tipe]=benar_salah')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.tipe', 'benar_salah');
+
+    // Mapel lain tetap bisa disaring sendiri, dan nilai yang tidak ada kosong.
+    $this->getJson("/api/v1/soal?filter[subject_id]={$idKembar}")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.tipe', 'benar_salah_majemuk');
+
+    $this->getJson('/api/v1/soal?filter[subject_id]=999999')->assertOk()->assertJsonCount(0, 'data');
 });

@@ -13,6 +13,7 @@ use App\Sections\School\Services\SekolahService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class SoalController extends Controller
@@ -31,7 +32,17 @@ class SoalController extends Controller
                 $pengguna !== null && ! $pengguna->hasRole('admin'),
                 fn ($query) => $query->where('dibuat_oleh', $pengguna->getKey()),
             )
-            ->allowedFilters('subject_id', 'tag_id', 'tipe', 'aktif')
+            // Keempatnya kolom id/enum, jadi WAJIB persis. Filter teks biasa
+            // milik spatie cocok sebagian (`LIKE %nilai%`): `filter[subject_id]=1`
+            // ikut menarik mapel 12/21, dan `filter[tipe]=benar_salah` ikut
+            // menarik `benar_salah_majemuk` — bank soal jadi menampilkan soal
+            // mapel/tipe lain.
+            ->allowedFilters(
+                AllowedFilter::exact('subject_id'),
+                AllowedFilter::exact('tag_id'),
+                AllowedFilter::exact('tipe'),
+                AllowedFilter::exact('aktif'),
+            )
             ->allowedSorts('created_at', 'skor')
             ->defaultSort('-created_at')
             ->with(['mapel', 'tag'])

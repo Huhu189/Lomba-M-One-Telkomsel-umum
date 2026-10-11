@@ -58,7 +58,7 @@ beforeEach(function (): void {
         // Ping dulu: tanpa Redis yang hidup, berkas ini tidak bisa menguji apa pun.
         Cache::store('redis')->connection()->ping();
     } catch (Throwable $galat) {
-        $this->markTestSkipped('Redis tidak tersedia untuk uji presence: '.$galat->getMessage());
+        lewatiTanpaRedis('uji presence', $galat);
     }
 });
 

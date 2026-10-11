@@ -3510,3 +3510,109 @@ Diubah — UI:
 
 Diubah — dokumentasi:
 - `docs/laporan-pengujian.md` (A.40 ini), `docs/penjelasan-fitur.md`, `docs/catatan-demo.md`, `docs/handoff-sesi.md`
+
+## A.41 Audit Pemakaian Dependency: Filter Bank Soal yang Terlalu Longgar, dan Jalur Redis yang Tidak Boleh "Hijau" Tanpa Diuji (11 Oktober 2026)
+
+Putaran ini bukan menambah fitur, melainkan memeriksa apakah **setiap dependency yang sudah terdeklarasi benar-benar
+dipakai dengan cara yang tepat**. Pertanyaan pemilik proyek: "tools lain selain DOMPurify, sudah dipakai benar?"
+
+### A.41.1 Yang dikerjakan
+
+- Menyisir setiap dependency (frontend `package.json`, backend `composer.json`, `realtime/package.json`) dan
+  mencocokkannya dengan pemakaian nyata di kode: mana yang dipakai, mana yang belum, dan mana yang dipakai keliru.
+- Memperbaiki temuan pemakaian keliru di bank soal.
+- Menutup dua celah Redis yang ditemukan pada audit ini: jalur Redis bisa di-skip tanpa membuat gate merah,
+  dan kontrak kunci/kanal lintas service tidak punya tes sama sekali.
+
+### A.41.2 Temuan nyata (2, dua-duanya sudah diperbaiki)
+
+**T-01 — Filter bank soal cocok sebagian, bukan persis (bug perilaku).**
+`SoalController::allowedFilters('subject_id', 'tag_id', 'tipe', 'aktif')` memakai filter teks bawaan
+spatie/laravel-query-builder, yang berarti `LIKE %nilai%` — padahal keempatnya kolom id/enum. Diukur di tes
+sementara (lalu dihapus): `filter[subject_id]=1` mengembalikan **2 baris** (mapel 1 **dan mapel 12**), dan
+`filter[tipe]=benar_salah` mengembalikan **2 baris** (ikut `benar_salah_majemuk`). Jadi daftar bank soal guru
+bisa memuat soal mapel/tipe lain. `KelasController` dan `MuridController` sudah memakai
+`AllowedFilter::exact(...)`, jadi ini inkonsistensi, bukan desain. Perbaikan: keempat filter menjadi
+`AllowedFilter::exact(...)` + tes regresi. Bukti tesnya punya gigi: dengan controller lama tes itu **gagal**
+(2 baris, bukan 1).
+
+**T-02 — Jalur Redis bisa "hijau" tanpa pernah diuji (celah verifikasi).**
+`PresenceRedisTest` (6 tes) melewati dirinya sendiri bila Redis mati, dan exit code-nya tetap 0 — termasuk di
+dalam `verify.sh`. Dibuktikan: `REDIS_PORT=6399 php artisan test --filter=PresenceRedisTest` →
+`6 skipped`, `EXIT=0`. Selain itu, kontrak kunci/kanal antara Laravel dan service Node (prefix kosong, nama
+kanal, algoritma hash tiket) **tidak diuji sama sekali** — hanya dibuktikan manual lewat smoke UI. Efek
+kegagalannya halus: SSE berhenti sampai, panel guru turun ke polling, tak ada gate yang memerah.
+
+### A.41.3 Verifikasi (dijalankan, bukan klaim)
+
+`./verify.sh` (exit 0):
+
+```
+=== Backend Pest ===        >>> OK    Tests: 313 passed (2931 assertions)
+=== Backend Redis wajib ===>>> OK    Tests: 9 passed (65 assertions)
+=== Backend Pint ===        >>> OK
+=== Frontend checkJs ===    >>> OK
+=== Frontend ESLint ===     >>> OK
+=== Frontend Vitest ===     >>> OK    64 berkas / 627 test
+=== Realtime node --test ===>>> OK    tests 15, pass 15, fail 0
+verify.sh: SEMUA HIJAU
+```
+
+Bukti bahwa penjaganya bekerja, bukan sekadar ada:
+
+- **Tes kontrak SSE peka terhadap drift.** Prefix koneksi `realtime` dirusak sengaja → berkas itu **3 failed**;
+nama kanal di service Node diubah sengaja → **1 failed**. Kedua perubahan dikembalikan (`git status` bersih
+untuk kedua berkas itu).
+- **Skip Redis menjadi gagal keras.** `REDIS_WAJIB=1 REDIS_PORT=6399 php artisan test ...` →
+**9 failed, EXIT=2**; tanpa `REDIS_WAJIB` → `9 skipped, EXIT=0` (perilaku lama dipertahankan untuk pemakaian
+sehari-hari).
+- **Filter bank soal kini persis.** Tes regresi baru lulus dengan perbaikan dan gagal tanpa perbaikan.
+
+### A.41.4 Keputusan teknis (satu kalimat per keputusan)
+
+- Pakai `AllowedFilter::exact` untuk kolom id/enum, bukan menghapus filternya, karena frontend memang mengirim
+  id dan nama tipe yang persis (dropdown), jadi tidak ada kebutuhan pencarian sebagian di kolom itu.
+- Kontrak lintas service diuji dengan **membaca sumber `realtime/src/server.js`** (pola kanal, pola `getdel`,
+  algoritma + penyandian hash), bukan menyalin untai yang sama di dua tempat — salinan hanya akan mengunci
+  kesalahan yang sama di kedua sisi.
+- Skip Redis diubah lewat variabel lingkungan `REDIS_WAJIB=1` (`tests/Pest.php`), bukan dengan memeriksa
+  keluaran PHPUnit: keluaran Pest berwarna (ANSI) dan formatnya bisa berubah, sedangkan `markTestSkipped` yang
+  berubah menjadi lemparan pasti terbaca sebagai kegagalan.
+- Langkah "Backend Redis wajib" ditaruh terpisah di `verify.sh` supaya jalur Redis punya gerbangnya sendiri
+  yang bisa dibaca jelas di keluaran gate.
+- `PenyiarRealtime::PREFIKS_TIKET` dijadikan konstanta agar awalan kunci tiket bisa diuji, bukan tersembunyi di
+  dalam string panjang.
+
+### A.41.5 Batasan jujur (yang belum selesai)
+
+- **Belum diuji di peramban sungguhan** untuk alur SSE: kontraknya kini diuji di level Redis + sumber service
+  Node; smoke UI/CDP dengan service hidup tetap dijalankan manual, belum masuk `verify.sh`.
+- **Belum ada uji pengiriman pub/sub sungguhan** (publish → terima). Yang diuji: kunci tiket tanpa prefix ada di
+  Redis, dan koneksi `realtime` memang ber-`OPT_PREFIX` kosong — mekanisme yang membuat siaran sampai.
+- **DOMPurify, JSZip, dayjs, dan @tanstack/react-virtual masih terpasang tanpa pemakaian.** Keempatnya bagian
+  dari "Stack (Final)" `AGENT.md`, jadi sengaja tidak dihapus; yang benar-benar melindungi dari XSS adalah
+  allow-list `MediaSoal.jsx` + allow-list URL media backend, bukan DOMPurify.
+- **Laravel Octane dan Debugbar tetap belum dipasang** (ekstensi `swoole` tidak ada di mesin pengembangan).
+- Kebutuhan `REDIS_URL` untuk service Node baru **didokumentasikan** (`README.md`, `backend/.env.example`), belum
+  ada mekanisme yang menghentikan deploy yang lupa mengisinya.
+
+### A.41.6 Berkas yang dibuat/diubah
+
+Dibuat — tes:
+- `backend/tests/Feature/SseKontrakRedisTest.php` (3 tes: kunci tiket tanpa prefix, `OPT_PREFIX` koneksi, dan
+  paritas kanal/kunci/hash dengan sumber service Node)
+
+Diubah — kode produk backend:
+- `backend/app/Sections/Question/Http/Controllers/SoalController.php` (filter jadi `AllowedFilter::exact`)
+- `backend/app/Sections/Presence/Services/PenyiarRealtime.php` (`PREFIKS_TIKET` sebagai konstanta)
+
+Diubah — tes & gerbang:
+- `backend/tests/Pest.php` (helper `lewatiTanpaRedis`, `REDIS_WAJIB`)
+- `backend/tests/Feature/PresenceRedisTest.php` (memakai helper tersebut)
+- `backend/tests/Feature/BankSoalTest.php` (tes regresi filter persis)
+- `verify.sh` (langkah "Backend Redis wajib")
+
+Diubah — dokumentasi:
+- `README.md` (prasyarat Redis + arti langkah gate yang merah)
+- `backend/.env.example` (phpredis, `REDIS_URL` untuk service Node, `REDIS_WAJIB`)
+- `docs/laporan-pengujian.md` (A.41 ini)

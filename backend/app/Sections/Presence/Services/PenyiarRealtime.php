@@ -27,6 +27,13 @@ class PenyiarRealtime
     public const KONEKSI = 'realtime';
 
     /**
+     * Awalan kunci tiket SSE. Service Node membacanya dengan `GETDEL
+     * sse:tiket:<sha256(tiket)>`, jadi bentuk kunci ini bagian dari kontrak
+     * lintas service dan diuji di `SseKontrakRedisTest`.
+     */
+    public const PREFIKS_TIKET = 'sse:tiket:';
+
+    /**
      * Kanal per kuis, **dipisah per peran** (K-03).
      *
      * Sebelumnya guru dan murid berbagi satu kanal `ulangan:kuis:{id}`. Tiket
@@ -77,7 +84,7 @@ class PenyiarRealtime
     {
         try {
             Redis::connection(self::KONEKSI)->setex(
-                'sse:tiket:'.$hash,
+                self::PREFIKS_TIKET.$hash,
                 $ttlDetik,
                 json_encode($tiket, JSON_THROW_ON_ERROR),
             );

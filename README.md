@@ -25,6 +25,14 @@
   <li><strong>Memiliki akses data ketat:</strong> Akses data berbasis role diimplementasikan dengan sangat ketat.</li>
 </ul>
 
+<h1>Menjalankan &amp; Prasyarat</h1>
+<ul>
+  <li><strong>Redis wajib</strong> — dipakai untuk cache aplikasi, kehadiran Live Monitor (hash per murid), dan pub/sub siaran SSE. Kliennya ekstensi PHP <code>redis</code> (phpredis), bukan Predis: pasang ekstensinya lalu jalankan <code>redis-server</code> (<code>brew install redis</code> di macOS).</li>
+  <li><strong>Service realtime (Node) hanya membaca <code>REDIS_URL</code></strong>, bukan <code>REDIS_HOST</code>/<code>REDIS_PORT</code>, dan memakai database 0. Saat deploy, isi <code>REDIS_URL</code> supaya Laravel dan service Node menunjuk Redis yang sama; kalau tidak, keduanya jatuh ke <code>127.0.0.1:6379</code>. Koneksi <code>realtime</code> Laravel sengaja tanpa prefix kunci karena Node tidak mengenal prefix internal Laravel.</li>
+  <li><strong>Gerbang mutu:</strong> <code>./verify.sh</code> (Pest, Pint, checkJs, ESLint, Vitest, node --test). Langkah <strong>Backend Redis wajib</strong> sengaja MERAH bila Redis mati — jalur Redis tidak boleh "hijau" tanpa pernah diuji.</li>
+  <li><strong>Kalau Redis mati</strong>, aplikasi tetap jalan: kehadiran memakai peta di memori dan panel guru turun ke polling berkala (fail-open) — ulangan tidak pernah gagal karena proteksi.</li>
+</ul>
+
 <h1>Kelebihan</h1>
 <strong><p style="font-size:20px">Kemudahan guru</p></strong>
 <ul>
