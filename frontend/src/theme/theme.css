@@ -712,10 +712,19 @@ a {
   flex-shrink: 0;
 }
 
+/*
+ * Ukuran 48 px dengan `flex-shrink: 0` + `min-*`: tanpa itu, di header ponsel
+ * (412 px: merek + menu pengguna + tombol tema + hamburger) tombol tema
+ * menyusut jadi 37×48 px — di bawah target sentuh 44 px. Terukur lewat
+ * `docs/smoke-ui-mobile.mjs` (emulasi perangkat Chrome), bukan tebakan.
+ */
 .tombol-ikon {
   width: 48px;
   height: 48px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;

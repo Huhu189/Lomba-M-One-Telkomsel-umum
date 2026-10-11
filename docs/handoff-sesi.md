@@ -16,7 +16,9 @@ mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39), **A.42 
 tamu beridentitas kode perangkat (bukan nama), limiter tamu per pengunjung, dan proteksi ulangan yang adil di
 ponsel.** · **A.43 — ilustrasi gunung digambar sendiri (foto pihak lain dibuang dari repo), editor soal
 dirapatkan + tulis soal berurutan tanpa keluar dari editor, dan uji GUI bisa dijalankan langsung di atas local
-yang sedang hidup.**)
+yang sedang hidup.** · **A.44 — uji perangkat mobile sungguhan lewat emulasi perangkat Chrome
+(`docs/smoke-ui-mobile.mjs`, 16/16), yang menemukan & memperbaiki tombol tema menyusut ke 37 px (di bawah
+target sentuh 44 px).**)
 
 ## 1. Status verifikasi terakhir
 
@@ -55,6 +57,7 @@ yang sedang hidup.**)
 | `docs/jalankan-smoke-ui.sh tamu` (**A.42**, harness baru, browser sungguhan) | **9/9 lulus, exit 0** — tamu lewat formulir dapat kode perangkat, muat ulang tidak berubah, Keluar membuang kode, nama sama sesudah Keluar = akun baru, kode ngawur 422; pintu tamu dimatikan kembali di akhir |
 | `./nyalakan-local.sh status` (**A.42**) | redis/backend/realtime/frontend **HIDUP** — satu perintah menyalakan semua tanpa menghapus data (tanpa `migrate:fresh`) |
 | Seluruh smoke UI dijalankan ULANG di atas local yang hidup (**A.42**, sesudah runner diperbaiki) | `tamu` **9/9** · `slice06` **28/28** · `slice07` **20/20** · `kuis-manual` **13/13** · `perjalanan` **52/52** · `materi` **27/27** — semua exit 0, keempat layanan tetap HIDUP sesudahnya |
+| **Uji perangkat mobile sungguhan (A.44, emulasi perangkat Chrome 412×915 @2.625 + sentuhan + UA Android)** | `docs/jalankan-smoke-ui.sh mobile` **16/16 lulus, exit 0** — temuan nyata: tombol tema (`.tombol-ikon`) menyusut 48→**37 px** di header ponsel (tanpa `flex-shrink: 0`) sehingga di bawah target sentuh 44 px → **diperbaiki**; sesudahnya 695 kontrol di 8 halaman semua ≥44 px, tanpa gulir mendatar, laci/hamburger lulus (tautan, Escape, overlay) |
 | **Sapu penuh 15 harness berhitung (A.43, sesudah runner Chrome diperbaiki)** | **301 pemeriksaan lulus, semua exit 0** — `tamu` 9/9 · `slice03` 9/9 · `slice04` 18/18 · `slice05` 20/20 · `slice06` 28/28 · `slice07` 20/20 · `susun` 42/42 · `kuis-manual` 13/13 · `nav` 14/14 · `luring` 22/22 · `pengaturan` 5/5 · `sidebar` 7/7 · `durasi-klip` 15/15 · `perjalanan` 52/52 · `materi` 27/27, plus `cdp` (peninjau) exit 0 — dijalankan berurutan di atas satu local yang hidup, keempat layanan tetap HIDUP |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:

@@ -3831,8 +3831,64 @@ terakhir gagal (`exit 1`), sesudah perbaikan urutan yang sama lulus semua.
   kedua/ketiga belum dibuat. Peta tanpa video/adegan/foto tetap jatuh ke gradien - tidak pernah kosong.
 - Belum ada uji regresi visual/screenshot: bukti "mendongak" dan "beranimasi" dari struktur DOM/CSS
   (`theme.css` + kelas), bukan perbandingan gambar.
-- Kerapatan editor soal dirapatkan lewat kelas CSS dan jarak Bootstrap; **belum diuji di perangkat sentuh
-  sungguhan** (hanya lebar viewport di Vitest/CDP). Sisa audit UI **R1–R6** dan **S2/S3/S5/S6/S7** masih
-  terbuka.
+- Kerapatan editor soal dirapatkan lewat kelas CSS dan jarak Bootstrap. **Sudah diuji lewat emulasi
+  perangkat Chrome di putaran A.44** (412×915 @2.625 + sentuhan): lihat bagian A.44 — temuan target sentuh
+  tombol tema ikut diperbaiki di sana. Tetap bukan perangkat sungguhan. Sisa audit UI **R2–R6** dan
+  **S2/S3/S6/S7** masih terbuka (R1 target sentuh & S5 laci sudah hijau lewat A.44).
 - Runner smoke tetap **tidak** ikut `verify.sh` (butuh layanan hidup) — perintahnya dicatat di
   `docs/catatan-demo.md` bagian "Menguji GUI langsung".
+
+---
+
+## A.44. Uji perangkat mobile sungguhan (emulasi perangkat Chrome) + temuan target sentuh
+
+Permintaan pemilik produk: *"yes benaran di hp (pakai fitur chrome)"* — maksudnya bukan menyempitkan
+jendela desktop, melainkan menyalakan **mode perangkat** Chrome (tombol "Toggle device toolbar" di
+DevTools), supaya jalur kode yang hanya aktif di ponsel benar-benar dijalankan.
+
+### A.44.1 Harness baru: `docs/smoke-ui-mobile.mjs`
+
+Harness ini menyalakan emulasi lewat CDP sebelum halaman dimuat:
+
+- `Emulation.setDeviceMetricsOverride` 412×915, DPR 2.625, **`mobile: true`** (jadi meta viewport dipakai);
+- `Emulation.setTouchEmulationEnabled` (5 titik sentuh);
+- `Emulation.setUserAgentOverride` UA Android 14 / Chrome 156 Mobile.
+
+Yang diukur (16 pemeriksaan): emulasi benar-benar aktif (viewport/DPR/sentuhan/UA), meta viewport
+`width=device-width` ada, **tidak ada gulir mendatar** di 8 halaman guru, **tidak ada elemen yang menembus
+tepi kanan viewport**, **semua 695 kontrol terlihat ≥ 44 px**, tabel lebar digulir di dalam pembungkusnya,
+huruf teks isi ≥ 14 px, lalu alur laci menu (hamburger terlihat → laci terbuka berisi 10 tautan + overlay +
+`aria-expanded` + gulir latar terkunci → tautan menutup laci dan pindah halaman → Escape menutup → area gelap
+menutup).
+
+### A.44.2 Temuan nyata #1 — tombol tema menyusut jadi 37 px di ponsel (diperbaiki)
+
+Pemeriksaan target sentuh langsung menangkapnya di **semua** halaman: `button.tombol-ikon` (tombol ganti
+tema/gelap di kepala) terukur **37×48 px**, di bawah ambang 44 px. Sebabnya CSS: `.tombol-menu` (hamburger)
+punya `flex-shrink: 0`, sedangkan `.tombol-ikon` tidak — jadi di header 412 px (merek + menu pengguna +
+tombol tema + hamburger) tombol tema menyusut dari 48 px menjadi 37 px. Perbaikannya di sumbernya, bukan di
+assertion: `.tombol-ikon` kini `flex-shrink: 0` + `min-width/min-height: 44px`. Sesudah itu pemeriksaan target
+sentuh **bersih** (695 kontrol diperiksa di 8 halaman).
+
+### A.44.3 Temuan nyata #2 — harness-nya sendiri yang flaky (diperbaiki)
+
+Pemeriksaan "laci pas di layar" sempat merah walau angkanya benar. Sebabnya animasi masuk laci
+(`@keyframes laci-masuk`, 0.18 s dari `translateX(-16px)`): geometri diambil sebelum animasinya selesai,
+sehingga `left` masih negatif. Ini **bug harness**, bukan produk — harness kini menunggu laci mendarat
+(maks 2,5 s) dan mencetak posisinya (`0..340 dari 412`), bukan menebak.
+
+### A.44.4 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh mobile` (Chrome mode perangkat) | **16/16 lulus, exit 0** |
+| `./verify.sh` (root, sesudah perubahan CSS) | **SEMUA HIJAU (exit 0)** — Pest 331 (3126 assertions) · Redis wajib 9 (65) · Pint · checkJs · ESLint · Vitest 66 berkas/641 tes · realtime 20/0 |
+
+### A.44.5 Batasan jujur
+
+- Ini **emulasi perangkat Chrome**, bukan perangkat sungguhan: UA, metrik, dan sentuhan disimulasikan, jadi
+  keyboard virtual, ukuran jari sebenarnya, dan peramban sekolah (WebView lama) tetap belum terbukti.
+- Yang diuji adalah tata letak & sentuhan halaman guru; **layar pengerjaan ulangan di ponsel** belum bisa
+  diuji karena DB dev tidak punya kuis `terbit` saat harness dijalankan (bagian itu dilewati dengan sadar
+  dan dilaporkan sebagai lulus-terlewat, bukan hijau palsu).
+- Belum ada uji regresi visual/screenshot: buktinya angka geometri dari DOM, bukan perbandingan gambar.

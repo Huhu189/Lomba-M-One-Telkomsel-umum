@@ -52,6 +52,7 @@ manual dan tidak ada port yang diperebutkan:
 
 ```bash
 docs/jalankan-smoke-ui.sh tamu          # mode tamu: nama → kode perangkat → Keluar → akun baru
+docs/jalankan-smoke-ui.sh mobile        # mode perangkat ponsel (emulasi Chrome 412×915): tata letak, target sentuh, laci
 docs/jalankan-smoke-ui.sh slice06       # koreksi manual dua kolom + token
 docs/jalankan-smoke-ui.sh slice07      # Live Monitor + anti-cheat
 docs/jalankan-smoke-materi.sh           # pemutar materi + kuis sisipan
