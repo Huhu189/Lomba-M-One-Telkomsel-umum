@@ -66,10 +66,20 @@ class MateriPolicy
         return $this->update($user, $materi);
     }
 
-    /** Laporan materi memuat data seluruh murid kelas: guru saja. */
+    /**
+     * Laporan materi memuat nama, progres, dan skor seluruh murid satu kelas,
+     * jadi batasnya disamakan dengan batas baca materinya (K-15/S-04): guru
+     * pemilik materi atau admin — bukan sembarang guru.
+     *
+     * Sebelumnya method ini hanya memeriksa `isGuru()`, sehingga guru lain
+     * (bahkan dari luar sekolahnya, karena materinya diambil dari id di URL)
+     * bisa membaca laporan kelas bukan miliknya lewat `GET /v1/materi/{id}/laporan`
+     * walau `view` materi itu sendiri sudah ditolak — ditemukan saat sapuan
+     * dasar 11 Okt 2026 (A.39).
+     */
     public function laporan(User $user, Materi $materi): bool
     {
-        return $user->isGuru();
+        return $this->update($user, $materi);
     }
 
     /** Murid menempuh materi (progres, bukan pengelolaan). */

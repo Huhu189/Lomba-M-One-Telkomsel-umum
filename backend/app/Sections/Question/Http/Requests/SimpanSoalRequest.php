@@ -64,16 +64,37 @@ class SimpanSoalRequest extends FormRequest
     }
 
     /**
-     * Bersihkan teks soal/opsi dari spasi berlebih di ujung.
+     * Rapikan kiriman klien sebelum divalidasi registry.
      */
     protected function prepareForValidation(): void
     {
         $konten = $this->input('konten');
 
-        if (is_array($konten) && isset($konten['teks']) && is_string($konten['teks'])) {
-            $konten['teks'] = trim($konten['teks']);
-            $this->merge(['konten' => $konten]);
+        if (! is_array($konten)) {
+            return;
         }
+
+        // `ConvertEmptyStringsToNull` (middleware bawaan Laravel) mengubah kotak
+        // teka silang mini yang kosong dari `''` menjadi `null`, sehingga registry
+        // menolaknya dengan "Kotak teka silang hanya boleh '' atau '#'" — guru
+        // jadi tidak bisa menyimpan soal teka silang sama sekali. Kotak kosong
+        // dikembalikan ke `''` supaya bentuk yang tersimpan tetap seperti yang
+        // didokumentasikan registry (`''` = diisi murid, `'#'` = kotak hitam).
+        if (isset($konten['grid']) && is_array($konten['grid'])) {
+            $konten['grid'] = array_map(
+                static fn (mixed $baris): mixed => is_array($baris)
+                    ? array_map(static fn (mixed $kotak): mixed => $kotak ?? '', $baris)
+                    : $baris,
+                $konten['grid'],
+            );
+        }
+
+        // Bersihkan teks soal dari spasi berlebih di ujung.
+        if (isset($konten['teks']) && is_string($konten['teks'])) {
+            $konten['teks'] = trim($konten['teks']);
+        }
+
+        $this->merge(['konten' => $konten]);
     }
 
     /**

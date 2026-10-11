@@ -11,7 +11,8 @@
  * Apakah satu nilai jawaban benar-benar berisi?
  *
  * Bentuk nilai yang mungkin: string (isian singkat/uraian), angka/boolean
- * (pilihan ganda, benar-salah), daftar (mengurutkan), atau peta (menjodohkan).
+ * (pilihan ganda, benar-salah), peta (mengurutkan `{idItem: posisi}`,
+ * menjodohkan, rumpang), atau daftar (urut gambar).
  *
  * @param {unknown} nilai
  * @returns {boolean}

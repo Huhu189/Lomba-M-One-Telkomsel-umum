@@ -580,3 +580,117 @@ it('kuis di dalam video: tidak mengunci dirinya, dan video menunggu kuis wajibny
 
     $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idTeks}/buka")->assertOk();
 });
+
+it('menyimpan penjelasan opsional setelah kuis dan menampilkannya ke murid', function (): void {
+    $soal = m08Soal($this, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
+    ], ['jawaban' => 'B'], 4, $this->tag->id);
+
+    $kuis = m08Kuis($this, [$soal]);
+    $materi = m08Materi($this);
+    $berkas = m08Unggah($this, $materi, 'penjelasan.png', "\x89PNG\r\n\x1a\n".str_repeat('a', 300));
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $respons = $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => '  Karena 3/4 lebih besar.  ', 'unggahan_kode' => $berkas['kode']]]],
+            ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Penutup.']],
+        ],
+    ])->assertOk();
+
+    // Teks dirapikan, media disimpan sebagai kode; blok non-kuis tetap null.
+    expect($respons->json('blok.0.penjelasan.teks'))->toBe('Karena 3/4 lebih besar.')
+        ->and($respons->json('blok.0.penjelasan.unggahan_kode'))->toBe($berkas['kode'])
+        ->and($respons->json('blok.1.penjelasan'))->toBeNull();
+
+    // Media penjelasan yang belum selesai diunggah ditolak, bukan dibiarkan kosong.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => 'Ada.', 'unggahan_kode' => 'tidak-ada']]],
+        ],
+    ])->assertStatus(422)->assertJsonValidationErrors(['blok']);
+
+    // Teks kosong + tanpa media = memang tidak ada penjelasan.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => '   ', 'unggahan_kode' => null]]],
+        ],
+    ])->assertOk()->assertJsonPath('blok.0.penjelasan', null);
+
+    // Simpan ulang dengan penjelasan lengkap untuk pemeriksaan sisi murid.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => 'Baca ulang bab 3.', 'unggahan_kode' => $berkas['kode']]]],
+        ],
+    ])->assertOk();
+
+    // Murid hanya melihat materi yang sudah diterbitkan kelasnya.
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $ringkasan = $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+
+    // Murid menerima teks + media bertanda tangan (bukan kunci jawaban).
+    expect($ringkasan->json('blok.0.penjelasan.teks'))->toBe('Baca ulang bab 3.')
+        ->and($ringkasan->json('blok.0.penjelasan.media.kode'))->toBe($berkas['kode'])
+        ->and((string) $ringkasan->json('blok.0.penjelasan.media.url'))->toContain('signature')
+        ->and($ringkasan->json('blok.0.penjelasan.media.tampil_langsung'))->toBeTrue();
+});
+
+it('penyebaran materi: hanya materi TERBIT kelas murid yang sampai ke perangkatnya', function (): void {
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Baca dulu.']],
+    ]])->assertOk();
+
+    $kelasLain = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '4B', 'tingkat' => 4]);
+    $muridLain = Murid::factory()->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $kelasLain->id,
+    ]);
+
+    // 1) Belum terbit: kelas sendiri pun tidak melihat apa-apa.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertStatus(403);
+    $this->getJson('/api/v1/materi-saya')->assertOk()->assertJsonCount(0, 'materi');
+
+    // 2) Terbit: kelas yang dituju menerima, kelas lain tidak.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+    $this->getJson('/api/v1/materi-saya')
+        ->assertOk()
+        ->assertJsonPath('materi.0.id', $materi->id)
+        ->assertJsonPath('materi.0.jumlah_blok', 1);
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($muridLain->user);
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertStatus(403);
+    $this->getJson('/api/v1/materi-saya')->assertOk()->assertJsonCount(0, 'materi');
+
+    // 3) Guru lain juga tidak membaca progres/isi materi bukan miliknya.
+    auth()->forgetGuards();
+    Sanctum::actingAs(User::factory()->guru()->create());
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertStatus(403);
+    $this->getJson("/api/v1/materi/{$materi->id}")->assertStatus(403);
+    $this->getJson("/api/v1/materi/{$materi->id}/laporan")->assertStatus(403);
+});

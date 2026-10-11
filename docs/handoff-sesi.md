@@ -3,21 +3,38 @@
 Catatan ini untuk melanjutkan pekerjaan **setelah context di-compact**. Isinya sengaja
 padat: status terakhir, apa yang sudah/belum, dan cara mengulang verifikasi.
 
-Terakhir diperbarui: 2026-10-10 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
-A.31 — editor materi gaya video editor + kuis sisipan di dalam klip, dan A.32 — penunjuk langkah
-koreksi manual).
+Terakhir diperbarui: 2026-10-11 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
+A.31 — editor materi gaya video editor + kuis sisipan di dalam klip, A.32 — penunjuk langkah
+koreksi manual, A.33 — sistem luring: simpan jawaban saat internet putus + riwayat jawaban lokal
++ validasi jam monotonik, A.34 — materi berjalan: template tema + peta beranimasi + kenaikan
+pos/tingkat, A.35 — editor soal: pemilih jenis ringkas berikon di paling bawah, dan
+**A.36 — editor materi: gagang pangkas `|` di kedua sisi klip**, termasuk putaran lanjutan A.36.7 yang
+membuktikan tanda itu juga berlaku untuk klip **kuis** dan **media**, dan **A.39 — sapuan dasar:** 22 tipe soal
+lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 temuan nyata yang sudah diperbaiki).
 
 ## 1. Status verifikasi terakhir
 
 | Perintah | Hasil |
 | --- | --- |
-| `./verify.sh` (root) | HIJAU (exit 0) — Pest **256 passed (2304 assertions)** · Pint **335 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **56 berkas / 511 test** · realtime 15 test |
+| `./verify.sh` (root) — ulang di putaran A.36 | HIJAU (exit 0) — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **63 berkas / 610 test** · realtime 15 test |
+| `php artisan test` (ulang di A.39, sesudah perbaikan) | **294 passed (2774 assertions)**, 16,5 s |
+| `php artisan test --filter=AlurTipeSoalTest` (A.39) | **22 passed (242 assertions)** — satu tes per tipe soal, lewat HTTP |
+| `./verify.sh` (ulang di A.39) | **SEMUA HIJAU (exit 0)** — Pest 294 · Pint **341 berkas** · checkJs · ESLint · Vitest **63 berkas / 624 tes** · realtime 15 tes |
+| `docs/jalankan-smoke-ui.sh durasi-klip` (ulang di A.36) | **11/11 lulus, exit 0** — termasuk seret tetikus sungguhan pada tanda `|` kiri/kanan |
+| `node docs/smoke-ui-durasi-klip.mjs` (putaran lanjutan A.36.7) | **15/15 lulus, exit 0** — bagian 4 baru: klip **kuis** (materi #20) dan klip **media** (materi #1) juga punya tanda `|` yang bisa diseret |
+| `docs/jalankan-smoke-ui.sh susun` (ulang di A.35) | **42/42 lulus, exit 0** — mencakup pemeriksaan baru pemilih jenis (kartu ke-3, lipatan `DETAILS`, 22 petak radio berikon) |
+| `docs/jalankan-smoke-ui.sh kuis-manual` (ulang di A.35) | **10/10 lulus, exit 0** |
+| `php artisan test tests/Feature/Slice12TemaMateriTest.php` (A.34) | **9 passed (123 assertions)** — tema + nama pos, katalog, video latar milik materi, kenaikan pos & tingkat, langkah opsional, laporan |
+| `npx vitest run src/__tests__/sections/material src/__tests__/theme` (A.34) | **90 passed (7 berkas)** — termasuk 24 tes `perjalanan` + 9 tes komponen `PetaPerjalanan` |
+| `docs/jalankan-smoke-perjalanan.sh` (A.34) | **34/34 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu); harness mandiri (membuat materi + video uji 2 detik sendiri, menghapusnya di akhir) |
 | `php artisan test --filter=Slice08Test` | 12 passed (172 assertions) — termasuk 3 tes rasio/tampilan/kuis-sisipan |
 | `npx vitest run src/__tests__/sections/material` | 54 passed (4 berkas) |
 | Seluruh smoke UI satu tarikan (`nav`→`susun`→`03`→`04`→`05`→`06`→`07`) | **148 pemeriksaan lulus**: 14/14 · 40/40 · 9/9 · 18/18 · 20/20 · 27/27 · 20/20 (semua exit 0) — **terakhir dijalankan putaran A.29**, belum diulang sesudah A.30/A.31 |
 | `docs/jalankan-smoke-materi.sh` (pemutar materi + kuis sisipan, putaran A.31) | **22/22 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu) |
 | `docs/jalankan-smoke-ui.sh slice06` (ulang sesudah papan 8 dua kolom, putaran A.32) | **28/28 lulus, exit 0** — backend+vite+realtime+Chrome; termasuk pemeriksaan baru “baris antrean dibuka dari kolom kiri + `aria-current`” |
 | `node docs/smoke-http-fitur.mjs` | **242/242 lulus** (butuh backend + realtime hidup) — juga dari putaran A.29 |
+| `node docs/smoke-ui-luring.mjs` (baru, putaran A.33) | **22/22 lulus, exit 0** (dua kali dengan versi final) — backend :8000 + vite :5173 + Chrome :9333 (realtime tidak perlu) |
+| `node docs/smoke-ui-slice04.mjs` + `slice07.mjs` (regresi sesudah A.33) | **18/18 dan 20/20 lulus, exit 0** (slice 07 butuh realtime hidup) |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
 
@@ -63,18 +80,149 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   (membuat soal + kuis + materi uji, lalu menghapusnya di blok `finally`), memakai berkas video yang
   sudah ada di DB dev (`XZhNi…`, 5,4 MB) dan **tidak** mengunggah apa pun. Runner-nya menyalakan backend +
   vite + Chrome dalam satu proses shell (migrasi dijalankan lebih dulu) dan mematikannya lagi saat selesai.
+- **A.33 — sistem luring (10 Oktober 2026)**: empat modul baru di `frontend/src/sections/attempt/`
+  (`luring.js` = keadaan jaringan, `riwayatJawaban.js` = riwayat jawaban lokal + validasi payload,
+  `snapshot.js` = salinan attempt, `RiwayatJawaban.jsx` = panel riwayat) plus `hitungMundur.js`
+  (`jamKlien`/`sekarangTerkunci`/`hitungSisaAman`) dan `antreanJawaban.js` (`pulihkan`).
+  Saat luring jawaban ditulis ke perangkat dulu dan pengiriman DITAHAN sampai event `online`; jam memakai
+  jam monotonik sehingga jam Windows yang dimundurkan tidak menambah waktu; soal masih bisa dibuka dari
+  salinan perangkat. Riwayat + salinan **hilang setelah dikumpulkan** dan saat sesi berakhir (S-14).
+  Smoke baru `docs/smoke-ui-luring.mjs` (**22/22**) memutus koneksi dari **DevTools CDP** (mode luring) dan
+  memblokir `*/api/v1/kuis/*/mulai` (kasus "internet hidup, server mati" + tombol "Lanjutkan dari salinan"),
+  bukan dari aplikasi.
+  Temuan nyata: `pulihkan()` (A.33.2) — sebelum ini jawaban yang hanya ada di cadangan lokal tampil di
+  layar tetapi **tidak pernah dikirim ulang**, jadi hilang saat dikumpulkan.
+- **A.34 — materi berjalan / template tema (10 Oktober 2026)**: registry murni
+  `Material/Registry/TemaPerjalanan.php` (tema "Mendaki Gunung": 6 fase + 4 tingkat) + kolom JSON
+  `materials.tema` (menyimpan pilihan guru saja) + `TemaMateriService` (validasi kode tema & video latar) +
+  `GET /v1/materi/tema`. Tiap blok jadi satu **pos** (nama bisa diganti guru lewat `isi.fase`); muatan murid
+  dan laporan guru mengirim peta yang sama (`perjalanan`). Frontend: `sections/material/perjalanan.js`
+  (skema Zod + katalog cadangan + pembantu murni `tingkatKe`/`petaLokal`/`kenaikanUntuk`) dan
+  `PetaPerjalanan.jsx` — adegan digambar & **dianimasikan CSS/SVG** (awan `jelajah-awan`, pendaki
+  `jelajah-langkah`), dan bila guru menempelkan **video latar** maka video itu yang tampil. Editor materi
+  dapat panel Template + pratinjau peta; layar murid mengumumkan "Naik ke pos N" / "Naik tingkat" **hanya
+  setelah server mengirim peta terbaru**. Hanya langkah wajib yang menghitung kenaikan.
+  Smoke baru `docs/smoke-ui-perjalanan.mjs` + runner `docs/jalankan-smoke-perjalanan.sh` (**34/34**).
+  Dua temuan saat smoke: (a) harness `klik('Buka')` mengklik tombol "Buka" pertama — karena bagian selesai
+  tetap bisa dibuka ulang, itu mengenai bagian yang salah → diganti `klikBagian(n)`; (b) assertion animasi
+  awan bertentangan dengan rancangan (video latar memang menggantikan adegan SVG) → assertion dibaca sesuai
+  bentuk latar yang benar-benar dirender. Dua-duanya bug **harness**, bukan produk.
+- **A.35 — editor soal: pemilih jenis ringkas berikon (11 Oktober 2026)**: pemilih 22 jenis soal tidak lagi
+  berupa **pil teks di kartu pertama**, melainkan **petak berikon di kartu paling bawah** yang bisa
+  dibuka-tutup (`<details>`, terbuka bawaan; ringkasannya memperlihatkan ikon + nama tipe aktif). Urutan
+  kartu jadi **1. Tulis soalnya → 2. Pengaturan soal → 3. Pilih jenis soal**. Ada 21 ikon baru di
+  `icons.jsx` (satu per tipe, `baca_jam` memakai `IkonJam`), peta ikon hidup di registry
+  `sections/question/tipeSoal.js` (`IKON_TIPE`, `ikonTipe()`, medan `ikon` di `DAFTAR_TIPE`) supaya bisa
+  diuji murni, dan CSS `.pemilih-jenis`/`.petak-tipe` (2 kolom di HP, 4 kolom ≥768px, petak ≥84px). Alur
+  simpan ke bank soal **tidak berubah** (tetap satu soal per form — "bulk" di sini maksudnya semua jenis
+  tampil sekaligus). Tes baru `__tests__/sections/question/ikonTipe.test.jsx` (3 tes).
+  Temuan nyata dari `./verify.sh`: ESLint menolak `const Ikon = ikonTipe(...)` di dalam render
+  (`react-hooks/static-components`, 1 error) — `./verify.sh` sempat GAGAL; diperbaiki dengan pembantu
+  tingkat modul `ikonJenis()` yang mengembalikan elemen `createElement`, lalu hijau kembali.
+  Harness `smoke-ui-susun.mjs` (42/42) & `smoke-ui-kuis-manual.mjs` (10/10) disesuaikan ke judul/kelas baru;
+  `smoke-ui-susun.mjs` juga masih menuntut `pil == 8` dari era 8 tipe (belum pernah dijalankan sesudah A.30)
+  — sekarang 22 petak.
+- **A.36 — gagang pangkas `|` di kedua sisi klip (11 Oktober 2026)**: klip terpilih di timeline materi
+  punya satu tanda `|` di tiap sisi. Menyeret tanda kanan menggeser ujung (durasi ikut), tanda kiri
+  menggeser awal tanpa memindahkan ujung kanan; keduanya juga bisa dipakai dengan panah kiri/kanan
+  (`role="slider"`). Helper murni `pangkasKiri()`/`pangkasKanan()` di `sections/material/editorMateri.js`
+  (berbeda dari `setMulai()` yang MEMINDAHKAN klip). Gagang ditaruh di lane, di luar tombol klip, supaya
+  tidak ada kontrol bersarang dan tidak bertabrakan dengan seret-klip native. Panjang timeline dibekukan
+  selama seret (`pangkasTotalRef`). 6 tes baru di `__tests__/sections/material/editorMateri.test.js`;
+  harness `docs/smoke-ui-durasi-klip.mjs` diperluas jadi **11/11** (seret tetikus CDP + papan tombol).
+  **A.36.7 (putaran lanjutan)**: permintaan yang sama datang lagi, jadi yang dikerjakan adalah pemeriksaan —
+  ternyata gagangnya memang generik dan `durasi_detik` kuis tersimpan server, **tidak ada kode produk yang
+  diubah**; yang ditambahkan adalah **bagian 4** harness (materi dicari dari API per tipe blok, klip `kuis`
+  dan `media` diklik lalu dipangkas) sehingga hasil run menjadi **15/15**.
+  Temuan: dua seretan mula-mula gagal **karena harness** — timeline ada di y≈1852 px, di luar viewport
+  headless, sehingga tetikus CDP menekan ruang kosong; diperbaiki dengan viewport tinggi
+  (`Emulation.setDeviceMetricsOverride`) + pemeriksaan keterjangkauan, **bukan** dengan mengubah kode
+  produk.
+- **A.38 — pemilih kuis yang lebih baik + penjelasan opsional setelah kuis (11 Oktober 2026)**: di editor
+  materi, `<select>` telanjang diganti **`PemilihKuis`** (pencarian judul/mapel/kelas/status + baris
+  `N soal · mapel · kelas · status` + tanda "Belum ada soal"). Panel klip kuis kini punya **editor
+  penjelasan opsional**: `<textarea>` (≤ 5.000 karakter) + media dari pustaka unggahan materi + tombol
+  kosongkan. Penjelasan disimpan di blok kuis (`isi.penjelasan = {teks, unggahan_kode}`) lewat
+  `MateriService::validasiPenjelasan()` (media wajib unggahan sekolah yang sama & sudah selesai), dikirim
+  satu bentuk oleh `ProgresMateriService::penjelasanBlok()` (teks + media bertanda tangan) ke daftar progres
+  **dan** pembukaan blok, dan tampil di pemutar murid lewat `PenjelasanKuis` **hanya sesudah** latihan
+  dikumpulkan. Isinya bukan kunci jawaban. 6 tes baru (3 Vitest editor, 2 Vitest skema, 1 Pest).
+  Temuan: harness `docs/smoke-ui-materi.mjs` memakai `ol li` longgar sehingga sejak A.34 ikut menghitung pos
+  peta dan membaca halaman yang salah (6 gagal, produk tidak salah) → diperbaiki jadi
+  `ol.list-unstyled:not(.jelajah-daftar) > li`. Harness itu juga diperluas: guru menulis penjelasan, murid
+  mengerjakan kuisnya, dan kartu `Penjelasan` dipastikan muncul **hanya sesudah** kuis dikumpulkan
+  → **27/27 lulus**.
+- **A.37 — peta perjalanan pakai media sungguhan, template jadi opsional (11 Oktober 2026)**: peta
+  **tidak lagi menggambar adegan SVG buatan**. Latar panggung selalu media sungguhan: video latar guru
+  bila ada, kalau tidak foto tema (`frontend/public/tema/`, lisensi CC0) dengan gerak zoom halus; bila
+  tema tidak punya foto atau fotonya gagal dimuat, panggung memakai **gradien** tenang. Jadi tidak ada
+  lagi matahari/awan/gunung SVG maupun `data-lapisan`; tes & harness membaca "bergerak" sesuai bentuk
+  latar yang benar-benar dirender (foto → `jelajah-zoom`, video → `autoplay`). Di editor, panel Template
+  diberi keterangan bahwa tema bersifat **opsional** (pilih "Tanpa tema" untuk daftar bagian biasa).
 
 ## 3. Kondisi git (`git status`)
 
 - `HEAD` = **`a859f78`** — "Jadikan materi bergaya video editor dengan kuis sisipan di dalam klip"
   (17 berkas: 13 modifikasi + `PemutarMateri.jsx`, `pemutarMateri.js`, migrasi `rasio`, 2 tes baru).
+- **Belum dikomit di working tree** (urutan putaran: A.33 dan putaran-putaran sebelumnya): modifikasi
+  backend (kuis/materi) + frontend (kuis, soal, materi, pengaturan, tema) dari putaran sebelum A.33, plus
+  berkas baru A.33 (9 berkas: 4 modul + 4 tes di `frontend/src/sections/attempt/` & `__tests__`, dan
+  `docs/smoke-ui-luring.mjs`) serta perubahan dokumentasi (`penjelasan-fitur.md`, `laporan-pengujian.md`,
+  `handoff-sesi.md`, `docs/word/penjelasan-fitur.docx`, `docs/word/laporan-pengujian.docx`).
+- **A.34 (belum dikomit)**: `Material/Registry/TemaPerjalanan.php`, `Material/Services/TemaMateriService.php`,
+  migrasi `2026_10_10_000002_tambah_tema_materi.php`, `tests/Feature/Slice12TemaMateriTest.php`,
+  `sections/material/perjalanan.js`, `sections/material/PetaPerjalanan.jsx`, dua tes
+  `__tests__/sections/material/perjalanan.test.js` + `petaPerjalanan.test.jsx`, dan
+  `docs/smoke-ui-perjalanan.mjs` + `docs/jalankan-smoke-perjalanan.sh` (plus perubahan materi/editor/api/CSS).
+- **A.36 (belum dikomit)**: `sections/material/EditorMateri.jsx`, `sections/material/editorMateri.js`,
+  `theme/theme.css`, `__tests__/sections/material/editorMateri.test.js`, `docs/smoke-ui-durasi-klip.mjs`
+  (putaran lanjutan A.36.7 hanya mengubah harness itu: bagian 4 untuk klip `kuis`/`media` — tanpa perubahan kode produk).
+- **A.35 (belum dikomit)**: `sections/question/EditorSoal.jsx`, `sections/question/tipeSoal.js`,
+  `icons.jsx`, `theme/theme.css`, tes baru `__tests__/sections/question/ikonTipe.test.jsx`,
+  `docs/smoke-ui-susun.mjs`, `docs/smoke-ui-kuis-manual.mjs` (plus dokumentasi A.35).
+- **A.37 (belum dikomit)**: `sections/material/PetaPerjalanan.jsx` (buang adegan SVG),
+  `sections/material/EditorMateri.jsx` (keterangan template opsional), `theme/theme.css`,
+  `__tests__/sections/material/petaPerjalanan.test.jsx`,  `frontend/public/tema/LISENSI.md`, dan
+  `docs/smoke-ui-perjalanan.mjs` (latar tanpa SVG, masuk ulang sebagai guru, tutup WebSocket) — plus
+  dokumentasi A.37.
+- **A.39 (belum dikomit) — sapuan dasar & 3 perbaikan**: berkas uji baru
+  `backend/tests/Feature/AlurTipeSoalTest.php` (dataset 22 tipe soal lewat HTTP: buat → kuis → mulai →
+  payload tanpa kunci → jawab benar → kumpulkan → periksa status & skor), 2 tes baru di `AuthTest.php`
+  (token reset kedaluwarsa, `lupa-sandi` 429), dan 1 tes baru di `Slice08Test.php` (penyebaran materi).
+  Temuan yang diperbaiki: (1) `PenanganMengurutkan::nilai()` membaca peta `{idItem: posisi}` kiriman
+  renderer sebagai daftar id sehingga **jawaban benar selalu bernilai 0** → ditambah `urutanJawaban()`;
+  (2) `SimpanSoalRequest` mengembalikan `null` (efek `ConvertEmptyStringsToNull`) ke `''` pada
+  `konten.grid` supaya soal **teka silang mini bisa disimpan** lewat API; (3)
+  `MateriPolicy::laporan()` diperketat jadi pemilik/admin (sebelumnya **guru mana pun** bisa membaca
+  laporan kelas orang lain) — ini perubahan kebijakan yang masih perlu konfirmasi pemilik produk.
+- **A.38 (belum dikomit)**: `Material/Services/MateriService.php`, `ProgresMateriService.php`,
+  `Http/Resources/BlokResource.php`, `tests/Feature/Slice08Test.php`, `sections/material/EditorMateri.jsx`,
+  `editorMateri.js`, `PemutarMateri.jsx`, `api.js`, `theme/theme.css`, tes `editorMateri.test.js` +
+  `api.test.js`, `docs/smoke-ui-materi.mjs` (pemilih daftar bagian) — plus dokumentasi A.38.
 - Belum dikomit dan **sengaja ditinggalkan**: `docs/log-mentah/log-claude-eksternal.md` dan
   `docs/log-mentah/prompt-claude-eksternal.md` (catatan mentah eksternal, bukan bagian kode fitur).
-- Tidak ada berkas lain yang kotor. **Tidak** ada `git push` untuk commit ini.
+- **Tidak** ada `git push` untuk pekerjaan ini (tidak diminta).
 - Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
 
 ## 4. Batasan jujur (yang belum selesai)
 
+- **Katalog tema perjalanan (A.34) baru satu tema** ("Mendaki Gunung"). Bentuk katalog sudah siap menampung
+  banyak tema, tetapi tema lain belum dibuat; smoke hanya menguji tema bawaan. **A.37: tema hanya punya satu
+  foto** (`gunung.jpg`) dan adegan gambar buatan sudah dibuang — tema/adegan lain akan tampil sebagai
+  gradien sampai fotonya ditambahkan. Video latar hanya diuji dengan satu MP4 2 detik di jalur berpotongan,
+  dan bukti "bergerak" dari DOM/CDP (`animationName` foto / `autoplay` video) — belum ada uji regresi
+  visual/screenshot. Nama pos diganti per blok di editor (belum ada pengaturan massal), dan pos di  luar 6 fase template memakai nama generik "Pos n".
+- **Penjelasan setelah kuis (A.38) menempel pada KLIP kuis, bukan kuisnya.** Bila satu kuis disisipkan di dua
+  materi, tiap klip punya penjelasannya sendiri (belum ada tulis-sekali-pakai-ulang); penjelasan juga bukan
+  umpan balik per murid dan tak ada notifikasi ke murid. Media penjelasan hanya dari pustaka materi itu
+  (unggah lewat klip media dulu), dan belum ada uji screenshot untuk tata pemilih kuis/penjelasan. Smoke
+  membuktikan penjelasan **teks** di pemutar; jalur **media** penjelasan belum diuji lewat browser.
+- **Mode luring (A.33) belum PWA/service worker**: jawaban aman selama aplikasi terbuka dan murid boleh
+  berpindah halaman di dalamnya, tetapi **muat ulang halaman saat internet benar-benar mati** masih gagal
+  (berkas aplikasi dari server). Waktu saat luring juga perkiraan (jam monotonik hanya akurat untuk satu
+  kali buka layar; sesudah itu jam dinding) — karena itu ada banner "Jam perangkat berubah" dan deadline
+  tetap diputus server. Belum diuji: dua tab bersamaan saat luring, mode tim saat luring, unggah berkas
+  jawaban saat luring.
 - **Objektif 2B–2D (deteksi tamper/extension sisi klien) belum**: MutationObserver + pemindai berkala,
   pemeriksaan integritas fungsi proteksi, endpoint denyut ber-nonce, `SapuPresence` yang mengubah denyut
   berhenti menjadi `tamper_suspected`, dan pengirim sisi klien untuk dua kategori baru.
@@ -103,13 +251,14 @@ cd "folder tanpa judul 2/lomba_m"
 ./verify.sh                                  # gerbang wajib: semua cek tanpa layanan
 npm --prefix frontend run build              # build produksi
 # hidupkan 4 layanan (lihat bagian 1), lalu:
-for s in nav susun slice03 slice04 slice05 slice06 slice07; do node docs/smoke-ui-$s.mjs; done
+for s in nav susun slice03 slice04 slice05 slice06 slice07 luring; do node docs/smoke-ui-$s.mjs; done
 docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
+docs/jalankan-smoke-perjalanan.sh             # peta perjalanan bertema + kenaikan pos/tingkat (sendiri)
 docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
 node docs/smoke-http-fitur.mjs               # butuh backend + realtime
 ./docs/export-word.sh                        # segarkan 6 .docx + log mentah
 python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx   # konversi Word saja (tanpa log mentah)
 ```
 
-Langkah berikutnya yang masuk akal: **smoke UI pemutar materi** (menutup celah bukti A.31), lalu tata ulang
-**papan 8** (halaman Koreksi), lalu **deteksi tamper sisi klien (2B–2D)**.
+Langkah berikutnya yang masuk akal: **menambah tema perjalanan kedua/ketiga** (mis. "Menjelajah Laut",
+"Ruang Angkasa") memakai katalog yang sudah ada, lalu **deteksi tamper sisi klien (2B–2D)**.

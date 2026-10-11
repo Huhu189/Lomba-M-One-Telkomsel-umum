@@ -54,8 +54,12 @@ dinilai otomatis (objektif) atau menunggu koreksi guru (isian singkat, uraian, t
 lalu guru mengoreksi manual lewat token konfirmasi sekali pakai yang tercatat di audit.
 Pengoreksian bahasa oleh AI menyusul di slice 09.
 
-Catatan tampilan: editor soal menaruh daftar periksa **Kelengkapan** di sisi kanan bersama pratinjau
-(cermin aturan server, jadi tombol simpan baru hidup saat soal benar-benar lengkap), dan kuis disusun
+Catatan tampilan: editor soal memakai tiga kartu bernomor — **1. Tulis soalnya → 2. Pengaturan soal →
+3. Pilih jenis soal** — dengan daftar periksa **Kelengkapan** di sisi kanan bersama pratinjau (cermin
+aturan server, jadi tombol simpan baru hidup saat soal benar-benar lengkap). Pemilih jenis berada di
+**paling bawah** dan bisa dilipat: semua 22 jenis tampil sekaligus sebagai **petak berikon** (ikonnya
+menggambarkan bentuk soalnya), ringkasannya tetap memperlihatkan jenis yang sedang aktif walau lipatan
+ditutup, dan menekan satu petak langsung menggantinya tanpa daftar turun. Kuis disusun
 lewat tiga langkah — info & jadwal, susun soal, lalu tinjau dan publikasikan — supaya guru tidak
 menerbitkan kuis setengah jadi. Di layar murid, tiap jenis soal menampilkan **bahan yang memang dibutuhkan**
 untuk menjawabnya (pilihan ganda: opsinya; menjodohkan/hubung kata: dua kolomnya; mengurutkan: itemnya;
@@ -137,19 +141,40 @@ Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar 
 
 Sejak 10 Oktober 2026 editor materi bergaya **video editor**: guru memilih rasio bingkai materi (16:9, 9:16, 1:1, atau 4:3), menempatkan tiap klip di track dan detik tertentu, dan mengatur tampilan tiap klip — media: **utuh** di dalam bingkai atau **penuhi bingkai** berikut titik fokus dan zoom; kuis: video **berhenti** sampai kuis dijawab atau tetap berjalan, dengan panel di bawah atau di samping. Urutan bagian yang dilihat murid mengikuti **timeline** (detik mulai, lalu urutan simpan), bukan urutan klip dibuat. Kuis yang titik mulainya jatuh di dalam sebuah video kini muncul dari **pemutar video itu sendiri**, dan server menolak menutup video selama kuis wajib di dalamnya belum selesai — menarik slider ke ujung tidak mem-bypass urutan wajib. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
 
+Sejak 11 Oktober 2026 (putaran A.38) guru juga bisa menulis **penjelasan setelah kuis**. Saat menyisipkan kuis ke timeline, guru memilih kuisnya lewat pemilih berisi pencarian + jumlah soal, mapel, kelas, dan status (kuis tanpa soal langsung ditandai), lalu boleh mengisi **penjelasan** — teks bebas, media dari pustaka materi, atau keduanya. Penjelasan itu tampil untuk **seluruh kelas** tepat setelah murid menyelesaikan kuis tersebut di dalam materi, sebelum videonya dilanjutkan; tidak masuk penilaian dan bukan kunci jawaban. Isinya opsional: kuis tanpa penjelasan berjalan seperti sebelumnya, dan media memakai mekanisme unggahan materi yang sama (berkas privat, tautan bertanda tangan).
+
+Sejak 11 Oktober 2026 (putaran A.36) panjang tiap klip di timeline **tidak perlu diketik angka**: memilih satu klip memunculkan tanda `|` di kedua sisinya, seperti editor video pada umumnya. Menyeret tanda kanan menggeser akhir klip (durasi ikut berubah), sedangkan tanda kiri menggeser awalnya tanpa memindahkan ujung kanan. Tanda itu juga bisa dipangkas dari papan tombol (panah kiri/kanan, 0,1 detik sekali) dan kotak angka di inspector tetap ada sebagai jalur presisi. Berlaku untuk **semua** tipe klip — teks, media, maupun kuis sisipan.
+
+Sejak 10 Oktober 2026 (putaran A.34) tiap materi juga bisa dibuat **berjalan**: guru memilih **template tema**
+— misalnya **"Mendaki Gunung"** — lalu tiap bagian materi menjadi satu **pos perjalanan** (Basecamp → Jalur
+Pinus → Sungai Deras → Lereng Berbatu → Kabut Puncak → Puncak). Guru boleh mengganti nama tema dan nama
+tiap posnya, dan boleh menempelkan **video latar** untuk temanya. Latar panggung peta selalu **media
+sungguhan**: video guru bila ada, kalau tidak **foto tema** berlisensi bebas (lihat
+`frontend/public/tema/LISENSI.md`) dengan gerak zoom halus. Bila tema tidak punya foto, panggung memakai
+latar gradien tenang — **tidak ada adegan gambar buatan**. Template tema bersifat **opsional**: guru boleh
+memilih "Tanpa tema" agar materi berjalan sebagai daftar bagian biasa tanpa peta, pos, dan tingkat. Setiap kali murid menutup satu bagian — termasuk setelah
+kuis sisipan di dalam video — ia **naik satu pos**, dan bila persentase langkah wajibnya melewati ambang
+tertentu ia **naik tingkat** (Pendaki Pemula → Pendaki Terlatih → Penjelajah Lereng → Penakluk Puncak) dengan
+pengumuman yang muncul hanya setelah server mengirim keadaan terbaru. Peta selalu disertai daftar pos dalam
+teks, jadi pembaca layar dan layar sempit mendapat informasi yang sama persis.
+
 ### Mengapa aman
-Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewat tautan bertanda tangan yang kedaluwarsa, bukan folder terbuka. Layar guru hanya mengirim instruksi konten — murid tidak bisa mengirim layar palsu ke guru.
+Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewat tautan bertanda tangan yang kedaluwarsa, bukan folder terbuka. Layar guru hanya mengirim instruksi konten — murid tidak bisa mengirim layar palsu ke guru. Tema dan pos hanyalah **tampilan**: boleh-tidaknya membuka langkah tetap diputus server, dan hanya langkah wajib yang menghitung kenaikan.
 
 ### Manfaat untuk anak SD dan guru
 Materi jadi hidup: anak membaca sebentar, mencoba kuis kecil, lalu lanjut — cocok untuk rentang perhatian anak SD, dan anak yang salah di tengah materi langsung berlatih sebelum lanjut. Guru tidak perlu berteriak "lihat soal nomor 4": semua perangkat murid bisa diminta menampilkan hal yang sama sekaligus (bagian 15), hemat waktu kelas.
 
-Status: **sudah bisa dipakai** (slice 08 + 10, editor video-editor 10 Oktober 2026). Materi berblok dengan kuis sisipan latihan,
+Status: **sudah bisa dipakai** (slice 08 + 10, editor video-editor 10 Oktober 2026; peta perjalanan bertema
+10 Oktober 2026). Materi berblok dengan kuis sisipan latihan,
 penerbitan materi, berkas aman (kategori ditentukan dari isi berkas, disajikan lewat tautan
 bertanda tangan), laporan tema per murid, editor bergaya video editor (rasio bingkai, timeline,
-tampilan per klip, kuis tersemat pada detik video) beserta pemutar muridnya, dan **layar guru ke
-perangkat murid (bagian 15)** sudah jalan serta diuji. Yang **belum** dikerjakan dan kami sebutkan apa
-adanya: mengikuti halaman/blok materi yang sedang dibuka guru secara otomatis — yang ada adalah guru
-memilih apa yang tampil di perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
+tampilan per klip, kuis tersemat pada detik video, serta **gagang pangkas `|` di kedua sisi klip** untuk
+mengatur durasi tanpa mengetik) beserta pemutar muridnya, **peta perjalanan bertema**
+(template tema opsional, nama pos yang bisa diganti guru, latar video/foto tema, kenaikan pos & tingkat),
+dan **layar guru ke perangkat murid (bagian 15)** sudah jalan serta diuji. Yang **belum** dikerjakan dan kami
+sebutkan apa adanya: katalog tema baru berisi **satu** tema ("Mendaki Gunung" — bentuk katalognya sudah siap
+menampung tema lain), dan mengikuti halaman/blok materi yang sedang dibuka guru secara otomatis — yang ada
+adalah guru memilih apa yang tampil di perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
 
 ---
 
@@ -430,12 +455,64 @@ Status: **perbaikan 8 Oktober 2026** — bawaannya menyala, tanpa pengaturan tam
 
 ---
 
+## 17. Mode luring: ulangan tetap jalan saat internet putus
+
+### Apa ini
+Internet di sekolah bisa putus di tengah ulangan — wifi masih menyala tetapi gerbangnya mati, atau
+kabel lab tercabut. Mode luring membuat murid **tidak kehilangan pekerjaan**: jawaban tetap ditulis ke
+perangkat, murid bisa melihat sendiri bukti penyimpanannya, dan semuanya dikirim ke server begitu koneksi
+kembali.
+
+### Cara kerjanya
+Empat hal bekerja bersama:
+
+1. **Deteksi jujur, bukan hanya `navigator.onLine`.** Status luring dihitung dari dua sumber: kabar
+   peramban (event online/offline) dan kegagalan pengiriman terakhir. Selama 10 detik setelah satu kiriman
+gagal, layar dianggap luring — jadi wifi yang "tersambung tapi tidak sampai ke server" tetap terbaca.
+2. **Simpan dulu, kirim kemudian.** Setiap ketikan divalidasi (bentuknya harus bisa dibaca kembali dari
+   penyimpanan dan tidak melebihi kuota), lalu ditulis ke cadangan jawaban di perangkat dan ke riwayat
+   jawaban lokal. Saat luring, pengiriman **ditahan** — bukan ditembakkan berulang tiap 800 ms ke server
+   yang tidak ada. Begitu koneksi kembali (event online), antrean diborong sekaligus.
+3. **Riwayat jawaban yang bisa dibaca murid.** Panel "Riwayat jawaban" di layar pengerjaan mencantumkan
+   soal nomor berapa, isinya secara ringkas, jam penyimpanan menurut jam server, dan statusnya
+   ("di perangkat ini" atau "tersimpan di server") plus penanda "n menunggu terkirim". Saklar
+   "Simpan riwayat jawaban di perangkat ini" ada di panel yang sama dan menyala secara bawaan.
+4. **Waktu dijaga jam monotonik, bukan jam dinding.** Saat luring server tidak bisa ditanyai lagi, jadi
+   sisa waktu dihitung dari jam monotonik (yang hanya bisa maju) sejak respons server terakhir. Murid yang
+   memundurkan jam Windows untuk menambah waktu akan melihat penanda "Jam perangkat berubah", dan sisa
+   waktunya tidak bertambah. Soal pun masih bisa dibuka dari salinan attempt di perangkat, dengan
+   `server_now` yang digeser sesuai umur salinan supaya hitung mundur tidak membeku.
+
+### Mengapa aman
+Yang disimpan di perangkat hanya **jawaban yang diketik murid, ringkasannya, dan soal yang memang sudah
+tampil di layarnya** — tanpa kunci jawaban, tanpa token, tanpa data sesi. Riwayat dan salinan soal dihapus
+begitu jawaban dikumpulkan, dan ikut terhapus saat murid keluar atau sesinya berakhir (komputer lab dipakai
+bergantian). Server tetap penentu akhir: ulangan yang sudah ditutup, batas percobaan yang habis, atau
+submission lewat deadline tetap ditolak server — salinan di perangkat tidak bisa "menambal" penolakan itu,
+dan kumpulkan tetap idempoten.
+
+### Manfaat untuk anak SD dan guru
+Anak tidak perlu panik saat internet sekolah tersendat: layar tidak hanya bilang "aman", tetapi menunjukkan
+jawaban mana yang sudah tersimpan dan mana yang masih menunggu. Guru menerima jawaban yang sama seperti
+biasa — pekerjaan luring masuk sendiri tanpa perintah tambahan.
+
+Status: **kode dan pengujian selesai** (10 Oktober 2026). Batasan yang jujur: belum ada *service worker*,
+jadi mode luring bekerja selama aplikasi masih terbuka (tab jangan ditutup); memuat ulang halaman saat
+internet mati tetap butuh koneksi ke server. Pembahasan lengkap ada di `laporan-pengujian.md` A.33.
+
+---
+
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**
 - Tanpa share layar WebRTC — layar guru hanya menyinkronkan **konten**, bukan salinan layar penuh.
 - Editor bergaya video editor (rasio bingkai, timeline, kuis **tersemat pada detik** di dalam video) sejak 10 Oktober 2026 **sudah ada** dan teruji; yang masih terbatas adalah cakupan kodek videonya — bukti pemutaran kami masih pada satu berkas MP4 di basis data pengembangan, bukan seluruh format yang mungkin diunggah guru.
 - Tanpa multi-tenant — satu instalasi untuk satu sekolah.
+- Mode luring (bagian 17) **bukan** aplikasi PWA: belum ada service worker, jadi murid yang memuat ulang
+  atau membuka ulang halaman saat internet benar-benar mati masih akan melihat layar galat. Yang dijamin:
+  selama aplikasi terbuka (atau murid berpindah halaman di dalamnya), jawaban tetap aman, riwayat tetap
+  terbaca, dan pengiriman ke server menunggu koneksi — bukan hilang.
 - Anti-cheat **tidak menjamin 100%** — semua deteksi di browser bisa diakali; catatannya adalah bahan tinjauan guru, bukan vonis.
 
 **Fitur yang masuk daftar potong bila waktu mepet** (urutan dari chunk_map.json): cache L1, ekspor xlsx,

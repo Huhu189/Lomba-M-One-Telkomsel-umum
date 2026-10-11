@@ -1,5 +1,5 @@
 # Prompt Claude — rombak UI/UX slice 00–02 (dikerjakan di luar repo, disalin masuk)
-
+#ingat ini hanay prmot penitng sisa promt sangat kecil ada di log 
 Asal berkas: `docs/log-mentah/promt_claude.txt` — prompt yang dikirim pengguna ke AI lain untuk merombak UI/UX.
 Isi di bawah ini **apa adanya** (tidak disunting). Disalin ke dokumentasi utama sebagai bagian log mentah utuh.
 
@@ -99,8 +99,8 @@ Sajikan temuan Anda dalam format laporan yang terstruktur dengan menggunakan tem
  
 atau cari  jenis bug lain dari dari catori nya (log saja cari tanap di fix namun kau catata dengna baik hingga nama func
 
-
-
+promt 3
+/afe29730-8d0c-470c-801a-a52a510c0510:design-critique cek di sini ada berapa perangkat ui berikan kritik dna berikan contoh halaman yang sudah di perbagus (dalam html saja) seabagai abayngan dan matangkan ui dan ux juga dalam standar devlopment (di import file backend ,frontend dan juga chunk)
 
 
 

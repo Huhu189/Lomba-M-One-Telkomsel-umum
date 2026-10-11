@@ -2481,3 +2481,875 @@ terlihat seperti kelalaian.
   "telusuri attempt" di halaman ini.
 - Uji regresi visual/screenshot tetap belum ada; bukti tata letak dari DOM/CDP (kolom kiri/kanan, baris
   aktif, lebar, dan posisi).
+
+## A.33 Sistem Luring — Simpan Jawaban Saat Internet Putus, Riwayat Jawaban Lokal, dan Jam yang Tidak Bisa Ditambah (10 Oktober 2026)
+
+Permintaan putaran ini: *"buatkan sistem offline-nya, dengan validasi waktu lalu simpan jawaban kalau
+mereka offline; kalau sistem riwayat jawaban di kuis/form belum ada, buatkan — tapi kalau sudah
+dikumpulkan hilang, dan nyalakan lokal."*
+
+Sebelum putaran ini yang benar-benar ada hanyalah **cadangan jawaban** (tampilan tetap benar setelah muat
+ulang) dan **antrean kirim di memori**. Belum ada deteksi jaringan sungguhan, belum ada riwayat yang bisa
+dibaca murid, dan belum ada penjaga waktu saat server tidak bisa ditanyai. Selama pengujian putaran ini
+ditemukan satu bug nyata yang membuat pekerjaan luring bisa hilang tanpa pesan — dijelaskan di A.33.2.
+
+### A.33.1 Yang dikerjakan
+
+- **`sections/attempt/luring.js` (baru) — keadaan jaringan yang jujur.** `statusJaringan()` menggabungkan
+  kabar peramban (`navigator.onLine`) dengan jendela kegagalan kirim terakhir (10 detik). Wifi yang masih
+  tersambung tetapi gerbangnya mati tidak terlihat `navigator.onLine`, sedangkan kegagalan kirim selalu
+  terlihat — dua-duanya dipakai. Modul murni (tanpa DOM) supaya bisa diuji tanpa jaringan.
+- **Pengiriman ditahan, bukan ditembakkan.** `ubahJawaban()` sekarang berurutan: **validasi → tulis ke
+  perangkat (cadangan + riwayat) → baru jadwalkan kirim**. Saat luring, penjadwalan dilewati sama sekali
+  dan penjadwalan ulang pun dimatikan (`tundaKirimMs()` mengembalikan `∞` bila peramban bilang putus);
+  **event `online`** yang memborong antrean (`jalankanAntrean(true)` melewati gerbang luring sekali,
+  karena state jaringan belum sempat diperbarui di render yang sama). Setelah satu kiriman berhasil,
+  jendela kegagalan ditutup dari bukti nyata, bukan dari tebakan.
+- **`sections/attempt/riwayatJawaban.js` (baru) — riwayat jawaban lokal.** Store Zustand+persist
+  (`ulangan-riwayat-jawaban-v1`) menyimpan per attempt: nomor soal, tipe, ringkasan jawaban yang manusiawi
+  (`ringkasNilai()`), jam perkiraan server, dan status `lokal`/`terkirim`. Nilai jawaban mentah **tidak**
+  disimpan di sini (tetap di `simpananJawaban.js`) supaya tidak ada dua sumber kebenaran. Isi
+  localStorage selalu lewat **Zod** (`merge` pada persist): satu entri rusak membuang riwayat, bukan
+  dipakai setengah-setengah. Saklar "nyalakan lokal" (`aktif`, bawaan **nyala**) mematikan pencatatan
+  riwayat tanpa mematikan cadangan jawaban.
+- **Validasi sebelum menulis ke perangkat.** `amanDicatat()` menolak nilai yang tidak bisa dibaca kembali
+  (fungsi/`NaN`/`Infinity`) dan yang melebihi kuota (`BATAS_PAYLOAD` 4.000 karakter JSON). Nilai yang
+  ditolak **tidak ditulis setengah-setengah**, dan murid diberi tahu lewat toast.
+- **`RiwayatJawaban.jsx` (baru).** Panel `<details>` di layar pengerjaan: "Riwayat jawaban", "n tercatat",
+  lencana "n menunggu terkirim", daftar terbaru-di-atas (nomor soal, ringkasan, jam, status
+  `di perangkat ini`/`tersimpan di server`), saklar "Simpan riwayat jawaban di perangkat ini", dan
+  keterangan yang berubah saat luring.
+- **Validasi waktu: jam monotonik (`hitungMundur.js`).** `jamKlien()` mengambil jam dinding **dan** jam
+  monotonik; `sekarangTerkunci()` menaikkan waktu dari acuan respons server terakhir memakai selang
+  monotonik, jadi memundurkan setelan jam Windows **tidak** menambah sisa waktu, dan `hitungSisaAman()`
+  dipakai bersama oleh detak tiap detik dan perhitungan saat menggambar. Bila jam dinding berbeda dari jam
+  monotonik lebih dari 5 detik, layar menampilkan banner "Jam perangkat berubah" dan mencatatnya.
+- **`sections/attempt/snapshot.js` (baru) — salinan attempt untuk luring.** Payload attempt (soal tanpa
+  kunci + jawaban yang sudah dikirim server) disimpan di perangkat saat `mulai` berhasil; saat luring,
+  query attempt jatuh ke salinan itu (`networkMode: 'always'` supaya TanStack Query tidak menahan queryFn
+  saat `navigator.onLine` false — tanpa ini layar macet di "Menyiapkan ulangan…"). Penolakan **4xx tetap
+  tidak ditambal salinan** (kuis ditutup/batas percobaan habis harus tetap terasa). `server_now` digeser
+  sesuai umur salinan supaya hitung mundur tidak membeku, `skemaSnapshot` memvalidasi tiap entri dengan
+  Zod, dan di layar galat tersedia tombol "Lanjutkan dari salinan di perangkat" untuk kasus wifi yang
+  "tersambung tetapi tidak sampai server".
+- **Bersih saat dikumpulkan dan saat sesi berakhir.** Setelah hasil final: riwayat + salinan soal dihapus
+  (cadangan jawaban hanya bila seluruh jawaban benar-benar tersimpan — aturan lama tetap). `bersihkanJejakSesi()`
+  (keluar/401/419) kini membersihkan **lima** tempat: cache query, cadangan jawaban, riwayat jawaban,
+  salinan soal, dan penanda status siaran.
+
+### A.33.2 Bug nyata yang ditangkap smoke: jawaban luring hilang tanpa pesan
+
+Smoke luring mula-mula gagal di langkah "jawaban luring terkirim ke server begitu koneksi kembali"
+(`jawaban undefined · sisa antrean 1`), padahal jawaban itu **terlihat di layar** dan tersimpan di
+perangkat.
+
+Sebabnya: antrean kirim hidup di memori (`useRef`), sedangkan cadangan jawaban hidup di localStorage.
+Saat layar pengerjaan digambar ulang (muat ulang, pindah halaman, atau luring lalu kembali), cadangan tetap
+menampilkan jawaban murid — sementara antreannya **kosong**, jadi server tidak pernah menerimanya. Kalau
+murid lalu menekan "Kumpulkan", server menilai apa yang ia punya saja: murid melihat jawabannya terisi,
+tetapi nilainya hilang tanpa satu pun pesan galat. Aturan repo "jawaban DB dulu, cache belakangan" tidak
+menolong di sini karena tidak ada yang pernah mencoba mengirim ulang.
+
+Perbaikan: `pulihkan()` di `antreanJawaban.js` memasukkan kembali seluruh `belumTerkirim` ke antrean
+(dengan nomor urut baru), dan `HalamanKerjakan` memanggilnya sekali per attempt (`dipulihkan` ref) lalu
+langsung mengirim bila jaringan siap. Smoke dijalankan ulang: **22/22 lulus**, termasuk skor akhir 10/10
+(dua jawaban; satu diketik daring, satu diketik saat luring dan baru terkirim setelah koneksi kembali).
+
+### A.33.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run` | **568 passed / 60 berkas** (sebelum putaran ini 513/56) — bertambah 55 tes: `luring` 9, `riwayatJawaban` 18, `snapshot` 10, `RiwayatJawaban` (komponen) 5, `hitungMundur` +9, `antreanJawaban` +3, authStore/sesi +1 |
+| `npm run check` (checkJs) | OK |
+| `npx eslint src` | 0 error (2 warning lama React Hook Form di `HalamanDaftar.jsx`/`HalamanAturUlangSandi.jsx`) |
+| `php artisan test` | **258 passed (2.320 assertions)** — backend tidak disentuh putaran ini |
+| `./verify.sh` (root) | **SEMUA HIJAU** — Pest 258 · Pint 335 berkas · checkJs OK · ESLint 0 error · Vitest 568 · realtime 15 |
+| `node docs/smoke-ui-luring.mjs` (baru, CDP, backend+vite+Chrome) | **22/22 lulus, exit 0** (dijalankan dua kali dengan versi final; versi awalnya 20/20 lalu ditambah dua pemeriksaan jalur manual) |
+| `node docs/smoke-ui-slice04.mjs` (regresi layar pengerjaan) | **18/18 lulus, exit 0** |
+| `node docs/smoke-ui-slice07.mjs` (regresi anti-cheat, realtime hidup) | **20/20 lulus, exit 0** |
+
+Isi smoke luring (koneksi diputus dari **DevTools CDP**, bukan dimock di aplikasi):
+1. guru menyiapkan ulangan 2 soal + terbit; murid login dan membuka layar pengerjaan (panel riwayat kosong);
+2. jawab soal 1 daring → tersimpan di server **dan** riwayat menuliskan "tersimpan di server";
+3. `Network.setBlockedURLs` pada `*/api/v1/kuis/*/mulai` (internet tetap "hidup", `navigator.onLine` true)
+   lalu muat ulang halaman → layar galat "Tidak bisa menghubungi server" **beserta tombol** "Lanjutkan dari
+   salinan di perangkat"; tombol itu ditekan → ulangan terbuka dari salinan (timer hidup, riwayat utuh), dan
+   URL diblokirnya dilepas kembali;
+4. `Network.emulateNetworkConditions offline` → `navigator.onLine` false dan banner "Koneksi putus — mode
+   luring" muncul;
+5. jawab soal 2 saat luring → `belumTerkirim` berisi jawaban itu, riwayat `1:terkirim 2:lokal`, lencana
+   "1 menunggu terkirim", dan panel menulis "di perangkat ini";
+6. pindah halaman di dalam aplikasi (pushState, tanpa memuat ulang berkas dari Vite) lalu kembali ke soal →
+   banner "Melanjutkan dari salinan di perangkat", timer hidup, dan jawaban luring **tetap tercentang**;
+7. `Date.now` dimundurkan 1 jam → banner "Jam perangkat berubah" muncul dan sisa waktu **tidak bertambah**
+   (1.188 → 1.186 detik pada jalannya pertama), lalu kembali normal setelah jam dipulihkan;
+8. koneksi dihidupkan → jawaban masuk server (`sisa antrean 0`), kedua riwayat jadi `terkirim`, banner
+   luring hilang;
+9. "Selesai" → "Kumpulkan" → murid ke halaman hasil, **riwayat dan salinan soal hilang dari perangkat**,
+   dan server menilai dua jawaban (10/10, benar 2).
+
+### A.33.4 Keputusan teknis (satu kalimat per keputusan)
+
+- **Riwayat menyimpan ringkasan, bukan nilai jawaban** — nilai mentah tetap di `simpananJawaban.js` supaya
+  tidak ada dua sumber kebenaran dan kuota localStorage tidak dipakai dua kali.
+- **Riwayat disimpan lewat Zod di `merge`** — aturan repo "data dari localStorage selalu lewat Zod";
+  payload rusak mengosongkan riwayat, bukan membuat layar gagal.
+- **Jam monotonik, bukan jam dinding, saat luring** — `Date.now()` bisa diubah murid, `performance.now()`
+  tidak; `mulai_at`/`deadline_at` tetap dari server dan submit tetap divalidasi server.
+- **Salinan attempt hanya ditambal untuk galat jaringan/5xx** — 4xx berarti aturan kuis menolak (kuis
+  ditutup, batas percobaan habis), dan salinan lama tidak boleh membatalkan penolakan itu.
+- **Salinan soal tidak memuat kunci** — isinya sama dengan yang sudah tampil di layar murid (K-02), dan
+  dihapus setelah submit.
+- **Penjadwalan ulang dimatikan saat `navigator.onLine` false** — lebih baik menunggu event `online`
+  daripada menembak permintaan yang gagal tiap 5 detik.
+
+### A.33.5 Batasan jujur (yang belum selesai)
+
+- **Belum ada service worker / app shell**: mode luring bekerja selama aplikasi masih terbuka (atau murid
+  berpindah halaman di dalamnya). Muat ulang halaman saat internet benar-benar mati masih menampilkan layar
+  galat browser karena berkas aplikasi datang dari server. Menambahkan PWA berarti juga harus memutuskan
+  penyimpanan sesi di perangkat — sengaja **tidak** dilakukan sekarang karena komputer lab dipakai
+  bergantian (aturan S-14).
+- **Waktu saat luring tetap perkiraan**: selang jam monotonik akurat untuk satu kali buka layar; salinan
+  yang dibaca ulang sesudahnya memakai jam dinding perangkat (tidak ada cara lain tanpa server). Karena
+  itu murid diberi tahu lewat banner saat jamnya terlihat diubah, dan **server tetap penentu akhir** untuk
+  deadline.
+- **Yang diuji baru satu jalur koneksi**: offline→online lewat CDP pada satu attempt; belum diuji dua tab
+  bersamaan saat luring, mode tim saat luring, atau unggahan berkas jawaban saat luring (unggahan tetap
+  butuh koneksi).
+- **Internet terlihat hidup tetapi server mati = jalur manual.** Salinan perangkat hanya ditambal
+  otomatis saat `navigator.onLine` bilang putus, supaya penolakan sungguhan dari server (4xx: kuis ditutup,
+  batas percobaan habis) tidak pernah tertutup salinan lama. Untuk kasus itu murid sendiri yang menekan
+  "Lanjutkan dari salinan di perangkat" — jalur ini diuji di smoke (langkah 3) dan lulus, tetapi tetap
+  bergantung pada murid menyadari tombolnya ada.
+
+### A.33.6 Berkas yang dibuat/diubah
+
+Dibuat:
+- `frontend/src/sections/attempt/luring.js`
+- `frontend/src/sections/attempt/riwayatJawaban.js`
+- `frontend/src/sections/attempt/snapshot.js`
+- `frontend/src/sections/attempt/RiwayatJawaban.jsx`
+- `frontend/src/__tests__/sections/attempt/luring.test.js`
+- `frontend/src/__tests__/sections/attempt/riwayatJawaban.test.js`
+- `frontend/src/__tests__/sections/attempt/snapshot.test.js`
+- `frontend/src/__tests__/sections/attempt/RiwayatJawaban.test.jsx`
+- `docs/smoke-ui-luring.mjs`
+
+Diubah:
+- `frontend/src/sections/attempt/HalamanKerjakan.jsx` (keadaan jaringan, gerbang luring, riwayat, salinan
+  attempt + tombol lanjut, jam monotonik, pemulihan antrean, banner, panel riwayat)
+- `frontend/src/sections/attempt/hitungMundur.js` (`jamKlien`, `sekarangTerkunci`, `hitungSisaAman`,
+  `TOLERANSI_GESER_JAM_MS`)
+- `frontend/src/sections/attempt/antreanJawaban.js` (`pulihkan`)
+- `frontend/src/sections/auth/authStore.js` (bersihkan riwayat + salinan saat sesi berakhir)
+- `frontend/src/__tests__/sections/attempt/hitungMundur.test.js`
+- `frontend/src/__tests__/sections/attempt/antreanJawaban.test.js`
+- `frontend/src/__tests__/sections/auth/authStore.test.js`
+- `frontend/src/__tests__/sections/auth/authStore.sesi.test.js`
+- `docs/penjelasan-fitur.md` (bagian 17 + batasan), `docs/laporan-pengujian.md` (A.33 ini),
+  `docs/handoff-sesi.md`
+
+---
+
+## A.34 Materi Berjalan: Template Tema, Peta Beranimasi, dan Kenaikan Pos/Tingkat (10 Oktober 2026)
+
+Permintaan putaran ini: *"sekarang buat sistem template yang materi, tampilannya seperti tema video —
+guru impor medianya dan template-nya yang tentuin fase; misalnya template seperti mendaki gunung (pakai
+animasi/video, bukan gambar manual); tiap materi punya tema tertentu (guru yang tentuin); saat maju atau
+setelah quiz jadi satu langkah, naik, dst."*
+
+Sebelum putaran ini materi sudah berblok dan bergaya video editor (A.31), tetapi tiap materi hanya berupa
+urutan klip: tidak ada **tema** yang dipilih guru, tidak ada **adegan** yang bergerak, dan tidak ada
+**langkah** yang bisa dibaca anak sebagai kemajuan. Putaran ini menambahkan lapis "perjalanan" di atas
+blok yang sudah ada, tanpa mengubah cara blok disimpan atau dinilai.
+
+### A.34.1 Yang dikerjakan
+
+- **`Material/Registry/TemaPerjalanan.php` (baru, murni tanpa DB/config/container)** — katalog template
+  tema. Satu template "Mendaki Gunung" (`kode: mendaki-gunung`) berisi identitas adegan (`adegan: gunung`),
+  `satuan` ("pos"), **6 fase** (Basecamp → Jalur Pinus → Sungai Deras → Lereng Berbatu → Kabut Puncak →
+  Puncak; masing-masing dengan ikon + warna), dan **4 tingkat** (Pendaki Pemula 0% → Pendaki Terlatih 25% →
+  Penjelajah Lereng 60% → Penakluk Puncak 100%). Fungsi `normalkan()`/`konfigurasi()`/`langkah()`/
+  `tingkat()` dipakai bersama oleh resource, progres, laporan, dan tes.
+- **Kolom `materials.tema` (JSON, nullable) + migrasi `2026_10_10_000002_tambah_tema_materi.php`** —
+  menyimpan **pilihan guru saja**: `{kode, nama, video_kode}`. Nama bawaan fase dan tingkat hidup di
+  registry, bukan di DB, supaya tidak ada data tema yang bisa rusak. Baris lama (`NULL`) otomatis berarti
+  tema bawaan — materi yang sudah ada sebelum fitur ini ikut punya perjalanan tanpa diisi apa pun.
+- **`GET /api/v1/materi/tema`** (didaftarkan **sebelum** `/materi/{materi}` supaya "tema" tidak dibaca
+  sebagai id) mengirim katalog ke klien. Penolakan kode tema tak dikenal ada di `TemaMateriService`
+  (video latar juga hanya boleh milik materi itu sendiri).
+- **Nama pos bisa diganti guru**: `SinkronBlokRequest` menerima `isi.fase` per blok; `TemaPerjalanan::langkah()`
+  memakai nama bawaan tema bila kosong, memotong (`MAKS_LANGKAH` 40) bila kepanjangan, dan menlanjutkan
+  "Pos n" bila blok lebih banyak daripada fase template — jadi **tidak pernah ada langkah tanpa nama**.
+- **Peta perjalanan di muatan murid** (`ProgresMateriService` → `perjalanan`): daftar langkah (nama, ikon,
+  warna, wajib/opsional, selesai), posisi kini, jumlah langkah, `persen`, `tingkat` (nomor/nama/berikut/sisa),
+  satuan, `tuntas`, dan `video_url` bertanda tangan. **Laporan guru** (`LaporanMateriService`) memakai peta
+  yang **sama persis** — nama pos yang dilihat guru dan murid tidak bisa berbeda.
+- **`frontend/src/sections/material/perjalanan.js` (baru)** — skema Zod (langkah, tingkat, perjalanan,
+  katalog tema), **katalog cadangan** `TEMA_CADANGAN` yang identik dengan registry server (dipakai editor
+  sebelum katalog termuat, jadi panel template tidak pernah kosong), dan pembantu murni: `faseKe`,
+  `terapkanTema`, `langkahLokal`, `tingkatKe`, `petaLokal`, `titikJalur`, `posisiAktif`, `kenaikanUntuk`,
+  `labelPerjalanan`.
+- **`PetaPerjalanan.jsx` (baru, dipakai guru & murid)** — adegan **digambar dan dianimasikan CSS/SVG**,
+  bukan gambar tempelan: langit, matahari, **awan berjalan** (`@keyframes jelajah-awan`), tiga lapis gunung,
+  jalur putus-putus/penuh per ruas, pos berikon, dan **pendaki yang melangkah** (`@keyframes jelajah-langkah`)
+  di posisi kini. Bila guru menempelkan **video latar** untuk tema, video itu yang tampil (diputar senyap,
+  `autoplay loop muted`) dan adegan SVG disembunyikan — jadi tidak pernah ada dua latar saling menimpa.
+  Peta selalu disertai **daftar pos dalam teks** (selesai / sedang ditempuh / belum dibuka) plus ringkasan
+  persen dan tingkat, sehingga pembaca layar dan layar sempit mendapat isi yang sama, bukan versi ringkas
+  yang bisa berbeda.
+- **Editor guru**: panel **Template** (pilih tema, ganti nama tema, ganti nama tiap pos) dengan pratinjau
+  peta hidup, dan catatan tingkat yang akan diraih. `sinkronBlok()` ikut mengirim `tema`.
+- **Layar murid**: `kenaikanUntuk()` membandingkan peta **sebelum** dan **sesudah** satu bagian ditutup,
+  lalu menampilkan Banner jujur — `Naik ke pos 3: Sungai Deras`, `Naik tingkat: Pendaki Terlatih`, atau
+  `… tuntas!`. Kenaikan diumumkan **hanya setelah server mengirim peta terbaru**, jadi pesannya tidak pernah
+  mendahului keadaan yang benar-benar tersimpan.
+- **Aturan yang tetap di server**: hanya langkah **wajib** yang menghitung persen dan kenaikan (langkah
+  opsional tidak pernah menahan kenaikan), dan boleh-tidaknya membuka langkah tetap diputus
+  `ProgresMateriService` — peta hanyalah tampilan.
+
+### A.34.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test tests/Feature/Slice12TemaMateriTest.php` | **9 passed (123 assertions)** — katalog ditolak untuk tamu, tema + nama pos tersimpan, kode tak dikenal ditolak, video latar harus milik materi itu, posisi & tingkat naik satu per satu, langkah opsional diabaikan, laporan memakai nama pos yang sama, murid tak bisa mengganti tema, nama pos kepanjangan dipotong |
+| `npx vitest run src/__tests__/sections/material src/__tests__/theme` | **90 passed (7 berkas)** — termasuk 24 tes `perjalanan` dan 9 tes komponen `PetaPerjalanan` |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** (2 warning lama) · Vitest **62 berkas / 601 test** · realtime 15 test |
+| `docs/jalankan-smoke-perjalanan.sh` (CDP, backend :8000 + vite :5173 + Chrome :9333) | **34/34 lulus, exit 0** |
+
+Isi smoke `docs/smoke-ui-perjalanan.mjs` (harness mandiri: membuat materi + video uji 2 detik sendiri, lalu
+menghapusnya di akhir):
+1. katalog tema datang dari server (`mendaki-gunung`, 6 fase, 4 tingkat); guru membuat materi uji;
+2. guru mengunggah **video latar** lewat jalur berpotongan (hash SHA-256 per potongan) — video 2 detik dibuat
+   ffmpeg oleh runner, **bukan** berkas dev;
+3. guru menyusun 4 pos, mengganti nama tema ("Ekspedisi Smoke") dan dua nama pos; pos 3–4 tetap memakai nama
+   bawaan tema; materi diterbitkan;
+4. editor menampilkan peta 4 pos, nama tema ganti, daftar pos memakai nama ganti + bawaan, latar beranimasi
+   (video `autoplay` + pendaki `jelajah-langkah`), dan video latar terpasang;
+5. murid membuka materi: API mengirim peta lengkap (posisi 1, 4 langkah, tingkat "Pendaki Pemula"), nama pos
+   sama dengan yang dilihat guru, video latar berupa URL bertanda tangan; peta + penanda posisi tampil;
+6. murid menuntaskan pos 1 → **naik tingkat** diumumkan dan peta maju (pos 1 selesai, pos 2 jadi posisi kini);
+7. murid menuntaskan pos 2 → **naik pos** diumumkan ("Naik ke pos 3") dan posisi peta jadi 3 dari 4;
+8. laporan guru memuat peta kelas yang sama dan menunjukkan posisi 3 / selesai 2 / tingkat "Pendaki Terlatih"
+   untuk murid uji;
+9. data uji dihapus kembali (materi + unggahan), jadi harness bisa dijalankan berulang.
+
+### A.34.3 Temuan nyata yang ditangkap smoke (dan diperbaiki di harness)
+
+- **Harness membuka bagian yang salah.** Langkah ke-7 mula-mula memakai `klik('Buka')` yang mengklik tombol
+  "Buka" **pertama** di halaman. Karena bagian yang sudah selesai **tetap bisa dibuka ulang**, tombol itu
+  mengenai **bagian 1 lagi**, sehingga penutupan "bagian kedua" sebenarnya menutup bagian 1 — peta tidak
+  maju (`selesai 1 · aktif 2`), dan tiga pemeriksaan gagal. Perbaikan: `klikBagian(n)` yang mencari baris
+  `Bagian n` lalu mengklik tombolnya, plus penantian eksplisit sampai peta benar-benar maju sebelum langkah
+  berikutnya. Sesudah perbaikan: **34/34**. Ujian ini menemukan bug **di harness**, bukan di produk.
+- **Pemeriksaan animasi bertentangan dengan rancangan.** Assertion "adegan benar-benar beranimasi" mula-mula
+  menuntut awan SVG bergerak (`animationName === 'jelajah-awan'`). Pada skenario yang diuji guru **menempelkan
+  video latar**, dan video itu memang **menggantikan** adegan SVG — jadi awan tidak ada di DOM, wajar. Sudah
+  sesuai maksud permintaan ("pakai animasi/video"): assertion diubah memeriksa latar **sesuai bentuk yang
+  benar-benar dirender** — video `autoplay` bila ada video, atau awan SVG beranimasi bila tidak ada — sambil
+  tetap menuntut pendaki (`jelajah-langkah`) beranimasi. Animasi SVG tanpa video tetap diuji unit
+  (`petaPerjalanan.test.jsx` memastikan kelas `jelajah-awan` dirender).
+
+### A.34.4 Keputusan teknis (satu kalimat per keputusan)
+
+- **Yang disimpan hanya pilihan guru; bawaan hidup di registry** — materi lama gratis mendapat perjalanan,
+  dan tidak ada baris DB yang bisa membuat nama fase/tingkat rusak.
+- **Video latar menggantikan adegan SVG, bukan ditumpuk** — dua latar yang saling menimpa lebih buruk daripada
+  latar tunggal yang jelas; karenanya pengujian pun membaca bentuk latar yang sebenarnya.
+- **Kenaikan dibandingkan dari respons server, bukan dihitung di klien** — pesan "naik" tidak boleh mendahului
+  keadaan tersimpan, dan murid tidak bisa "merayakan" kenaikan yang server tidak setujui.
+- **Hanya langkah wajib yang menghitung kenaikan** — langkah opsional adalah jalan pintas, bukan syarat naik.
+- **Peta selalu punya padanan teks** — informasi yang sama dibaca lewat daftar pos + ringkasan persen, bukan
+  versi berbeda untuk pembaca layar.
+
+### A.34.5 Batasan jujur (yang belum selesai)
+
+- **Katalog baru satu tema** ("Mendaki Gunung"). Bentuk katalognya sudah siap menampung banyak tema, tetapi
+  tema lain (mis. "Menjelajah Laut", "Ruang Angkasa") belum dibuat; smoke hanya menguji tema bawaan.
+- **Bukti animasi dari DOM/CDP, bukan rekaman/rekaman layar**: yang dipastikan adalah `animationName`
+  (`jelajah-awan`, `jelajah-langkah`), kelas yang dirender, dan latar `autoplay` — belum ada uji regresi
+  visual/screenshot.
+- **Video latar hanya diuji dengan satu MP4 kecil** (2 detik, dibuat ffmpeg) di jalur berpotongan; belum
+  diuji semua kodek/rasio, dan belum ada jalur "tema punya video bawaan sendiri" (video bergantung pada yang
+  guru unggah).
+- **Nama pos hanya bisa diganti lewat editor guru** (per blok); belum ada pengaturan ulang nama pos massal,
+  dan pos di luar 6 fase template memakai nama generik "Pos n".
+- **Smoke perjalanan tidak ikut `verify.sh`** (butuh backend + vite + Chrome hidup).
+
+### A.34.6 Berkas yang dibuat/diubah
+
+Dibuat — backend:
+- `backend/app/Sections/Material/Registry/TemaPerjalanan.php`
+- `backend/app/Sections/Material/Services/TemaMateriService.php`
+- `backend/database/migrations/2026_10_10_000002_tambah_tema_materi.php`
+- `backend/tests/Feature/Slice12TemaMateriTest.php`
+
+Dibuat — frontend:
+- `frontend/src/sections/material/perjalanan.js`
+- `frontend/src/sections/material/PetaPerjalanan.jsx`
+- `frontend/src/__tests__/sections/material/perjalanan.test.js`
+- `frontend/src/__tests__/sections/material/petaPerjalanan.test.jsx`
+
+Dibuat — dokumentasi/harness:
+- `docs/smoke-ui-perjalanan.mjs`
+- `docs/jalankan-smoke-perjalanan.sh`
+
+Diubah:
+- `backend/app/Sections/Material/Http/Controllers/MateriController.php` (endpoint `tema`)
+- `backend/app/Sections/Material/Http/Requests/SinkronBlokRequest.php` (`tema`, `isi.fase`)
+- `backend/app/Sections/Material/Http/Resources/BlokResource.php`, `MateriResource.php`
+- `backend/app/Sections/Material/Models/Materi.php` (kolom `tema`)
+- `backend/app/Sections/Material/Services/MateriService.php`, `ProgresMateriService.php`,
+  `LaporanMateriService.php`
+- `backend/routes/api.php` (`GET /materi/tema`)
+- `frontend/src/sections/material/EditorMateri.jsx` (panel Template + pratinjau peta)
+- `frontend/src/sections/material/HalamanMateriMurid.jsx` (peta + banner kenaikan)
+- `frontend/src/sections/material/api.js` (skema + `katalogTema()` + `tema` pada `sinkronBlok()`)
+- `frontend/src/sections/material/editorMateri.js`
+- `frontend/src/theme/theme.css` (adegan perjalanan, animasi awan & pendaki)
+- `frontend/src/__tests__/sections/material/api.test.js`, `editorMateri.test.js`, `pemutarMateri.test.js`
+- `docs/penjelasan-fitur.md` (bagian 6), `docs/laporan-pengujian.md` (A.34 ini), `docs/handoff-sesi.md`
+
+## A.35 Editor Soal: Pemilih Jenis Ringkas Berikon di Paling Bawah (11 Oktober 2026)
+
+Permintaan putaran ini: *"pertama buat soalnya, pilihan jenis soalnya bisa langsung tampil semua
+(bulk) jadi lebih ringkas, dan pemilih jenis soal ditaruh di paling bawah sebagai kotak-kotak dengan
+ikon yang mencocokkan; buat ikonnya, tetap form biasa, dan tetap bisa disimpan ke bank soal."*
+
+Sebelum putaran ini pemilih jenis soal adalah **kartu pertama** berisi **22 pil teks** yang membungkus
+beberapa baris — memakan ruang paling atas dan tidak memberi petunjuk bentuk soal selain teks. Putaran
+ini memindahkannya ke **paling bawah** sebagai **petak berikon** yang bisa dilipat, tanpa mengubah alur
+form (tetap satu soal per form, tetap tersimpan ke bank soal lewat `POST/PUT /api/v1/soal`).
+
+### A.35.1 Yang dikerjakan
+
+- **21 ikon jenis soal baru di `frontend/src/icons.jsx`** (satu per tipe; `baca_jam` sengaja memakai
+  `IkonJam` yang sudah ada karena ikon jam memang cocok). Gaya tetap sama dengan ikon lain: `viewBox`
+  24x24, garis 2px, warna `currentColor`. Contoh pemetaan bentuk: pilihan ganda → radio terpilih,
+  benar/salah → centang + silang, isian singkat → kalimat + kotak jawaban, uraian → lembar berbaris,
+  menjodohkan → dua kolom tersambung, mengurutkan → daftar + panah, letak kata → kata di celah kalimat,
+  hubung kata → dua label berhubung, pilihan ganda kompleks → kotak centang, isian angka → papan angka,
+  pilihan gambar → gambar + radio, urut gambar → dua gambar + panah, susun huruf → keping huruf,
+  isian rumpang → kalimat berbagian kosong, klasifikasi → kotak kategori, tabel isian → tabel berpetak,
+  garis bilangan → garis berpenanda, hotspot gambar → gambar + bidik sasaran, tugas unggah → berkas naik,
+  teka silang mini → petak silang dengan kotak hitam.
+- **`tipeSoal.js`: `IKON_TIPE` + pembantu `ikonTipe()`**, dan `DAFTAR_TIPE` (registry yang sudah ada)
+  kini ikut membawa medan `ikon`. Peta ikon hidup di registry, bukan di komponen, supaya bisa diuji
+  tanpa merender seluruh editor dan supaya pemakaian berikutnya (mis. daftar bank soal) tidak
+  menggandakan pemetaan.
+- **`EditorSoal.jsx` disusun ulang** menjadi tiga kartu bernomor dengan urutan baru:
+  **1. Tulis soalnya → 2. Pengaturan soal → 3. Pilih jenis soal**. Kartu jenis soal di paling bawah
+  memakai `<details>` (bisa dibuka-tutup) yang **terbuka secara bawaan**; ringkasannya selalu
+  memperlihatkan **ikon + nama tipe yang sedang aktif**, jadi tipe tetap terbaca walau lipatan ditutup.
+  Grid petaknya `role="radiogroup"` + tiap petak `role="radio"`/`aria-checked` — bukan `<select>`,
+  karena semua 22 tipe tampil sekaligus (permintaan "bulk") dan tetap satu pilihan.
+- **CSS `.pemilih-jenis` + `.petak-tipe`** di `theme.css`: petak **2 kolom di HP, 4 kolom di layar
+  ≥768px**, tiap petak tinggi **≥84px** (jauh di atas target sentuh 44px anak SD), tipe yang aktif
+  dibalik warnanya (bukan hanya warna — ada `aria-checked`), dan tipe bertingkat diberi label kecil
+  "perlu tinjau".
+- **Harness smoke disesuaikan**: `smoke-ui-susun.mjs` kini memeriksa judul kartu baru, bahwa kartu
+  ke-3 adalah pemilih jenis, bahwa elemen lipatnya `DETAILS`, dan bahwa **22 petak** berperan `radio`
+  **serta semuanya mengandung `<svg>`**; `smoke-ui-kuis-manual.mjs` memakai judul baru
+  ("1. Tulis soalnya"). `smoke-ui-susun.mjs` sebelumnya masih menuntut `pil == 8` (sisa dari era 8 tipe,
+  belum pernah dijalankan sesudah A.30) — pemeriksaan itu diperbarui ke jumlah 22.
+- **Tes baru `frontend/src/__tests__/sections/question/ikonTipe.test.jsx`** — memastikan setiap nilai
+  `TIPE` punya ikon, tipe tak dikenal mengembalikan `undefined` (tidak melempar), dan **setiap** ikon
+  benar-benar ter-render sebagai `<svg>` `viewBox="0 0 24 24"` berwarna `currentColor`.
+
+### A.35.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npm run check` (checkJs strict) | OK (tanpa galat) |
+| `npm run lint` (ESLint) | **0 error** (2 warning lama React Hook Form yang sudah ada sebelumnya) |
+| `npx vitest run src/__tests__/sections/question src/__tests__/icons.test.jsx` | **141 passed (6 berkas)** — termasuk 3 tes `ikonTipe` baru |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** · Vitest **63 berkas / 604 test** · realtime 15 test |
+| `docs/jalankan-smoke-ui.sh susun` (CDP; backend :8000 + vite :5173 + realtime :4000 + Chrome :9333) | **42/42 lulus, exit 0** — memuat pemeriksaan baru: kartu bernomor baru, pemilih jenis di kartu ke-3, lipatan `DETAILS`, dan petak 22 radio berikon |
+| `docs/jalankan-smoke-ui.sh kuis-manual` | **10/10 lulus, exit 0** — editor soal tetap terbuka dan tersimpan dari dalam alur kuis |
+
+Verifikasi lewat antarmuka (bukan hanya unit): guru membuka **Bank soal → Tambah soal**, mengisi soal
+isian singkat, menekan petak **Isian singkat** di kartu paling bawah, menyimpan, dan soal muncul di
+daftar bank soal — persis alur yang diminta.
+
+### A.35.3 Temuan nyata yang ditangkap gerbang mutu (dan diperbaiki)
+
+- **ESLint (React Compiler) menolak ikon dinamis di dalam render.** Cara pertama membuat ikon tipe yang
+  sedang aktif adalah `const IkonJenisAktif = ikonTipe(state.tipe) ?? …` lalu `<IkonJenisAktif />`.
+  `eslint .` menandainya **1 error** `react-hooks/static-components`: *"Cannot create components during
+  render"* — React Compiler menganggap komponen yang dipilih di dalam render sebagai komponen baru yang
+  akan kehilangan state tiap render. Ketahuan lewat `./verify.sh` (bukan lewat pemeriksaan saya sendiri),
+  dan memang `./verify.sh` sempat **GAGAL** sebelum diperbaiki. Perbaikan: pemilihan ikon dipindah ke
+  pembantu tingkat modul `ikonJenis()` yang mengembalikan **elemen** (`createElement`), bukan komponen
+  bernama besar; pemeriksaan yang sama lalu hijau. Ini temuan **di kode produk**, bukan di harness.
+
+### A.35.4 Keputusan teknis (satu kalimat per keputusan)
+
+- Petak memakai `<button role="radio">` di dalam `role="radiogroup"`, bukan `<select>` atau `<input>`,
+  karena semua tipe harus terlihat sekaligus sambil tetap satu pilihan dan bisa dibaca pembaca layar.
+- Peta ikon ditaruh di registry (`tipeSoal.js`), bukan di komponen, supaya bisa diuji murni dan
+  dipakai ulang tanpa impor komponen dari komponen.
+- Pemilih tetap **satu soal per form** (tidak ada bulk-create): yang "bulk" pada permintaan ini adalah
+  **tampilan semua jenis sekaligus**, dan alur simpan ke bank soal tidak diubah sama sekali.
+- Lipatan diberi `open` bawaan supaya guru baru langsung melihat pilihannya; ringkasan berikon
+  menjaga tipe tetap terbaca saat guru melipatnya agar formulir lebih ringkas.
+
+### A.35.5 Batasan jujur (yang belum selesai)
+
+- Belum ada uji regresi visual/screenshot; bukti tampilan petak berasal dari DOM (`<svg>` + jumlah
+  petak + `aria-checked`) dan pemeriksaan manual, bukan perbandingan gambar.
+- Ikon dipetakan ke **bentuk** tiap tipe secara wajar, tetapi belum diuji dengan pengguna anak SD
+  (belum ada uji keterbacaan ikon).
+- `docs/desain/EditorSoal.dc.html` (papan desain lama) **tidak** diperbarui; ia tetap menggambarkan
+  tata letak lama dan kini hanya menjadi arsip desain.
+
+### A.35.6 Berkas yang dibuat/diubah
+
+Dibuat:
+- `frontend/src/__tests__/sections/question/ikonTipe.test.jsx`
+
+Diubah:
+- `frontend/src/icons.jsx` (21 ikon jenis soal)
+- `frontend/src/sections/question/tipeSoal.js` (`IKON_TIPE`, `ikonTipe()`, medan `ikon` di `DAFTAR_TIPE`)
+- `frontend/src/sections/question/EditorSoal.jsx` (urutan kartu + pemilih petak berikon yang bisa dilipat)
+- `frontend/src/theme/theme.css` (`.pemilih-jenis`, `.petak-tipe`, dan variannya)
+- `docs/smoke-ui-susun.mjs`, `docs/smoke-ui-kuis-manual.mjs` (judul & kelas baru)
+- `docs/laporan-pengujian.md` (A.35 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+## A.36 Editor Materi: Gagang Pangkas `|` di Kedua Sisi Klip (11 Oktober 2026)
+
+Permintaan putaran ini: *"buat editor-nya, yang durasi media/kuis ada tanda `|` di kedua sisi untuk
+menentukan durasinya."*
+
+Sebelum putaran ini durasi klip hanya bisa diubah dari **inspector** (kotak angka "Durasi (detik)",
+tombol −0,1/+0,1, dan geser mulai). Di timeline, klip hanya bisa dipindah lewat seret — titik
+awal/akhirnya tidak bisa dipegang langsung. Putaran ini menambahkan **gagang pangkas `|`** di kedua
+sisi klip yang sedang dipilih, seperti editor video pada umumnya.
+
+### A.36.1 Yang dikerjakan
+
+- **`editorMateri.js`: `pangkasKiri()` dan `pangkasKanan()` (helper murni, bisa diuji tanpa DOM).**
+  `pangkasKiri()` menggeser titik mulai dan **menjaga ujung kanan tetap** (durasi ikut berubah);
+  `pangkasKanan()` menggeser ujung kanan dan menjaga titik mulai. Keduanya membulatkan ke 0,1 detik dan
+  menjepit ke `DURASI_MINIMUM` (0,1 detik) serta menolak titik mulai negatif. Dibuat terpisah dari
+  `setMulai()` karena keduanya berbeda: `setMulai()` **memindahkan** klip (durasi tetap), sedangkan
+  `pangkasKiri()` **memangkasnya** (ujung tetap).
+- **Gagang di timeline (`EditorMateri.jsx`)**: klip terpilih mendapat satu tanda `|` di tiap sisinya,
+  dibuat sebagai elemen **di dalam lane tetapi di luar tombol klip** — supaya tidak ada kontrol
+  interaktif bersarang di dalam tombol, dan supaya seretan gagang tidak bertabrakan dengan seret-klip
+  native (`draggable`). Grup gagang memakai `pointer-events: none`; hanya tandanya yang menerima
+  pointer, jadi menekan badan klip tetap memilih/menggeser klip.
+- **Seret tetikus**: `pointerdown` + `setPointerCapture` (pola yang sama dengan jarum merah/playhead).
+  Panjang timeline **dibekukan saat seret mulai** (`pangkasTotalRef`) supaya penggaris tidak memanjang
+  dan menarik gagangnya menjauh dari tangan saat ujung kanan digeser ke luar.
+- **Papan tombol**: kedua gagang `role="slider"`, `tabIndex=0`, `aria-valuemin/max/now/valuetext`, dan
+  bisa dipangkas dengan **panah kiri/kanan** per 0,1 detik — jadi tidak wajib memakai tetikus.
+- **CSS `.nle-pangkas*`**: tanda `|` setinggi klip (3px, warna aksen), kursor `ew-resize`, area seret
+  0,9rem, dan cincin fokus yang terlihat. Berlaku untuk **semua** tipe klip — media dan kuis sisipan
+  termasuk, karena keduanya memakai `mulai_detik`/`durasi_detik` yang sama.
+- **6 tes baru** di `__tests__/sections/material/editorMateri.test.js`: ujung tetap saat pangkas kiri,
+  penjepitan minimum, penolakan titik mulai negatif, ujung tetap saat pangkas kanan, dan indeks tak
+  dikenal yang tidak mengubah apa pun.
+- **Harness `docs/smoke-ui-durasi-klip.mjs` diperluas** (11 pemeriksaan, dari 4) — lihat A.36.3.
+  Putaran lanjutan menambah 4 pemeriksaan lagi (total **15**) supaya klip **kuis** dan klip **media**
+  diuji sendiri-sendiri — lihat A.36.7.
+
+### A.36.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/sections/material` | **95 passed (6 berkas)** — termasuk 6 tes pangkas baru |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** · Vitest **63 berkas / 610 test** · realtime 15 test |
+| `docs/jalankan-smoke-ui.sh durasi-klip` (CDP; backend :8000 + vite :5173 + realtime :4000 + Chrome :9333) | **11/11 lulus, exit 0** (putaran A.36) |
+| `node docs/smoke-ui-durasi-klip.mjs` (ulang 11 Okt 2026, putaran lanjutan — harness diperluas) | **15/15 lulus, exit 0** — termasuk klip **kuis** (materi #20) dan klip **media** (materi #1) |
+
+Isi pemeriksaan baru di harness (dijalankan lewat **tetikus CDP sungguhan** dan papan tombol, bukan
+memanggil fungsi internal):
+
+1. klip terpilih punya **dua** tanda `|`, sebaris dengan klipnya;
+2. keduanya berperan `slider` dan berkursor `ew-resize`;
+3. titiknya **benar-benar terjangkau tetikus** (`document.elementFromPoint` = tanda `|`) — penjaga
+   supaya seretan di bawah menguji hal yang benar;
+4. seret tanda kanan ke kiri: durasi 29,9 → 22,8 detik, **titik mulai tetap 0**;
+5. seret tanda kiri ke kanan: titik mulai 0 → 5 detik, **ujung kanan tetap 22,8 detik**;
+6. panah kiri di papan tombol memangkas 17,8 → 17,7 detik.
+
+### A.36.3 Temuan nyata saat verifikasi (dan apa yang salah)
+
+- **Seret tetikus mula-mula "gagal" — ternyata harness-nya yang salah, bukan produk.** Tiga pemeriksaan
+  pertama lulus, tetapi dua seretan tidak mengubah apa pun (`mulai 0→0 · durasi 29,9→29,9`). Saya
+  diagnosis dulu alih-alih mengubah kode: (a) mengetes di halaman kosong membuktikan
+  `Input.dispatchMouseEvent` **memang** menghasilkan `pointerdown/move/up`; (b) instrumentasi di halaman
+  editor menunjukkan peristiwanya mendarat di `html/body` dengan `elementFromPoint` = `null`. Penyebabnya
+  **timeline berada di y≈1852 px**, jauh di luar viewport headless 800x600 — event CDP memakai koordinat
+  viewport, jadi tetikus "menekan" ruang kosong. Perbaikan: viewport ditinggikan
+  (`Emulation.setDeviceMetricsOverride`, 1280x2200) sebelum menyeret, plus pemeriksaan penjaga
+  keterjangkauan di atas. Sesudah itu seretan mengubah durasi seperti seharusnya (30 → 22,9 detik) dan
+  harness menjadi 11/11. **Kode produk tidak diubah untuk ini.**
+- **Pelajaran yang dicatat**: harness baru yang memakai input sungguhan harus memastikan elemennya
+  berada di dalam viewport; kegagalan seperti ini tidak boleh diperbaiki dengan melonggarkan assertion.
+
+### A.36.4 Keputusan teknis (satu kalimat per keputusan)
+
+- Gagang ditaruh di lane (sibling tombol klip), bukan di dalam tombol, karena kontrol interaktif
+  bersarang di dalam `<button>` menyulitkan pembaca layar dan bertabrakan dengan `draggable`.
+- Panjang timeline dibekukan selama seret supaya memangkas tidak "mengejar" penggaris yang ikut memanjang.
+-  `pangkasKiri/pangkasKanan` masuk `editorMateri.js` (helper murni) supaya aturannya diuji tanpa DOM
+  dan bisa dipakai lagi oleh pemutar/alat lain.
+- Gagang hanya tampil pada klip yang sedang dipilih — timeline tetap ringkas saat materi punya banyak klip.
+
+### A.36.5 Batasan jujur (yang belum selesai)
+
+- Area seret gagang 0,9rem (≈14 px) — **lebih kecil dari 44 px**; ini melekat pada kepadatan timeline
+  (klip bisa sangat pendek), jadi jalur ini tidak ikut aturan sasaran-sentuh-44px. Karena itu papan
+  tombol disediakan sebagai jalur alternatif, dan inspector (kotak angka + tombol ±0,1) tetap ada.
+- Belum ada uji regresi visual/screenshot untuk posisi tanda `|`.
+- Gagang tidak "magnet" ke tepi klip lain (tidak ada snapping).
+
+### A.36.6 Berkas yang dibuat/diubah
+
+Diubah:
+- `frontend/src/sections/material/editorMateri.js` (`pangkasKiri`, `pangkasKanan`)
+- `frontend/src/sections/material/EditorMateri.jsx` (gagang pangkas, seret, papan tombol)
+- `frontend/src/theme/theme.css` (`.nle-pangkas-grup`, `.nle-pangkas`, `.nle-pangkas-kiri/kanan`)
+- `frontend/src/__tests__/sections/material/editorMateri.test.js` (6 tes pangkas)
+- `docs/smoke-ui-durasi-klip.mjs` (7 pemeriksaan gagang baru; putaran lanjutan menambah 4 lagi)
+- `docs/laporan-pengujian.md` (A.36 ini), `docs/handoff-sesi.md`
+
+### A.36.7 Putaran lanjutan (11 Oktober 2026): tanda `|` dipastikan berlaku untuk klip kuis & media
+
+Permintaan itu datang lagi dengan kata yang hampir sama — *"buat bagian sebuah quiz/media ada `|` di kedua
+sisinya untuk mengatur durasi daripada ketik manual"* — jadi yang pertama dikerjakan bukan menambah kode,
+melainkan **memeriksa apakah permintaannya sudah terpenuhi** oleh A.36.
+
+**Hasil pemeriksaan: sudah terpenuhi, tidak ada kode produk yang diubah.** Gagang `|` di render timeline
+memang generik (`klipAktif && satu.track === klipAktif.track`), jadi berlaku untuk ketiga tipe klip — teks,
+media, maupun kuis sisipan — dan `durasi_detik` kuis juga tersimpan server (`isi.durasi_detik`, dijaga
+`SinkronBlokRequest` dan dibaca `BlokResource`/`ProgresMateriService`). Yang belum ada hanyalah **bukti di
+harness**: bagian 3 harness lama hanya memangkas klip yang kebetulan terpilih (materi pertama yang punya
+blok, kebetulan klip teks), sehingga tipe `kuis` dan `media` belum pernah benar-benar diuji lewat tetikus.
+
+Yang ditambahkan: **bagian 4 di `docs/smoke-ui-durasi-klip.mjs`**. Materi dicari dari API berdasarkan tipe
+bloknya (`/v1/materi` + detail tiap materi), lalu untuk tiap tipe (`kuis`, `media`) klip itu diklik,
+dipastikan punya **dua** tanda `|` sebaris dengan klipnya, dicek pula keterjangkauan tetikusnya, lalu tanda
+kanan diseret 40 px dan durasinya harus memendek tanpa memindahkan titik mulai. Bukti keluaran run
+(`node docs/smoke-ui-durasi-klip.mjs`, exit 0):
+
+```
+LULUS · klip kuis terpilih punya tanda | di kedua sisinya · materi #20 · aktif=true tanda=2 sebaris=true
+LULUS · seret tanda | kanan klip kuis memendekkan durasi tanpa memindahkan titik mulai · materi #20 · mulai 30→30 · durasi 60→53.6
+LULUS · klip media terpilih punya tanda | di kedua sisinya · materi #1 · aktif=true tanda=2 sebaris=true
+LULUS · seret tanda | kanan klip media memendekkan durasi tanpa memindahkan titik mulai · materi #1 · mulai 0→0 · durasi 10→9.3
+
+15/15 pemeriksaan lulus.
+```
+
+Batasan putaran lanjutan: pemeriksaan ini bergantung pada **data dev** yang kebetulan punya materi berisi
+klip `kuis` (#20) dan `media` (#1); pada basis data kosong, dua pemeriksaan itu akan gagal dengan pesan
+"tidak ada materi yang punya klip tipe itu" — harness-nya belum membuat sendiri materi + berkas media uji
+(seperti yang dilakukan `smoke-ui-perjalanan.mjs`). Tidak ada penyimpanan yang dilakukan, jadi susunan
+materi tidak berubah.
+
+## A.37 Peta Perjalanan Pakai Media Sungguhan, Template Jadi Opsional (11 Oktober 2026)
+
+Permintaan putaran ini: *"dan tidak wajib memakai template, dan juga perbaiki template-nya, dan kau pakai
+video/foto saja karena kurang menarik."*
+
+Peta perjalanan A.34 sebelumnya menggambar adegannya sendiri lewat SVG: langit, matahari berdenyut, dua
+awan berjalan, tiga lapis gunung (`AdeganGunung`), dan hanya **menumpuk** foto tema di bawahnya. Hasilnya
+terasa seperti ilustrasi alih-alih panggung yang hidup. Putaran ini membuang gambar buatan itu: panggung
+selalu memakai **media sungguhan** — video latar guru bila ada, kalau tidak **foto tema** — dan template
+tema ditegaskan **opsional** di editor.
+
+### A.37.1 Yang dikerjakan
+
+- **`PetaPerjalanan.jsx`: `AdeganGunung` dihapus.** Tidak ada lagi adegan SVG, `data-lapisan`, matahari,
+  awan, maupun poligon bukit. Urutan latar jadi **video → foto tema → gradien**: `data-latar="video"` bila
+  guru menempelkan video, `data-latar="foto"` bila tema punya foto (`fotoAdegan()`), dan
+  `data-latar="gradien"` bila keduanya tidak ada atau fotonya gagal dimuat (`onError`). Panggung tidak
+  pernah kosong, tetapi juga tidak pernah memakai gambar buatan.
+- **`theme.css`: gaya adegan SVG dibuang.** `.jelajah-adegan`, `.jelajah-matahari`, `.jelajah-awan*`,
+  `.jelajah-bukit*`, `.jelajah-salju`, serta `@keyframes jelajah-awan`/`jelajah-denyut` hilang. Gradien
+  cadangan diperbaiki jadi bujur-sangkar tenang (matahari `radial-gradient` + `linear-gradient` biru-hijau)
+  yang tetap kontras dengan jalur putih dan titik pos. Lapisan gelap di atas media kini berlaku untuk
+  **foto dan video** (`[data-latar='foto']`, `[data-latar='video']`), ditambah vignette radial, supaya
+  titik pos dan penanda tetap terbaca di bagian media yang terang. Gerak zoom foto (`jelajah-zoom`) dan
+  gerak penanda pos (`jelajah-langkah`) dipertahankan.
+- **Editor menegaskan template opsional**: di bawah judul "Template tema" ada keterangan bahwa tema
+  bersifat opsional dan "Tanpa tema" menghasilkan daftar bagian biasa (tanpa perubahan alur simpan).
+- **Tes & harness dibaca ulang** mengikuti bentuk latar yang benar-benar dirender: tes peta sekarang
+  memastikan **tidak ada** kelas `jelajah-adegan`/`jelajah-matahari`/`jelajah-awan`/`jelajah-bukit`, dan
+  latar tanpa foto memakai `data-latar="gradien"`.
+
+### A.37.2 Temuan nyata (dan apa yang diperbaiki)
+
+- **Harness `smoke-ui-perjalanan.mjs` belum pernah menuntaskan paruh keduanya.** Materi kedua ("tanpa
+  peta") dibuat **setelah** alur murid tanpa masuk ulang sebagai guru, jadi `POST /v1/materi` dijalankan
+  dengan sesi **murid** dan ditolak — `idRingkas` = 0 dan 12 pemeriksaan sesudahnya runtuh. Diperbaiki dengan
+  `keluar()` + `masuk(AKUN_GURU)` sebelum bagian 8, mengikuti pola yang sudah dipakai bagian 9/10 (bug
+  **harness**, bukan produk).
+- **Proses Node harness tidak pernah keluar.** WebSocket CDP dibiarkan terbuka, jadi `node` hidup terus,
+  runner menggantung, dan `hasil smoke` tidak pernah tercetak — artinya kode keluar harness tidak pernah
+  terbaca. Diperbaiki dengan `ws.close()` di akhir `main()` plus `.finally()` yang keluar paksa sesudah
+  jeda singkat bila `main()` berhenti karena galat.
+
+### A.37.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/sections/material` | **104 passed (6 berkas)** |
+| `npx eslint` (PetaPerjalanan, EditorMateri, petaPerjalanan.test) | **0 error** |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest · Pint · checkJs · ESLint · Vitest · realtime |
+| `docs/jalankan-smoke-perjalanan.sh` (backend :8000 + vite :5173 + Chrome :9333) | **51/51 lulus, exit 0** |
+
+Pemeriksaan baru yang relevan di harness:
+
+1. materi pertama: `peta memakai media bergerak, bukan gambar diam · latar video autoplay=true · pendaki jelajah-langkah`;
+2. materi kedua: `peta memakai foto tema sebagai latar (berkasnya benar-benar termuat) · jenis foto · berkas /tema/gunung.jpg · termuat true`;
+3. `peta memakai foto tema, tanpa adegan gambar buatan · adegan SVG 0 · zoom jelajah-zoom`.
+
+### A.37.4 Keputusan teknis (satu kalimat per keputusan)
+
+- Gambar buatan dibuang sepenuhnya, bukan dipercantik: panggung hanya memakai media yang diunggah guru
+  atau foto berlisensi bebas — lebih mudah dipertanggungjawabkan daripada ilustrasi SVG yang menua.
+- Gradien dipakai sebagai cadangan, bukan gambar statis: tidak ada berkas tambahan untuk dimuat dan tidak
+  ada hak pakai yang perlu dilacak.
+- Jalur `data-latar` dipertahankan (`video`/`foto`/`gradien`) supaya tes dan CSS tetap memilih bentuk latar
+  dari satu sumber kebenaran.
+- WebSocket CDP ditutup di akhir agar kode keluar harness bermakna; tanpa itu hijau/merah tidak bisa
+  dipercaya.
+
+### A.37.5 Batasan jujur (yang belum selesai)
+
+- **Tema hanya punya satu foto** (`frontend/public/tema/gunung.jpg`). Adegan lain — termasuk tema kedua
+  yang belum dibuat — akan tampil sebagai gradien sampai fotonya ditambahkan; katalog tema tetap baru satu.
+- Video latar masih hanya diuji dengan satu MP4 2 detik di jalur berpotongan; belum semua kodek/rasio.
+- Bukti "bergerak" dari DOM/CDP (`animationName` foto, `autoplay` video) — **belum ada** uji regresi
+  visual/screenshot.
+- Smoke perjalanan tidak ikut `verify.sh` (butuh backend + vite + Chrome hidup).
+
+### A.37.6 Berkas yang dibuat/diubah
+
+Diubah:
+- `frontend/src/sections/material/PetaPerjalanan.jsx` (buang adegan SVG → video/foto/gradien)
+- `frontend/src/sections/material/EditorMateri.jsx` (keterangan template opsional)
+- `frontend/src/theme/theme.css` (buang gaya adegan, panggung foto/video + gradien cadangan)
+- `frontend/src/__tests__/sections/material/petaPerjalanan.test.jsx`
+- `frontend/public/tema/LISENSI.md`
+- `docs/smoke-ui-perjalanan.mjs` (latar tanpa SVG, masuk ulang sebagai guru, tutup WebSocket)
+- `docs/laporan-pengujian.md` (A.37 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+## A.38 Editor Materi: Pemilih Kuis yang Lebih Baik + Penjelasan Opsional Setelah Kuis (11 Oktober 2026)
+
+Permintaan putaran ini: *"quiz-nya buat UI-nya lebih baik … dan setelah quiz guru bisa berikan bagian
+feedback (opsional)"*, lalu diperjelas: yang dimaksud **UI saat menyisipkan kuis** di editor materi, dan
+umpan baliknya menempel **per kuis (seluruh kelas)**, tampil **hanya di `/materi` setelah kuis**, berupa
+**penjelasan lengkap — teks atau media**.
+
+Sebelum putaran ini penyisipan kuis memakai satu `<select>` telanjang berisi judul kuis saja: guru tidak
+melihat jumlah soal, mapel, kelas, maupun status, dan tidak ada cara mengenali kuis tanpa soal. Setelah
+kuis selesai, murid hanya melihat skor dan tombol lanjut — tidak ada tempat bagi guru untuk menjelaskan
+kenapa jawabannya begitu.
+
+### A.38.1 Yang dikerjakan
+
+- **Editor: `PemilihKuis` menggantikan `<select>`.** Berisi kotak pencarian (judul, mapel, kelas, status)
+  dan baris kuis yang bisa dipindai: `N soal · mapel · kelas · status`, kuis **tanpa soal** ditandai
+  peringatan, dan baris terpilih diberi `aria-pressed`. Bila katalog kosong, editor menjelaskan bahwa kuis
+  dibuat lebih dulu di menu Kuis.
+- **Editor: editor penjelasan di panel klip kuis** (opsional) — `<textarea>` (batas 5.000 karakter) +
+  pilihan **media** dari pustaka unggahan materi + tombol "Kosongkan penjelasan" yang mati saat memang
+  kosong. Keterangannya menyebut bahwa penjelasan tampil untuk **seluruh kelas** tepat setelah kuis selesai.
+- **Backend: penjelasan disimpan di dalam blok kuis** (`isi.penjelasan = {teks, unggahan_kode}`) dan
+  divalidasi `MateriService::validasiPenjelasan()`: teks dipangkas & dibatasi 5.000 karakter, media wajib
+  unggahan materi yang sama/sekolah yang sama/berstatus selesai (aturan yang sama dengan blok media).
+  Blok tanpa penjelasan **tidak** menulis kunci `penjelasan` sama sekali, jadi materi lama tidak berubah
+  saat disimpan ulang.
+- **Backend: satu bentuk untuk guru & murid.** `BlokResource` mengirim `{teks, unggahan_kode}`;
+  `ProgresMateriService::penjelasanBlok()` (dipakai daftar progres **dan** pembukaan satu blok) mengirim
+  `{teks, media}` dengan URL **bertanda tangan** seperti blok media. Isinya bukan kunci jawaban — kunci
+  tetap hanya ada di server — jadi aman dikirim ke klien.
+- **Pemutar murid: `PenjelasanKuis`.** Tampil **hanya sesudah** latihan dikumpulkan (setelah banner skor,
+  sebelum tombol "Lanjutkan video"), mempertahankan baris baru pada teks, dan merender media sesuai mime
+  (gambar/video/audio/pdf), atau tautan unduh untuk kategori yang tidak boleh tampil langsung. Kuis tanpa
+  penjelasan tidak berubah sama sekali.
+- **9 tes baru**: 3 Vitest di `editorMateri.test.js` (penjelasan hanya dikirim bila diisi, dibaca kembali
+  dari server, pemotongan teks) + 2 Vitest di `api.test.js` (skema `penjelasan` + media, dan opsional) + 1 Pest
+  di `Slice08Test.php` (simpan/ditolak/dikirim ke murid).
+
+### A.38.2 Temuan nyata saat verifikasi (dan apa yang diperbaiki)
+
+- **Harness pemutar materi membaca halaman yang salah.** `docs/smoke-ui-materi.mjs` memakai pemilih
+  `document.querySelectorAll('ol li')`, dan sejak tema perjalanan (A.34) halaman murid memuat **dua** `<ol>`:
+  daftar pos peta (`.jelajah-daftar`) dan daftar bagian materi. Akibatnya harness menghitung pos peta sebagai
+  "bagian", mengklik baris yang salah, lalu jatuh pada `Cannot set properties of null (setting 'currentTime')`
+  — 6 pemeriksaan gagal tanpa ada yang salah di produk. Diperbaiki dengan pemilih yang mengecualikan daftar
+  pos (`ol.list-unstyled:not(.jelajah-daftar) > li`); sesudah itu **22/22 lulus**.
+- **Urutan verifikasi penting**: kegagalan itu muncul saat menjalankan harness lama pada kode baru, jadi
+  diagnosis dimulai dengan menanyakan "apakah kode produk atau harness yang salah" — dan buktinya mengarah ke
+  harness (halaman yang dibaca memang bukan halaman yang dimaksud).
+
+### A.38.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test tests/Feature/Slice08Test.php` | **13 passed (193 assertions)** — termasuk tes penjelasan |
+| `npx vitest run src/__tests__/sections/material` | **109 passed (6 berkas)** |
+| `npm run check` + `npx eslint src` | **0 error** (2 peringatan lama dari `react-hooks`) |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest · Pint · checkJs · ESLint · Vitest · realtime |
+| `docs/jalankan-smoke-materi.sh` (backend :8000 + vite :5173 + Chrome :9333) | **27/27 lulus, exit 0** |
+
+Pemeriksaan BARU di harness itu (lewat browser sungguhan, bukan panggilan fungsi internal):
+
+1. `penjelasan setelah kuis tersimpan di blok kuis` — teks yang disimpan guru kembali utuh dari server;
+2. `penjelasan belum tampil sebelum kuis dikumpulkan` — DOM saat panel kuis terbuka **tidak** memuat
+   `.pm-penjelasan`;
+3. `penjelasan guru tampil setelah kuis selesai` — sesudah murid menjawab + mengumpulkan, kartu
+   `Penjelasan` muncul dan isinya teks guru (`SMOKE-MATERI: 5 + 5 = 10 …`).
+
+### A.38.4 Keputusan teknis (satu kalimat per keputusan)
+
+- Penjelasan disimpan di **blok kuis**, bukan tabel kuis: guru menulisnya justru saat menyisipkan kuis, dan
+  media bisa langsung memakai pustaka unggahan materi yang sedang diedit — jadi murid tetap melihat satu
+  penjelasan yang sama untuk seluruh kelas.
+- Media memakai jalur unggahan materi (berkas privat + tautan bertanda tangan), bukan URL luar: hak pakai dan
+  pembersihan berkas tetap satu pintu.
+- Satu helper `penjelasanBlok()` dipakai daftar progres dan pembukaan blok supaya bentuknya tidak pernah
+  berbeda antara peta bagian dan pemutar.
+- Kunci `penjelasan` tidak ditulis bila kosong, supaya menyimpan ulang materi lama tidak mengubah isinya.
+
+### A.38.5 Batasan jujur (yang belum selesai)
+
+- **Penjelasan menempel pada klip kuis, bukan pada kuis itu sendiri.** Bila satu kuis disisipkan di dua
+  materi (atau dua klip), tiap klip punya penjelasannya sendiri; belum ada cara menulis sekali lalu dipakai
+  ulang. Bila itu yang diinginkan, penjelasan perlu pindah ke tabel `quizzes` + jalur unggah khusus kuis.
+- **Penjelasan bukan umpan balik per murid**: tidak bisa dibedakan per anak, dan tidak ada notifikasi
+  "guru memberi penjelasan baru" — murid melihatnya saat melewati kuis itu lagi.
+- Media penjelasan hanya dari **pustaka materi itu**; belum ada unggahan langsung dari panel penjelasan
+  (guru mengunggah lewat klip media lalu memilihnya).
+- Belum ada uji regresi visual/screenshot untuk tata pemilih kuis dan kartu penjelasan.
+- Smoke membuktikan penjelasan **teks** di pemutar; jalur **media** penjelasan belum diuji lewat browser
+  (hanya lewat Pest: media tersimpan, URL bertanda tangan dikirim, dan satu gambar berhasil diparse
+  skemanya di Vitest).
+
+### A.38.6 Berkas yang dibuat/diubah
+
+Diubah — backend:
+- `backend/app/Sections/Material/Services/MateriService.php` (`MAKS_PENJELASAN`, `validasiPenjelasan()`, gabung ke `isi` blok kuis)
+- `backend/app/Sections/Material/Services/ProgresMateriService.php` (`penjelasanBlok()`, dipakai ringkasan & buka blok)
+- `backend/app/Sections/Material/Http/Resources/BlokResource.php` (`penjelasan` untuk guru)
+- `backend/tests/Feature/Slice08Test.php` (1 tes baru)
+
+Diubah — frontend:
+- `frontend/src/sections/material/EditorMateri.jsx` (`PemilihKuis`, panel penjelasan)
+- `frontend/src/sections/material/editorMateri.js` (`MAKS_PENJELASAN`, `penjelasanTerisi()`, baca/kirim penjelasan)
+- `frontend/src/sections/material/PemutarMateri.jsx` (`PenjelasanKuis`)
+- `frontend/src/sections/material/api.js` (skema `penjelasan` untuk guru & murid)
+- `frontend/src/theme/theme.css` (`.nle-pemilih-*`, `.nle-penjelasan`, `.pm-penjelasan*`)
+- `frontend/src/__tests__/sections/material/editorMateri.test.js`, `api.test.js`
+
+Diubah — dokumentasi/harness:
+- `docs/smoke-ui-materi.mjs` (pemilih daftar bagian yang mengecualikan daftar pos)
+- `docs/laporan-pengujian.md` (A.38 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+## A.39 Sapuan Dasar: Setiap Tipe Soal, Reset Sandi Lewat Email, dan Penyebaran Materi (11 Oktober 2026)
+
+Permintaan putaran ini: *"test dasar ... test setiap tipe soal apakah berjalan normal, penyebaran materi?
+password reset email dll 1x token? dll cari"*. Jadi bukan menambah fitur, melainkan **sapuan dasar**: untuk
+flow yang disebut, apa yang sudah ada tesnya, apa yang belum, dan apa yang ternyata **rusak**.
+
+### A.39.1 Yang dikerjakan
+
+- **Berkas uji baru `backend/tests/Feature/AlurTipeSoalTest.php`** — dataset **22 baris, satu per tipe soal**,
+  menempuh jalur HTTP yang sama seperti guru dan murid sungguhan: `POST /soal` → pasang ke kuis →
+  `POST /kuis/{id}/mulai` → periksa payload murid (tipe benar & **tanpa** kunci) → `POST /attempt/{id}/jawab`
+  dengan jawaban BENAR berbentuk kiriman renderer frontend → `POST /attempt/{id}/kumpulkan` → periksa
+  status & skor **baris jawaban** sekaligus skor attempt. Tipe non-objektif punya harapannya sendiri
+  (`uraian` = dinilai lewat kata kunci, `tugas_unggah` = `perlu_tinjau`).
+- **2 tes baru di `AuthTest.php`**: (1) token reset **kedaluwarsa** (>60 menit) ditolak, kata sandi tidak
+  berubah, dan tautan yang diminta ulang tetap bisa dipakai; (2) `lupa-sandi` kena **429** setelah lima
+  permintaan untuk email yang sama (IP sama) sementara email lain belum terkena batas per akun.
+- **1 tes baru di `Slice08Test.php`**: **penyebaran materi** — materi belum terbit tidak muncul di
+  `/materi-saya` dan `403` saat dibuka; setelah terbit hanya murid kelas yang dituju yang menerima;
+  murid kelas lain `403`; guru lain `403` untuk progres, isi materi, dan laporan.
+
+### A.39.2 Temuan nyata (3, semuanya sudah diperbaiki)
+
+1. **`mengurutkan`: murid yang menjawab BENAR selalu mendapat skor 0.** Renderer `SoalMengurutkan`
+   mengirim peta `{idItem: posisi}` (murid mengetik nomor urut tiap item), sedangkan
+   `PenanganMengurutkan::nilai()` membaca jawaban sebagai **daftar id berurutan**
+   (`array_values($jawaban)` dibandingkan `kunci.urutan`). Nilai peta adalah nomor posisi (mis. `3,1,2`)
+   dan kuncinya daftar id, jadi perbandingannya **tidak pernah** cocok — dan karena hasilnya tetap
+   `dinilai` (bukan `gagal`), guru tidak pernah melihatnya di antrean tinjauan. Diperbaiki: `nilai()`
+   sekarang mengenali dua bentuk lewat pembantu `urutanJawaban()` — peta hanya sah bila kuncinya persis
+   seluruh item, nomornya bulat 1..n, dan tidak ada nomor kembar; daftar id lama tetap diterima supaya
+   jawaban yang sudah tersimpan tidak berubah nilainya. Bukti: sebelum perbaikan, run
+   `AlurTipeSoalTest` berbunyi `Tipe mengurutkan mendapat skor 0, seharusnya 4`; sesudah perbaikan
+   **22/22 lulus**.
+2. **Soal `teka_silang_mini` tidak bisa disimpan lewat API (422) — jadi tidak bisa dibuat/diubah guru.**
+   Middleware bawaan Laravel `ConvertEmptyStringsToNull` mengubah kotak grid yang kosong (`''`) menjadi
+   `null`, sedangkan registry mensyaratkan tiap kotak berupa string `''` atau `'#'`; guru selalu menerima
+   *"Kotak teka silang hanya boleh '' (diisi murid) atau '#' (kotak hitam)."*. Seeder dan contoh bank soal
+   menulis langsung ke basis data, jadi bug ini **tidak terlihat** dari data demo. Diperbaiki di
+   `SimpanSoalRequest::prepareForValidation()`: `null` pada `konten.grid` dikembalikan ke `''`, sehingga
+   bentuk yang disimpan tetap seperti yang didokumentasikan registry.
+3. **Laporan materi bisa dibaca guru mana pun (data murid bocor lintas pemilik).** `MateriPolicy::laporan()`
+   hanya memeriksa `isGuru()`, tanpa memeriksa kepemilikan — padahal isinya nama, progres, dan skor
+   **seluruh murid kelas** materi itu, dan `MateriPolicy::view()` sudah menolak materi bukan miliknya.
+   Diperbaiki: `laporan()` memakai aturan `update()` (pemilik materi, atau admin). Ini **perubahan perilaku
+   yang perlu konfirmasi**: guru sekolega tidak lagi bisa membuka `/v1/materi/{id}/laporan` materi bukan
+   miliknya (admin tetap boleh). Alasannya: data anak dan pagar kepemilikan yang sudah dipakai di seluruh
+   aplikasi (lihat `OtorisasiPemilikTest`). Kalau ternyata guru sekolega memang boleh membacanya, satu
+   baris policy itu tinggal dikembalikan.
+
+### A.39.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test --filter=AlurTipeSoalTest` | **22 passed (242 assertions)** — satu tes per tipe soal |
+| `php artisan test` (seluruh suite) | **294 passed (2774 assertions)**, 16,5 s |
+| `npx vitest run` | **63 berkas / 624 tes passed** |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest · Pint **341 berkas** · checkJs · ESLint · Vitest · realtime 15 tes |
+| `php artisan test --filter="Slice12TemaMateri|OtorisasiPemilik"` (sesudah policy laporan diubah) | **19 passed (242 assertions)** |
+
+### A.39.4 Yang sudah ada tesnya sebelum putaran ini (diperiksa, tidak diubah)
+
+- **Reset sandi lewat email**: respons identik untuk email ada/tidak ada (anti-enumerasi), token tersimpan
+  **ter-hash**, token **sekali pakai** (baris `password_reset_tokens` hilang sesudah dipakai), tautan yang
+  sudah dipakai ditandai `tautan_dipakai`, mencabut sesi lama + `remember_token`, URL notifikasi menuju
+  halaman frontend, callback provider terdaftar, dan fail-open saat layanan email mati.
+- **Tipe soal**: kontrak registry per tipe (validasi + nilai + bobot) di `Slice06Test`/`Slice11TipeSoalTest`,
+  plus pagar arch di `ArchitectureTest` (tiap tipe punya penangan unik & metode kontrak lengkap).
+- **Materi**: urutan blok wajib, timeline/track/durasi, penjelasan setelah kuis, tema & kenaikan pos/tingkat,
+  laporan guru vs peta murid. Yang **belum** ada sebelum A.39: sapuan HTTP per tipe soal, kedaluwarsa token
+  reset, throttle `lupa-sandi`, dan sebaran materi kelas lain.
+
+### A.39.5 Batasan jujur (yang belum selesai)
+
+- Sapuan ini lewat **HTTP + bentuk kiriman renderer**, bukan browser sungguhan: tidak ada uji screenshot,
+  dan tidak ada berkas media sungguhan yang diunggah.
+- `tugas_unggah` diuji sampai status `perlu_tinjau`; jalur unggah berkas + penilaian rubrik guru tetap di
+  `Slice09UploadTest`.
+- `uraian` diuji dengan seluruh kata kunci muncul (skor penuh); ambang parsial, saran AI, dan koreksi manual
+  tetap di `Slice06Test`/`Slice09AiTest`.
+- Temuan #3 adalah **perubahan kebijakan**, bukan sekadar perbaikan bug: butuh keputusan pemilik produk.
+- Alasan dua bug itu tidak tertangkap lebih awal: keduanya hanya diuji di **registry** (fungsi internal),
+  bukan lewat jalur HTTP guru/murid — pagar jenis yang sama sudah ada untuk perilaku, belum untuk jalur.
+
+### A.39.6 Berkas yang dibuat/diubah
+
+Dibuat:
+- `backend/tests/Feature/AlurTipeSoalTest.php`
+
+Diubah — kode produk:
+- `backend/app/Sections/Question/Registry/PenanganMengurutkan.php` (`urutanJawaban()`, terima peta & daftar)
+- `backend/app/Sections/Question/Http/Requests/SimpanSoalRequest.php` (`null` → `''` pada `konten.grid`)
+- `backend/app/Sections/Material/Policies/MateriPolicy.php` (`laporan()` = pemilik/admin)
+- `frontend/src/sections/attempt/ringkasanJawaban.js` (komentar bentuk jawaban `mengurutkan` diperbaiki)
+
+Diubah — tes:
+- `backend/tests/Feature/AuthTest.php` (2 tes: kedaluwarsa token, throttle `lupa-sandi`)
+- `backend/tests/Feature/Slice08Test.php` (1 tes: penyebaran materi)
+
+Diubah — dokumentasi:
+- `docs/laporan-pengujian.md` (A.39 ini), `docs/handoff-sesi.md`

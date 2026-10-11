@@ -231,6 +231,53 @@ it('atur ulang sandi: token valid bekerja dan tidak bisa dipakai dua kali', func
     expect(Hash::check('sandi-lagi-kuat-88', $user->fresh()->password))->toBeFalse();
 });
 
+it('token lupa sandi kedaluwarsa ditolak dan kata sandi tidak berubah', function (): void {
+    $user = User::factory()->muridAktif()->create(['email' => 'kedaluwarsa@murid.test']);
+    $token = app('auth.password.broker')->createToken($user);
+
+    // Batas berlaku token = 60 menit (config/auth.php → passwords.users.expire).
+    $this->travel(61)->minutes();
+
+    $respons = $this->postJson('/api/v1/auth/atur-ulang-sandi', [
+        'token' => $token,
+        'email' => 'kedaluwarsa@murid.test',
+        'password' => 'sandi-baru-kuat-77',
+        'password_confirmation' => 'sandi-baru-kuat-77',
+    ])->assertOk();
+
+    // Pesan & skema tetap seragam, tetapi penanda jujur `berhasil` = false dan
+    // kata sandi benar-benar tidak berubah.
+    expect($respons->json('berhasil'))->toBeFalse()
+        ->and(Hash::check('sandi-baru-kuat-77', $user->fresh()->password))->toBeFalse();
+
+    // Tautan yang baru diminta lagi tetap bisa dipakai (akun tidak terkunci).
+    $tokenBaru = app('auth.password.broker')->createToken($user);
+
+    $this->postJson('/api/v1/auth/atur-ulang-sandi', [
+        'token' => $tokenBaru,
+        'email' => 'kedaluwarsa@murid.test',
+        'password' => 'sandi-baru-kuat-77',
+        'password_confirmation' => 'sandi-baru-kuat-77',
+    ])->assertOk()->assertJsonPath('berhasil', true);
+
+    expect(Hash::check('sandi-baru-kuat-77', $user->fresh()->password))->toBeTrue();
+});
+
+it('lupa sandi kena 429 setelah lima permintaan untuk email yang sama', function (): void {
+    User::factory()->muridAktif()->create(['email' => 'borongan@murid.test']);
+
+    foreach (range(1, 5) as $abaikan) {
+        $this->postJson('/api/v1/auth/lupa-sandi', ['email' => 'borongan@murid.test'])->assertOk();
+    }
+
+    // Batas per akun+IP dari RateLimiter 'auth' — tautan reset tidak boleh
+    // dipakai memborbardir kotak masuk murid.
+    $this->postJson('/api/v1/auth/lupa-sandi', ['email' => 'borongan@murid.test'])->assertStatus(429);
+
+    // Email lain dari alamat yang sama belum ikut terkena batas per akun.
+    $this->postJson('/api/v1/auth/lupa-sandi', ['email' => 'lain@murid.test'])->assertOk();
+});
+
 it('notifikasi verifikasi membangun tautan nyata ke rute API (regresi nama rute)', function () {
     $user = User::factory()->create(['email' => 'naila@murid.test']);
 
