@@ -170,11 +170,13 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 
 ## 3. Kondisi git (`git status`)
 
-- `HEAD` = **`6e04be6`** — "Perbaiki tiga temuan tipe soal dan rapikan kontrol kepemilikan laporan materi"
-  (putaran A.39). Sebelumnya `534e506` — "Lengkapi materi bergaya video editor: luring, peta perjalanan,
-  gagang pangkas, penjelasan setelah kuis" (A.33–A.38, 68 berkas). **Keduanya sudah di-push** ke
-  `origin/main` (`d2c0dff..6e04be6`), jadi repo online sudah memuat seluruh pekerjaan sampai A.39.
-- **A.40 (dikomit di putaran ini, sesudah dokumen ini)**: saklar `izinkan_tamu`, section `Tamu`
+- `HEAD` = **`77dc2eb`** — "Buka kuis untuk siswa tamu: guru mengizinkan, tamu cukup mengetik nama"
+  (putaran A.40). Sebelumnya `6e04be6` — "Perbaiki tiga temuan tipe soal dan rapikan kontrol kepemilikan
+  laporan materi" (A.39) dan `534e506` — "Lengkapi materi bergaya video editor: luring, peta perjalanan,
+  gagang pangkas, penjelasan setelah kuis" (A.33–A.38, 68 berkas). **Ketiganya sudah di-push** ke
+  `origin/main` (`d2c0dff..6e04be6`, lalu `6e04be6..77dc2eb`), jadi repo online sudah memuat seluruh
+  pekerjaan sampai A.40.
+- **A.40 (commit `77dc2eb`, sudah di-push)**: saklar `izinkan_tamu`, section `Tamu`
   (service + controller + request + laporan tamu), gerbang tamu di `AttemptService`/`KuisPolicy`/
   `RankingService`, panel siswa tamu di laporan, formulir `MasukTamu.jsx`, navigasi & salinan tamu,
   tes `TamuTest.php` + `masukTamu.test.jsx`, dan pembaruan dokumentasi — semuanya **sudah dikomit & di-push**
