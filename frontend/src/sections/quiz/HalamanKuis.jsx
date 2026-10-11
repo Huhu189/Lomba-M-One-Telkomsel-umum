@@ -96,7 +96,17 @@ export default function HalamanKuis() {
   const [kuisDihapus, setKuisDihapus] = useState(/** @type {import('./api.js').DataKuis|null} */ (null))
   // Editor soal dibuka langsung di langkah 2: guru tidak wajib menyiapkan soal
   // di bank soal lebih dulu.
+  /**
+   * Mode "tulis soal baru" di langkah 2, plus hitungan soal yang sudah ditulis
+   * di sesi ini.
+   *
+   * Sengaja TIDAK ditutup setelah satu soal tersimpan: guru biasanya menulis
+   * beberapa soal berurutan, jadi menutupnya berarti ia harus menekan "Buat
+   * soal baru" lagi tiap kali. Hitungannya dipakai sebagai `key` editor supaya
+   * formulirnya kosong lagi untuk soal berikutnya — perilaku form builder biasa.
+   */
   const [soalBaru, setSoalBaru] = useState(false)
+  const [soalBaruKe, setSoalBaruKe] = useState(0)
 
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
@@ -169,8 +179,12 @@ export default function HalamanKuis() {
       buatSoal(muatan),
     onSuccess: async (soal) => {
       setSoalTerpilih((sebelum) => (sebelum.includes(soal.id) ? sebelum : [...sebelum, soal.id]))
-      setSoalBaru(false)
-      tampilkanToast('sukses', 'Soal dibuat dan langsung masuk ke susunan kuis.')
+      // Tetap di mode tulis soal, dan pasang ulang editornya untuk soal berikutnya.
+      setSoalBaruKe((sebelum) => sebelum + 1)
+      tampilkanToast(
+        'sukses',
+        'Soal dibuat dan langsung masuk ke susunan kuis. Lanjut tulis soal berikutnya bila perlu.',
+      )
       await queryClient.invalidateQueries({ queryKey: ['soal'] })
       await queryClient.invalidateQueries({ queryKey: ['tag'] })
 
@@ -522,6 +536,8 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                   <h2 className="judul-bagian mb-0">Soal baru untuk kuis ini</h2>
                   <p className="teks-lembut small mb-0">
                     Soalnya ikut tersimpan di bank soal dan langsung masuk ke susunan kuis.
+                    {soalBaruKe > 0 ? ` Sudah ditambahkan ${soalBaruKe} soal.` : ''} Kamu bisa terus
+                    menulis soal berikutnya tanpa keluar dari sini.
                   </p>
                 </div>
                 <Tombol varian="tepi" ikon={IkonPanahKiri} onClick={() => setSoalBaru(false)}>
@@ -530,7 +546,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               </div>
 
               <EditorSoal
-                key="soal-baru-di-kuis"
+                key={`soal-baru-di-kuis-${soalBaruKe}`}
                 soal={null}
                 daftarMapel={mapel.data ?? []}
                 daftarTag={tag.data ?? []}
@@ -549,7 +565,14 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                   <div className="kartu-soft p-4 h-100">
                     <div className="d-flex flex-wrap align-items-center gap-2">
                       <h2 className="judul-bagian flex-grow-1 mb-0">Bank soal</h2>
-                      <Tombol ukuran="sedang" ikon={IkonTambah} onClick={() => setSoalBaru(true)}>
+                      <Tombol
+                        ukuran="sedang"
+                        ikon={IkonTambah}
+                        onClick={() => {
+                          setSoalBaruKe(0)
+                          setSoalBaru(true)
+                        }}
+                      >
                         Buat soal baru
                       </Tombol>
                     </div>
@@ -568,7 +591,13 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                     {bankSoal.isSuccess && katalog.length === 0 && (
                       <div className="kotak-kosong">
                         <p className="mb-2">Bank soal masih kosong. Tulis soalnya langsung di sini.</p>
-                        <Tombol ikon={IkonTambah} onClick={() => setSoalBaru(true)}>
+                        <Tombol
+                          ikon={IkonTambah}
+                          onClick={() => {
+                            setSoalBaruKe(0)
+                            setSoalBaru(true)
+                          }}
+                        >
                           Buat soal baru
                         </Tombol>
                       </div>

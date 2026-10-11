@@ -1,11 +1,15 @@
 /**
- * Tes komponen peta perjalanan (render statis): latar foto/video (media sungguhan,
- * bukan gambar buatan) vs gradien cadangan, mode "tanpa peta", daftar pos sebagai
- * teks (bukan hanya warna), dan label aksesibilitas.
+ * Tes komponen peta perjalanan (render statis): prioritas latar (video guru →
+ * adegan yang digambar sendiri → foto → gradien), mode "tanpa peta", daftar pos
+ * sebagai teks (bukan hanya warna), dan label aksesibilitas.
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import PetaPerjalanan, { FOTO_ADEgan, fotoAdegan } from '../../../sections/material/PetaPerjalanan.jsx'
+import PetaPerjalanan, {
+  FOTO_ADEgan,
+  adeganDigambar,
+  fotoAdegan,
+} from '../../../sections/material/PetaPerjalanan.jsx'
 
 /**
  * @param {Partial<import('../../../sections/material/perjalanan.js').DataPerjalanan>} [ubah]
@@ -39,16 +43,21 @@ function peta(ubah = {}) {
 }
 
 describe('PetaPerjalanan', () => {
-  it('menampilkan foto tema dan jalur antar pos, tanpa adegan gambar buatan', () => {
+  it('menggambar adegan gunung dari sudut pandang mendongak, bukan foto', () => {
     const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
 
-    expect(html).toContain('data-latar="foto"')
-    expect(html).toContain('jelajah-foto')
-    // Peta tidak lagi menggambar adegan SVG buatan.
-    expect(html).not.toContain('jelajah-adegan')
-    expect(html).not.toContain('jelajah-matahari')
-    expect(html).not.toContain('jelajah-awan')
-    expect(html).not.toContain('jelajah-bukit')
+    expect(html).toContain('data-latar="ilustrasi"')
+    expect(html).toContain('jelajah-adegan')
+    // Adegan digambar sendiri: tidak ada lagi foto pihak lain di panggung.
+    expect(html).not.toContain('jelajah-foto')
+    expect(html).not.toContain('/tema/gunung.jpg')
+    // Unsur pembentuk sudut pandang dari bawah + bagian yang dianimasikan.
+    expect(html).toContain('jelajah-matahari')
+    expect(html).toContain('jelajah-awan')
+    expect(html).toContain('jelajah-kabut')
+    expect(html).toContain('jelajah-burung')
+    expect(html).toContain('jelajah-lereng-depan')
+    expect(html).toContain('preserveAspectRatio="xMidYMid slice"')
     // Empat pos = tiga ruas garis pada peta.
     expect(html.match(/jelajah-ruas/g)).toHaveLength(3)
     // Ruas pertama sudah dilewati, dua ruas sisa masih putus-putus.
@@ -69,18 +78,21 @@ describe('PetaPerjalanan', () => {
     expect(html).toContain('data-latar="video"')
   })
 
-  it('memakai foto berlisensi bebas sebagai latar tema', () => {
-    const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
-
-    expect(FOTO_ADEgan.gunung).toBe('/tema/gunung.jpg')
-    expect(fotoAdegan('gunung')).toBe('/tema/gunung.jpg')
+  it('tidak lagi memakai foto pihak lain: gunung jadi adegan yang digambar', () => {
+    // Jalur foto tetap ada untuk tema berikutnya, tetapi kosong — foto gunung
+    // sungguhan sudah dibuang dari repo.
+    expect(FOTO_ADEgan.gunung).toBeUndefined()
+    expect(fotoAdegan('gunung')).toBeNull()
     expect(fotoAdegan('polos')).toBeNull()
     expect(fotoAdegan(undefined)).toBeNull()
 
-    expect(html).toContain('data-latar="foto"')
-    expect(html).toContain('jelajah-foto')
-    expect(html).toContain('src="/tema/gunung.jpg"')
-    expect(html).not.toContain('jelajah-adegan')
+    expect(adeganDigambar('gunung')).toBe(true)
+    expect(adeganDigambar('polos')).toBe(false)
+    expect(adeganDigambar(undefined)).toBe(false)
+
+    const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
+    expect(html).toContain('data-latar="ilustrasi"')
+    expect(html).not.toContain('jelajah-foto')
   })
 
   it('memakai latar gradien tenang bila tema tidak punya foto', () => {

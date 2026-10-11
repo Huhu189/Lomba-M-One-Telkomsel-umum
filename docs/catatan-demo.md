@@ -45,6 +45,27 @@ Pemeriksaan kesehatan:
 ./verify.sh   # dari root repo; wajib hijau tiap akhir slice
 ```
 
+## Menguji GUI langsung (browser sungguhan)
+
+Satu perintah per alur — runner menyiapkan dirinya sendiri, jadi tidak perlu menyalakan
+manual dan tidak ada port yang diperebutkan:
+
+```bash
+docs/jalankan-smoke-ui.sh tamu          # mode tamu: nama → kode perangkat → Keluar → akun baru
+docs/jalankan-smoke-ui.sh slice06       # koreksi manual dua kolom + token
+docs/jalankan-smoke-ui.sh slice07      # Live Monitor + anti-cheat
+docs/jalankan-smoke-materi.sh           # pemutar materi + kuis sisipan
+docs/jalankan-smoke-perjalanan.sh       # peta perjalanan bertema + kenaikan pos
+```
+
+Jumlah pemeriksaan tiap harness (dan tanggal terakhir dijalankan) dicatat di
+`docs/laporan-pengujian.md` & `docs/handoff-sesi.md`.
+
+Cara kerjanya: `docs/jalankan-smoke-ui.sh <nama>` memakai layanan yang **sudah hidup**
+(`./nyalakan-local.sh`) dan menyalakan sendiri yang belum ada — lalu hanya mematikan
+proses yang benar-benar ia nyalakan. Jadi urutannya bebas: boleh dijalankan di atas local
+yang sedang dipakai, atau dari keadaan kosong.
+
 ## Demo per slice (rencana)
 
 - **Slice 00**: ketiga layanan hidup; halaman demo tema (palet guru/murid, mode terang), toast, ikon SVG; hasil verify hijau.

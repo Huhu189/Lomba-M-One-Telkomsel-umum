@@ -14,7 +14,9 @@ lewat HTTP, token reset sandi kedaluwarsa & throttle, sebaran materi, plus 3 tem
 **A.40 — siswa tamu:** guru membuka kuis untuk anak tanpa akun lewat pengaturan `izinkan_tamu` dan tamu cukup
 mengetik nama, plus commit & push pekerjaan yang menumpuk (A.33–A.39), **A.42 — audit UI/UX & logika putaran 2:
 tamu beridentitas kode perangkat (bukan nama), limiter tamu per pengunjung, dan proteksi ulangan yang adil di
-ponsel.**)
+ponsel.** · **A.43 — ilustrasi gunung digambar sendiri (foto pihak lain dibuang dari repo), editor soal
+dirapatkan + tulis soal berurutan tanpa keluar dari editor, dan uji GUI bisa dijalankan langsung di atas local
+yang sedang hidup.**)
 
 ## 1. Status verifikasi terakhir
 
@@ -50,6 +52,9 @@ ponsel.**)
 | `npx vitest run src/__tests__/security/useExamSecurity.test.jsx` (**A.42**) | **6 passed** — resize tinggi (keyboard HP) tidak mengaburkan, masa tenggang kunci, dialog berkas tidak mengunci; dibuktikan bergigi lewat mutasi (4 dari 6 merah saat pagarnya dilepas) |
 | `npx vitest run src/__tests__/sections/auth/perangkat.test.js` (**A.42**) | **5 passed** — kode dibuat sekali per perangkat, tetap ada walau penyimpanan diblokir, kode server yang disimpan |
 | `npx vitest run src/__tests__/sections/auth/authStore.sesi.test.js` (**A.42**) | **12 passed** — termasuk tamu yang menekan Keluar membuang kode perangkatnya (komputer bersama), sedangkan sesi yang habis sendiri tidak |
+| `docs/jalankan-smoke-ui.sh tamu` (**A.42**, harness baru, browser sungguhan) | **9/9 lulus, exit 0** — tamu lewat formulir dapat kode perangkat, muat ulang tidak berubah, Keluar membuang kode, nama sama sesudah Keluar = akun baru, kode ngawur 422; pintu tamu dimatikan kembali di akhir |
+| `./nyalakan-local.sh status` (**A.42**) | redis/backend/realtime/frontend **HIDUP** — satu perintah menyalakan semua tanpa menghapus data (tanpa `migrate:fresh`) |
+| Seluruh smoke UI dijalankan ULANG di atas local yang hidup (**A.42**, sesudah runner diperbaiki) | `tamu` **9/9** · `slice06` **28/28** · `slice07` **20/20** · `kuis-manual` **13/13** · `perjalanan` **52/52** · `materi` **27/27** — semua exit 0, keempat layanan tetap HIDUP sesudahnya |
 
 Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:5173`, Chrome CDP `:9333`:
 
@@ -62,13 +67,30 @@ Layanan yang dibutuhkan smoke UI: backend `:8000`, realtime `:4000`, frontend `:
     --autoplay-policy=no-user-gesture-required about:blank )
 ```
 
-**Penting:** jalankan tiap layanan sebagai proses latar milik alat (bukan `nohup ... &` di dalam perintah
-SYNC) — shell perintah dibersihkan setelah selesai dan anak prosesnya ikut mati.
+**Penting:** untuk sesi agen, jangan menyalakan layanan dengan `nohup ... &` di dalam perintah SYNC — shell
+perintah dibersihkan setelah selesai dan anak prosesnya ikut mati. Pakai runner `docs/jalankan-smoke-ui.sh
+<nama>` (menyalakan sendiri yang belum ada lalu mematikannya), atau nyalakan `./nyalakan-local.sh` dan
+jalankan harness **di dalam satu perintah yang sama**. Di terminal pengguna, `./nyalakan-local.sh` bertahan
+normal dan runner memakai layanan itu apa adanya.
 
 Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Aman` (lihat
 `RolesAndAdminSeeder`). Throttle masuk 5 percobaan/menit per akun — harness sudah menunggu + mencoba lagi.
 
 ## 2. Yang selesai di putaran A.30 dan A.31
+
+- **A.43 — rapikan + GUI langsung diuji (11 Oktober 2026)**: adegan `gunung` kembali **digambar sendiri**
+  (`sections/material/AdeganGunung.jsx`, SVG beranimasi CSS, sudut pandang mendongak dari kaki gunung) dan
+  foto pihak lain `gunung.jpg` **dihapus** dari repo — keputusan A.37 dibalik atas permintaan pemilik
+  produk; `PetaPerjalanan.jsx` kini memilih latar berurutan **video → adegan digambar → foto → gradien**
+  (`data-latar="ilustrasi"`), `LISENSI.md` mencatat folder itu kosong. `EditorSoal.jsx` dirapatkan
+  (`gap-3`/`p-3`/`row g-2`, teks bantuan panjang dibuang, kelas `.editor-soal` termasuk petak jenis 2/4/6
+  kolom), dan `HalamanKuis.jsx` **tidak lagi menutup** editor soal sesudah satu soal tersimpan (editor
+  di-`key` ulang + hitungan "Sudah ditambahkan N soal"). Tiga runner smoke kini **memakai layanan yang
+  sudah hidup** dan hanya mematikan proses miliknya sendiri (bug `000000` + `pkill -f "artisan serve"`
+  diperbaiki), dan `./nyalakan-local.sh` menyatukan penyalaan local tanpa menghapus sesi. Bukti: `verify.sh`
+  SEMUA HIJAU, dan `tamu` 9/9 · `slice06` 28/28 · `slice07` 20/20 · `kuis-manual` 13/13 · `perjalanan`
+  52/52 · `materi` 27/27 — semua exit 0 dengan keempat layanan tetap hidup sesudahnya. Rinciannya di
+  `laporan-pengujian.md` A.43.
 
 - **A.30 — 22 tipe soal (objektif 1) tuntas**: kontrak `PenanganTipeSoal::bobot()` untuk penilaian
   parsial (8 tipe lama tetap biner lewat trait `BobotBiner`), 14 tipe baru (`pilihan_ganda_kompleks`,
@@ -267,29 +289,41 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 - **Smoke UI tidak ikut `verify.sh`** (butuh empat layanan hidup).
 - **`docs/word/` disegarkan sebagian**: tiga berkas yang sumbernya berubah (laporan-pengujian, penjelasan-fitur, jurnal-prompt) sudah diekspor ulang lewat `python3 docs/export_docx.py`. Langkah penyegaran log mentah di dalam `export-word.sh` (`docs/export-log-sesi.py`, butuh snapshot sesi chat) **belum** dijalankan supaya transkrip byte-exact tidak berubah tanpa alasan; `log-mentah.docx` dan `catatan-demo.docx` karenanya masih dari ekspor sebelumnya (sumbernya memang tidak berubah).
 - **Belum ada deploy publik dan Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan).
-- **Mode tamu (A.40) belum diuji di peramban sungguhan**: jalur tamu dibuktikan lewat HTTP (Pest) dan
-  formulirnya lewat jsdom (Vitest); belum ada smoke UI/CDP untuk tamu. Juga belum ada pembersihan akun tamu
-  lama (sekolah yang sering memakai mode ini akan menumpuk akun tamu), dan **dua anak dengan nama sama
-  berbagi satu identitas** (nama = identitas, konsekuensi sadar yang ditulis di formulir). Guru hanya bisa
-  menyalakan izin tamu **per kuis**; membukanya untuk sekolah/kelas tetap keputusan admin.
+- **Mode tamu sudah diuji di peramban sungguhan (A.42)**: `docs/jalankan-smoke-ui.sh tamu` **9/9 lulus**
+  (browser + CDP). Sisa batasan mode tamu: belum ada pembersihan akun tamu lama (sekolah yang sering memakai
+  mode ini akan menumpuk akun tamu), pemulihan attempt **lintas perangkat** belum ada (identitas = kode
+  perangkat, jadi ganti peramban/simpanan = anak baru), dan **perangkat bersama yang tidak menekan Keluar**
+  masih melanjutkan akun tamu sebelumnya (komputer lab sebaiknya tetap diminta menekan Keluar antar anak).
 - Lima soal sisa `SMOKE-` (id 57–60, 150) masih tertahan di bank soal dev karena sudah dipakai/dijawab.
 
 ## 5. Cara melanjutkan
 
 ```bash
 cd "folder tanpa judul 2/lomba_m"
+./nyalakan-local.sh                          # nyalakan Redis+backend+realtime+frontend (TANPA hapus data)
+./nyalakan-local.sh status                   # cek kesehatan keempatnya · ./nyalakan-local.sh stop saat selesai
 ./verify.sh                                  # gerbang wajib: semua cek tanpa layanan
 npm --prefix frontend run build              # build produksi
-# hidupkan 4 layanan (lihat bagian 1), lalu:
-for s in nav susun slice03 slice04 slice05 slice06 slice07 luring; do node docs/smoke-ui-$s.mjs; done
+# Cara menguji GUI langsung: satu perintah per harness. Runner memakai layanan yang
+# sudah hidup dari nyalakan-local.sh (dan menyalakan/mematikan sendiri yang belum ada),
+# jadi urutannya bebas dan tidak ada port yang diperebutkan:
+docs/jalankan-smoke-ui.sh tamu                # mode tamu + kode perangkat (9/9)
+docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
 docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
 docs/jalankan-smoke-perjalanan.sh             # peta perjalanan bertema + kenaikan pos/tingkat (sendiri)
-docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
+for s in nav susun slice03 slice04 slice05 slice06 slice07 luring; do node docs/smoke-ui-$s.mjs; done
 node docs/smoke-http-fitur.mjs               # butuh backend + realtime
 ./docs/export-word.sh                        # segarkan 6 .docx + log mentah
 python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx   # konversi Word saja (tanpa log mentah)
 ```
 
+**Catatan penting untuk sesi agen (bukan untuk pengguna):** layanan yang dinyalakan `./nyalakan-local.sh`
+tidak bertahan antar-perintah SYNC milik alat — shell perintah dibersihkan setelah selesai, jadi daemon
+nohup-nya ikut mati. Karena itu jalankan penyalaan layanan dan harness **di dalam satu perintah**
+(`./nyalakan-local.sh && docs/jalankan-smoke-ui.sh tamu`). Di terminal pengguna sendiri, `nyalakan-local.sh`
+bertahan normal dan runner smoke memakai layanan itu apa adanya tanpa mematikannya.
+
 Langkah berikutnya yang masuk akal: **menambah tema perjalanan kedua/ketiga** (mis. "Menjelajah Laut",
-"Ruang Angkasa") memakai katalog yang sudah ada, **smoke UI mode tamu** (buka kuis untuk tamu → masuk dengan
-nama → kerjakan → panel guru), lalu **deteksi tamper sisi klien (2B–2D)**.
+"Ruang Angkasa") memakai katalog yang sudah ada, **menyambung alur tamu sampai mengerjakan ulangan lewat
+smoke browser** (harness `tamu` baru membuktikan identitas/kode perangkat, belum mengerjakan soal), lalu
+**deteksi tamper sisi klien (2B–2D)**.

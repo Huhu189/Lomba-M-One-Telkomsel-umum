@@ -6,7 +6,10 @@
 //   3. soal baru ditulis di editor yang sama dengan bank soal lalu langsung masuk
 //      susunan kuis,
 //   4. mapel soal baru diwarisi kuisnya sehingga langkah 3 tidak menyisakan
-//      butir "Mapel dipilih" yang belum lengkap.
+//      butir "Mapel dipilih" yang belum lengkap,
+//   5. editor tidak terkunci pada satu soal: setelah menyimpan, formulirnya tetap
+//      terbuka dan kosong lagi untuk soal berikutnya,
+//   6. pemilih jenis soal tetap berada di bawah formulir penulisan soal.
 //
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 // Kuis + soal uji dihapus lagi di akhir supaya basis data dev tidak menumpuk.
@@ -172,11 +175,36 @@ async function main() {
     await evalJs(`__alat.klikTeks('Simpan soal')`)
     await sleep(2600)
 
+    // Editor sengaja TIDAK menutup setelah satu soal: guru biasanya menulis
+    // beberapa soal berurutan, jadi jurus "keluar otomatis" itu yang diuji di sini.
     const setelahSimpan = await evalJs(`__alat.main()`)
     catat(
-      'soal baru langsung masuk susunan kuis',
-      setelahSimpan.includes('1 soal') && setelahSimpan.includes('Berapa hasil 2 + 3?'),
+      'setelah simpan, editor tetap terbuka untuk soal berikutnya',
+      setelahSimpan.includes('Soal baru untuk kuis ini') &&
+        setelahSimpan.includes('Sudah ditambahkan 1 soal'),
       setelahSimpan.slice(0, 160),
+    )
+    catat(
+      'formulir kosong lagi untuk soal berikutnya',
+      await evalJs(`document.querySelector('#soal-teks').value === ''`),
+    )
+
+    // Pemilih jenis soal wajib berada di bawah formulir penulisan soal.
+    const jenisDiBawah = await evalJs(`(function () {
+      const jenis = document.querySelector('#soal-judul-3')?.closest('section')
+      const tulis = document.querySelector('#soal-teks')?.closest('section')
+      if (!jenis || !tulis) return null
+      return !!(tulis.compareDocumentPosition(jenis) & Node.DOCUMENT_POSITION_FOLLOWING)
+    })()`)
+    catat('pemilih jenis soal ada di bawah formulir', jenisDiBawah === true)
+
+    await evalJs(`__alat.klikTeks('Kembali ke susunan')`)
+    await sleep(1200)
+    const susunan = await evalJs(`__alat.main()`)
+    catat(
+      'soal baru langsung masuk susunan kuis',
+      susunan.includes('1 soal') && susunan.includes('Berapa hasil 2 + 3?'),
+      susunan.slice(0, 160),
     )
 
     const kuisSetelahSoal = await evalJs(

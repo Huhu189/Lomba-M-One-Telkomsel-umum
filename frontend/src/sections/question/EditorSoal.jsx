@@ -118,11 +118,11 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
         {judul} (minimal {MIN_ITEM})
       </legend>
 
-      <div className="row g-3">
+      <div className="row g-2">
         <div className="col-md-6">
           <h3 className="fw-bold fs-6 teks-lembut">Kiri</h3>
           {state.kiri.map((satu, index) => (
-            <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
               <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
               <input
                 className="form-control flex-grow-1"
@@ -167,7 +167,7 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
         <div className="col-md-6">
           <h3 className="fw-bold fs-6 teks-lembut">Kanan</h3>
           {state.kanan.map((satu, index) => (
-            <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
+            <div key={satu.id} className="d-flex align-items-center gap-2 mb-1">
               <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
               <input
                 className="form-control"
@@ -734,13 +734,13 @@ export default function EditorSoal({
   }
 
   return (
-    <div className="row g-4 align-items-start">
+    <div className="row g-3 align-items-start editor-soal">
       <div className="col-lg-8">
-        <div className="d-flex flex-column gap-4">
-          <section className="kartu-soft p-4" aria-labelledby="soal-judul-1">
+        <div className="d-flex flex-column gap-3">
+          <section className="kartu-soft p-3" aria-labelledby="soal-judul-1">
             <h2 id="soal-judul-1" className="judul-bagian">1. Tulis soalnya</h2>
 
-            <div className="row g-3">
+            <div className="row g-2">
               <div className="col-sm-6">
                 <div className="bidang">
                   <label className="form-label" htmlFor="soal-mapel">Mapel</label>
@@ -792,22 +792,19 @@ export default function EditorSoal({
                   rows={3}
                   value={state.teks}
                   onChange={(e) => ubah({ teks: e.target.value })}
-                  placeholder="Tulis pertanyaan dengan kalimat pendek dan jelas"
+                  placeholder="Tulis pertanyaan…"
                 />
-                <span className="teks-lembut small">
-                  {state.teks.trim().length} huruf. Untuk murid SD, usahakan satu kalimat.
-                </span>
               </div>
             )}
 
             {state.tipe === TIPE.pilihanGanda && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Pilihan jawaban dan kunci ({MIN_OPSI}–{MAKS_OPSI})
                 </legend>
 
                 {state.opsi.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     <input
                       className="form-control flex-grow-1"
@@ -850,7 +847,7 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.benarSalah && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Pernyataan ini …</legend>
                 <div role="radiogroup" aria-label="Kunci benar atau salah" className="d-flex flex-wrap gap-2">
                   {[
@@ -891,17 +888,15 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.letakKata && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Kata + posisi (minimal {MIN_ITEM})</legend>
-                <p className="teks-lembut small">
-                  Setiap kata wajib punya satu posisi. Penilaian otomatis: seluruh kata harus tepat.
-                </p>
+                <p className="teks-lembut small">Setiap kata wajib punya satu posisi.</p>
 
-                <div className="row g-3">
+                <div className="row g-2">
                   <div className="col-md-7">
                     <h3 className="fw-bold fs-6 teks-lembut">Kata</h3>
                     {state.kata.map((satu, index) => (
-                      <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                         <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                         <input
                           className="form-control flex-grow-1"
@@ -947,7 +942,7 @@ export default function EditorSoal({
                   <div className="col-md-5">
                     <h3 className="fw-bold fs-6 teks-lembut">Posisi</h3>
                     {state.posisi.map((satu, index) => (
-                      <div key={satu.id} className="d-flex align-items-center gap-2 mb-2">
+                      <div key={satu.id} className="d-flex align-items-center gap-2 mb-1">
                         <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                         <input
                           className="form-control"
@@ -981,15 +976,11 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.isianSingkat && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Jawaban baku dan sinonim</legend>
-                <p className="teks-lembut small">
-                  Jawaban murid dinilai mirip, jadi salah ketik ringan masih dimaafkan. Pisahkan
-                  sinonim dengan koma.
-                </p>
 
                 {state.jawabanBaku.map((satu, index) => (
-                  <div key={index} className="row g-2 align-items-center mb-2">
+                  <div key={index} className="row g-2 align-items-center mb-1">
                     <div className="col-md-5">
                       <input
                         className="form-control"
@@ -1073,15 +1064,11 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.uraian && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Kata kunci penilaian</legend>
-                <p className="teks-lembut small">
-                  Jawaban uraian dinilai dari kata kunci yang muncul. Bila belum yakin, soal masuk
-                  antrean koreksi guru.
-                </p>
 
                 {state.kataKunci.map((satu, index) => (
-                  <div key={index} className="row g-2 align-items-center mb-2">
+                  <div key={index} className="row g-2 align-items-center mb-1">
                     <div className="col-md-7">
                       <input
                         className="form-control"
@@ -1155,11 +1142,11 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.mengurutkan && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Item + nomor urut benar (minimal {MIN_ITEM})</legend>
 
                 {state.item.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <input
                       className="form-control form-control-sm urut-posisi"
                       type="number"
@@ -1205,17 +1192,14 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.pilihanGandaKompleks && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Pilihan jawaban dan kunci ({MIN_OPSI_KOMPLEKS}–{MAKS_OPSI_KOMPLEKS})
                 </legend>
-                <p className="teks-lembut small">
-                  Tandai SEMUA pilihan yang benar (boleh lebih dari satu). Sisakan minimal satu
-                  pilihan yang bukan kunci.
-                </p>
+                <p className="teks-lembut small">Tandai semua pilihan yang benar.</p>
 
                 {state.opsi.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     <input
                       className="form-control flex-grow-1"
@@ -1257,13 +1241,13 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.benarSalahMajemuk && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Pernyataan dan kunci ({MIN_PERNYATAAN}–{MAKS_PERNYATAAN})
                 </legend>
 
                 {state.pernyataan.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     <input
                       className="form-control flex-grow-1"
@@ -1314,9 +1298,9 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.isianAngka && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Kunci angka dan toleransi</legend>
-                <div className="row g-3">
+                <div className="row g-2">
                   <div className="col-sm-4">
                     <div className="bidang">
                       <label className="form-label" htmlFor="angka-satuan">Satuan (opsional)</label>
@@ -1361,13 +1345,13 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.pilihanGambar && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Gambar pilihan dan kunci ({MIN_GAMBAR}–{MAKS_GAMBAR})
                 </legend>
 
                 {state.opsiGambar.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     <input
                       className="form-control flex-grow-1"
@@ -1410,13 +1394,13 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.urutGambar && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Gambar + nomor urut benar ({MIN_GAMBAR}–{MAKS_GAMBAR})
                 </legend>
 
                 {state.itemGambar.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <input
                       className="form-control form-control-sm urut-posisi"
                       type="number"
@@ -1456,7 +1440,7 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.susunHuruf && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Petunjuk dan kata</legend>
                 <div className="bidang">
                   <label className="form-label" htmlFor="susun-petunjuk">Petunjuk</label>
@@ -1481,25 +1465,21 @@ export default function EditorSoal({
                     onChange={(e) => ubah({ kataSusun: e.target.value })}
                     placeholder="kucing"
                   />
-                  <span className="teks-lembut small">
-                    Huruf akan diacak server; murid menyusunnya kembali menjadi kata ini.
-                  </span>
                 </div>
               </fieldset>
             )}
 
             {state.tipe === TIPE.isianRumpang && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Lubang dan jawaban diterima (maksimal {MAKS_LUBANG})
                 </legend>
                 <p className="teks-lembut small">
-                  Tulis penanda {'{{1}}'}, {'{{2}}'}, … di isi soal, lalu isi jawaban yang diterima
-                  untuk tiap lubang. Beberapa jawaban dipisah koma.
+                  Isi jawaban yang diterima untuk tiap lubang (beberapa jawaban dipisah koma).
                 </p>
 
                 {nomorLubangDariTeks(state.teks).map((nomor) => (
-                  <div key={nomor} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={nomor} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{`{{${nomor}}}`}</span>
                     <input
                       className="form-control flex-grow-1"
@@ -1525,13 +1505,13 @@ export default function EditorSoal({
 
             {state.tipe === TIPE.klasifikasi && (
               <>
-                <fieldset className="mt-3">
+                <fieldset className="mt-2">
                   <legend className="fw-bold fs-6">
                     Item dan kotaknya ({MIN_ITEM}–{MAKS_ITEM_KLASIFIKASI} item)
                   </legend>
 
                   {state.itemKlasifikasi.map((satu, index) => (
-                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                       <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                       <input
                         className="form-control flex-grow-1"
@@ -1578,13 +1558,13 @@ export default function EditorSoal({
                   </Tombol>
                 </fieldset>
 
-                <fieldset className="mt-3">
+                <fieldset className="mt-2">
                   <legend className="fw-bold fs-6">
                     Kotak / kategori ({MIN_KOTAK}–{MAKS_KOTAK})
                   </legend>
 
                   {state.kotak.map((satu, index) => (
-                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                       <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                       <input
                         className="form-control flex-grow-1"
@@ -1617,7 +1597,7 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.tabelIsian && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Kolom, baris, dan jawaban sel (maksimal {MAKS_SEL} sel)
                 </legend>
@@ -1641,14 +1621,13 @@ export default function EditorSoal({
                   </p>
                 ) : (
                   <p className="teks-lembut small mt-2">
-                    Sel yang dibiarkan kosong akan diisi murid; isi jawaban diterimanya (beberapa
-                    jawaban dipisah koma).
+                    Isi jawaban yang diterima untuk sel kosong (beberapa jawaban dipisah koma).
                   </p>
                 )}
 
                 {state.barisTabel.map((baris, index) => (
                   <div key={baris.id} className="kartu-soft p-3 mt-3">
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
                       <span className="badge-status info">Baris {index + 1}</span>
                       <TombolIkon
                         label={`Hapus baris ${index + 1}`}
@@ -1707,12 +1686,12 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.garisBilangan && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Rentang garis dan kunci nilai (rentang maksimal {MAKS_RENTANG_GARIS})
                 </legend>
 
-                <div className="row g-3">
+                <div className="row g-2">
                   <div className="col-sm-4">
                     <div className="bidang">
                       <label className="form-label" htmlFor="garis-min">Angka terkecil</label>
@@ -1784,17 +1763,16 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.hotspotGambar && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
                   Area yang bisa diketuk (maksimal {MAKS_AREA_HOTSPOT})
                 </legend>
                 <p className="teks-lembut small">
-                  Isi x, y, w, h dalam persen (0–100) dari lebar/tinggi gambar. Kotak pertama gambar ada di
-                  kiri atas. Tandai area yang benar dengan kotak centang Kunci.
+                  Tandai area yang benar dengan kotak centang Kunci.
                 </p>
 
                 {state.areaHotspot.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     {bidangArea.map((bidang) => (
                       <input
@@ -1843,13 +1821,9 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.bacaJam && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Waktu yang benar</legend>
-                <p className="teks-lembut small">
-                  Waktu ini hanya dipakai server untuk menilai; murid tidak menerimanya, jadi tulis
-                  perintahnya di isi soal (mis. “Tunjukkan pukul setengah delapan”).
-                </p>
-                <div className="row g-3">
+                <div className="row g-2">
                   <div className="col-sm-6">
                     <div className="bidang">
                       <label className="form-label" htmlFor="baca-jam-jam-kunci">Jam (0–11)</label>
@@ -1883,7 +1857,7 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.tugasUnggah && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Berkas dan rubrik penilaian</legend>
 
                 <div className="bidang">
@@ -1898,13 +1872,8 @@ export default function EditorSoal({
                   />
                 </div>
 
-                <p className="teks-lembut small mt-3">
-                  Rubrik dipakai guru saat mengoreksi (maksimal {MAKS_BUTIR_RUBRIK} butir). Tugas unggah tidak
-                  pernah dinilai otomatis; jawabannya menunggu tinjauan guru.
-                </p>
-
                 {state.rubrik.map((satu, index) => (
-                  <div key={`rubrik-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <div key={`rubrik-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                     <input
                       className="form-control flex-grow-1"
                       aria-label={`Butir rubrik ${index + 1}`}
@@ -1944,7 +1913,7 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.tekaSilangMini && (
-              <fieldset className="mt-3">
+              <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Grid teka silang</legend>
                 <div className="bidang">
                   <label className="form-label" htmlFor="silang-grid">
@@ -1960,7 +1929,7 @@ export default function EditorSoal({
                   />
                   <span className="teks-lembut small">
                     Tulis huruf jawaban untuk kotak yang diisi murid dan tanda # untuk kotak hitam (maksimal{' '}
-                    {MAKS_SISI_SILANG} × {MAKS_SISI_SILANG}). Huruf jawaban tidak dikirim ke perangkat murid.
+                    {MAKS_SISI_SILANG} × {MAKS_SISI_SILANG}).
                   </span>
                 </div>
               </fieldset>
@@ -1976,7 +1945,7 @@ export default function EditorSoal({
 
                   {state.petunjukSilang.map((satu, index) =>
                     satu.arah === arah ? (
-                      <div key={`${arah}-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <div key={`${arah}-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                         <input
                           className="form-control form-control-sm silang-nomor-input"
                           type="number"
@@ -2036,7 +2005,7 @@ export default function EditorSoal({
               ))}
           </section>
 
-          <section className="kartu-soft p-4" aria-labelledby="soal-judul-2">
+          <section className="kartu-soft p-3" aria-labelledby="soal-judul-2">
             <h2 id="soal-judul-2" className="judul-bagian">2. Pengaturan soal</h2>
 
             <div className="row g-3 align-items-end">
@@ -2139,7 +2108,7 @@ export default function EditorSoal({
             deretan pil), sedangkan ringkasannya tetap memperlihatkan tipe yang
             sedang aktif walau lipatan ditutup.
           */}
-          <section className="kartu-soft p-4" aria-labelledby="soal-judul-3">
+          <section className="kartu-soft p-3" aria-labelledby="soal-judul-3">
             <details className="pemilih-jenis" open>
               <summary>
                 <h2 id="soal-judul-3" className="judul-bagian mb-0">3. Pilih jenis soal</h2>
@@ -2149,13 +2118,7 @@ export default function EditorSoal({
                   </span>
                   {LABEL_TIPE[state.tipe] ?? state.tipe}
                 </span>
-                <span className="teks-lembut small">{DAFTAR_TIPE.length} tipe · buka/tutup</span>
               </summary>
-
-              <p className="teks-lembut small mt-2 mb-0">
-                Tipe objektif dinilai pasti oleh server; tipe bertingkat (isian singkat, uraian,
-                tugas unggah) bisa perlu koreksi guru.
-              </p>
 
               <div role="radiogroup" aria-label="Jenis soal" className="petak-tipe">
                 {DAFTAR_TIPE.map((tipe) => {
@@ -2185,14 +2148,9 @@ export default function EditorSoal({
       </div>
 
       <aside className="col-lg-4 sisi-lengket" aria-label="Pratinjau dan kelengkapan">
-        <div className="d-flex flex-column gap-4">
-          <section className="kartu-soft p-4" aria-labelledby="soal-pratinjau">
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <h2 id="soal-pratinjau" className="judul-kecil flex-grow-1 mb-0">
-                Pratinjau (kunci ditandai)
-              </h2>
-              <span className="badge-status info">Sama seperti layar murid</span>
-            </div>
+        <div className="d-flex flex-column gap-3">
+          <section className="kartu-soft p-3" aria-labelledby="soal-pratinjau">
+            <h2 id="soal-pratinjau" className="judul-kecil mb-2">Pratinjau</h2>
 
             <RendererSoal
               tipe={state.tipe}
@@ -2203,7 +2161,7 @@ export default function EditorSoal({
             />
           </section>
 
-          <section className="kartu-soft p-4" aria-labelledby="soal-kelengkapan">
+          <section className="kartu-soft p-3" aria-labelledby="soal-kelengkapan">
             <h2 id="soal-kelengkapan" className="judul-kecil">Kelengkapan</h2>
 
             <ul className="list-unstyled d-flex flex-column gap-2 mb-3">

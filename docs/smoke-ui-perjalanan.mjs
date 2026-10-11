@@ -76,12 +76,23 @@ const ALAT = `window.__alat = {
       label: document.querySelector('.jelajah-panggung')?.getAttribute('aria-label') ?? '',
     }
   },
-  // Latar peta: video tema (bila guru menempelkannya) MENGGANTIKAN foto tema;
-  // bila keduanya tidak ada, panggung memakai gradien. Peta tidak lagi menggambar
-  // adegan SVG, jadi "bergerak" dibuktikan oleh autoplay video atau zoom foto.
+  // Latar peta sesuai prioritas: video tema (bila guru menempelkannya)
+  // MENGGANTIKAN semuanya → adegan yang digambar sendiri (ilustrasi SVG
+  // beranimasi, mis. gunung dilihat dari bawah) → foto tema → gradien.
+  // "Bergerak" dibuktikan autoplay video, animasi adegan, atau zoom foto.
   latar() {
     const video = document.querySelector('video.jelajah-video')
     if (video) return { jenis: 'video', autoplay: video.autoplay }
+    const gambar = document.querySelector('svg.jelajah-adegan')
+    if (gambar) {
+      return {
+        jenis: 'ilustrasi',
+        animasi: this.gaya('.jelajah-adegan', 'animationName'),
+        awan: this.jumlah('.jelajah-adegan .jelajah-awan'),
+        kabut: this.jumlah('.jelajah-adegan .jelajah-kabut'),
+        burung: this.jumlah('.jelajah-adegan .jelajah-burung'),
+      }
+    }
     const foto = document.querySelector('img.jelajah-foto')
     if (foto) {
       return {
@@ -344,13 +355,17 @@ async function main() {
     animasiPendaki === 'jelajah-langkah' &&
       (latarGuru.jenis === 'video'
         ? latarGuru.autoplay === true
-        : latarGuru.jenis === 'foto' && latarGuru.zoom === 'jelajah-zoom'),
+        : latarGuru.jenis === 'ilustrasi'
+          ? latarGuru.animasi === 'jelajah-zoom'
+          : latarGuru.jenis === 'foto' && latarGuru.zoom === 'jelajah-zoom'),
     `latar ${latarGuru.jenis}${
       latarGuru.jenis === 'video'
         ? ' autoplay=' + latarGuru.autoplay
-        : latarGuru.jenis === 'foto'
-          ? ' zoom=' + latarGuru.zoom
-          : ''
+        : latarGuru.jenis === 'ilustrasi'
+          ? ' animasi=' + latarGuru.animasi
+          : latarGuru.jenis === 'foto'
+            ? ' zoom=' + latarGuru.zoom
+            : ''
     } · pendaki ${animasiPendaki}`,
   )
   catat('video latar tema terpasang di editor', (await evalJs(`window.__alat.jumlah('video.jelajah-video')`)) === 1)
@@ -431,8 +446,8 @@ async function main() {
   await masuk(AKUN_GURU)
 
   // --- 8. Materi kedua: latar FOTO tema, lalu pilihan "tanpa peta" ---
-  // Materi ini sengaja tanpa video latar, jadi peta memakai foto tema bawaan
-  // (berkas berlisensi bebas di frontend/public/tema/) — bukan gambar buatan.
+  // Materi ini sengaja tanpa video latar, jadi peta memakai adegan gunung yang
+  // digambar sendiri (ilustrasi SVG beranimasi) — bukan foto pihak lain.
   const judulRingkas = `Ringkas Smoke ${Date.now()}`
   const buatRingkas = await apiJson('/v1/materi', 'POST', {
     judul: judulRingkas,
@@ -462,17 +477,25 @@ async function main() {
   await buka(`/materi/${idRingkas}/editor`)
   await tunggu(`document.querySelectorAll('.jelajah-pos').length === 2`)
 
-  const latarFoto = await evalJs('window.__alat.latar()')
+  const latarAdegan = await evalJs('window.__alat.latar()')
   catat(
-    'peta memakai foto tema sebagai latar (berkasnya benar-benar termuat)',
-    latarFoto.jenis === 'foto' && latarFoto.termuat === true && String(latarFoto.src).includes('/tema/'),
-    `jenis ${latarFoto.jenis} · berkas ${latarFoto.src ?? '—'} · termuat ${latarFoto.termuat}`,
+    'peta menggambar sendiri adegan gunung, bukan memakai foto pihak lain',
+    latarAdegan.jenis === 'ilustrasi' &&
+      (await evalJs(`window.__alat.jumlah('img.jelajah-foto')`)) === 0,
+    `jenis ${latarAdegan.jenis} · foto ${await evalJs(`window.__alat.jumlah('img.jelajah-foto')`)}`,
   )
-  const adeganSvg = await evalJs(`window.__alat.jumlah('.jelajah-adegan')`)
   catat(
-    'peta memakai foto tema, tanpa adegan gambar buatan',
-    adeganSvg === 0 && latarFoto.jenis === 'foto' && latarFoto.zoom === 'jelajah-zoom',
-    `adegan SVG ${adeganSvg} · zoom ${latarFoto.zoom ?? '—'}`,
+    'adegan gunung beranimasi: zoom panggung + awan/kabut/burung bergerak',
+    latarAdegan.animasi === 'jelajah-zoom' &&
+      latarAdegan.awan >= 1 &&
+      latarAdegan.kabut >= 1 &&
+      latarAdegan.burung >= 1,
+    `animasi ${latarAdegan.animasi ?? '—'} · awan ${latarAdegan.awan} · kabut ${latarAdegan.kabut} · burung ${latarAdegan.burung}`,
+  )
+  catat(
+    'adegan gunung punya sudut pandang dari bawah (lereng depan memotong dari sudut bawah)',
+    (await evalJs(`window.__alat.jumlah('.jelajah-adegan .jelajah-lereng-depan')`)) === 2,
+    `lereng depan ${await evalJs(`window.__alat.jumlah('.jelajah-adegan .jelajah-lereng-depan')`)}`,
   )
 
   // Guru memilih "tanpa peta": peta hilang, nama tema & latar tidak dipakai lagi.

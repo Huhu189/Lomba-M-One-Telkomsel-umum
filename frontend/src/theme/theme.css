@@ -44,6 +44,26 @@
   /* Cincin fokus sengaja bukan --aksen: lihat catatan kontras di atas. */
   --cincin-fokus: #1a2f65;
 
+  /* Palet adegan yang digambar sendiri (AdeganGunung.jsx). Terpisah dari palet
+   * UI karena ini lukisan, bukan komponen antarmuka — tetapi tetap di blok
+   * variabel supaya komponen tidak menyimpan warna mentah. */
+  --adegan-langit-atas: #0b1a33;
+  --adegan-langit-tengah: #27456f;
+  --adegan-langit-bawah: #7fa0bd;
+  --adegan-punggung: #1d3350;
+  --adegan-lereng-atas: #8fa9bd;
+  --adegan-lereng-tengah: #4c6b86;
+  --adegan-lereng-bawah: #16283c;
+  --adegan-depan-atas: #2a4157;
+  --adegan-depan-bawah: #060f19;
+  --adegan-salju: #eef5ff;
+  --adegan-salju-bayang: #c9dcef;
+  --adegan-cahaya: #ffe6a8;
+  --adegan-rusuk: #0f2033;
+  --adegan-awan: #cfe0ee;
+  --adegan-kabut: #dfeaf5;
+  --adegan-burung: #e8f1f9;
+
   /* Skala jarak 4–64 px (papan Standar) */
   --sp-1: 4px;
   --sp-2: 8px;
@@ -3767,6 +3787,136 @@ a {
   }
 }
 
+/* -------------------------------------------------------------------------
+ * Editor soal — mode PADAT (hanya layar ≥992px).
+ *
+ * Guru menyusun banyak soal berturut-turut. Kendali seukuran sasaran sentuh
+ * anak SD membuat satu layar hanya memuat beberapa isian: daftar opsi, butir
+ * jawaban, dan 22 petak jenis soal menumpuk tingginya berlipat. Karena itu di
+ * layar lebar seluruh kendali di dalam `.editor-soal` (pembungkus yang dipasang
+ * EditorSoal) dirapatkan — hanya tinggi dan jarak, huruf tetap terbaca.
+ *
+ * Sengaja DIBATASI ke ≥992px: di ponsel (dan tablet sempit) sasaran sentuh
+ * ≥44px dipertahankan, sesuai aturan ramah anak SD yang diaudit
+ * `docs/audit-ui.mjs` dan diuji `docs/smoke-ui-susun.mjs`.
+ *
+ * Padding kartu (p-3) dan celah antar-kartu (g-3/gap-3) diatur lewat kelas
+ * Bootstrap di JSX karena utilitas Bootstrap memakai `!important` — menimpanya
+ * dari sini hanya akan menambah perang spesifisitas. Utilitas itu hanya mengubah
+ * jarak, jadi aman dipakai di semua lebar layar.
+ * ------------------------------------------------------------------------- */
+.editor-soal .kartu-soft {
+  border-radius: var(--radius-kecil);
+}
+
+@media (min-width: 992px) {
+  /* Blok label + kendali: jarak turun dari 8px ke 4px. */
+  .editor-soal .bidang {
+    gap: var(--sp-1);
+  }
+
+  .editor-soal .judul-bagian,
+  .editor-soal .judul-kecil {
+    font-size: 0.95rem;
+  }
+
+  .editor-soal legend {
+    margin-bottom: var(--sp-1);
+    font-size: 0.95rem;
+  }
+
+  /* Kendali: Bootstrap default memakai huruf 1rem dan tinggi ~38px.
+   * Menyusutkannya aman karena Bootstrap tidak memakai `!important` untuk
+   * `.form-control`/`.form-select`. */
+  .editor-soal .form-control,
+  .editor-soal .form-select {
+    min-height: 32px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  /* Varian `-sm` tetap menang: aturan ini ditulis SESUDAH aturan di atas dan
+   * berspesifisitas sama, jadi urutan yang menentukan. */
+  .editor-soal .form-control-sm,
+  .editor-soal .form-select-sm {
+    min-height: 28px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.85rem;
+  }
+
+  /* Kotak huruf opsi (A, B, …) murni hiasan (aria-hidden), jadi boleh menyusut
+   * paling kecil; label "Kunci" menyusut bersama kendalinya. */
+  .editor-soal .kotak-huruf {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+    border-width: 1.5px;
+    border-radius: 7px;
+  }
+
+  .editor-soal .label-kunci {
+    min-height: 32px;
+    gap: var(--sp-1);
+    font-size: 0.85rem;
+  }
+
+  .editor-soal .label-kunci .form-check-input {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  /* Pil kunci benar/salah: tetap jelas, tapi tidak lagi setinggi tombol aksi. */
+  .editor-soal .pil-tipe {
+    min-height: 34px;
+    padding: 0 var(--sp-3);
+    font-size: 0.9rem;
+  }
+
+  /* Pemilih jenis soal: 22 petak berikon adalah penyumbang tinggi terbesar. */
+  .editor-soal .petak-tipe {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: var(--sp-2);
+  }
+
+  .editor-soal .petak-tipe-tombol {
+    min-height: 58px;
+    gap: 2px;
+    padding: var(--sp-1) 4px;
+    border-radius: var(--radius-kecil);
+  }
+
+  .editor-soal .petak-tipe-label {
+    font-size: 0.72rem;
+  }
+
+  .editor-soal .petak-tipe-tanda {
+    font-size: 0.62rem;
+  }
+
+  .editor-soal .pemilih-jenis > summary {
+    min-height: 34px;
+  }
+
+  .editor-soal .pemilih-jenis-terpilih {
+    padding: 2px var(--sp-2);
+    font-size: 0.85rem;
+  }
+
+  /* Baris pratinjau di sisi kanan ikut dirapatkan. */
+  .editor-soal .baris-pratinjau {
+    min-height: 40px;
+    padding: var(--sp-1) var(--sp-2);
+  }
+}
+
+/* Layar lebar sekali: enam kolom petak supaya 22 jenis tidak jadi lima baris. */
+@media (min-width: 1200px) {
+  .editor-soal .petak-tipe {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 /* Pemutar video murid: bingkai rasio terkunci + panel kuis sisipan. */
 .pm-bingkai {
   position: relative;
@@ -3842,9 +3992,10 @@ a {
 /* ==========================================================================
    Peta perjalanan materi (tema + langkah)
    =
-   Latar panggung selalu media sungguhan: video latar guru bila ada, kalau tidak
-   foto tema (frontend/public/tema/) dengan gerak zoom halus. Bila keduanya tidak
-   ada, panggung memakai gradien tenang — tidak ada adegan gambar buatan. Gerak
+   Latar panggung berprioritas: video latar guru bila ada → adegan yang digambar
+   sendiri (ilustrasi SVG beranimasi, mis. puncak gunung dari sudut mendongak —
+   AdeganGunung.jsx) → foto tema (frontend/public/tema/) dengan gerak zoom halus.
+   Bila tidak ada yang bisa dipakai, panggung memakai gradien tenang. Gerak
    penanda pos tetap CSS.
    ========================================================================== */
 
@@ -3923,10 +4074,185 @@ a {
   animation: jelajah-zoom 26s ease-in-out infinite alternate;
 }
 
-/* Lapisan gelap tipis di atas foto/video supaya titik pos dan penanda posisi
-   tetap terbaca di bagian yang terang. Sengaja TANPA z-index: jalur dan titik
-   pos yang ber-z-index 1 tetap tercetak di atasnya. */
+/* ---------- Adegan yang digambar sendiri (SVG beranimasi) ---------- */
+
+/* Warna adegan: semuanya lewat variabel --adegan-* di blok :root, sehingga
+   komponennya tidak menyimpan satu pun nilai warna mentah. */
+.ag-langit {
+  fill: url(#ag-langit);
+}
+
+.ag-stop-langit-atas {
+  stop-color: var(--adegan-langit-atas);
+}
+
+.ag-stop-langit-tengah {
+  stop-color: var(--adegan-langit-tengah);
+}
+
+.ag-stop-langit-bawah {
+  stop-color: var(--adegan-langit-bawah);
+}
+
+.ag-punggung {
+  fill: var(--adegan-punggung);
+  opacity: 0.75;
+}
+
+.ag-stop-lereng-atas {
+  stop-color: var(--adegan-lereng-atas);
+}
+
+.ag-stop-lereng-tengah {
+  stop-color: var(--adegan-lereng-tengah);
+}
+
+.ag-stop-lereng-bawah {
+  stop-color: var(--adegan-lereng-bawah);
+}
+
+.ag-lereng {
+  fill: url(#ag-lereng);
+}
+
+.ag-stop-depan-atas {
+  stop-color: var(--adegan-depan-atas);
+}
+
+.ag-stop-depan-bawah {
+  stop-color: var(--adegan-depan-bawah);
+}
+
+.ag-lereng-depan {
+  fill: url(#ag-lereng-depan);
+}
+
+.ag-salju {
+  fill: var(--adegan-salju);
+  opacity: 0.92;
+}
+
+.ag-salju-bayang {
+  fill: var(--adegan-salju-bayang);
+  opacity: 0.7;
+}
+
+.ag-rusuk {
+  fill: none;
+  stroke: var(--adegan-rusuk);
+  stroke-width: 0.6;
+  opacity: 0.5;
+}
+
+.ag-stop-cahaya {
+  stop-color: var(--adegan-cahaya);
+}
+
+.ag-awan {
+  fill: var(--adegan-awan);
+}
+
+.ag-kabut {
+  fill: var(--adegan-kabut);
+}
+
+.ag-burung {
+  fill: none;
+  stroke: var(--adegan-burung);
+  stroke-width: 0.7;
+}
+
+/* Mengisi penuh panggung. Seluruh gerak memakai kelas di bawah — bukan SMIL —
+   supaya `prefers-reduced-motion` milik aplikasi ikut menghentikannya. */
+.jelajah-adegan {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: jelajah-zoom 30s ease-in-out infinite alternate;
+}
+
+/* Semburat matahari berdenyut pelan; titik asal di koordinat viewBox. */
+.jelajah-matahari {
+  fill: url(#ag-cahaya);
+  transform-box: view-box;
+  transform-origin: 80px 20px;
+  animation: adegan-denyut 9s ease-in-out infinite alternate;
+}
+
+/* Awan melintas; yang jauh lebih lambat supaya terasa ada kedalaman. */
+.jelajah-awan {
+  animation: adegan-awan 64s linear infinite;
+}
+
+.jelajah-awan-belakang {
+  animation-duration: 88s;
+}
+
+/* Kabut naik sambil bergeser — inilah yang paling terasa "mendongak". */
+.jelajah-kabut {
+  animation: adegan-kabut 34s ease-in-out infinite alternate;
+}
+
+.jelajah-burung {
+  animation: adegan-burung 22s ease-in-out infinite;
+}
+
+@keyframes adegan-awan {
+  from {
+    transform: translateX(-46px);
+  }
+
+  to {
+    transform: translateX(46px);
+  }
+}
+
+@keyframes adegan-denyut {
+  from {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes adegan-kabut {
+  from {
+    opacity: 0.22;
+    transform: translate(-8px, 6px);
+  }
+
+  to {
+    opacity: 0.45;
+    transform: translate(10px, -9px);
+  }
+}
+
+@keyframes adegan-burung {
+  from {
+    opacity: 0;
+    transform: translate(0, 10px);
+  }
+
+  25% {
+    opacity: 0.85;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-14px, -26px);
+  }
+}
+
+/* Lapisan gelap tipis di atas latar supaya titik pos dan penanda posisi tetap
+   terbaca di bagian yang terang. Sengaja TANPA z-index: jalur dan titik pos yang
+   ber-z-index 1 tetap tercetak di atasnya. */
 .jelajah[data-latar='foto'] .jelajah-panggung::after,
+.jelajah[data-latar='ilustrasi'] .jelajah-panggung::after,
 .jelajah[data-latar='video'] .jelajah-panggung::after {
   position: absolute;
   inset: 0;
@@ -4119,6 +4445,11 @@ a {
 /* Gerak dihentikan bila pengguna memintanya (aksesibilitas + baterai). */
 @media (prefers-reduced-motion: reduce) {
   .jelajah-foto,
+  .jelajah-adegan,
+  .jelajah-matahari,
+  .jelajah-awan,
+  .jelajah-kabut,
+  .jelajah-burung,
   .jelajah-penanda-orang {
     animation: none;
   }

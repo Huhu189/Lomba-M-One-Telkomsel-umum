@@ -1,13 +1,16 @@
 /**
  * Peta perjalanan materi (layar murid + pratinjau editor).
  *
- * Latar panggung **selalu media sungguhan**: video yang diunggah guru bila ada,
- * kalau tidak foto tema berlisensi bebas (lihat `frontend/public/tema/LISENSI.md`)
- * yang diberi gerak zoom halus. Peta sengaja **tidak** menggambar adegan gambar
- * buatan sendiri — media itu yang membuat panggung terasa hidup, bukan ilustrasi
- * yang terlihat seadanya. Bila tema tidak punya foto atau fotonya gagal dimuat,
- * panggung tetap tampil sebagai latar **gradien** tenang, jadi tidak pernah
- * kosong.
+ * Latar panggung mengikuti prioritas: video yang diunggah guru bila ada →
+ * adegan yang **digambar sendiri** (ilustrasi SVG beranimasi, mis. puncak gunung
+ * dilihat dari bawah — lihat `AdeganGunung.jsx`) → foto tema berlisensi bebas
+ * (lihat `frontend/public/tema/LISENSI.md`). Bila tidak ada yang bisa dipakai,
+ * panggung tampil sebagai latar **gradien** tenang, jadi tidak pernah kosong.
+ *
+ * Catatan keputusan: dulu peta sengaja tidak pernah menggambar adegan sendiri
+ * dan hanya memakai media sungguhan. Itu diubah atas permintaan pemilik produk:
+ * adegan `gunung` kini ilustrasi beranimasi bersudut pandang mendongak, bukan
+ * foto gunung sungguhan.
  *
  * Materi bertema "tanpa peta" tidak menggambar panggung sama sekali (lihat
  * `tanpaPeta`): yang tampil hanya bilah kemajuan dan daftar bagian, karena
@@ -19,26 +22,50 @@
  * persis — bukan versi ringkas yang bisa berbeda.
  */
 import { useState } from 'react'
+import AdeganGunung from './AdeganGunung.jsx'
 import { labelPerjalanan, titikJalur, tanpaPeta } from './perjalanan.js'
 
 /**
  * Foto latar tiap **adegan** tema. Berkasnya ada di `frontend/public/tema/`
- * (lisensi bebas — lihat `LISENSI.md` di folder itu). Adegan yang belum punya
- * foto jatuh ke latar gradien, bukan gambar buatan.
+ * (lisensi bebas — lihat `LISENSI.md` di folder itu).
+ *
+ * Sengaja kosong sekarang: adegan `gunung` sudah digambar sendiri (lihat
+ * `ADEGAN_DIGAMBAR`), jadi tidak ada lagi gambar pihak lain di repo. Jalur ini
+ * tetap ada untuk tema berikutnya yang memang memakai foto.
  *
  * @type {Record<string, string>}
  */
-export const FOTO_ADEgan = {
-  gunung: '/tema/gunung.jpg',
-}
+export const FOTO_ADEgan = {}
 
 /**
- * Foto latar untuk satu nama adegan, atau `null` bila belum ada.
+ * Nama adegan yang **digambar sendiri** (ilustrasi SVG beranimasi). Dipakai
+ * sebelum foto: tidak bergantung pada berkas luar dan tetap tajam di semua
+ * ukuran.
+ *
+ * Adegannya ditulis sebagai JSX tetap di bawah, bukan komponen dari variabel —
+ * aturan `react-hooks/static-components` menuntut identitas komponen yang stabil
+ * antar-render.
+ *
+ * @type {readonly string[]}
+ */
+export const ADEGAN_DIGAMBAR = ['gunung']
+
+/**
+ * Foto latar untuk satu nama adegan, atau `null` bila tidak ada.
  * @param {string|undefined|null} adegan
  * @returns {string|null}
  */
 export function fotoAdegan(adegan) {
   return (adegan && FOTO_ADEgan[adegan]) || null
+}
+
+/**
+ * Apakah satu nama adegan punya ilustrasi yang digambar sendiri.
+ * @param {string|undefined|null} adegan
+ * @returns {boolean}
+ */
+export function adeganDigambar(adegan) {
+  return typeof adegan === 'string' && ADEGAN_DIGAMBAR.includes(adegan)
 }
 
 /** Label singkat status pos untuk teks (bukan hanya warna). */
@@ -150,8 +177,11 @@ export default function PetaPerjalanan({ perjalanan, ringkas = false, judul }) {
   const posAktif = langkah.find((satu) => satu.nomor === perjalanan.posisi)
   const tingkat = perjalanan.tingkat
   const video = perjalanan.video_url
-  const foto = video || fotoGagal ? null : fotoAdegan(perjalanan.adegan)
-  const latar = video ? 'video' : foto !== null ? 'foto' : 'gradien'
+  // Adegan yang digambar sendiri tidak pernah "gagal dimuat", jadi tidak perlu
+  // menunggu `fotoGagal`; video guru tetap yang paling diprioritaskan.
+  const adaGambar = !video && adeganDigambar(perjalanan.adegan)
+  const foto = video || adaGambar || fotoGagal ? null : fotoAdegan(perjalanan.adegan)
+  const latar = video ? 'video' : adaGambar ? 'ilustrasi' : foto !== null ? 'foto' : 'gradien'
 
   return (
     <section className="jelajah" data-adegan={perjalanan.adegan} data-latar={latar}>
@@ -183,6 +213,8 @@ export default function PetaPerjalanan({ perjalanan, ringkas = false, judul }) {
             aria-hidden="true"
             tabIndex={-1}
           />
+        ) : adeganDigambar(perjalanan.adegan) ? (
+          <AdeganGunung />
         ) : (
           foto !== null && (
             <img

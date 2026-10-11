@@ -3657,6 +3657,7 @@ mengetik namanya sendiri**, dan proteksi ulangan dibuat **adaptif di perangkat s
 | `npx vitest run src/__tests__/sections/auth/perangkat.test.js` | **5 passed** |
 | `npx vitest run src/__tests__/sections/auth/authStore.sesi.test.js` | **12 passed** (3 baru: tamu keluar membuang kode perangkat, sesi habis sendiri tidak, murid biasa tidak menyentuhnya) |
 | `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **331 passed (3126 assertions)** · Redis wajib **9** · Pint · checkJs · ESLint · Vitest **66 berkas / 641 tes** · realtime **20 tes** |
+| `docs/jalankan-smoke-ui.sh tamu` (CDP; backend :8000 + vite :5173 + realtime :4000 + Chrome :9333) | **9/9 lulus, exit 0** — lihat A.42.5 |
 
 Tes barunya diuji-balik (mutasi sementara) supaya tidak hijau tanpa arti:
 
@@ -3703,3 +3704,122 @@ Diubah:
   mematikan realtime; SSE murid tidak menyambung ulang), **T6/S1** (umpan balik submit & status simpan),
   **S2/S3/S5/S6/S7** dan **R1–R6** (termasuk tipografi/target sentuh — bagian "adaptif di mobile" untuk UI,
   bukan perilaku).
+
+### A.42.5 Bukti peramban sungguhan (harness `docs/smoke-ui-tamu.mjs`)
+
+Putaran A.40 menutup laporan ini dengan catatan bahwa **mode tamu belum pernah dijalankan di peramban** —
+hanya lewat Pest (HTTP) dan jsdom (formulir). Harness baru menutupnya: Chrome sungguhan lewat CDP, satu
+perintah (`docs/jalankan-smoke-ui.sh tamu`, yang menyalakan backend + vite + realtime + Chrome sendiri),
+**9/9 lulus, exit 0**. Yang diperiksa — semuanya hal yang tidak bisa dibuktikan tanpa peramban:
+
+| # | Pemeriksaan | Kenapa harus di peramban |
+| --- | --- | --- |
+| 1 | login admin lewat API | jalan masuk ke pengaturan |
+| 2 | admin membuka pintu tamu untuk sekolah (`PUT /v1/pengaturan` → `diizinkan=true`) | `izinkan_tamu` memang lapis sekolah |
+| 3 | formulir "ikut sebagai siswa tamu" benar-benar dirender, dan salinannya menyebut **perangkat yang sama** | salinan yang memaksa tamu menulis perangkat, bukan nama unik |
+| 4 | isi nama + `requestSubmit()` → tamu masuk dan `localStorage['ulangan:perangkat-tamu']` terisi kode acak | kode dibuat & disimpan **di peramban**, bukan oleh server |
+| 5 | navigasi ulang ke `/` → akun **dan kode perangkat** tetap sama | `localStorage` betul-betul bertahan antar muat halaman |
+| 6 | tekan **Keluar** → kode perangkat dibuang (`null`) | pembersihan komputer bersama |
+| 7 | nama sama sesudah Keluar → akun **BARU** (id pertama 154, id kedua 155) | membuktikan identitas = perangkat, bukan nama |
+| 8 | `kode_perangkat` bentuk aneh (`"spasi tidak boleh"`) ditolak **422** | validasi ketat permintaan, lewat jaringan sungguhan |
+| 9 | pintu tamu dimatikan kembali di akhir | harness tidak meninggalkan pengaturan sekolah berubah |
+
+Harness ini **memulihkan keadaan sendiri**: `izinkan_tamu` dikembalikan ke `false` di blok terakhir, dan
+akun tamu uji tidak dipakai lagi sesudah itu. Ia butuh realtime hidup karena runner yang sama juga
+melayani harness lain; jalur tamu sendiri tidak menyentuh SSE.
+
+Runner `docs/jalankan-smoke-ui.sh` (A.42) juga diperbaiki supaya GUI bisa diuji **langsung** di atas local
+yang sedang dipakai: ia memakai layanan yang **sudah hidup** (dan menyalakan sendiri yang belum ada), lalu
+hanya mematikan proses yang benar-benar ia nyalakan. Dua-duanya dijalankan:
+
+| Skenario | Hasil |
+| --- | --- |
+| `./nyalakan-local.sh` hidup, lalu `docs/jalankan-smoke-ui.sh tamu` | `backend/frontend/realtime — dipakai apa adanya` · **9/9 lulus** · sesudahnya keempat layanan **tetap hidup** |
+| tanpa layanan hidup, lalu `docs/jalankan-smoke-ui.sh tamu` | menyalakan sendiri (vite=200 backend=204 realtime=200) · **9/9 lulus** · sesudahnya semua **MATI**, tanpa Chrome sisa di :9333 |
+
+Dua bug **runner** ditemukan dari percobaan ini dan diperbaiki (bukan bug produk): (a) `curl -w '%{http_code}'
+|| echo 000` menambah kode gagal lagi sehingga hasilnya `000000` — pemeriksaan `!= 000` karena itu selalu
+menyatakan "layanan hidup" walau mati (akibatnya tamu menerima 502 dari proxy vite); (b) `trap` lama
+memakai `pkill -f "artisan serve"`/`pkill -f remote-debugging-port=9333` yang akan ikut mematikan layanan
+milik pengembang — diganti dengan daftar PID yang disimpan runner itu sendiri. Perbaikan yang sama dipakai
+`docs/jalankan-smoke-materi.sh` dan `docs/jalankan-smoke-perjalanan.sh`.
+
+Sesudah runner diperbaiki, seluruh harness dijalankan ulang **di atas local yang sedang hidup** (perintah
+`./nyalakan-local.sh` lebih dulu), semuanya exit 0 dan **layanan tetap hidup** sesudahnya:
+
+| Harness | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh tamu` | **9/9 lulus** |
+| `docs/jalankan-smoke-ui.sh slice06` | **28/28 lulus** |
+| `docs/jalankan-smoke-ui.sh slice07` | **20/20 lulus** |
+| `docs/jalankan-smoke-ui.sh kuis-manual` | **13/13 lulus** (harness ikut disunting di putaran A.43) |
+| `docs/jalankan-smoke-perjalanan.sh` | **52/52 lulus** (harness ikut disunting di putaran A.37 & A.43) |
+| `docs/jalankan-smoke-materi.sh` | **27/27 lulus** (sama dengan angka terakhir di A.38) |
+| `./nyalakan-local.sh status` sesudah semua itu | redis/backend/realtime/frontend **HIDUP** |
+
+---
+
+## A.43. Ilustrasi gunung digambar sendiri, editor dirapatkan, dan smoke GUI bisa langsung
+
+Tiga permintaan pemilik produk pada putaran ini: (a) latar tema "Mendaki Gunung" **jangan** foto gunung
+sungguhan, (b) editor soal **dirapatkan** supaya menulis soal berurutan tidak melelahkan, dan (c) uji GUI
+harus bisa dijalankan **langsung** di atas local yang sedang dipakai.
+
+### A.43.1 Yang dikerjakan
+
+- **Adegan `gunung` kembali digambar sendiri — keputusan A.37 dibalik.** `AdeganGunung.jsx` (SVG + animasi
+  CSS) menggambar **puncak gunung dilihat dari kaki gunung**: satu puncak di bingkai dengan kaki lereng
+  bertemu di titik itu, dua bidikan lereng depan memotong dari kiri-bawah dan kanan-bawah — sudut mendongak
+  terbaca dari komposisinya, bukan dari judulnya. Foto pihak lain `gunung.jpg` **dihapus** dari repo, jadi
+  `frontend/public/tema/` sekarang kosong dan tidak ada aset berlisensi pihak ketiga yang perlu dilacak.
+  `PetaPerjalanan.jsx` memakai urutan latar **video guru → adegan digambar (`ADEGAN_DIGAMBAR`) → foto tema →
+  gradien**, dengan `data-latar="ilustrasi"` sebagai penanda bentuk yang benar-benar dirender.
+- **Semua warna adegan lewat variabel `--adegan-*`** di `theme.css`, bukan hex di komponen — pagar mutu
+  `tema.test.js` menolak nilai warna keras di JSX, dan gerak memakai kelas CSS (bukan SMIL) supaya aturan
+  `prefers-reduced-motion` aplikasi ikut mematikannya. Seluruh elemen `aria-hidden`: label aksesibel tetap
+  dari daftar pos teks di bawah peta.
+- **Editor soal dirapatkan**: `EditorSoal.jsx` memakai `gap-3`/`p-3` (dari `g-4`/`p-4`), `row g-2`,
+  `mb-1`, placeholder lebih pendek, dan teks bantuan yang panjang dibuang; kelas `.editor-soal` baru di
+  `theme.css` mengatur kerapatannya (termasuk grid petak jenis: 2 kolom di HP, 4 kolom ≥768px, 6 kolom di
+  layar sangat lebar supaya 22 jenis tidak jadi lima baris).
+- **Halaman kuis: menulis soal berurutan.** `HalamanKuis.jsx` **tidak lagi menutup** editor soal sesudah
+  satu soal tersimpan; editor dipasang ulang lewat `key` bernomor (`soal-baru-di-kuis-N`) sehingga
+  formulirnya kosong untuk soal berikutnya, plus hitungan "Sudah ditambahkan N soal" — perilaku form
+  builder biasa. Tombol "Buat soal baru" mengulang hitungan dari 0.
+- **Runner smoke bisa dipakai di atas local yang hidup.** `docs/jalankan-smoke-ui.sh <nama>` (dan
+  `jalankan-smoke-materi.sh`, `jalankan-smoke-perjalanan.sh`) memakai layanan yang **sudah hidup** apa
+  adanya dan hanya mematikan proses yang benar-benar ia nyalakan; sebelumnya `trap` memakai
+  `pkill -f "artisan serve"` yang akan ikut membunuh layanan milik pengembang. `./nyalakan-local.sh`
+  (baru) menyalakan Redis + backend + realtime + frontend lewat `php artisan migrate` (bukan
+  `migrate:fresh`), jadi **sesi login tidak hilang** saat local dinyalakan ulang; `.local/` di-ignore.
+
+### A.43.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **331 passed (3126 assertions)** · Redis wajib **9 passed (65 assertions)** · Pint · checkJs · ESLint · Vitest **66 berkas / 641 tes** · realtime **20 tes / 0 gagal** |
+| `docs/jalankan-smoke-ui.sh tamu` (di atas `./nyalakan-local.sh` yang hidup) | **9/9 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh slice06` | **28/28 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh slice07` | **20/20 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh kuis-manual` | **13/13 lulus, exit 0** |
+| `docs/jalankan-smoke-perjalanan.sh` | **52/52 lulus, exit 0** |
+| `docs/jalankan-smoke-materi.sh` | **27/27 lulus, exit 0** |
+| `./nyalakan-local.sh status` sesudah semua smoke itu | redis/backend/realtime/frontend **HIDUP** (runner tidak mematikan layanan yang bukan miliknya) |
+| `docs/jalankan-smoke-ui.sh tamu` lagi, kali ini **tanpa** layanan hidup | menyalakan sendiri (vite=200 backend=204 realtime=200) · **9/9 lulus** · sesudahnya semua MATI tanpa sisa Chrome :9333 |
+
+Dua bug yang ditemukan saat verifikasi ini adalah bug **runner**, bukan produk: `$(curl -w '%{http_code}'
+|| echo 000)` menggandakan kode kegagalan menjadi `000000` sehingga pemeriksaan `!= 000` selalu menganggap
+layanan hidup (tamunya lalu menerima 502 dari proxy vite), dan `trap` lama yang menyapu semua proses
+`artisan serve`. Keduanya diperbaiki di tiga runner.
+
+### A.43.3 Batasan jujur
+
+- Adegan digambar hanya untuk tema **"Mendaki Gunung"**; katalog sudah menampung tema lain, tetapi tema
+  kedua/ketiga belum dibuat. Peta tanpa video/adegan/foto tetap jatuh ke gradien - tidak pernah kosong.
+- Belum ada uji regresi visual/screenshot: bukti "mendongak" dan "beranimasi" dari struktur DOM/CSS
+  (`theme.css` + kelas), bukan perbandingan gambar.
+- Kerapatan editor soal dirapatkan lewat kelas CSS dan jarak Bootstrap; **belum diuji di perangkat sentuh
+  sungguhan** (hanya lebar viewport di Vitest/CDP). Sisa audit UI **R1–R6** dan **S2/S3/S5/S6/S7** masih
+  terbuka.
+- Runner smoke tetap **tidak** ikut `verify.sh` (butuh layanan hidup) — perintahnya dicatat di
+  `docs/catatan-demo.md` bagian "Menguji GUI langsung".

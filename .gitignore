@@ -17,6 +17,7 @@ coverage/
 
 # Log & cache
 *.log
+.local/
 .phpunit.result.cache
 .phpunit.cache/
 /storage/pail/
