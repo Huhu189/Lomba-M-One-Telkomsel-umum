@@ -741,10 +741,20 @@ a {
   min-height: var(--tinggi-kepala);
 }
 
+/* Deret header tidak boleh melebarkan halaman: merek boleh menyusut sampai
+   elipsis, sedangkan akun, tombol preferensi, dan hamburger tetap utuh.
+   Tanpa ini di ponsel 390 px (mereka semua tampil sekaligus) tombol hamburger
+   menembus tepi kanan dan SELURUH halaman bergeser mendatar ~55 px — termasuk
+   halaman materi, tempat murid membaca dan mengerjakan kuis. */
+.kepala-app-isi > .me-auto {
+  min-width: 0;
+}
+
 .merek {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
   min-height: 44px;
   color: var(--teks);
   text-decoration: none;
@@ -757,12 +767,22 @@ a {
 }
 
 .merek-teks {
+  min-width: 0;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 399.98px) {
   .merek {
     font-size: 1.05rem;
+    gap: 0.5rem;
+  }
+}
+
+/* Ruang bilah atas di ponsel dirapatkan supaya nama sekolah masih terbaca. */
+@media (max-width: 575.98px) {
+  .kepala-app-isi {
     gap: 0.5rem;
   }
 }
