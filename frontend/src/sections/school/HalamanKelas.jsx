@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { skemaKelasForm } from './validasi.js'
 import { ambilKelas, buatKelas, ubahKelas, hapusKelas } from './api.js'
-import { pesanGalatApi, teksGalat } from '../auth/api.js'
+import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
@@ -59,6 +59,8 @@ export default function HalamanKelas() {
     handleSubmit,
     reset,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(skemaKelasForm),
@@ -79,7 +81,20 @@ export default function HalamanKelas() {
       tutupPanel()
       await queryClient.invalidateQueries({ queryKey: ['kelas'] })
     },
-    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+    onError: (galat) => {
+      // Sebab per kolom ditampilkan di bawah isiannya. "Nama kelas sudah dipakai"
+      // adalah galat yang paling sering muncul (nama contoh di formulir justru
+      // sudah dipakai data bawaan), dan toast sendirian membuat guru menebak
+      // kolom mana yang harus diganti.
+      const kolom = galatKolom(galat)
+
+      clearErrors()
+      if (kolom.nama) setError('nama', { message: kolom.nama })
+      if (kolom.tingkat) setError('tingkat', { message: kolom.tingkat })
+      if (kolom.tahun_ajaran) setError('tahun_ajaran', { message: kolom.tahun_ajaran })
+
+      tampilkanToast('salah', pesanGalatApi(galat))
+    },
   })
 
   const hapus = useMutation({
@@ -224,7 +239,7 @@ export default function HalamanKelas() {
             <input
               id="nama-kelas"
               className="form-control"
-              placeholder="Contoh: 6A"
+              placeholder="Contoh: 6C"
               autoComplete="off"
               {...register('nama')}
             />

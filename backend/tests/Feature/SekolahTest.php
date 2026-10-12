@@ -238,6 +238,32 @@ it('validasi menolak tingkat di luar 1-6 dan nama kelas duplikat', function (): 
         ->assertStatus(422)->assertJsonValidationErrors(['nama']);
 });
 
+it('penolakan nama kelas terbaca sebabnya dalam bahasa Indonesia', function (): void {
+    Sanctum::actingAs(User::factory()->guru()->create());
+
+    $this->postJson('/api/v1/kelas', ['nama' => '6A', 'tingkat' => 6])->assertCreated();
+
+    // "6A" adalah nama contoh di formulir DAN nama yang sudah ada di data bawaan,
+    // jadi penolakannya harus menyebut sebabnya serta jalan keluarnya. Sebelumnya
+    // jawabannya "The nama has already been taken." — guru tidak tahu bahwa yang
+    // salah cuma namanya, dan menyimpulkan halaman kelas rusak.
+    $ulang = $this->postJson('/api/v1/kelas', ['nama' => '6A', 'tingkat' => 6])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['nama']);
+
+    expect($ulang->json('errors.nama.0'))->toContain('sudah dipakai')
+        ->and($ulang->json('message'))->not->toContain('already been taken');
+
+    $tingkat = $this->postJson('/api/v1/kelas', ['nama' => '6C', 'tingkat' => 9])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['tingkat']);
+
+    expect($tingkat->json('errors.tingkat.0'))->toContain('Tingkat kelas paling tinggi 6');
+
+    // Nama yang belum dipakai tetap diterima walau percobaan sebelumnya gagal.
+    $this->postJson('/api/v1/kelas', ['nama' => '6C', 'tingkat' => 6])->assertCreated();
+});
+
 it('permintaan tak terautentikasi ke API merespons 401 JSON walau Accept bukan JSON', function (): void {
     auth()->forgetGuards();
 

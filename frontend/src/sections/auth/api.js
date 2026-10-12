@@ -82,6 +82,36 @@ export function pesanGalatApi(galat) {
 }
 
 /**
+ * Galat validasi per kolom dari respons 422 Laravel.
+ *
+ * `pesanGalatApi` hanya memberi satu pesan untuk toast. Tanpa peta kolom ini,
+ * guru melihat "The nama has already been taken." tanpa tahu kolom mana yang
+ * ditolak — dan itu membuat formulir terasa rusak padahal isiannya saja yang
+ * perlu diganti. Respons tanpa `errors` (galat jaringan, 500) menghasilkan
+ * objek kosong supaya penyebab aslinya tidak tertutup pesan karangan.
+ *
+ * @param {unknown} galat
+ * @returns {Record<string, string>}
+ */
+export function galatKolom(galat) {
+  const data = /** @type {{errors?: Record<string, unknown>} | undefined} */ (
+    /** @type {any} */ (galat)?.response?.data
+  )
+  const perKolom = data && typeof data.errors === 'object' && data.errors !== null ? data.errors : {}
+  /** @type {Record<string, string>} */
+  const hasil = {}
+
+  for (const [kolom, pesan] of Object.entries(perKolom)) {
+    // Laravel mengirim daftar pesan per kolom; yang pertama sudah cukup.
+    const satu = Array.isArray(pesan) ? pesan[0] : pesan
+
+    if (typeof satu === 'string' && satu !== '') hasil[kolom] = satu
+  }
+
+  return hasil
+}
+
+/**
  * Ubah objek galat react-hook-form menjadi teks aman untuk dirender.
  * @param {{ message?: import('react').ReactNode } | undefined} galat
  * @returns {string}

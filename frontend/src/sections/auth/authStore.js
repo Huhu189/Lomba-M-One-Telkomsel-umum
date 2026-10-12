@@ -50,6 +50,20 @@ import {
 let timerThrottle = /** @type {ReturnType<typeof setInterval>|null} */ (null)
 
 /**
+ * Pemulihan sesi yang sedang berjalan (satu saja).
+ *
+ * Dipakai sebagai penjaga: React memanggil efek dua kali di mode pengembangan,
+ * dan App memanggil `pulihkanSesi()` dari efek itu. Tanpa penjaga, setiap muat
+ * halaman mengirim DUA `/v1/sesi` dan DUA `/auth/saya` berurutan — terlihat di
+ * log server sebagai dua permintaan identik dalam satu detik, padahal satu sudah
+ * cukup. Penjaga ini hanya menggabungkan yang SEDANG berjalan: sesudah selesai
+ * dilepas kembali supaya pemanggilan berikutnya tetap benar-benar memeriksa.
+ *
+ * @type {Promise<void>|null}
+ */
+let janjiPemulihanSesi = null
+
+/**
  * Bersihkan jejak sesi dari perangkat ini — dipakai keluar sengaja maupun sesi
  * habis sendiri (401/419).
  *
@@ -165,15 +179,23 @@ function buatStoreAuth(set, get) {
      * event auth:sesi-habis dan toast "Sesi berakhir" yang menyesatkan.
      */
     pulihkanSesi: async () => {
-      try {
-        if (await cekTerautentikasi()) {
-          await get().muatUser()
+      janjiPemulihanSesi ??= (async () => {
+        try {
+          if (await cekTerautentikasi()) {
+            await get().muatUser()
+          }
+        } catch {
+          // Backend tidak terjangkau / sesi tidak sah: perlakukan sebagai tamu.
+        } finally {
+          set({ sesiSiap: true })
         }
-      } catch {
-        // Backend tidak terjangkau / sesi tidak sah: perlakukan sebagai tamu.
-      } finally {
-        set({ sesiSiap: true })
-      }
+      })().finally(() => {
+        // Dilepas setelah selesai: yang digabung hanya pemanggilan berbarengan,
+        // jadi pemeriksaan berikutnya tetap benar-benar memeriksa sesi.
+        janjiPemulihanSesi = null
+      })
+
+      return janjiPemulihanSesi
     },
   }
 }

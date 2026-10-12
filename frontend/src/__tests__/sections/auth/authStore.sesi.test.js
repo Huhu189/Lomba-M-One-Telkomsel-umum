@@ -175,6 +175,34 @@ describe('pulihkanSesi', () => {
     expect(useAuthStore.getState().user).toBeNull()
     expect(useAuthStore.getState().sesiSiap).toBe(true)
   })
+
+  // React memanggil efek dua kali di mode pengembangan, dan App memulihkan sesi
+  // dari efek itu. Dua panggilan yang berbarengan harus berbagi SATU pemeriksaan:
+  // tanpa itu setiap muat halaman menembak /v1/sesi dan /auth/saya dua kali.
+  it('dua panggilan berbarengan berbagi satu pemeriksaan sesi', async () => {
+    vi.mocked(cekTerautentikasi).mockResolvedValue(true)
+    vi.mocked(ambilSaya).mockResolvedValue(userContoh)
+
+    await Promise.all([
+      useAuthStore.getState().pulihkanSesi(),
+      useAuthStore.getState().pulihkanSesi(),
+    ])
+
+    expect(cekTerautentikasi).toHaveBeenCalledTimes(1)
+    expect(ambilSaya).toHaveBeenCalledTimes(1)
+    expect(useAuthStore.getState().sesiSiap).toBe(true)
+  })
+
+  // Penjaga di atas hanya menggabungkan yang sedang berjalan — bukan cache
+  // selamanya, supaya pemulihan sesi berikutnya benar-benar memeriksa server.
+  it('panggilan sesudahnya memeriksa lagi, bukan memakai hasil lama', async () => {
+    vi.mocked(cekTerautentikasi).mockResolvedValue(false)
+
+    await useAuthStore.getState().pulihkanSesi()
+    await useAuthStore.getState().pulihkanSesi()
+
+    expect(cekTerautentikasi).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('sudahDitampilkanSebagaiTunggu', () => {
