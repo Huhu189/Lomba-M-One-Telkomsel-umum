@@ -4783,3 +4783,88 @@ memakai `filter[class_id]` supaya kelasnya disaring **di server**. Hasil ulang: 
 - **Nonce bukan autentikasi**: ia menutup liveness palsu (pemutaran ulang), bukan menggantikan sesi/policy.
   Klien yang benar-benar berhenti mengirim tetap hanya bisa dicurigai setelah ambang — dan murid yang
   menyadari hal itu bisa memutar ulang skrip denyutnya (deteksi browser memang menyimpan batasan ini).
+
+## A.55 Panel Kuis Materi Pindah ke Luar Bingkai Video, dan Bilah Atas yang Tak Lagi Menerobos Tepi (12 Oktober 2026)
+
+Harness GUI baru `docs/smoke-ui-kuis-materi.mjs` (dijalankan lewat `docs/jalankan-smoke-ui.sh kuis-materi`)
+mengukur halaman materi **sebagai murid** di dua viewport (390×844 ponsel, 1366×900 laptop) dan menemukan dua
+cacat nyata yang selama ini luput karena `smoke-ui-materi` hanya memeriksa *munculnya* panel kuis, bukan
+tata letaknya:
+
+1. **Panel kuis sisipan adalah jendela gulir sempit di atas gambar video.** `.pm-kuis` dulu `position:
+   absolute` di dalam `.pm-bingkai` dengan `max-height: 80%`, jadi tingginya terikat tinggi bingkai: di
+   ponsel bingkai 16:9 selebar 274 px hanya **154 px** tinggi → panel **274×123 px** untuk isi **565 px**
+   (dua soal + tombol kumpulkan). Satu soal terpotong, tombol "Simpan jawaban & kumpulkan" berada 425 px di
+   bawah tepi panel (harus digulir di dalam jendela sempit), dan panelnya **menutupi gambar video** yang
+   sedang diputar di mode "berjalan". Di laptop pun terukur **512×230 px** untuk isi 463 px.
+2. **Bilah atas menerobos tepi kanan di ponsel.** Deret merek + akun + dua tombol preferensi + hamburger
+   berjumlah ±433 px di dalam `container` ±366 px, dan karena merek tidak boleh menyusut (teks `nowrap`
+   tanpa `min-width: 0`) tombol hamburger keluar **55 px** dari layar sehingga **seluruh halaman materi
+   bergeser mendatar** — murid harus menggulir ke samping untuk membaca soal.
+
+### A.55.1 Yang dikerjakan
+
+- **Panel kuis keluar dari bingkai video** (`frontend/src/sections/material/PemutarMateri.jsx` +
+  `frontend/src/theme/theme.css`): bingkai video dan panel kuis kini bersaudara di dalam satu panggung
+  (`.pm-panggung`), sehingga panel tumbuh setinggi isinya dan tidak pernah menutupi gambar. Aturan
+  `.pm-kuis-vertikal`, `.pm-kuis-horizontal`, dan `@container` yang lama dihapus; `container-type:
+  inline-size` pada `.pm-bingkai` tidak lagi diperlukan.
+- **Tata "horizontal" tetap berarti**: `@media (min-width: 1200px)` menaruh panel **di samping** video
+  (kolom 1fr + 280 px) saat layar cukup lebar; di bawah itu kedua tata menumpuk ke bawah. Ambang 1200 px
+  dipilih karena kolom materi murid hanya ±640 px di layar 1366 px (sebelumnya `horizontal` memeras video
+  jadi 220 px lebar).
+- **Fokus + pandangan**: saat panel muncul, fokus tetap dipindah ke panel (`preventScroll`) lalu panelnya
+  dibawa ke layar dengan `scrollIntoView({ block: 'nearest' })` — dipanggil dengan `?.` karena jsdom tidak
+  punya `scrollIntoView`. Panel juga diberi `scroll-margin-block`.
+- **Bilah atas bisa menyusut** (`theme.css`): `.kepala-app-isi > .me-auto`, `.merek`, dan `.merek-teks`
+  diberi `min-width: 0` + elipsis, dan jarak antar-elemen dirapatkan (`gap: 0.5rem`) di bawah 576 px.
+  Elemen akun, preferensi, dan hamburger tetap utuh; hanya nama sekolah yang boleh terpotong elipsis.
+- **Garis sisi berwarna di kartu "Perlu perhatian" dihapus** (permintaan pemilik produk): `.perhatian-item` dulu
+  `border-left-width: 6px` dengan warna per jenis (monitor hijau / koreksi kuning / avatar biru). Kini bingkainya
+  seragam `1.5px solid var(--garis)`; jenisnya tetap terbaca dari **ikon yang berbeda per jenis** (jam/centang/
+  bendera) plus judul dan teks ajakan, jadi tidak ada informasi yang hilang. Diperiksa sekali lewat skrip
+  sementara di `/tmp` (bukan harness repo): 1 kartu nyata + probe kelas yang sama di halaman beranda sungguhan —
+  `LULUS · sisi kiri tidak lagi berwarna (sama dengan sisi lain)`.
+- **Klip uji ber-suara tidak lagi berbunyi** (`docs/jalankan-bukti-editor.sh`, `docs/jalankan-smoke-materi.sh`,
+  `docs/jalankan-smoke-perjalanan.sh`, `docs/jalankan-smoke-ui.sh`, `docs/jalankan-tangkap-halaman.sh`,
+  `docs/smoke-ui-kuis-materi.mjs`): semua Chrome headless dijalankan dengan `--mute-audio`, dan harness kuis
+  materi (video uji 5,4 MB berisi audio drum) juga menyetel `video.muted = true` sebelum `play()` — runner
+  memakai Chrome :9333 yang **sudah hidup apa adanya**, jadi kalau Chrome itu dinyalakan tanpa flag bisu,
+  klipnya bisa berbunyi keluar speaker saat smoke berjalan. Penjaganya kini juga **diukur**: setiap titik
+  pengukuran (`__ukurHalaman`) melaporkan media yang sedang diputar tanpa bisu, dan harnessnya menuntut
+  daftar itu **kosong** — 6 pemeriksaan baru (48 dari 42 sebelumnya).
+
+### A.55.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh kuis-materi` **sebelum** perbaikan tata letak (kontrol negatif, CSS lama) | **27/42 lulus, exit 1** — terukur: panel `274×123` di bingkai `274×154` (isi 565 px, 1 soal terpotong, tombol 425 px di bawah), `posisi: tumpang` (menutupi gambar) di hp **dan** laptop (panel `512×230` di bingkai `512×288`), plus `+55 px` gulir mendatar di hp |
+| `docs/jalankan-smoke-ui.sh kuis-materi` **sesudah** perbaikan | **48/48 lulus, exit 0** — hp: panel `274×567` (isi 565 px terbaca penuh, 0 soal terpotong, gulir dalam panel 0, tombol terlihat tanpa gulir), `posisi: bawah`; laptop: tata vertikal panel `512×465` (`posisi: bawah`), tata horizontal panel `280×567` **di samping** bingkai `220×124`; gulir mendatar halaman **0 px** di kedua viewport; tak ada teks keluar panel; semua target sentuh ≥ 44 px |
+| `docs/jalankan-smoke-ui.sh mobile` (Chrome beremulasi ponsel, 412×915) | **16/16 lulus, exit 0** — 8 halaman guru bersih dari gulir mendatar setelah perubahan bilah atas, laci + hamburger tetap normal |
+| `docs/jalankan-smoke-ui.sh materi` (regresi pemutar video, sengaja dijalankan ulang) | **27/27 lulus, exit 0** — kuis sisipan muncul sendiri, mode "jeda" menahan video, penjelasan tampil setelah dikumpulkan, server tetap menolak menutup video (422) |
+| `npx vitest run` (frontend) | **75 berkas / 717 tes lulus** |
+| `npx eslint src` (frontend) | 0 error (2 peringatan `react-hooks/incompatible-library` di formulir auth — sudah ada sebelum putaran ini, bukan dari berkas yang diubah) |
+| `./verify.sh` (root, sesudah semua suntingan putaran ini) | **SEMUA HIJAU (exit 0)** — Pest, Pint, `npm run check`, ESLint, Vitest, dan realtime (20 tes) semuanya lulus |
+
+### A.55.3 Berkas
+
+- Baru: `docs/smoke-ui-kuis-materi.mjs` (harness GUI kuis di halaman materi; mandiri — soal, kuis, dan
+  materi ujinya dibuat di awal dan dihapus lagi di blok `finally`).
+- Diubah: `frontend/src/theme/theme.css` (`.pm-panggung`, `.pm-kuis` jadi kartu di luar bingkai, aturan
+  `horizontal` ≥1200 px, bilah atas bisa menyusut), `frontend/src/sections/material/PemutarMateri.jsx`
+  (panggung + panel + fokus/gulir), `docs/jalankan-bukti-editor.sh`, `docs/jalankan-smoke-materi.sh`,
+  `docs/jalankan-smoke-perjalanan.sh`, `docs/jalankan-smoke-ui.sh`, `docs/jalankan-tangkap-halaman.sh`
+  (`--mute-audio`), `docs/penjelasan-fitur.md` (tata letak panel kuis diperjelas).
+
+### A.55.4 Batasan jujur
+
+- **Pratinjau editor guru masih menggambar panel kuis di ATAS bingkai** (`.nle-kuis` di `EditorMateri.jsx`).
+  Kanvas editor memang kanvas bingkai video, jadi pratinjaunya adalah pratinjau **saat** kuis masuk, bukan
+  tata letak akhir di sisi murid — panel murid kini di bawah/samping bingkai. Label di editor ("Vertikal
+  (panel di bawah)" / "Horizontal (panel di samping)") sudah cocok dengan perilaku baru, tetapi kanvasnya
+  belum menampilkan posisi itu.
+- **Tata "horizontal" baru berlaku di viewport ≥ 1200 px.** Di laptop 1366 px kolom materi murid hanya
+  ±640 px lebar, sehingga kedua tata tampil menumpuk ke bawah; ini disengaja supaya video tidak diperas.
+- **Angka yang diukur berasal dari dua ukuran viewport** (390×844 ponsel, 1366×900 laptop) dengan berkas
+  video uji di DB dev; lebar layar lain tidak diperiksa.
+- Emulasi ponsel tetap emulasi: bukti ini dari Chrome headless + CDP, bukan dari perangkat fisik.
