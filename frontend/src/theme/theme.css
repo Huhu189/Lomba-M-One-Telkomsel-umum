@@ -2981,8 +2981,10 @@ a {
 
 /* ---------- Beranda berbasis tugas (papan 2) ---------- */
 
-/* "Perlu perhatian": daftar kartu dengan garis kiri berwarna per jenis —
- * ditambah ikon + teks, jadi status tidak pernah hanya warna. */
+/* "Perlu perhatian": daftar kartu seragam (tanpa garis sisi berwarna).
+ * Jenisnya tetap terbaca dari ikon yang berbeda per jenis (jam / centang /
+ * bendera) plus judul dan teks ajakan — jadi status tidak pernah hanya warna,
+ * dan bingkainya tidak lagi berwarna-warni di beranda guru. */
 .perhatian-daftar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -2995,20 +2997,7 @@ a {
   padding: var(--sp-4);
   background-color: var(--kartu);
   border: 1.5px solid var(--garis);
-  border-left-width: 6px;
   border-radius: var(--radius);
-}
-
-.perhatian-item.monitor {
-  border-left-color: var(--status-benar);
-}
-
-.perhatian-item.koreksi {
-  border-left-color: var(--status-peringatan);
-}
-
-.perhatian-item.avatar {
-  border-left-color: var(--status-info);
 }
 
 .perhatian-ikon {
