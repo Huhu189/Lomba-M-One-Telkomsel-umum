@@ -2462,8 +2462,16 @@ a {
   box-shadow: inset 0 0 0 1px var(--aktif);
 }
 
+/* Area kerja: kanvas → playback → timeline.
+ *
+ * Kolomnya WAJIB `minmax(0, 1fr)`. Tanpa itu kolom implisit berukuran `auto`,
+ * jadi ia ikut selebar isi terlebar-minimalnya — dan baris playback (flex tanpa
+ * bungkus) punya lebar min-content ~521 px. Akibatnya SELURUH baris di area
+ * kerja (kanvas, bilah rasio, timeline, inspector) terentang 521 px di layar
+ * 390 px dan halaman bergeser mendatar +151 px. */
 .nle-kerja {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   min-width: 0;
 }
@@ -2661,9 +2669,13 @@ a {
   color: var(--teks-di-panel-lembut);
 }
 
-/* Kontrol playback: waktu kini — tombol bulat — durasi total. */
+/* Kontrol playback: waktu kini — tombol bulat — durasi total — penggeser —
+ * tombol langkah — tombol kuis. Barisnya BOLEH membungkus: kalau tidak, lebar
+ * min-content-nya yang panjang itu mendorong seluruh area kerja melebar di
+ * layar sempit (lihat catatan .nle-kerja). */
 .nle-playback {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
 }
@@ -2960,6 +2972,11 @@ a {
 /*
  * Layar sempit: prioritaskan tab editor. Hasil pratinjau dikecilkan dan bisa
  * digulir, sementara timeline + inspector tetap lega.
+ *
+ * Kontrol editor juga dinaikkan ke sasaran sentuh 44 px di sini. Di layar besar
+ * ukurannya sengaja tetap rapat (peralatan editor, dipakai dengan tetikus),
+ * tetapi ponsel/tablet tetap harus bisa dipakai jari — `smoke-ui-editor.mjs`
+ * menuntut 44 px pada kedua lebar sentuh itu.
  */
 @media (max-width: 991.98px) {
   .nle {
@@ -2974,8 +2991,38 @@ a {
     --tinggi-canvas: 30vh;
   }
 
+  .nle-tool,
+  .nle-template,
+  .nle-pemilih-baris,
+  .nle-menu button,
+  .nle-segmen,
+  .nle-tool-kecil {
+    min-height: 44px;
+  }
+
+  /* Tombol langkah ‹ › dan penggeser waktu juga ditekan dengan jari. */
+  .nle-tool-kecil {
+    min-width: 44px;
+  }
+
+  .nle-plus {
+    width: 44px;
+    height: 44px;
+  }
+
+  .nle-scrub,
+  .nle-inspector .form-range {
+    min-height: 44px;
+  }
+
+  /* Klip setinggi 44 px: lane dinaikkan sedikit supaya klip masih muat utuh. */
   .nle-lane {
-    height: 3rem;
+    height: 3.4rem;
+  }
+
+  .nle-klip,
+  .nle-pangkas-grup {
+    height: 2.75rem;
   }
 }
 

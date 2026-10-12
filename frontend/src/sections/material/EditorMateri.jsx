@@ -1330,14 +1330,20 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
               <strong className="small">Klip {aktif + 1}</strong>
               <span className="badge-status lembut">{klipAktif.tipe}</span>
-              <label className="small d-flex align-items-center gap-1 ms-auto">
+              {/* Pola .form-check seperti di halaman lain: labelnya ikut menghitung
+               * sasaran sentuh 44 px, sedangkan kotak centangnya sendiri cuma 23 px. */}
+              <div className="form-check form-check-inline ms-auto mb-0">
                 <input
+                  id="nle-wajib"
+                  className="form-check-input"
                   type="checkbox"
                   checked={klipAktif.wajib}
                   onChange={(e) => ubahBaris(aktif, { wajib: e.target.checked })}
                 />
-                wajib
-              </label>
+                <label className="form-check-label small" htmlFor="nle-wajib">
+                  wajib
+                </label>
+              </div>
               <Tombol
                 varian="teks"
                 ukuran="sedang"
