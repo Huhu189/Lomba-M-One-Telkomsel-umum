@@ -66,6 +66,7 @@ import useExamSecurity from '../../security/useExamSecurity.js'
 import ModalProteksi from '../../security/ModalProteksi.jsx'
 import { adaProteksiAktif } from '../../security/pengaturanProteksi.js'
 import usePresence from '../presence/usePresence.js'
+import useDenyutProteksi from '../presence/useDenyutProteksi.js'
 
 /** Jeda autosave per perubahan (ms). */
 const JEDA_KIRIM = 800
@@ -274,6 +275,20 @@ export default function HalamanKerjakan() {
 
   // Presence hemat data: ping hanya dipakai sebagai penambal celah 15 detik.
   usePresence({ attemptId: attempt?.id ?? 0, aktif: berjalan })
+
+  // Denyut proteksi ber-nonce (2D): hanya saat attempt berjalan dan server
+  // mengirim nonce (proteksi menyala). Nonce yang ditolak (409) → muat ulang
+  // payload attempt supaya dapat nonce segar.
+  const nonceDenyutKedaluwarsa = useCallback(() => {
+    if (attempt !== undefined && attempt.status === 'berjalan') void refetchMulai()
+  }, [attempt, refetchMulai])
+
+  useDenyutProteksi({
+    attemptId: attempt?.id ?? 0,
+    denyut: attempt?.denyut ?? null,
+    aktif: berjalan,
+    saatNonceKedaluwarsa: nonceDenyutKedaluwarsa,
+  })
 
   // Proteksi ulangan: dipasang hanya saat attempt berjalan dan ada saklar menyala.
   const { daftarSaklar, jumlahKejadian, kabur, kunciDetik } = useExamSecurity({

@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Menjelajah Luar Angkasa" — latar peta perjalanan tema Luar Angkasa.
+
+  Dibuat untuk proyek ini (karya sendiri) dan dilepas ke domain publik / CC0,
+  jadi boleh dipakai, diubah, dan disebarkan tanpa izin tambahan — lihat
+  LISENSI.md di folder ini. Seluruhnya digambar di sini: tidak ada berkas
+  unduhan, jadi tidak bergantung jaringan dan tidak ada asal-usul yang perlu
+  ditelusuri.
+
+  Bentuknya mengikuti rute pos tema ini (`RUTE_TEMA.angkasa` di
+  `frontend/src/sections/material/perjalanan.js`): pos meluncur dari landasan di
+  kiri bawah ke Bulan di kanan atas, dan tiap pos berdiri **di atas benda yang
+  digambar** — bukan di ruang kosong. Benda itu diberi `id` supaya bisa
+  diperiksa mesin:
+
+  - `landasan`  (px 52–348 × 660–800)   → pos "Landasan Peluncuran" (11%, 79%) = (176,711)
+  - `bumi`      (lingkaran (430,632) r 184 → px 246–614 × 448–816)
+                                        → pos "Orbit Bumi"          (26%, 52%) = (416,468)
+  - `asteroid`  (px 686–946 × 392–528)  → pos "Sabuk Asteroid"      (50%, 50%) = (800,450)
+  - `saturnus`  (px 964–1440 × 196–446) → pos "Cincin Saturnus"     (72%, 33%) = (1152,297)
+  - `bulan`     (lingkaran (1452,196) r 196 → px 1256–1648 × 0–392)
+                                        → pos "Bulan"               (86%, 20%) = (1376,180)
+
+  LATAR GELAP, dan itu disengaja: langit malam tidak bisa terang. Karena jalur
+  peta bawaan berwarna pekat (dirancang untuk latar terang), tema ini memakai
+  aturan jalur terang di `theme.css` (`.jelajah[data-adegan='angkasa']`).
+  Pagar mutu `frontend/src/__tests__/theme/latarTema.test.js` menguji dua hal
+  yang berbeda untuk berkas ini: **gelap** (tidak menyilaukan) tetapi punya
+  bagian **terang** (bintang & Bulan) supaya jalur tetap terbaca.
+
+  Isinya sengaja lebih rimbun daripada sekadar "latar hitam + beberapa bola":
+  ada tiga gumpal nebula, galaksi spiral jauh, komet berekor, satelit dengan
+  panel surya, sabuk asteroid berbatu dan berdebu, Saturnus berikut cincinnya
+  yang melintang di depan planet, Bulan berkawah dengan sisi gelapnya, serta
+  kompleks peluncuran (roket, menara, lampu sorot, asap) di kiri bawah.
+
+  Atribut width/height dijaga 1600x900 (aturan di LISENSI.md); viewBox 16:9
+  supaya panggung peta tidak memotong Bulan di sudut kanan atas.
+
+  Catatan pemeliharaan: pagar `id` di atas diurai regex `<g id="…">` yang
+  BERHENTI di `</g>` pertama, jadi tiap grup ber-id tidak boleh berisi grup
+  bersarang — sebuah benda = satu grup datar.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <defs>
+    <linearGradient id="malam-angkasa" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0%" stop-color="#080d24"/>
+      <stop offset="42%" stop-color="#121b46"/>
+      <stop offset="100%" stop-color="#05070f"/>
+    </linearGradient>
+    <radialGradient id="nebula-biru" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5566c4" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#5566c4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nebula-ungu" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a374c8" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#a374c8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nebula-teal" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4fb2c8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#4fb2c8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bumi-angkasa" x1="0.1" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#5aabec"/>
+      <stop offset="55%" stop-color="#2f6fbe"/>
+      <stop offset="100%" stop-color="#123a6b"/>
+    </linearGradient>
+    <linearGradient id="bulan-angkasa" x1="0.15" y1="0" x2="0.75" y2="1">
+      <stop offset="0%" stop-color="#f4efe2"/>
+      <stop offset="60%" stop-color="#cfc7b7"/>
+      <stop offset="100%" stop-color="#948c7d"/>
+    </linearGradient>
+    <linearGradient id="bintang-jatuh" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="cahaya-bulan" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8f1ff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#e8f1ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sorot-angkasa" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff3c0" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#fff3c0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- RUANG: bagian terbesar bingkai. -->
+  <rect x="-40" y="-40" width="1680" height="980" fill="url(#malam-angkasa)"/>
+  <circle cx="286" cy="196" r="330" fill="url(#nebula-biru)"/>
+  <circle cx="1156" cy="586" r="330" fill="url(#nebula-ungu)"/>
+  <circle cx="640" cy="806" r="270" fill="url(#nebula-teal)"/>
+
+  <!-- GALAKSI JAUH: cakram miring berisi lengan spiral. -->
+  <ellipse cx="248" cy="150" rx="132" ry="46" fill="#c9d4ff" opacity="0.24"/>
+  <ellipse cx="248" cy="150" rx="86" ry="28" fill="#eef2ff" opacity="0.34"/>
+  <ellipse cx="248" cy="150" rx="38" ry="13" fill="#ffffff" opacity="0.72"/>
+  <g stroke="#b9c8ff" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6">
+    <path d="M128 130 C 168 106 232 98 296 112 C 342 122 366 142 374 158"/>
+    <path d="M124 168 C 172 192 240 200 306 186 C 350 176 372 158 380 144"/>
+  </g>
+
+  <!-- BINTANG: terang, sedang, dan samar. -->
+  <g fill="#ffffff">
+    <circle cx="86" cy="332" r="4"/>
+    <circle cx="166" cy="446" r="3"/>
+    <circle cx="302" cy="372" r="5"/>
+    <circle cx="386" cy="262" r="3"/>
+    <circle cx="452" cy="96" r="4"/>
+    <circle cx="540" cy="184" r="3"/>
+    <circle cx="612" cy="70" r="5"/>
+    <circle cx="688" cy="214" r="3"/>
+    <circle cx="764" cy="118" r="4"/>
+    <circle cx="842" cy="246" r="3"/>
+    <circle cx="918" cy="150" r="5"/>
+    <circle cx="996" cy="62" r="3"/>
+    <circle cx="1074" cy="188" r="4"/>
+    <circle cx="1148" cy="96" r="3"/>
+    <circle cx="1224" cy="228" r="4"/>
+    <circle cx="1302" cy="130" r="3"/>
+    <circle cx="1380" cy="60" r="4"/>
+    <circle cx="1456" cy="626" r="3"/>
+    <circle cx="1532" cy="520" r="4"/>
+    <circle cx="1604" cy="690" r="3"/>
+    <circle cx="1470" cy="812" r="4"/>
+    <circle cx="1360" cy="756" r="3"/>
+    <circle cx="1240" cy="828" r="4"/>
+    <circle cx="1120" cy="742" r="3"/>
+    <circle cx="1000" cy="812" r="4"/>
+    <circle cx="880" cy="716" r="3"/>
+    <circle cx="760" cy="792" r="4"/>
+    <circle cx="640" cy="676" r="3"/>
+    <circle cx="520" cy="748" r="4"/>
+    <circle cx="404" cy="686" r="3"/>
+    <circle cx="296" cy="780" r="4"/>
+    <circle cx="188" cy="700" r="3"/>
+    <circle cx="96" cy="620" r="4"/>
+    <circle cx="204" cy="556" r="3"/>
+    <circle cx="356" cy="566" r="3"/>
+    <circle cx="500" cy="452" r="3"/>
+    <circle cx="700" cy="486" r="3"/>
+    <circle cx="880" cy="392" r="3"/>
+    <circle cx="1020" cy="452" r="3"/>
+    <circle cx="1180" cy="360" r="3"/>
+    <circle cx="1330" cy="452" r="3"/>
+    <circle cx="1470" cy="404" r="3"/>
+    <circle cx="1560" cy="308" r="3"/>
+    <circle cx="92" cy="88" r="3"/>
+    <circle cx="396" cy="42" r="3"/>
+    <circle cx="876" cy="46" r="3"/>
+    <circle cx="1252" cy="42" r="3"/>
+    <circle cx="1604" cy="196" r="3"/>
+  </g>
+  <g fill="#ffffff" opacity="0.62">
+    <circle cx="132" cy="242" r="2"/>
+    <circle cx="232" cy="108" r="2"/>
+    <circle cx="344" cy="188" r="2"/>
+    <circle cx="418" cy="322" r="2"/>
+    <circle cx="512" cy="262" r="2"/>
+    <circle cx="596" cy="128" r="2"/>
+    <circle cx="672" cy="320" r="2"/>
+    <circle cx="756" cy="196" r="2"/>
+    <circle cx="868" cy="304" r="2"/>
+    <circle cx="944" cy="88" r="2"/>
+    <circle cx="1040" cy="256" r="2"/>
+    <circle cx="1122" cy="152" r="2"/>
+    <circle cx="1216" cy="300" r="2"/>
+    <circle cx="1308" cy="204" r="2"/>
+    <circle cx="1404" cy="120" r="2"/>
+    <circle cx="1502" cy="240" r="2"/>
+    <circle cx="1588" cy="440" r="2"/>
+    <circle cx="1428" cy="540" r="2"/>
+    <circle cx="1300" cy="612" r="2"/>
+    <circle cx="1176" cy="500" r="2"/>
+    <circle cx="1052" cy="576" r="2"/>
+    <circle cx="928" cy="452" r="2"/>
+    <circle cx="812" cy="556" r="2"/>
+    <circle cx="690" cy="432" r="2"/>
+    <circle cx="574" cy="586" r="2"/>
+    <circle cx="452" cy="628" r="2"/>
+    <circle cx="332" cy="498" r="2"/>
+    <circle cx="222" cy="640" r="2"/>
+    <circle cx="120" cy="742" r="2"/>
+    <circle cx="286" cy="866" r="2"/>
+    <circle cx="470" cy="836" r="2"/>
+    <circle cx="654" cy="866" r="2"/>
+    <circle cx="844" cy="836" r="2"/>
+    <circle cx="1032" cy="866" r="2"/>
+    <circle cx="1222" cy="836" r="2"/>
+    <circle cx="1414" cy="866" r="2"/>
+    <circle cx="1588" cy="812" r="2"/>
+  </g>
+  <!-- Kilau bintang empat sudut: penanda langit yang tidak polos. -->
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.85">
+    <path d="M540 320 L540 358"/>
+    <path d="M521 339 L559 339"/>
+    <path d="M1046 350 L1046 384"/>
+    <path d="M1029 367 L1063 367"/>
+    <path d="M1428 668 L1428 702"/>
+    <path d="M1411 685 L1445 685"/>
+    <path d="M352 120 L352 150"/>
+    <path d="M337 135 L367 135"/>
+  </g>
+
+  <!-- KOMET: inti terang dengan ekor menjulur ke kanan atas. -->
+  <path fill="url(#bintang-jatuh)" d="M146 596 C 300 588 452 566 600 534 C 456 578 306 610 150 628 Z"/>
+  <circle cx="142" cy="612" r="11" fill="#ffffff"/>
+  <circle cx="142" cy="612" r="26" fill="url(#cahaya-bulan)"/>
+
+  <!-- SATELIT: badan kecil dengan dua panel surya. -->
+  <g>
+    <rect x="722" y="286" width="42" height="26" rx="5" fill="#d7dce6"/>
+    <rect x="722" y="296" width="42" height="6" fill="#9aa2b0"/>
+    <rect x="648" y="290" width="70" height="18" rx="3" fill="#4f7bd8"/>
+    <rect x="768" y="290" width="70" height="18" rx="3" fill="#4f7bd8"/>
+    <rect x="648" y="296" width="70" height="3" fill="#2f4c9c"/>
+    <rect x="768" y="296" width="70" height="3" fill="#2f4c9c"/>
+    <path fill="none" stroke="#e6ebf5" stroke-width="3" d="M762 300 L768 299"/>
+    <path fill="none" stroke="#e6ebf5" stroke-width="3" d="M722 300 L718 299"/>
+    <circle cx="770" cy="272" r="12" fill="#eef2f8" opacity="0.9"/>
+  </g>
+
+  <!-- PLANET JAUH: dua bola kecil sebagai penanda skala. -->
+  <circle cx="386" cy="128" r="18" fill="#c88f5c"/>
+  <circle cx="380" cy="122" r="6" fill="#e0ad74"/>
+  <circle cx="620" cy="806" r="22" fill="#7f6f9c"/>
+  <ellipse cx="620" cy="806" rx="36" ry="9" fill="#b7a6d4" opacity="0.6"/>
+
+  <!-- BUMI: bola biru dengan benua, awan, dan rim atmosfernya.
+       Pos "Orbit Bumi" berdiri di tepi kiri-atas bola ini. -->
+  <g id="bumi">
+    <circle cx="430" cy="632" r="184" fill="url(#bumi-angkasa)"/>
+    <path fill="#54b06f" d="M296 574 C 340 546 404 550 428 580 C 454 616 424 652 382 656 C 336 660 292 618 296 574 Z"/>
+    <path fill="#3f9a5e" d="M474 692 C 516 664 570 682 584 718 C 596 754 552 792 512 780 C 470 768 452 718 474 692 Z"/>
+    <path fill="#78c287" d="M336 706 C 372 690 412 700 428 722 C 404 734 362 736 336 706 Z"/>
+    <path fill="#5aabec" d="M362 452 C 420 440 478 456 512 486 C 468 500 412 492 362 452 Z"/>
+    <path fill="#dff1ff" opacity="0.7" d="M276 616 C 326 592 386 598 422 626 C 380 638 328 640 276 616 Z"/>
+    <path fill="#dff1ff" opacity="0.55" d="M432 746 C 480 722 538 730 572 756 C 524 770 472 770 432 746 Z"/>
+    <path fill="#dff1ff" opacity="0.45" d="M300 700 C 340 682 388 686 414 704 C 376 714 330 714 300 700 Z"/>
+    <!-- Malam hari sisi kanan: bidang membulat, bukan sabit bersisi curam —
+         pagar bentuk menolak bidang path yang sisinya mendekati tegak. -->
+    <ellipse cx="470" cy="632" rx="140" ry="178" fill="#0d2b52" opacity="0.5"/>
+    <ellipse cx="524" cy="664" rx="86" ry="112" fill="#08203e" opacity="0.45"/>
+    <!-- Rim atmosfer. -->
+    <path fill="none" stroke="#a8d8ff" stroke-width="8" opacity="0.55" d="M266 546 C 298 448 384 388 470 400"/>
+  </g>
+
+  <!-- SABUK ASTEROID: gugusan batu bongkahan di jalur melintang.
+       Pos "Sabuk Asteroid" berdiri di bongkahan besar di tengahnya. -->
+  <g id="asteroid">
+    <path fill="#8e8a95" opacity="0.32" d="M686 468 C 780 436 884 434 946 458 C 884 484 780 490 686 468 Z"/>
+    <path fill="#b7b2bb" d="M752 486 C 738 450 760 420 800 418 C 840 416 866 444 858 480 C 850 514 776 516 752 486 Z"/>
+    <path fill="#8b8691" d="M802 460 C 798 438 818 424 838 430 C 858 436 860 458 848 468 C 834 480 808 478 802 460 Z"/>
+    <path fill="#b7b2bb" d="M866 500 C 856 474 876 452 904 454 C 932 456 944 480 934 500 C 922 520 876 522 866 500 Z"/>
+    <path fill="#8e8a95" d="M706 508 C 700 490 714 474 734 476 C 754 478 760 496 752 508 C 742 520 714 522 706 508 Z"/>
+    <path fill="#b7b2bb" d="M918 424 C 914 408 928 396 944 398 C 960 400 964 416 956 426 C 946 436 924 438 918 424 Z"/>
+    <path fill="#a09aa6" d="M744 528 C 740 516 750 506 762 508 C 774 510 778 522 772 530 C 766 538 748 540 744 528 Z"/>
+    <path fill="#a09aa6" d="M790 404 C 786 392 796 382 808 384 C 820 386 824 398 818 406 C 812 414 794 416 790 404 Z"/>
+    <circle cx="832" cy="536" r="10" fill="#b7b2bb"/>
+    <circle cx="700" cy="440" r="8" fill="#a09aa6"/>
+    <circle cx="880" cy="392" r="7" fill="#b7b2bb"/>
+    <circle cx="742" cy="404" r="6" fill="#a09aa6"/>
+  </g>
+
+  <!-- SATURNUS: cincin melintang di depan planet, dengan pita awan dan bayangannya.
+       Pos "Cincin Saturnus" berdiri di cincin atas planet ini. -->
+  <g id="saturnus">
+    <ellipse cx="1200" cy="318" rx="236" ry="62" fill="#d8bd8b" opacity="0.42"/>
+    <ellipse cx="1200" cy="318" rx="196" ry="49" fill="#eed9ab" opacity="0.6"/>
+    <circle cx="1200" cy="318" r="118" fill="#cfa96e"/>
+    <path fill="#b98f52" d="M1092 262 C 1132 236 1190 232 1240 252 C 1192 268 1138 272 1092 262 Z"/>
+    <path fill="#b98f52" d="M1108 372 C 1152 394 1224 394 1272 372 C 1224 390 1152 392 1108 372 Z"/>
+    <path fill="#e4d0a4" opacity="0.7" d="M1128 210 C 1170 194 1240 194 1282 214 C 1234 222 1174 222 1128 210 Z"/>
+    <path fill="#a97f45" opacity="0.6" d="M1150 412 C 1190 428 1244 428 1284 412 C 1240 424 1194 424 1150 412 Z"/>
+    <path fill="#a97f45" opacity="0.5" d="M1370 262 C 1400 296 1414 336 1412 380 C 1394 404 1368 418 1340 424 C 1368 392 1380 344 1370 262 Z"/>
+    <circle cx="1452" cy="196" r="24" fill="#e6ddcb"/>
+    <circle cx="1444" cy="190" r="8" fill="#c6bca8"/>
+    <!-- Cincin depan yang benar-benar melintang di atas bola. -->
+    <path fill="#f3e5c0" opacity="0.85" d="M1064 340 C 1130 366 1276 366 1338 338 C 1276 386 1124 386 1064 340 Z"/>
+    <path fill="#e2cda0" opacity="0.7" d="M1040 336 C 1120 372 1286 372 1356 334 C 1350 352 1338 368 1320 380 C 1244 402 1136 400 1064 376 C 1048 366 1040 352 1040 336 Z"/>
+  </g>
+
+  <!-- BULAN: bola pucat berkawah dengan sisi gelap.
+       Pos "Bulan" berdiri di permukaannya. -->
+  <g id="bulan">
+    <circle cx="1452" cy="196" r="196" fill="url(#bulan-angkasa)"/>
+    <circle cx="1380" cy="132" r="34" fill="#bab2a2" opacity="0.85"/>
+    <circle cx="1424" cy="284" r="46" fill="#b2aa9a" opacity="0.8"/>
+    <circle cx="1530" cy="118" r="26" fill="#c0b8a8" opacity="0.75"/>
+    <circle cx="1552" cy="288" r="30" fill="#aaa292" opacity="0.7"/>
+    <circle cx="1346" cy="238" r="18" fill="#b6ae9e" opacity="0.7"/>
+    <circle cx="1470" cy="60" r="14" fill="#ddd6c8" opacity="0.8"/>
+    <circle cx="1590" cy="204" r="20" fill="#a79f90" opacity="0.65"/>
+    <path fill="#a29a8b" opacity="0.5" d="M1296 330 C 1372 356 1462 350 1532 306 C 1490 372 1380 392 1296 330 Z"/>
+    <path fill="#efe9dc" opacity="0.45" d="M1300 106 C 1352 62 1424 44 1492 56 C 1416 74 1348 100 1300 106 Z"/>
+    <path fill="#7d7566" opacity="0.55" d="M1540 146 C 1600 176 1636 232 1640 300 C 1620 356 1568 396 1508 402 C 1572 358 1608 296 1606 236 C 1604 194 1582 166 1540 146 Z"/>
+  </g>
+  <circle cx="1452" cy="196" r="248" fill="url(#cahaya-bulan)"/>
+
+  <!-- ROKET di landasan: badan, hidung, sirip, jendela, dan semburan api. -->
+  <g>
+    <path fill="#f4f6fb" d="M148 500 C 186 528 200 592 200 660 L148 660 Z"/>
+    <path fill="#dfe4ee" d="M200 500 C 236 528 252 592 252 660 L200 660 Z"/>
+    <path fill="#e0554a" d="M174 436 C 196 468 200 496 200 512 L148 512 C 148 496 152 468 174 436 Z"/>
+    <path fill="#c9453c" d="M148 618 L112 686 L148 670 Z"/>
+    <path fill="#c9453c" d="M252 618 L288 686 L252 670 Z"/>
+    <rect x="156" y="540" width="88" height="8" fill="#c9cfdb"/>
+    <rect x="156" y="588" width="88" height="8" fill="#c9cfdb"/>
+    <circle cx="178" cy="558" r="22" fill="#7fc4ef" stroke="#eef4fb" stroke-width="6"/>
+    <circle cx="224" cy="558" r="11" fill="#a9d6f6" stroke="#eef4fb" stroke-width="5"/>
+    <path fill="#ffb347" d="M156 662 C 170 704 186 732 200 700 C 208 682 202 670 200 662 Z"/>
+    <path fill="#ffd479" d="M172 662 C 180 692 190 708 196 690 C 200 678 198 668 196 662 Z"/>
+    <ellipse cx="200" cy="716" rx="86" ry="30" fill="#e9edf6" opacity="0.55"/>
+    <ellipse cx="200" cy="736" rx="120" ry="34" fill="#dfe4ee" opacity="0.4"/>
+  </g>
+
+  <!-- LANDASAN peluncuran: dek, menara, lampu sorot, dan kabel.
+       Pos "Landasan Peluncuran" berdiri di dek ini. -->
+  <g id="landasan">
+    <rect x="92" y="676" width="244" height="24" rx="6" fill="#6b7280"/>
+    <rect x="52" y="700" width="324" height="28" rx="6" fill="#4b5563"/>
+    <rect x="76" y="728" width="20" height="60" rx="4" fill="#374151"/>
+    <rect x="176" y="728" width="20" height="60" rx="4" fill="#374151"/>
+    <rect x="276" y="728" width="20" height="60" rx="4" fill="#374151"/>
+    <rect x="348" y="728" width="20" height="60" rx="4" fill="#374151"/>
+    <rect x="52" y="788" width="324" height="22" rx="6" fill="#2b323c"/>
+    <rect x="316" y="560" width="40" height="118" rx="4" fill="#9ca3af"/>
+    <rect x="300" y="522" width="72" height="42" rx="5" fill="#d1d5db"/>
+    <path fill="#9ca3af" d="M300 522 L336 486 L372 522 Z"/>
+    <rect x="316" y="566" width="40" height="8" fill="#6b7280"/>
+    <rect x="316" y="600" width="40" height="8" fill="#6b7280"/>
+    <rect x="316" y="634" width="40" height="8" fill="#6b7280"/>
+    <rect x="348" y="618" width="46" height="14" rx="4" fill="#9ca3af"/>
+    <path fill="none" stroke="#cbd5e1" stroke-width="3" d="M336 566 L336 676"/>
+    <path fill="none" stroke="#cbd5e1" stroke-width="3" d="M336 620 L296 676"/>
+    <rect x="60" y="716" width="12" height="76" rx="4" fill="#374151"/>
+    <circle cx="66" cy="700" r="18" fill="#fff3c0" opacity="0.55"/>
+    <circle cx="66" cy="700" r="10" fill="#fff8d8"/>
+    <rect x="356" y="716" width="12" height="76" rx="4" fill="#374151"/>
+    <circle cx="362" cy="700" r="18" fill="#fff3c0" opacity="0.5"/>
+    <circle cx="362" cy="700" r="10" fill="#fff8d8"/>
+  </g>
+</svg>

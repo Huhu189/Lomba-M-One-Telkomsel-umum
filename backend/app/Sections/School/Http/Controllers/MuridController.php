@@ -13,6 +13,7 @@ use App\Sections\School\Services\EksporMuridService;
 use App\Sections\School\Services\ImporMuridService;
 use App\Sections\School\Services\MuridService;
 use App\Sections\School\Services\SekolahService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -33,13 +34,51 @@ class MuridController extends Controller
 
         $daftar = QueryBuilder::for(Murid::class)
             ->where('school_id', $sekolah->tunggal()->id)
-            ->allowedFilters(AllowedFilter::exact('class_id'))
+            ->allowedFilters(
+                AllowedFilter::exact('class_id'),
+                // Satu kotak untuk mencari "murid tertentu": nama, NIS, NISN, dan
+                // email sekaligus. Sebelum ini guru hanya bisa menyaring per kelas,
+                // jadi mencari satu anak di sekolah berisi ribuan murid berarti
+                // menelusuri halaman satu per satu.
+                AllowedFilter::callback('cari', $this->saringPencarian(...)),
+            )
             ->allowedSorts('nis')
             ->defaultSort('nis')
             ->with(['user', 'kelas'])
             ->paginate(perPage: $perHalaman, page: max(1, $request->integer('page', 1)));
 
         return MuridResource::collection($daftar);
+    }
+
+    /**
+     * Menyaring daftar murid dengan satu kata kunci (filter `cari`).
+     *
+     * Tanpa filter ini guru hanya bisa menyaring per kelas; mencari satu anak
+     * berarti membuka halaman daftar satu per satu.
+     *
+     * Kata kunci yang cuma berisi spasi diabaikan (bukan mencari spasi), dan
+     * `%`/`_` yang diketik guru di-escape supaya tidak berubah jadi wildcard —
+     * mencari "100%" harus menyaring, bukan diam-diam mengembalikan semua murid.
+     * Kolom `nis`/`nisn` boleh NULL, jadi pencarian nama tetap menemukan murid
+     * yang belum diberi NIS.
+     */
+    private function saringPencarian(Builder $kueri, mixed $nilai): void
+    {
+        $kata = trim((string) (is_scalar($nilai) ? $nilai : ''));
+
+        if ($kata === '') {
+            return;
+        }
+
+        $pola = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $kata).'%';
+
+        $kueri->where(function (Builder $dalam) use ($pola): void {
+            $dalam->where('nis', 'like', $pola)
+                ->orWhere('nisn', 'like', $pola)
+                ->orWhereHas('user', function (Builder $user) use ($pola): void {
+                    $user->where('name', 'like', $pola)->orWhere('email', 'like', $pola);
+                });
+        });
     }
 
     public function store(SimpanMuridRequest $request, SekolahService $sekolah, MuridService $service): JsonResponse

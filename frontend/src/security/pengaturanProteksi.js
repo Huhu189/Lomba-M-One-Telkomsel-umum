@@ -23,6 +23,10 @@ export const SAKLAR_RINCI = /** @type {const} */ ([
   'block_tab_switch',
   'focus_lock',
   'block_translate',
+  // Deteksi tamper halaman (2B–2C). SENGAJA di luar SAKLAR_PRESET_UJIAN:
+  // pemindai ini merapikan DOM (menghapus overlay asing), jadi guru harus
+  // menyalakannya sendiri dengan sadar — deteksi jenis ini rawan salah tuduh.
+  'detect_tamper',
 ])
 
 /** Saklar yang ikut menyala saat preset `exam_mode` dinyalakan (chunk anticheat). */

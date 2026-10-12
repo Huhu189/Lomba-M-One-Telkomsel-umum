@@ -178,19 +178,45 @@ export async function hapusMapel(id) {
 }
 
 /**
- * Daftar murid (opsional filter per kelas), satu halaman per panggilan.
- * Satu sekolah bisa punya ribuan murid; server membatasi per halaman dan
- * mengirim `meta` supaya tabel tidak pernah memuat semuanya sekaligus.
+ * Parameter daftar murid: halaman, saringan kelas, dan kotak pencarian.
+ *
+ * Dipisah dari `ambilMurid` supaya aturannya bisa diuji langsung tanpa jaringan: kata
+ * kunci kosong TIDAK dikirim sebagai `filter[cari]` (server akan menganggapnya
+ * pencarian kosong), dan spasi di ujung dipotong lebih dulu supaya " rina " dan
+ * "rina" memakai kueri yang sama — kalau tidak, tiap spasi baru membuat kueri baru.
+ *
  * @param {number|null} [classId]
  * @param {number} [halaman]
- * @returns {Promise<z.infer<typeof skemaHalamanMurid>>}
+ * @param {string} [cari]
+ * @returns {Record<string, string|number>}
  */
-export async function ambilMurid(classId, halaman = 1) {
+export function paramMurid(classId = null, halaman = 1, cari = '') {
   /** @type {Record<string, string|number>} */
   const params = { page: halaman }
   if (classId) params['filter[class_id]'] = classId
 
-  const respons = await client.get('/v1/murid', { params })
+  const kata = cari.trim()
+  if (kata !== '') params['filter[cari]'] = kata
+
+  return params
+}
+
+/**
+ * Daftar murid (opsional filter kelas + pencarian nama/NIS/NISN/email), satu
+ * halaman per panggilan.
+ *
+ * Satu sekolah bisa punya ribuan murid; server membatasi per halaman, mengirim
+ * `meta` supaya tabel tidak pernah memuat semuanya sekaligus, dan menyaring
+ * lewat `filter[cari]` supaya mencari satu murid tidak berarti menelusuri
+ * halaman satu per satu.
+ *
+ * @param {number|null} [classId]
+ * @param {number} [halaman]
+ * @param {string} [cari]
+ * @returns {Promise<z.infer<typeof skemaHalamanMurid>>}
+ */
+export async function ambilMurid(classId, halaman = 1, cari = '') {
+  const respons = await client.get('/v1/murid', { params: paramMurid(classId, halaman, cari) })
   return skemaHalamanMurid.parse(respons.data)
 }
 

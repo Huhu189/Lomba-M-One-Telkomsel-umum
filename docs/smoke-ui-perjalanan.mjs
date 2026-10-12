@@ -66,6 +66,24 @@ const ALAT = `window.__alat = {
     tombol.click()
     return true
   },
+  // Letak tiap tanda pos dalam PERSEN panggung. Dipakai untuk membuktikan
+  // keluhan "pos masih di udara": dulu rumus jalur berhenti di y = 12%,
+  // sementara punggungan gambarnya ada di y ≈ 39% — jadi pos berdiri di langit.
+  letakPos() {
+    const panggung = document.querySelector('.jelajah-panggung')
+    if (!panggung) return null
+    const kotak = panggung.getBoundingClientRect()
+    if (kotak.width === 0 || kotak.height === 0) return null
+
+    return [...document.querySelectorAll('.jelajah-pos')].map((el) => {
+      const k = el.getBoundingClientRect()
+      return {
+        nomor: el.querySelector('.jelajah-pos-nomor')?.textContent?.trim() ?? '',
+        x: Math.round(((k.left + k.width / 2 - kotak.left) / kotak.width) * 1000) / 10,
+        y: Math.round(((k.top + k.height / 2 - kotak.top) / kotak.height) * 1000) / 10,
+      }
+    })
+  },
   pos() {
     const aktif = document.querySelector('.jelajah-pos[data-status="dibuka"]')
     return {
@@ -76,10 +94,12 @@ const ALAT = `window.__alat = {
       label: document.querySelector('.jelajah-panggung')?.getAttribute('aria-label') ?? '',
     }
   },
-  // Latar peta sesuai prioritas: video tema (bila guru menempelkannya)
-  // MENGGANTIKAN semuanya → adegan yang digambar sendiri (ilustrasi SVG
-  // beranimasi, mis. gunung dilihat dari bawah) → foto tema → gradien.
-  // "Bergerak" dibuktikan autoplay video, animasi adegan, atau zoom foto.
+  // Latar peta sesuai prioritas di PetaPerjalanan: video tema (bila guru
+  // menempelkannya) MENGGANTIKAN semuanya → adegan yang digambar sendiri
+  // (SVG beranimasi) → berkas gambar tema di public/tema/* → gradien.
+  // "foto" di sini berarti "berkas gambar tema" — bukan harus fotografi:
+  // tema "Mendaki Gunung" memakai ilustrasi rata domain publik.
+  // "Bergerak" dibuktikan autoplay video, animasi adegan, atau zoom gambar.
   latar() {
     const video = document.querySelector('video.jelajah-video')
     if (video) return { jenis: 'video', autoplay: video.autoplay }
@@ -116,6 +136,84 @@ const ALAT = `window.__alat = {
   },
   daftarPos() {
     return [...document.querySelectorAll('.jelajah-daftar-baris')].map((baris) => baris.textContent.trim())
+  },
+  // Mengukur berkas latar tema dari HASIL RENDER-nya (bukan dari teks SVG-nya):
+  // gambar digambar ke kanvas 400x225, lalu dihitung berapa warna berbeda yang
+  // muncul (tingkat detail), seberapa terang rata-ratanya (sesuai tema terang
+  // atau gelap), apakah ada bagian panggung yang benar-benar kosong (bidang
+  // polos), dan warna tepat di bawah tiap pos.
+  //
+  // Ini yang membuat "gambarnya sudah matang" bisa diuji angkanya: pagar Vitest
+  // mengukur bentuk berkasnya, sedangkan di sini yang diukur adalah piksel yang
+  // benar-benar dilihat murid — termasuk apakah pos berdiri di benda berwarna
+  // atau di langit/ruang kosong.
+  async ukurGambar(src, titik = []) {
+    const img = new Image()
+    img.src = src
+    await img.decode()
+    const kanvas = document.createElement('canvas')
+    kanvas.width = 400
+    kanvas.height = 225
+    const ctx = kanvas.getContext('2d')
+    ctx.drawImage(img, 0, 0, 400, 225)
+    const piksel = ctx.getImageData(0, 0, 400, 225).data
+    const warnaSet = new Set()
+    const petak = new Map()
+    let jumlah = 0
+    let terang = 0
+
+    for (let i = 0; i < piksel.length; i += 4) {
+      const urutan = i / 4
+      const kecerahan = 0.2126 * piksel[i] + 0.7152 * piksel[i + 1] + 0.0722 * piksel[i + 2]
+      jumlah += kecerahan
+      if (kecerahan >= 200) terang++
+
+      // Warna dikuantisasi ke 32 tingkat per kanal supaya gradien halus tidak
+      // terhitung sebagai ratusan "warna" palsu, tetapi perbedaan gambar tetap
+      // terlihat.
+      const kunci = (piksel[i] >> 3) + ':' + (piksel[i + 1] >> 3) + ':' + (piksel[i + 2] >> 3)
+      warnaSet.add(kunci)
+
+      const kolom = Math.floor(urutan % 400 / 50)
+      const baris = Math.floor(urutan / 400 / 45)
+      const kunciPetak = kolom + 'x' + baris
+      if (!petak.has(kunciPetak)) petak.set(kunciPetak, new Set())
+      petak.get(kunciPetak).add(kunci)
+    }
+
+    const blok = (px, py) => {
+      let r = 0
+      let g = 0
+      let b = 0
+      let n = 0
+      for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
+          const x = Math.round(px) + dx
+          const y = Math.round(py) + dy
+          if (x < 0 || y < 0 || x >= 400 || y >= 225) continue
+          const i = (y * 400 + x) * 4
+          r += piksel[i]
+          g += piksel[i + 1]
+          b += piksel[i + 2]
+          n++
+        }
+      }
+      return [Math.round(r / n), Math.round(g / n), Math.round(b / n)]
+    }
+
+    const seluruh = piksel.length / 4
+    return {
+      rata: Math.round(jumlah / seluruh),
+      warna: warnaSet.size,
+      terangPersen: Math.round((terang / seluruh) * 1000) / 10,
+      polos: [...petak.entries()].filter(([, isi]) => isi.size < 4).map(([kunci]) => kunci),
+      petak: petak.size,
+      titik: titik.map((satu) => ({
+        nama: satu.nama,
+        warna: blok((satu.x / 100) * 400, (satu.y / 100) * 225),
+      })),
+      acuan: blok(24, 18),
+    }
   },
 }`
 
@@ -227,17 +325,44 @@ async function main() {
   let idMateri = 0
   // Materi kedua (latar foto + pilihan "tanpa peta") juga harus dibersihkan.
   let idRingkas = 0
+  // Materi ketiga: tema latar baru (putaran A.50).
+  let idTemaBaru = 0
+  // Materi keempat: tema Harta Karun di Pulau.
+  let idPulau = 0
+
+  /**
+   * Kecerahan terkecil dari sebuah warna CSS (`rgb(...)`/`rgba(...)`), atau -1
+   * kalau bentuknya tidak dikenali. Dipakai untuk memisahkan jalur peta yang
+   * pekat (latar terang) dari yang terang (latar gelap).
+   * @param {string} warna
+   * @returns {number}
+   */
+  const kecerahan = (warna) => {
+    const angka = String(warna ?? '')
+      .match(/\d+/g)
+      ?.map(Number)
+    return angka && angka.length >= 3 ? Math.min(...angka.slice(0, 3)) : -1
+  }
+
+  /** Selisih terbesar antar dua warna RGB (0–255). */
+  const selisihWarna = (a, b) => Math.max(...a.map((nilai, indeks) => Math.abs(nilai - b[indeks])))
+
+  /** Warna jadi "r,g,b" untuk pesan hasil. */
+  const warnaTeks = (warna) => (Array.isArray(warna) ? warna.join(',') : '—')
 
   const bersihkan = async () => {
     await keluar()
     await masuk(AKUN_GURU)
 
     const status = []
-    for (const id of [idMateri, idRingkas]) {
+    for (const id of [idMateri, idRingkas, idTemaBaru, idPulau]) {
       if (id > 0) status.push((await apiJson(`/v1/materi/${id}`, 'DELETE')).status)
     }
 
-    return { status: status.every((satu) => satu === 200) ? 200 : (status[0] ?? 0), sisa: `materi ${idMateri} & ${idRingkas} → ${status.join(',')}` }
+    return {
+      status: status.every((satu) => satu === 200) ? 200 : (status[0] ?? 0),
+      sisa: `materi ${idMateri}, ${idRingkas}, ${idTemaBaru}, ${idPulau} → ${status.join(',')}`,
+    }
   }
 
   await buka('/')
@@ -343,7 +468,14 @@ async function main() {
   const latarGuru = await evalJs(`window.__alat.latar()`)
   const animasiPendaki = await evalJs(`window.__alat.gaya('.jelajah-penanda-orang', 'animationName')`)
 
+  const letakGuru = await evalJs('window.__alat.letakPos()')
+
   catat('editor menampilkan peta 4 pos sesuai timeline', petaGuru.ada === 4, `pos ${petaGuru.ada}`)
+  catat(
+    'tidak ada pos yang berdiri di langit (semuanya di bawah punggungan)',
+    Array.isArray(letakGuru) && letakGuru.length === 4 && letakGuru.every((satu) => satu.y >= 40),
+    (letakGuru ?? []).map((satu) => `pos${satu.nomor} (${satu.x}%, ${satu.y}%)`).join(' · '),
+  )
   catat('nama tema ganti muncul di editor', namaTemaInput === NAMA_TEMA, `input “${namaTemaInput}”`)
   catat(
     'daftar pos memakai nama ganti guru dan bawaan tema',
@@ -478,24 +610,27 @@ async function main() {
   await tunggu(`document.querySelectorAll('.jelajah-pos').length === 2`)
 
   const latarAdegan = await evalJs('window.__alat.latar()')
+  const adaAdeganTangan = await evalJs(`window.__alat.jumlah('svg.jelajah-adegan')`)
   catat(
-    'peta menggambar sendiri adegan gunung, bukan memakai foto pihak lain',
-    latarAdegan.jenis === 'ilustrasi' &&
-      (await evalJs(`window.__alat.jumlah('img.jelajah-foto')`)) === 0,
-    `jenis ${latarAdegan.jenis} · foto ${await evalJs(`window.__alat.jumlah('img.jelajah-foto')`)}`,
+    'peta memakai gambar tema domain publik yang benar-benar termuat, bukan gambar tangan',
+    latarAdegan.jenis === 'foto' &&
+      latarAdegan.src === '/tema/gunung.svg' &&
+      latarAdegan.termuat === true &&
+      adaAdeganTangan === 0,
+    `jenis ${latarAdegan.jenis} · src ${latarAdegan.src ?? '—'} · termuat ${latarAdegan.termuat} · adegan tangan ${adaAdeganTangan}`,
   )
   catat(
-    'adegan gunung beranimasi: zoom panggung + awan/kabut/burung bergerak',
-    latarAdegan.animasi === 'jelajah-zoom' &&
-      latarAdegan.awan >= 1 &&
-      latarAdegan.kabut >= 1 &&
-      latarAdegan.burung >= 1,
-    `animasi ${latarAdegan.animasi ?? '—'} · awan ${latarAdegan.awan} · kabut ${latarAdegan.kabut} · burung ${latarAdegan.burung}`,
+    'gambar tema bergerak halus (zoom panggung), bukan gambar diam',
+    latarAdegan.zoom === 'jelajah-zoom',
+    `zoom ${latarAdegan.zoom ?? '—'}`,
+  )
+  const kotakPanggung = await evalJs(
+    `(() => { const r = document.querySelector('.jelajah-panggung').getBoundingClientRect(); return { lebar: r.width, tinggi: r.height } })()`,
   )
   catat(
-    'adegan gunung punya sudut pandang dari bawah (lereng depan memotong dari sudut bawah)',
-    (await evalJs(`window.__alat.jumlah('.jelajah-adegan .jelajah-lereng-depan')`)) === 2,
-    `lereng depan ${await evalJs(`window.__alat.jumlah('.jelajah-adegan .jelajah-lereng-depan')`)}`,
+    'panggung peta tetap 16:9 supaya gambar tema tidak digepengkan',
+    kotakPanggung.tinggi > 0 && Math.abs(kotakPanggung.lebar / kotakPanggung.tinggi - 16 / 9) < 0.05,
+    `lebar ${kotakPanggung.lebar.toFixed(0)} · tinggi ${kotakPanggung.tinggi.toFixed(0)} · rasio ${(kotakPanggung.lebar / kotakPanggung.tinggi).toFixed(2)}`,
   )
 
   // Guru memilih "tanpa peta": peta hilang, nama tema & latar tidak dipakai lagi.
@@ -579,6 +714,214 @@ async function main() {
     'laporan menunjukkan posisi & tingkat murid uji',
     barisMurid?.perjalanan?.selesai === 2 && barisMurid?.perjalanan?.posisi === 3,
     `posisi ${barisMurid?.perjalanan?.posisi} · selesai ${barisMurid?.perjalanan?.selesai} · tingkat “${barisMurid?.perjalanan?.tingkat_nama}”`,
+  )
+
+  // --- 9b. Tema latar baru: luar angkasa (latar gelap) end-to-end ---
+  const buatTema = await apiJson('/v1/materi', 'POST', {
+    judul: `Antariksa Smoke ${Date.now()}`,
+    subject_id: mapelPertama.id,
+    class_id: kelasId,
+  })
+  idTemaBaru = buatTema.isi?.id ?? 0
+  catat('guru membuat materi bertema luar angkasa', buatTema.status === 201 && idTemaBaru > 0, `materi ${idTemaBaru}`)
+
+  const blokAntariksa = [1, 2, 3, 4, 5].map((nomor) => ({
+    tipe: 'teks',
+    wajib: true,
+    isi: { teks: `Bagian ${nomor}.` },
+    track: 0,
+    mulai_detik: (nomor - 1) * 10,
+    durasi_detik: 10,
+  }))
+
+  const simpanAntariksa = await apiJson(`/v1/materi/${idTemaBaru}/blok`, 'PUT', {
+    blok: blokAntariksa,
+    tema: { kode: 'luar-angkasa', nama: '', video_kode: null },
+  })
+  catat(
+    'tema luar angkasa tersimpan dengan nama & fase bawaannya',
+    simpanAntariksa.status === 200 &&
+      simpanAntariksa.isi?.perjalanan?.nama === 'Luar Angkasa' &&
+      simpanAntariksa.isi?.perjalanan?.adegan === 'angkasa',
+    `nama “${simpanAntariksa.isi?.perjalanan?.nama ?? '—'}” · adegan ${simpanAntariksa.isi?.perjalanan?.adegan ?? '—'} · tingkat “${simpanAntariksa.isi?.perjalanan?.tingkat?.nama ?? '—'}”`,
+  )
+
+  await buka(`/materi/${idTemaBaru}/editor`)
+  await tunggu(`document.querySelectorAll('.jelajah-pos').length === 5`)
+
+  const latarAntariksa = await evalJs('window.__alat.latar()')
+  const letakAntariksa = await evalJs('window.__alat.letakPos()')
+  const jalurAntariksa = await evalJs(
+    `(() => { const el = document.querySelector('.jelajah-ruas[data-status="belum"]'); return el ? getComputedStyle(el).stroke : null })()`,
+  )
+  const jalurDefault = await evalJs(
+    `(() => { const el = document.querySelector('.jelajah-ruas[data-status="belum"]'); return el ? getComputedStyle(el).strokeDasharray : null })()`,
+  )
+
+  // Titik rute tema angkasa (RUTE_TEMA.angkasa): landasan → Bumi → asteroid →
+  // Saturnus → Bulan. Panggung dan marker-nya sama persis seperti di layar murid.
+  const diharapAntariksa = [
+    { x: 11, y: 79 },
+    { x: 26, y: 52 },
+    { x: 50, y: 50 },
+    { x: 72, y: 33 },
+    { x: 86, y: 20 },
+  ]
+  const selisihAntariksa = (letakAntariksa ?? []).map((satu, indeks) =>
+    Math.max(
+      Math.abs(satu.x - (diharapAntariksa[indeks]?.x ?? 999)),
+      Math.abs(satu.y - (diharapAntariksa[indeks]?.y ?? 999)),
+    ),
+  )
+
+  catat(
+    'pos tema luar angkasa berdiri di benda rutenya (landasan → Bulan)',
+    selisihAntariksa.length === 5 && selisihAntariksa.every((selisih) => selisih <= 1.5),
+    `selisih maks ${selisihAntariksa.length > 0 ? Math.max(...selisihAntariksa).toFixed(1) : '—'}%`,
+  )
+  catat(
+    'latar tema luar angkasa memakai berkas angkasa.svg yang benar-benar termuat',
+    latarAntariksa?.jenis === 'foto' &&
+      String(latarAntariksa?.src).includes('/tema/angkasa.svg') &&
+      latarAntariksa?.termuat === true,
+    `src ${latarAntariksa?.src ?? '—'} · termuat ${latarAntariksa?.termuat}`,
+  )
+  catat(
+    'jalur peta dipakai versi terang di langit malam (aturannya berlaku)',
+    kecerahan(jalurAntariksa) >= 200 && jalurDefault === '6px, 6px',
+    `stroke ${jalurAntariksa} · dash ${jalurDefault}`,
+  )
+
+  // Yang diukur di sini bukan teks SVG-nya, melainkan piksel hasil render di
+  // peramban: seberapa gelap, seberapa beragam warnanya, apakah ada bagian
+  // panggung yang kosong, dan warna tepat di bawah tiap pos.
+  const ukurAntariksa = await evalJs(
+    `window.__alat.ukurGambar('/tema/angkasa.svg', ${JSON.stringify(diharapAntariksa.map((satu, i) => ({ ...satu, nama: `pos${i + 1}` })))})`,
+  )
+  const posAntariksa = (ukurAntariksa?.titik ?? []).map((satu) =>
+    selisihWarna(satu.warna, ukurAntariksa?.acuan ?? [0, 0, 0]),
+  )
+
+  catat(
+    'latar luar angkasa tetap gelap setelah dirender',
+    (ukurAntariksa?.rata ?? 999) <= 150 && (ukurAntariksa?.terangPersen ?? 999) <= 30,
+    `rata ${ukurAntariksa?.rata ?? '—'} · piksel terang ${ukurAntariksa?.terangPersen ?? '—'}%`,
+  )
+  catat(
+    'gambar luar angkasa berisi detail, bukan bidang polos',
+    (ukurAntariksa?.warna ?? 0) >= 200 && (ukurAntariksa?.polos ?? ['x']).length === 0,
+    `${ukurAntariksa?.warna ?? '—'} warna berbeda · petak polos ${(ukurAntariksa?.polos ?? []).length}/${ukurAntariksa?.petak ?? '—'}`,
+  )
+  catat(
+    'tiap pos tema luar angkasa berdiri di benda, bukan di ruang kosong',
+    posAntariksa.length === 5 && posAntariksa.every((selisih) => selisih >= 25),
+    `selisih terkecil ${posAntariksa.length > 0 ? Math.min(...posAntariksa) : '—'} vs ruang kosong ${warnaTeks(ukurAntariksa?.acuan)}`,
+  )
+
+  // --- 9c. Tema latar Harta Karun di Pulau (latar terang) end-to-end ---
+  const buatPulau = await apiJson('/v1/materi', 'POST', {
+    judul: `Harta Karun Smoke ${Date.now()}`,
+    subject_id: mapelPertama.id,
+    class_id: kelasId,
+  })
+  idPulau = buatPulau.isi?.id ?? 0
+  catat(
+    'guru membuat materi bertema harta karun',
+    buatPulau.status === 201 && idPulau > 0,
+    `materi ${idPulau}`,
+  )
+
+  const blokPulau = [1, 2, 3, 4, 5, 6].map((nomor) => ({
+    tipe: 'teks',
+    wajib: true,
+    isi: { teks: `Bagian ${nomor}.` },
+    track: 0,
+    mulai_detik: (nomor - 1) * 10,
+    durasi_detik: 10,
+  }))
+
+  const simpanPulau = await apiJson(`/v1/materi/${idPulau}/blok`, 'PUT', {
+    blok: blokPulau,
+    tema: { kode: 'harta-karun', nama: '', video_kode: null },
+  })
+  // `perjalanan.tingkat` adalah DAFTAR tingkat tema (bukan satu tingkat), sama
+  // seperti tema bawaan: satuannya "pos" karena tema ini memang berpeta.
+  catat(
+    'tema harta karun tersimpan dengan nama, adegan, & tingkat bawaannya',
+    simpanPulau.status === 200 &&
+      simpanPulau.isi?.perjalanan?.nama === 'Harta Karun di Pulau' &&
+      simpanPulau.isi?.perjalanan?.adegan === 'pulau' &&
+      simpanPulau.isi?.perjalanan?.satuan === 'pos' &&
+      simpanPulau.isi?.perjalanan?.tingkat?.length === 4 &&
+      simpanPulau.isi?.perjalanan?.tingkat?.[0]?.nama === 'Pelaut Pemula',
+    `nama “${simpanPulau.isi?.perjalanan?.nama ?? '—'}” · adegan ${simpanPulau.isi?.perjalanan?.adegan ?? '—'} · satuan ${simpanPulau.isi?.perjalanan?.satuan ?? '—'} · tingkat 1 “${simpanPulau.isi?.perjalanan?.tingkat?.[0]?.nama ?? '—'}”`,
+  )
+
+  await buka(`/materi/${idPulau}/editor`)
+  await tunggu(`document.querySelectorAll('.jelajah-pos').length === 6`)
+
+  const latarPulau = await evalJs('window.__alat.latar()')
+  const letakPulau = await evalJs('window.__alat.letakPos()')
+  const jalurPulau = await evalJs(
+    `(() => { const el = document.querySelector('.jelajah-ruas[data-status="belum"]'); return el ? getComputedStyle(el).stroke : null })()`,
+  )
+
+  // Titik rute tema pulau (RUTE_TEMA.pulau): dermaga → perahu → karang → pantai
+  // → hutan kelapa → goa harta karun.
+  const diharapPulau = [
+    { x: 8, y: 84 },
+    { x: 26, y: 74 },
+    { x: 46, y: 72 },
+    { x: 62, y: 62 },
+    { x: 74, y: 50 },
+    { x: 80, y: 41 },
+  ]
+  const selisihPulau = (letakPulau ?? []).map((satu, indeks) =>
+    Math.max(
+      Math.abs(satu.x - (diharapPulau[indeks]?.x ?? 999)),
+      Math.abs(satu.y - (diharapPulau[indeks]?.y ?? 999)),
+    ),
+  )
+
+  catat(
+    'pos tema harta karun berdiri di benda rutenya (dermaga → goa)',
+    selisihPulau.length === 6 && selisihPulau.every((selisih) => selisih <= 1.5),
+    `selisih maks ${selisihPulau.length > 0 ? Math.max(...selisihPulau).toFixed(1) : '—'}%`,
+  )
+  catat(
+    'latar tema harta karun memakai berkas pulau.svg yang benar-benar termuat',
+    latarPulau?.jenis === 'foto' &&
+      String(latarPulau?.src).includes('/tema/pulau.svg') &&
+      latarPulau?.termuat === true,
+    `src ${latarPulau?.src ?? '—'} · termuat ${latarPulau?.termuat}`,
+  )
+  catat(
+    'jalur peta tetap versi pekat di latar terang (aturan gelap tidak bocor)',
+    kecerahan(jalurPulau) > 0 && kecerahan(jalurPulau) <= 150,
+    `stroke ${jalurPulau}`,
+  )
+
+  const ukurPulau = await evalJs(
+    `window.__alat.ukurGambar('/tema/pulau.svg', ${JSON.stringify(diharapPulau.map((satu, i) => ({ ...satu, nama: `pos${i + 1}` })))})`,
+  )
+  const posPulau = (ukurPulau?.titik ?? []).map((satu) =>
+    selisihWarna(satu.warna, ukurPulau?.acuan ?? [0, 0, 0]),
+  )
+
+  catat(
+    'latar harta karun terang setelah dirender (jalur & tenda tetap terbaca)',
+    (ukurPulau?.rata ?? 0) >= 150 && (ukurPulau?.terangPersen ?? 0) >= 15,
+    `rata ${ukurPulau?.rata ?? '—'} · piksel terang ${ukurPulau?.terangPersen ?? '—'}%`,
+  )
+  catat(
+    'gambar harta karun berisi detail, bukan bidang polos',
+    (ukurPulau?.warna ?? 0) >= 200 && (ukurPulau?.polos ?? ['x']).length === 0,
+    `${ukurPulau?.warna ?? '—'} warna berbeda · petak polos ${(ukurPulau?.polos ?? []).length}/${ukurPulau?.petak ?? '—'}`,
+  )
+  catat(
+    'tiap pos tema harta karun berdiri di benda, bukan di langit',
+    posPulau.length === 6 && posPulau.every((selisih) => selisih >= 25),
+    `selisih terkecil ${posPulau.length > 0 ? Math.min(...posPulau) : '—'} vs langit ${warnaTeks(ukurPulau?.acuan)}`,
   )
 
   // --- 10. Bersihkan data uji ---

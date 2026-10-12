@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { adaProteksiAktif, proteksiEfektif, SAKLAR_RINCI } from './pengaturanProteksi.js'
 import { buatPengirimKejadian } from './pengirimKejadian.js'
+import { buatPemindaiTamper } from './deteksiTamper.js'
 
 /** Jeda kirim setelah kejadian terakhir (ms). */
 const JEDA_KIRIM = 1500
@@ -90,6 +91,7 @@ const LABEL_SAKLAR = {
   block_tab_switch: 'Berpindah tab atau keluar jendela dicatat.',
   focus_lock: 'Keluar jendela lebih dari 8 detik mengunci layar 60 detik.',
   block_translate: 'Terjemahan otomatis diblokir.',
+  detect_tamper: 'Elemen asing atau sumber dari extension peramban di halaman dicatat (dirapikan, bukan bagian preset ujian).',
 }
 
 /** Saklar yang ikut tampil di pemberitahuan walau dipicu preset. */
@@ -369,6 +371,20 @@ export default function useExamSecurity(opsi) {
       bersihkan.push(() => {
         if (timerResize !== 0) window.clearTimeout(timerResize)
       })
+    }
+
+    if (efektif.detect_tamper === true) {
+      // Pemindai tamper: memeriksa sumber extension, fungsi proteksi yang
+      // diganti, overlay asing, dan elemen kanari. Dirapikan + dicatat, lalu
+      // layar dikaburkan sebentar. Fail-open: pemindai yang gagal tidak
+      // menghentikan ulangan (semua pemeriksaan ada di dalam try/catch-nya).
+      try {
+        const pemindai = buatPemindaiTamper({ catat, kaburkan })
+        pemindai.mulai()
+        bersihkan.push(() => pemindai.hentikan())
+      } catch {
+        // fail-open
+      }
     }
 
     if (efektif.block_screenshot === true) {

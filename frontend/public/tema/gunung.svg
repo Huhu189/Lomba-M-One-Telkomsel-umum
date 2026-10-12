@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Pendakian bertingkat" — latar peta perjalanan tema Mendaki Gunung.
+
+  Dibuat untuk proyek ini (karya sendiri) dan dilepas ke domain publik / CC0,
+  jadi boleh dipakai, diubah, dan disebarkan tanpa izin tambahan — lihat
+  LISENSI.md di folder ini.
+
+  Bentuknya mengikuti permintaan pemilik produk pada A.48: *"3 puncak namun
+  yang di sebelah-sebelahnya itu menjadi jalur pendakian"* — satu **punggung
+  utama** di tengah, plus **dua puncak jalur** persis di jalur zigzag pos
+  (sumbu x 14% dan 90%, sedangkan pos bergantian di jalur kiri 12–20% dan
+  kanan 80–88%). Aturan bentuknya dikunci `__tests__/theme/gunungLatar.test.js`
+  dan diukur, bukan dikira:
+
+  - **tepat SATU puncak utama** yang menonjol 29,8% tinggi bingkai (268 px,
+    di x≈52%, y≈39% dari atas) — jadi pos terakhir jalur mendaki tetap berdiri
+    di **langit** (pos terakhir digambar di 12% dari atas);
+  - **dua puncak jalur** boleh ada — tetapi keduanya **wajib** lebih rendah
+    sekurang-kurangnya 10% tinggi bingkai (158 dan 160 px) dan berada **di
+    tepi** (|x−50%| ≥ 10%), bukan di tengah; puncak jalur kiri menonjol 81 px
+    (9,0%) dan kanan 73 px (8,1%);
+  - **punggung utama tumpul**: punggung 9,0% lebar kanvas pada 2,2% tinggi di
+    bawah titik tertinggi, kemiringan sisi maksimum 41,3°, putaran antarruas
+    maksimum 6,3° (bekas berkas unduhan lama: sisi 90° dan punggung 0% — itulah
+    yang terbaca seperti tebing). Siluetnya dibuat dari kurva Catmull-Rom
+    sehingga tidak ada sudut berkunci;
+  - **tidak ada sisi nyaris tegak yang panjang**: sisi tegak terpanjang 27 px
+    (batas tes 36 px);
+  - **tidak ada ujung garis yang menggantung**: semua bidang digambar penuh dan
+    ditutup (`Z`); goresan terbuka yang tersisa hanya tiga burung kecil di
+    langit (masing-masing < 5% lebar kanvas, batas tes 8%);
+  - **murni vektor**: tanpa <image> raster, <text>, atau <filter>;
+  - **cerah**: 65 nilai warna (min 94, rata 177) supaya jalur zigzag serta tenda
+    pos di atasnya tetap terbaca. Pita kabut, bukit berlapis, danau, dan pohon
+    memakai palet yang sama seperti sebelumnya; yang berubah adalah
+    **komposisinya** (satu puncak → tiga puncak bertingkat).
+
+  Atribut width/height dijaga 1600x900 (sisi terpanjang <= 1600 px, aturan di
+  LISENSI.md); viewBox 16:9 supaya panggung peta tidak memotong puncak.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <defs>
+    <linearGradient id="langit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6fb7f0"/>
+      <stop offset="70%" stop-color="#cfe9f8"/>
+      <stop offset="100%" stop-color="#eef7fb"/>
+    </linearGradient>
+    <linearGradient id="lereng" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#89a9c6"/>
+      <stop offset="60%" stop-color="#7d9bbb"/>
+      <stop offset="100%" stop-color="#7fa0a8"/>
+    </linearGradient>
+    <radialGradient id="cahaya" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff6c9" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#fff6c9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="kabut" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eef7fb" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#eef7fb" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="-40" y="-40" width="1680" height="980" fill="url(#langit)"/>
+  <circle cx="1280" cy="150" r="210" fill="url(#cahaya)"/>
+  <circle cx="1280" cy="150" r="56" fill="#fff6c9" stroke="#eeb63c" stroke-width="6"/>
+  <g fill="#ffffff">
+    <ellipse cx="290" cy="170" rx="150" ry="42"/>
+    <ellipse cx="196" cy="140" rx="86" ry="30"/>
+    <ellipse cx="392" cy="150" rx="74" ry="26"/>
+    <ellipse cx="700" cy="108" rx="94" ry="27"/>
+    <ellipse cx="776" cy="88" rx="58" ry="19"/>
+    <ellipse cx="1466" cy="118" rx="70" ry="21"/>
+  </g>
+
+  <path fill="#c9dcee" d="M-40 600 C-27 600 92 597 120 600 C148 603 274 633 300 640 C326 648 397 685 430 690 C463 695 653 699 700 700 C748 701 954 701 1000 700 C1046 699 1217 697 1250 690 C1283 683 1368 629 1400 620 C1433 611 1620 583 1640 580 L1640 980 L-40 980 Z"/>
+
+  <path fill="url(#lereng)" d="M-40 690 C-31 684 54 630 70 620 C86 610 138 574 150 565 C162 557 201 517 215 518 C229 519 302 571 320 580 C338 590 410 635 430 632 C450 629 539 555 560 540 C581 525 660 463 680 448 C700 433 783 362 800 355 C817 348 863 355 880 362 C897 370 980 431 1000 445 C1020 459 1099 520 1120 535 C1141 550 1224 627 1250 625 C1276 623 1408 520 1430 515 C1453 510 1503 555 1520 565 C1538 575 1630 634 1640 640 L1640 980 L-40 980 Z"/>
+
+  <g fill="#557099" opacity="0.38">
+    <path d="M807 343 C 860 350 900 360 960 405 C 1040 460 1140 530 1250 620 C 1170 650 1030 670 930 650 C 860 570 800 430 807 343 Z"/>
+    <path d="M218 527 C 260 555 300 575 340 588 C 300 640 240 660 180 640 C 175 600 190 558 218 527 Z"/>
+  </g>
+
+  <g fill="#e9f2fa" opacity="0.7">
+    <path d="M430 625 C 520 545 640 455 800 345 C 760 465 660 580 540 645 Z"/>
+    <path d="M1250 625 C 1310 585 1380 550 1430 515 C 1350 590 1250 620 1160 630 Z"/>
+  </g>
+
+  <ellipse cx="800" cy="386" rx="104" ry="46" fill="#ffffff"/>
+  <ellipse cx="736" cy="414" rx="62" ry="20" fill="#ffffff"/>
+  <ellipse cx="872" cy="410" rx="48" ry="17" fill="#f4f9fd"/>
+  <ellipse cx="666" cy="448" rx="42" ry="14" fill="#e6f0f8"/>
+  <ellipse cx="916" cy="450" rx="38" ry="13" fill="#e6f0f8"/>
+  <ellipse cx="215" cy="546" rx="62" ry="24" fill="#f4f9fd"/>
+  <ellipse cx="176" cy="564" rx="38" ry="14" fill="#e6f0f8"/>
+  <ellipse cx="1430" cy="552" rx="56" ry="22" fill="#f4f9fd"/>
+  <ellipse cx="1462" cy="570" rx="34" ry="13" fill="#e6f0f8"/>
+
+  <ellipse cx="330" cy="600" rx="150" ry="24" fill="#ffffff" opacity="0.85"/>
+  <ellipse cx="860" cy="530" rx="120" ry="20" fill="#ffffff" opacity="0.8"/>
+  <ellipse cx="1216" cy="586" rx="170" ry="26" fill="#ffffff" opacity="0.85"/>
+
+  <rect x="-40" y="620" width="1680" height="320" fill="url(#kabut)"/>
+
+  <path fill="#5da878" d="M-40 726 C-25 724 112 703 140 700 C168 697 273 690 300 690 C327 690 433 702 460 704 C487 706 595 715 620 718 C645 721 737 740 760 742 C783 745 875 747 900 748 C925 749 1032 755 1060 754 C1088 753 1212 740 1240 736 C1268 733 1379 715 1400 712 C1421 709 1475 699 1490 698 C1505 697 1568 696 1580 696 C1593 696 1635 702 1640 702 L1640 980 L-40 980 Z"/>
+  <path fill="#48935f" d="M-40 800 C-23 798 128 781 160 778 C192 776 312 770 340 770 C368 771 473 782 500 784 C527 786 635 795 660 798 C685 801 777 820 800 822 C823 825 915 827 940 828 C965 829 1072 835 1100 834 C1128 833 1252 819 1280 816 C1308 813 1419 797 1440 794 C1461 791 1518 783 1530 782 C1543 781 1581 782 1590 782 C1599 783 1636 788 1640 788 L1640 980 L-40 980 Z"/>
+  <path fill="#a9d6bb" opacity="0.55" d="M-40 792 C-24 791 119 777 150 776 C181 775 300 777 330 778 C360 779 480 790 510 792 C540 794 658 804 690 806 C722 808 858 816 890 816 C922 816 1042 811 1070 810 C1098 809 1202 806 1230 804 C1258 802 1376 791 1410 790 C1444 789 1621 796 1640 796 L1640 826 L-40 826 Z"/>
+
+  <path fill="#b3e1fa" stroke="#ecf9ff" stroke-width="8" d="M712 862 C 770 844 902 842 962 858 C 1014 872 994 892 918 896 C 836 900 748 892 718 878 C 702 870 700 868 712 862 Z"/>
+
+  <g>
+    <circle cx="150" cy="752" r="30" fill="#3f8b5c"/>
+    <circle cx="128" cy="764" r="20" fill="#3f8b5c"/>
+    <circle cx="172" cy="764" r="20" fill="#3f8b5c"/>
+    <rect x="144" y="774" width="12" height="32" fill="#b08d63"/>
+    <circle cx="238" cy="742" r="30" fill="#3f8b5c"/>
+    <circle cx="216" cy="754" r="20" fill="#3f8b5c"/>
+    <circle cx="260" cy="754" r="20" fill="#3f8b5c"/>
+    <rect x="232" y="764" width="12" height="32" fill="#b08d63"/>
+    <circle cx="326" cy="756" r="30" fill="#3f8b5c"/>
+    <circle cx="304" cy="768" r="20" fill="#3f8b5c"/>
+    <circle cx="348" cy="768" r="20" fill="#3f8b5c"/>
+    <rect x="320" y="778" width="12" height="32" fill="#b08d63"/>
+    <circle cx="1252" cy="736" r="30" fill="#3f8b5c"/>
+    <circle cx="1230" cy="748" r="20" fill="#3f8b5c"/>
+    <circle cx="1274" cy="748" r="20" fill="#3f8b5c"/>
+    <rect x="1246" y="758" width="12" height="32" fill="#b08d63"/>
+    <circle cx="1338" cy="728" r="30" fill="#3f8b5c"/>
+    <circle cx="1316" cy="740" r="20" fill="#3f8b5c"/>
+    <circle cx="1360" cy="740" r="20" fill="#3f8b5c"/>
+    <rect x="1332" y="750" width="12" height="32" fill="#b08d63"/>
+    <circle cx="560" cy="820" r="28" fill="#3f8b5c"/>
+    <circle cx="540" cy="832" r="18" fill="#3f8b5c"/>
+    <circle cx="580" cy="832" r="18" fill="#3f8b5c"/>
+    <rect x="554" y="840" width="12" height="30" fill="#b08d63"/>
+    <circle cx="1050" cy="836" r="28" fill="#3f8b5c"/>
+    <circle cx="1030" cy="848" r="18" fill="#3f8b5c"/>
+    <circle cx="1070" cy="848" r="18" fill="#3f8b5c"/>
+    <rect x="1044" y="856" width="12" height="30" fill="#b08d63"/>
+  </g>
+
+  <path fill="#c9d8e0" d="M296 878 C 310 854 344 848 366 860 C 384 870 390 886 380 896 L296 896 Z"/>
+  <path fill="#a9bcc9" d="M322 896 C 326 878 338 868 352 866 C 344 884 338 896 332 896 Z"/>
+  <path fill="#c9d8e0" d="M452 890 C 466 866 498 860 520 872 C 536 882 542 892 534 896 L452 896 Z"/>
+
+  <g stroke="#3f6382" stroke-width="4" stroke-linecap="round">
+    <path fill="none" d="M980 300 C 990 288 1004 286 1010 298 C 1016 286 1030 288 1040 300"/>
+    <path fill="none" d="M1052 258 C 1060 248 1070 246 1076 256 C 1082 246 1092 248 1100 258"/>
+    <path fill="none" d="M900 246 C 908 236 918 234 924 244 C 930 234 940 236 948 246"/>
+  </g>
+</svg>

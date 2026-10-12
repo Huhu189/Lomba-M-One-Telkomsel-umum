@@ -6,6 +6,8 @@ namespace App\Sections\Presence\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Sections\Attempt\Models\Attempt;
+use App\Sections\Presence\Http\Requests\DenyutRequest;
+use App\Sections\Presence\Services\DenyutProteksiService;
 use App\Sections\Presence\Services\PresenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,6 +36,36 @@ class KehadiranController extends Controller
             'message' => 'Kehadiran diperbarui.',
             'server_now' => Carbon::now()->toIso8601String(),
             'ambang_segar_detik' => PresenceService::AMBANG_SEGAR,
+        ]);
+    }
+
+    /**
+     * Denyut proteksi ber-nonce (2D).
+     *
+     * Klien mengirim nonce terakhir; server memeriksanya, merotasi nonce, lalu
+     * mengembalikan yang baru. Nonce yang tidak berlaku dijawab **409** dan
+     * **tidak** menyegarkan liveness — jadi memutar ulang kiriman lama tidak
+     * bisa mengelabui sapuan. Klien yang menerima 409 memuat ulang payload
+     * attempt untuk mendapat nonce segar.
+     */
+    public function denyut(DenyutRequest $request, Attempt $attempt, DenyutProteksiService $denyut): JsonResponse
+    {
+        $this->authorize('jawab', $attempt);
+
+        $baru = $denyut->denyut($attempt, $request->validated('nonce'));
+
+        if ($baru === null) {
+            return response()->json([
+                'message' => 'Nonce denyut tidak berlaku.',
+                'server_now' => Carbon::now()->toIso8601String(),
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => 'Denyut proteksi diterima.',
+            'nonce' => $baru,
+            'interval_detik' => DenyutProteksiService::JEDA_DETIK,
+            'server_now' => Carbon::now()->toIso8601String(),
         ]);
     }
 }

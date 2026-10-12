@@ -672,9 +672,36 @@ export function IkonTipeTekaSilangMini(props) {
   )
 }
 
+/**
+ * Ikon ukuran tulisan — dua huruf A yang berbeda tinggi (kiri besar, kanan
+ * kecil). Dipakai tombol "Ukuran tulisan: Normal/Besar" di bilah atas.
+ * @param {PropsIkon} props
+ */
+export function IkonHuruf(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M3 19 8 7l5 12" />
+      <path d="M4.8 15h6.4" />
+      <path d="M14.5 19 18 10.5 21.5 19" />
+      <path d="M15.7 16.5h4.6" />
+    </KerangkaIkon>
+  )
+}
+
 /** Peta nama ikon untuk demo dan pemakaian dinamis. */
+/** Ikon kaca pembesar (pencarian data induk). @param {PropsIkon} props */
+export function IkonCari(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.6-3.6" />
+    </KerangkaIkon>
+  )
+}
+
 export const daftarIkon = {
   rumah: IkonRumah,
+  cari: IkonCari,
   lembarSoal: IkonLembarSoal,
   bendera: IkonBendera,
   centang: IkonCentang,
@@ -710,4 +737,5 @@ export const daftarIkon = {
   grafik: IkonGrafik,
   putar: IkonPutar,
   jeda: IkonJeda,
+  huruf: IkonHuruf,
 }

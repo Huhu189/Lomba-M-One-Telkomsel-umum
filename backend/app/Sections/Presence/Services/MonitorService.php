@@ -23,6 +23,7 @@ class MonitorService
     public function __construct(
         private readonly PresenceService $presence,
         private readonly KecuranganService $kecurangan,
+        private readonly DenyutProteksiService $denyut,
     ) {}
 
     /**
@@ -32,8 +33,10 @@ class MonitorService
     {
         // Sapuan sekali setiap guru membuka monitor: penjadwal cron tidak bisa
         // lebih rapat dari satu menit, sedangkan status yang dilihat guru harus
-        // segar saat itu juga.
+        // segar saat itu juga. Denyut proteksi (2D) ikut disapu supaya catatan
+        // "sensor berhenti" muncul saat guru melihat monitor, bukan menit depan.
         $this->presence->sapu();
+        $this->denyut->sapu();
 
         $kuisId = (int) $kuis->getKey();
         $hadir = $this->presence->daftar($kuis);

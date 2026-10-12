@@ -19,6 +19,18 @@
  */
 
 :root {
+  /* Ukuran tulisan (papan putaran 3): SATU variabel --s mengalikan seluruh
+   * skala — huruf, jarak, tinggi kepala. Normal 1 untuk semua orang; Besar
+   * 1,12 untuk murid kecil atau layar jauh. Papan putaran 2 punya tiga pilihan
+   * (Rapat/Normal/Besar); "Rapat" dibuang karena selisihnya tak terasa.
+   *
+   * Ukuran berbasis rem (85 deklarasi font-size + utilitas Bootstrap) tidak
+   * perlu diubah satu per satu: font-size <html> sendiri ikut --s, jadi
+   * seluruh rem membesar bersama. Nilai px (borders, radius, bayangan) sengaja
+   * tetap supaya bingkai tidak ikut menggemuk. */
+  --s: 1;
+  font-size: calc(100% * var(--s));
+
   --latar: #f8fafc;
   --kartu: #ffffff;
   --kartu-lembut: #eef2f7;
@@ -44,48 +56,67 @@
   /* Cincin fokus sengaja bukan --aksen: lihat catatan kontras di atas. */
   --cincin-fokus: #1a2f65;
 
-  /* Palet adegan yang digambar sendiri (AdeganGunung.jsx). Terpisah dari palet
-   * UI karena ini lukisan, bukan komponen antarmuka — tetapi tetap di blok
-   * variabel supaya komponen tidak menyimpan warna mentah. */
-  --adegan-langit-atas: #0b1a33;
-  --adegan-langit-tengah: #27456f;
-  --adegan-langit-bawah: #7fa0bd;
-  --adegan-punggung: #1d3350;
-  --adegan-lereng-atas: #8fa9bd;
-  --adegan-lereng-tengah: #4c6b86;
-  --adegan-lereng-bawah: #16283c;
-  --adegan-depan-atas: #2a4157;
-  --adegan-depan-bawah: #060f19;
-  --adegan-salju: #eef5ff;
-  --adegan-salju-bayang: #c9dcef;
-  --adegan-cahaya: #ffe6a8;
-  --adegan-rusuk: #0f2033;
-  --adegan-awan: #cfe0ee;
-  --adegan-kabut: #dfeaf5;
-  --adegan-burung: #e8f1f9;
+  /* Palet adegan yang digambar sendiri (AdeganGunung.jsx): **siang cerah, gaya
+   * gambar rata**. Langit biru muda, matahari hangat, lereng biru keabuan yang
+   * tidak pernah sampai hitam — supaya terbaca seperti ilustrasi buku cerita,
+   * bukan foto senja. Terpisah dari palet UI karena ini lukisan, bukan komponen
+   * antarmuka — tetapi tetap di blok variabel supaya komponen tidak menyimpan
+   * warna mentah.
+   *
+   * Sengaja TIDAK dibedakan di mode gelap: gambar yang sama tetap terang di
+   * kedua tema (permintaan pemilik produk: "jangan gelap"). */
+  --adegan-langit-atas: #74c1f2;
+  --adegan-langit-tengah: #b3e1fa;
+  --adegan-langit-bawah: #ecf9ff;
+  --adegan-matahari: #ffd479;
+  --adegan-matahari-garis: #eeb63c;
+  --adegan-punggung: #c6e0f2;
+  --adegan-lereng: #96c1dd;
+  --adegan-depan-kiri: #74aacd;
+  --adegan-depan-kanan: #6297bd;
+  --adegan-kaki: #8cc49b;
+  --adegan-salju: #ffffff;
+  --adegan-salju-bayang: #dbe9fa;
+  --adegan-garis: #40627f;
+  --adegan-rusuk: #6b93b0;
+  --adegan-awan: #ffffff;
+  --adegan-kabut: #f4fbff;
+  --adegan-burung: #3f6382;
 
-  /* Skala jarak 4–64 px (papan Standar) */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 24px;
-  --sp-6: 32px;
-  --sp-7: 48px;
-  --sp-8: 64px;
+  /* Jalur peta perjalanan di atas latar yang terang (gambar tema dari
+   * public/tema/ maupun adegan yang digambar sendiri). Putih dan aksen sky
+   * tenggelam di sana, jadi jalurnya memakai dua warna pekat ini. */
+  --jalur-belum: rgba(64, 98, 127, 0.72);
+  --jalur-lewat: #1f4f74;
 
-  /* Skala huruf (papan Standar) */
-  --fs-hero: 44px;
-  --fs-h1: 34px;
-  --fs-h2: 22px;
-  --fs-soal: 18px;
-  --fs-isi: 16px;
-  --fs-meta: 14px;
+  /* Kebalikannya untuk latar GELAP (tema "Luar Angkasa"): jalur pekat tenggelam
+   * ke langit malam. Nilai hex-nya tetap di blok ini (aturan tema.css), dan
+   * komponen merujuknya lewat var(). */
+  --jalur-belum-gelap: rgba(226, 240, 255, 0.78);
+  --jalur-lewat-gelap: #8ad8ff;
+
+  /* Skala jarak 4–64 px (papan Standar) — ikut --s */
+  --sp-1: calc(4px * var(--s));
+  --sp-2: calc(8px * var(--s));
+  --sp-3: calc(12px * var(--s));
+  --sp-4: calc(16px * var(--s));
+  --sp-5: calc(24px * var(--s));
+  --sp-6: calc(32px * var(--s));
+  --sp-7: calc(48px * var(--s));
+  --sp-8: calc(64px * var(--s));
+
+  /* Skala huruf (papan Standar) — ikut --s */
+  --fs-hero: calc(44px * var(--s));
+  --fs-h1: calc(34px * var(--s));
+  --fs-h2: calc(22px * var(--s));
+  --fs-soal: calc(18px * var(--s));
+  --fs-isi: calc(16px * var(--s));
+  --fs-meta: calc(14px * var(--s));
 
   --radius: 16px;
   /* Tinggi kepala lengket; dipakai juga oleh panel samping dan kepala ulangan
    * supaya keduanya menempel tepat di bawah kepala, bukan menutupinya. */
-  --tinggi-kepala: 68px;
+  --tinggi-kepala: calc(68px * var(--s));
   --radius-kecil: 12px;
   --bayangan: 0 2px 12px rgba(15, 23, 42, 0.08);
   --bayangan-besar: 0 18px 48px rgba(15, 23, 42, 0.14);
@@ -105,6 +136,13 @@
   --bs-border-color: var(--garis);
   --bs-border-radius: var(--radius);
   --bs-secondary-color: var(--teks-lembut);
+}
+
+/* Ukuran "Besar": satu-satunya tempat --s diubah. Atributnya dipasang di
+ * <html> oleh shared/store/tema.js, jadi nilainya sudah benar sebelum React
+ * merender (tidak ada kedipan kecil → besar). */
+:root[data-ukuran='besar'] {
+  --s: 1.12;
 }
 
 [data-bs-theme='dark'] {
@@ -165,6 +203,37 @@ h4,
 .merek-teks {
   font-family: var(--font-judul);
   letter-spacing: -0.01em;
+}
+
+/* Ukuran judul bawaan Bootstrap mencampur rem dengan vw
+ * (contoh .h2: calc(1.325rem + .9vw)). Bagian rem ikut --s, bagian vw tidak —
+ * jadi tanpa baris ini judul hanya tumbuh ~9% sementara teks lain tumbuh 12%,
+ * dan "Besar" jadi tidak rata. Rumusnya ditulis ulang dengan vw ikut
+ * dikalikan; pada --s = 1 nilainya sama persis dengan bawaan Bootstrap.
+ *
+ * Sengaja dibatasi < 1200px: di atas itu Bootstrap memakai rem tetap
+ * (mis. 2.5rem) yang sudah ikut --s lewat font-size <html>, jadi tidak perlu
+ * ditimpa — dan menimpanya justru mengubah ukuran judul di layar lebar. */
+@media (max-width: 1199.98px) {
+  h1,
+  .h1 {
+    font-size: calc(1.375rem + 1.5vw * var(--s));
+  }
+
+  h2,
+  .h2 {
+    font-size: calc(1.325rem + 0.9vw * var(--s));
+  }
+
+  h3,
+  .h3 {
+    font-size: calc(1.3rem + 0.6vw * var(--s));
+  }
+
+  h4,
+  .h4 {
+    font-size: calc(1.275rem + 0.3vw * var(--s));
+  }
 }
 
 /* Judul halaman (papan Standar): 34 px, bobot 800, satu h1 per halaman. */
@@ -1007,6 +1076,7 @@ a {
 @media (min-width: 992px) {
   .auth-tema-desktop {
     display: inline-flex;
+    gap: var(--sp-2);
     position: fixed;
     top: 1rem;
     right: 1rem;
@@ -2707,11 +2777,22 @@ a {
 .nle-klip-aktif {
   background: var(--sorot-hangat);
   border-color: var(--teks);
+  /* Garis tipe di sisi kiri dibuat 1px seperti sisi lain selama klip terpilih:
+   * kalau tetap 3px, warnanya sama dengan tanda pangkas di sebelahnya dan kedua
+   * garis itu terbaca `||` (lihat catatan .nle-pangkas). Jenis klip tetap
+   * terbaca dari ikon/label di dalam klip dan dari inspector. */
+  border-inline-start-width: 1px;
 }
 
 /* Gagang pangkas `|` di kedua sisi klip terpilih. Grupnya mengikuti kotak klip
  * tetapi tidak menutupi isi klip (pointer-events: none) — hanya tandanya yang
- * bisa diseret, jadi menekan badan klip tetap memilih/menggeser klip. */
+ * bisa diseret, jadi menekan badan klip tetap memilih/menggeser klip.
+ *
+ * Tandanya **satu** goresan `|`, bukan `||`: (1) cincin `border` pada tanda
+ * dibuang — dengan `box-sizing: border-box` (reboot Bootstrap) cincin 1px itu
+ * memakan lebarnya sehingga goresan tinggal 1px; (2) goresan digeser ke dalam
+ * (±0,45rem dari tepi klip) supaya tidak menempel pada garis 3px milik klip
+ * sebelahnya. Sebelumnya keduanya berdempetan dan terbaca `||`. */
 .nle-pangkas-grup {
   position: absolute;
   inset-block-start: 0.35rem;
@@ -2733,21 +2814,28 @@ a {
 
 .nle-pangkas::before {
   width: 3px;
-  height: 100%;
+  /* Lebih pendek dari tinggi klip supaya terbaca sebagai pegangan, bukan dinding
+   * pemisah antarklip. */
+  height: 1.6rem;
   content: '';
   background: var(--aksen);
-  border: 1px solid var(--kartu);
-  border-radius: 3px;
+  border-radius: 2px;
+  /* Garis luar (bukan `border`) supaya tidak menggeser maupun menyusutkan
+   * goresannya; kontras aksen di atas --sorot-hangat hanya 2,3:1, sedangkan
+   * --teks di atas sorot hangat di atas 14:1 (WCAG 1.4.11). */
+  outline: 1px solid var(--teks);
 }
 
 .nle-pangkas-kiri {
   inset-inline-start: 0;
   justify-content: flex-start;
+  padding-inline-start: 0.45rem;
 }
 
 .nle-pangkas-kanan {
   inset-inline-end: 0;
   justify-content: flex-end;
+  padding-inline-end: 0.45rem;
 }
 
 .nle-pangkas:focus-visible {
@@ -4086,7 +4174,11 @@ a {
 /* ---------- Adegan yang digambar sendiri (SVG beranimasi) ---------- */
 
 /* Warna adegan: semuanya lewat variabel --adegan-* di blok :root, sehingga
-   komponennya tidak menyimpan satu pun nilai warna mentah. */
+   komponennya tidak menyimpan satu pun nilai warna mentah.
+
+   Gayanya **gambar rata**: tiap bidang satu warna penuh (tanpa gradien 3D)
+   plus garis tepi tipis berwarna gelap lembut. Itu yang membuatnya terbaca
+   sebagai ilustrasi buku cerita, bukan foto senja — bukan cuma warnanya. */
 .ag-langit {
   fill: url(#ag-langit);
 }
@@ -4103,62 +4195,74 @@ a {
   stop-color: var(--adegan-langit-bawah);
 }
 
+.ag-stop-cahaya {
+  stop-color: var(--adegan-matahari);
+}
+
+.ag-matahari-inti {
+  fill: var(--adegan-matahari);
+  stroke: var(--adegan-matahari-garis);
+  stroke-width: 0.5;
+}
+
 .ag-punggung {
   fill: var(--adegan-punggung);
-  opacity: 0.75;
-}
-
-.ag-stop-lereng-atas {
-  stop-color: var(--adegan-lereng-atas);
-}
-
-.ag-stop-lereng-tengah {
-  stop-color: var(--adegan-lereng-tengah);
-}
-
-.ag-stop-lereng-bawah {
-  stop-color: var(--adegan-lereng-bawah);
+  stroke: var(--adegan-garis);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
 }
 
 .ag-lereng {
-  fill: url(#ag-lereng);
-}
-
-.ag-stop-depan-atas {
-  stop-color: var(--adegan-depan-atas);
-}
-
-.ag-stop-depan-bawah {
-  stop-color: var(--adegan-depan-bawah);
+  fill: var(--adegan-lereng);
+  stroke: var(--adegan-garis);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
 }
 
 .ag-lereng-depan {
-  fill: url(#ag-lereng-depan);
+  fill: var(--adegan-depan-kiri);
+  stroke: var(--adegan-garis);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+/* Bidikan terdekat sedikit lebih pekat daripada yang di kiri — kedalaman
+   tanpa perlu gradien. */
+.ag-lereng-depan-kanan {
+  fill: var(--adegan-depan-kanan);
+}
+
+.ag-kaki {
+  fill: var(--adegan-kaki);
+  stroke: var(--adegan-garis);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
 }
 
 .ag-salju {
   fill: var(--adegan-salju);
-  opacity: 0.92;
+  stroke: var(--adegan-garis);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
 }
 
 .ag-salju-bayang {
   fill: var(--adegan-salju-bayang);
-  opacity: 0.7;
 }
 
 .ag-rusuk {
   fill: none;
   stroke: var(--adegan-rusuk);
   stroke-width: 0.6;
-  opacity: 0.5;
-}
-
-.ag-stop-cahaya {
-  stop-color: var(--adegan-cahaya);
+  stroke-linecap: round;
+  opacity: 0.55;
 }
 
 .ag-awan {
   fill: var(--adegan-awan);
+  stroke: var(--adegan-garis);
+  stroke-width: 0.4;
+  opacity: 0.96;
 }
 
 .ag-kabut {
@@ -4168,7 +4272,8 @@ a {
 .ag-burung {
   fill: none;
   stroke: var(--adegan-burung);
-  stroke-width: 0.7;
+  stroke-width: 0.8;
+  stroke-linecap: round;
 }
 
 /* Mengisi penuh panggung. Seluruh gerak memakai kelas di bawah — bukan SMIL —
@@ -4181,11 +4286,12 @@ a {
   animation: jelajah-zoom 30s ease-in-out infinite alternate;
 }
 
-/* Semburat matahari berdenyut pelan; titik asal di koordinat viewBox. */
+/* Semburat matahari berdenyut pelan; titik asal di koordinat viewBox.
+   Pusatnya (46, 19) — sudut kiri atas, sama dengan bulatan `ag-matahari-inti`. */
 .jelajah-matahari {
   fill: url(#ag-cahaya);
   transform-box: view-box;
-  transform-origin: 80px 20px;
+  transform-origin: 46px 19px;
   animation: adegan-denyut 9s ease-in-out infinite alternate;
 }
 
@@ -4257,11 +4363,10 @@ a {
   }
 }
 
-/* Lapisan gelap tipis di atas latar supaya titik pos dan penanda posisi tetap
-   terbaca di bagian yang terang. Sengaja TANPA z-index: jalur dan titik pos yang
-   ber-z-index 1 tetap tercetak di atasnya. */
-.jelajah[data-latar='foto'] .jelajah-panggung::after,
-.jelajah[data-latar='ilustrasi'] .jelajah-panggung::after,
+/* Lapisan gelap tipis di atas video guru supaya titik pos dan penanda posisi
+   tetap terbaca: video bisa berisi bagian yang hampir putih di mana saja.
+   Sengaja TANPA z-index: jalur dan titik pos yang ber-z-index 1 tetap tercetak
+   di atasnya. */
 .jelajah[data-latar='video'] .jelajah-panggung::after {
   position: absolute;
   inset: 0;
@@ -4269,6 +4374,21 @@ a {
   background:
     radial-gradient(120% 100% at 50% 0%, transparent 40%, rgba(2, 6, 23, 0.4) 100%),
     linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.4) 100%);
+  pointer-events: none;
+}
+
+/* Gambar tema dari berkas ilustrasi DAN adegan yang digambar sendiri sudah
+   cerah sendiri — JANGAN digelapkan lagi (permintaan pemilik produk: "jangan
+   gelap"). Sisanya cuma kabut putih tipis di tepi bawah supaya nomor pos di
+   kaki gunung tetap "mengambang" dan jalur pekat di bawah tetap kontras.
+   Catatan: kalau suatu saat ada berkas tema yang gelap, lapisan ini perlu
+   ditinjau ulang. */
+.jelajah[data-latar='foto'] .jelajah-panggung::after,
+.jelajah[data-latar='ilustrasi'] .jelajah-panggung::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.22) 100%);
   pointer-events: none;
 }
 
@@ -4295,20 +4415,64 @@ a {
   stroke: var(--aksen);
 }
 
+/* Di atas gambar yang terang, jalur putih (putus-putus) dan aksen sky tenggelam
+   ke latar. Peta bergambar memakai jalur yang lebih pekat supaya terbaca dari
+   pos pertama di kaki gunung sampai puncak. */
+.jelajah[data-latar='foto'] .jelajah-ruas[data-status='belum'],
+.jelajah[data-latar='ilustrasi'] .jelajah-ruas[data-status='belum'] {
+  stroke: var(--jalur-belum);
+}
+
+.jelajah[data-latar='foto'] .jelajah-ruas[data-status='dilewati'],
+.jelajah[data-latar='ilustrasi'] .jelajah-ruas[data-status='dilewati'] {
+  stroke: var(--jalur-lewat);
+}
+
+/* Latar gelap (tema "Luar Angkasa") butuh kebalikannya: jalur pekat yang dipakai
+   di latar terang justru tenggelam di langit malam. Nilainya ditimpa di elemen
+   `.jelajah` supaya ruas-ruas di dalamnya mewarisinya. Tenda pos (garis tepi
+   putih + nomor di pil putih) serta penanda posisi sudah kontras di kedua jenis
+   latar, jadi tidak perlu aturan kedua di sini. */
+.jelajah[data-adegan='angkasa'] {
+  --jalur-belum: var(--jalur-belum-gelap);
+  --jalur-lewat: var(--jalur-lewat-gelap);
+}
+
+/* Lapis putih di kaki panggung dibuat untuk latar terang; di langit malam ia
+   mengaburkan landasan peluncuran. Dipakai versi yang jauh lebih tipis. */
+.jelajah[data-adegan='angkasa'] .jelajah-panggung::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, 0.06) 100%);
+}
+
+/* Penanda pos = kemah (tenda) di jalur pendakian. Kotaknya sendiri transparan;
+   bentuk tendanya digambar SVG supaya punya garis tepi putih (tetap terlihat
+   di latar terang maupun gelap) dan pintunya bisa dibedakan dari atapnya. */
 .jelajah-pos {
   position: absolute;
   z-index: 1;
-  display: grid;
-  gap: 0;
-  place-items: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  color: #ffffff;
-  background: var(--pos-warna, #475569);
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  width: 2.3rem;
+  height: 1.9rem;
   transform: translate(-50%, -50%);
+}
+
+.jelajah-pos-kemah {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Bayangan lembut supaya tendanya tidak menempel rata di latar. */
+  filter: drop-shadow(0 0.12rem 0.16rem rgba(15, 23, 42, 0.3));
+}
+
+.jelajah-pos-kemah-atap {
+  fill: var(--pos-warna, var(--teks-lembut));
+  stroke: var(--putih);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+/* Pintu tenda: versi lebih terang dari warna tendanya. */
+.jelajah-pos-kemah-pintu {
+  fill: rgba(255, 255, 255, 0.32);
 }
 
 .jelajah-pos[data-warna='hijau'] {
@@ -4335,20 +4499,17 @@ a {
   filter: grayscale(0.65) opacity(0.65);
 }
 
-.jelajah-pos[data-status='dibuka'] {
-  outline: 3px solid rgba(14, 165, 233, 0.55);
-  outline-offset: 2px;
+/* Pos yang sedang ditempuh ditandai CAHAYA, bukan cincin kotak: bentuk
+   penandanya tenda, jadi cincin `outline` akan menggambar kotak di sekitarnya. */
+.jelajah-pos[data-status='dibuka'] .jelajah-pos-kemah {
+  filter:
+    drop-shadow(0 0 0.3rem rgba(14, 165, 233, 0.95))
+    drop-shadow(0 0.12rem 0.16rem rgba(15, 23, 42, 0.3));
 }
 
-/* Pos opsional ditandai bentuk (bukan hanya warna): sudut lebih tajam. */
-.jelajah-pos[data-jenis='opsional'] {
-  border-radius: 0.4rem;
-}
-
-.jelajah-pos-ikon {
-  width: 0.95rem;
-  height: 0.95rem;
-  fill: currentColor;
+/* Pos opsional ditandai POLA (bukan hanya warna): garis tendanya putus-putus. */
+.jelajah-pos[data-jenis='opsional'] .jelajah-pos-kemah-atap {
+  stroke-dasharray: 2.6 1.8;
 }
 
 .jelajah-pos-nomor {
@@ -4359,6 +4520,9 @@ a {
   font-weight: 700;
   color: var(--teks);
   background: var(--kartu);
+  /* Garis rambut: di atas latar terang (foto atau gambar siang) pil putih ini
+     kehilangan batasnya tanpa garis tepi. */
+  border: 1px solid rgba(15, 23, 42, 0.28);
   border-radius: 999px;
 }
 

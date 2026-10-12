@@ -143,15 +143,22 @@ Sejak 10 Oktober 2026 editor materi bergaya **video editor**: guru memilih rasio
 
 Sejak 11 Oktober 2026 (putaran A.38) guru juga bisa menulis **penjelasan setelah kuis**. Saat menyisipkan kuis ke timeline, guru memilih kuisnya lewat pemilih berisi pencarian + jumlah soal, mapel, kelas, dan status (kuis tanpa soal langsung ditandai), lalu boleh mengisi **penjelasan** — teks bebas, media dari pustaka materi, atau keduanya. Penjelasan itu tampil untuk **seluruh kelas** tepat setelah murid menyelesaikan kuis tersebut di dalam materi, sebelum videonya dilanjutkan; tidak masuk penilaian dan bukan kunci jawaban. Isinya opsional: kuis tanpa penjelasan berjalan seperti sebelumnya, dan media memakai mekanisme unggahan materi yang sama (berkas privat, tautan bertanda tangan).
 
-Sejak 11 Oktober 2026 (putaran A.36) panjang tiap klip di timeline **tidak perlu diketik angka**: memilih satu klip memunculkan tanda `|` di kedua sisinya, seperti editor video pada umumnya. Menyeret tanda kanan menggeser akhir klip (durasi ikut berubah), sedangkan tanda kiri menggeser awalnya tanpa memindahkan ujung kanan. Tanda itu juga bisa dipangkas dari papan tombol (panah kiri/kanan, 0,1 detik sekali) dan kotak angka di inspector tetap ada sebagai jalur presisi. Berlaku untuk **semua** tipe klip — teks, media, maupun kuis sisipan.
+Sejak 11 Oktober 2026 (putaran A.36) panjang tiap klip di timeline **tidak perlu diketik angka**: memilih satu klip memunculkan tanda `|` di kedua sisinya, seperti editor video pada umumnya. Menyeret tanda kanan menggeser akhir klip (durasi ikut berubah), sedangkan tanda kiri menggeser awalnya tanpa memindahkan ujung kanan. Tanda itu juga bisa dipangkas dari papan tombol (panah kiri/kanan, 0,1 detik sekali) dan kotak angka di inspector tetap ada sebagai jalur presisi. Berlaku untuk **semua** tipe klip — teks, media, maupun kuis sisipan. Sejak 12 Oktober 2026 (putaran A.47) tandanya digambar sebagai **satu** goresan `|` yang digeser sedikit ke dalam klip: dulu goresannya tinggal selebar 1px (cincin `border` + `box-sizing: border-box`) dan duduk menempel di tepi klip, sehingga pada klip yang diikuti klip lain ia berdempetan dengan garis tepi klip sebelahnya dan terbaca `||`. Selama klip terpilih garis tepinya seragam tipis — jenis klip (teks/media/kuis) tetap terbaca dari ikon + label di dalam klip dan dari inspector.
 
 Sejak 10 Oktober 2026 (putaran A.34) tiap materi juga bisa dibuat **berjalan**: guru memilih **template tema**
-— misalnya **"Mendaki Gunung"** — lalu tiap bagian materi menjadi satu **pos perjalanan** (Basecamp → Jalur
+— misalnya **"Mendaki Gunung"**, **"Harta Karun di Pulau"** (berlayar dari dermaga sampai goa harta karun),
+atau **"Luar Angkasa"** (meluncur dari landasan sampai Bulan) — lalu tiap bagian materi menjadi satu **pos
+perjalanan** (Basecamp → Jalur
 Pinus → Sungai Deras → Lereng Berbatu → Kabut Puncak → Puncak). Guru boleh mengganti nama tema dan nama
-tiap posnya, dan boleh menempelkan **video latar** untuk temanya. Latar panggung peta selalu **media
-sungguhan**: video guru bila ada, kalau tidak **foto tema** berlisensi bebas (lihat
-`frontend/public/tema/LISENSI.md`) dengan gerak zoom halus. Bila tema tidak punya foto, panggung memakai
-latar gradien tenang — **tidak ada adegan gambar buatan**. Template tema bersifat **opsional**: guru boleh
+tiap posnya, dan boleh menempelkan **video latar** untuk temanya. Di peta, tiap pos ditandai **kemah** (tenda
+berwarna sesuai posnya, lengkap dengan pintu) dan **jalur antarpos berbelok-belok mendaki**: pos bergantian di
+jalur kiri dan kanan yang makin menyempit ke atas, dan pos terakhir berdiri di **puncak**. Latar panggung peta
+selalu **media sungguhan**: video guru bila ada, kalau tidak **berkas gambar tema** berlisensi bebas dari
+`frontend/public/tema/` (lihat `LISENSI.md` di folder itu) dengan gerak zoom halus. Untuk tema bawaan
+"Mendaki Gunung", berkas itu berupa **ilustrasi bergaya grafik** — gambar rata berlapis (langit cerah, **satu**
+puncak bersalju yang tumpul dengan puncaknya masih di langit, bukit, pepohonan, batu, danau), bukan foto realis,
+berpuncak membulat (bukan bersisi tegak yang terbaca seperti tebing), dan tanpa garis yang ujungnya menggantung. Bila tema tidak punya berkas gambar, panggung memakai latar gradien tenang; ada juga jalur ilustrasi
+yang digambar sendiri untuk tema yang belum punya berkas, tetapi katalog tema saat ini tidak memakainya. Template tema bersifat **opsional**: guru boleh
 memilih "Tanpa tema" agar materi berjalan sebagai daftar bagian biasa tanpa peta, pos, dan tingkat. Setiap kali murid menutup satu bagian — termasuk setelah
 kuis sisipan di dalam video — ia **naik satu pos**, dan bila persentase langkah wajibnya melewati ambang
 tertentu ia **naik tingkat** (Pendaki Pemula → Pendaki Terlatih → Penjelajah Lereng → Penakluk Puncak) dengan
@@ -172,8 +179,10 @@ tampilan per klip, kuis tersemat pada detik video, serta **gagang pangkas `|` di
 mengatur durasi tanpa mengetik) beserta pemutar muridnya, **peta perjalanan bertema**
 (template tema opsional, nama pos yang bisa diganti guru, latar video/foto tema, kenaikan pos & tingkat),
 dan **layar guru ke perangkat murid (bagian 15)** sudah jalan serta diuji. Yang **belum** dikerjakan dan kami
-sebutkan apa adanya: katalog tema baru berisi **satu** tema ("Mendaki Gunung" — bentuk katalognya sudah siap
-menampung tema lain), dan mengikuti halaman/blok materi yang sedang dibuka guru secara otomatis — yang ada
+sebutkan apa adanya: katalog tema berisi **empat** pilihan (Mendaki Gunung, Harta Karun di Pulau, Luar Angkasa,
+dan "tanpa peta" — keempatnya karya sendiri, berlisensi CC0), dan belum setiap tema punya latar **video**
+bawaan (video latar tetap diunggah guru sendiri). Yang juga belum: mengikuti halaman/blok materi yang sedang
+dibuka guru secara otomatis — yang ada
 adalah guru memilih apa yang tampil di perangkat murid, bukan aplikasi menebak posisi bacaan setiap anak.
 
 ---
@@ -192,7 +201,11 @@ Kami jujur: **deteksi di browser bisa diakali**, dan aplikasi ini tidak pernah m
 ### Manfaat untuk anak SD dan guru
 Guru kelas 6 saat ulangan ulang semester tidak lagi berjalan bolak-balik: dari satu layar dia lihat siapa yang belum mulai, siapa diam lama, dan catatan kejadian yang perlu ditanya baik-baik ke murid. Anak SD tidak dituduh sembarangan — guru yang menilai konteksnya.
 
-Status: **sudah bisa dipakai** (slice 07). Semua pengaman mati secara bawaan dan baru bekerja bila guru menyalakannya. Guru bisa meninjau tiap catatan (valid / tidak valid) langsung dari Live Monitor. Yang belum ada dan kami sebutkan apa adanya: deteksi gangguan proteksi tingkat lanjut, deteksi keluar layar penuh, dan pemanggilan Zoom/Meet untuk verifikasi — ketiganya ditunda, bukan disembunyikan.
+Sejak 12 Oktober 2026 (putaran A.53) ada satu pengaman lagi yang **sengaja tidak** ikut preset "ujian": **deteksi tamper halaman**. Kalau guru menyalakannya sendiri, aplikasi memeriksa empat hal — sumber yang dimuat dari skema extension peramban, fungsi proteksi yang diganti (dibandingkan dengan sidik jari yang diambil saat ulangan dimulai), overlay asing yang menutupi area ulangan, dan elemen penanda yang dihapus pihak lain. Overlay asing dirapikan (dihapus) dan layar dikaburkan sebentar, lalu semuanya dicatat (`dom_injection` / `extension_detected`). Kenapa tidak ikut preset: pemindai ini menyentuh DOM dan rawan salah tuduh, jadi guru harus menyalakannya dengan sadar.
+
+Sejak putaran **A.54** sisi server ikut membuktikan sensornya **masih hidup**. Selama proteksi menyala, aplikasi di perangkat murid mengirim **denyut** kecil tiap 30 detik yang membawa **nonce** dari server; server merotasi nonce itu setiap kali. Kalau denyutnya berhenti lebih dari ~100 detik padahal ulangannya masih berjalan, server mencatat `tamper_suspected` (skor risiko 9) — muncul di Live Monitor guru sebagai bahan tinjauan. Nonce membuat liveness tidak bisa dipalsukan dengan memutar ulang kiriman lama.
+
+Status: **sudah bisa dipakai** (slice 07 + deteksi tamper 2B–2C di A.53 + sisi server 2D di A.54). Semua pengaman mati secara bawaan dan baru bekerja bila guru menyalakannya. Guru bisa meninjau tiap catatan (valid / tidak valid) langsung dari Live Monitor. Yang belum ada dan kami sebutkan apa adanya: **ambang denyut masih nilai tetap** (30 detik / ~100 detik, belum bisa diatur guru — jeda jaringan yang panjang bisa membuat murid jujur tercatat, karena itu catatannya tetap bahan tinjauan, bukan vonis), deteksi keluar layar penuh, dan pemanggilan Zoom/Meet untuk verifikasi — ketiganya ditunda, bukan disembunyikan.
 
 ---
 
@@ -334,6 +347,13 @@ nilai satu kelas lintas kuis.
 
 ### Apa ini
 Tombol terang/gelap untuk kenyamanan mata, terutama saat belajar malam atau ruang kelas bercahaya rendah.
+
+Sejak 12 Oktober 2026 (putaran A.49) ada juga tombol **ukuran tulisan: Normal/Besar**. "Besar" membesarkan
+seluruh tulisan, jarak, dan tinggi kepala sekitar 12% — sekali tekan, tanpa menu — karena murid SD yang
+pertama kali memegang aplikasi ini kadang duduk jauh dari layar atau belum lancar membaca huruf kecil.
+Pilihannya diingat di perangkat itu sendiri (sama seperti tema terang/gelap), jadi tidak perlu diatur ulang
+tiap masuk. Yang **tidak** ikut membesar: garis bingkai, sudut kartu, dan bayangan — supaya tata letaknya
+tetap rapi walau isinya lebih besar.
 
 ### Cara kerjanya
 Pilihan disimpan di perangkat murid/guru dan diterapkan **sebelum** halaman tampil, sehingga tidak ada
@@ -554,6 +574,43 @@ yang berbagi satu jaringan sekolah bisa masuk serentak.
 - Guru bisa memakai satu kuis sebagai **latihan terbuka** (mis. saat pameran sekolah atau jam pengganti) tanpa
 membuat puluhan akun, lalu tetap melihat nilai siapa pun yang mengerjakannya.
 - Karena mode ini hanya membuka kuis **yang dipilih guru**, kelas sungguhan tidak ikut terbuka.
+
+---
+
+## 19. Data induk yang bisa dicari: kelas, mapel, dan murid
+
+### Apa ini
+Halaman guru untuk mengurus data dasar sekolah: kelas, mata pelajaran, dan murid — termasuk impor/ekspor
+murid lewat berkas CSV. Sejak 12 Oktober 2026 (putaran A.51) daftar murid punya kotak **Cari murid**: satu
+kotak untuk nama, NIS, NISN, atau email sekaligus.
+
+### Cara kerjanya
+Pencariannya dikerjakan **server**, bukan menyaring baris yang kebetulan tampil. Ini bukan detail teknis yang
+bisa diabaikan: daftar murid dikirim **berhalaman** (50 baris sekali kirim), jadi kotak cari yang menyaring
+di perangkat hanya akan menemukan murid yang halamannya sedang dibuka — anak ke-51 tetap terbaca "tidak ada"
+padahal ada, dan guru menyimpulkan datanya hilang. Karena itu tiap ketikan dikirim ke server sebagai
+`filter[cari]`, dengan tiga kerapian: dikirim setelah guru berhenti mengetik **300 ms** (satu ketikan cepat =
+satu permintaan, bukan satu per huruf), daftar kembali ke **halaman 1** tiap kata kunci berubah (kata kunci
+baru tidak mendarat di halaman 3), dan kata kunci boleh digabung dengan saringan kelas. Bila tidak ada yang
+cocok, tabel diganti keadaan kosong yang **menyebut kata kuncinya** dan menawarkan tombol *Bersihkan
+pencarian*. Bagian yang cocok juga **disorot** di nama, NIS, dan email hasil pencarian (putaran A.53),
+supaya guru langsung tahu kenapa sebuah baris ikut tampil — bukan hanya bahwa barisnya tampil.
+
+### Mengapa aman
+Pencarian tetap dibatasi **satu sekolah**, dan hak aksesnya sama seperti daftar murid itu sendiri (guru dan
+admin boleh mengelola, murid hanya membaca). Karakter `%` dan `_` yang diketik guru di-escape di server,
+jadi kata kunci tidak diam-diam berubah jadi "tampilkan semua murid". Kata kunci kosong atau hanya spasi
+berarti daftar biasa.
+
+### Manfaat untuk anak SD dan guru
+Guru tidak lagi menelusuri halaman demi halaman untuk mencari satu anak — misalnya saat orang tua bertanya
+tentang nilai, atau saat ada murid pindahan yang harus ditambahkan. Ini juga melengkapi impor CSV: setelah
+data masuk, mencari siapa yang datanya salah jadi pekerjaan hitungan detik.
+
+Status: **sudah bisa dipakai** (putaran A.51 + A.53, diuji 18/18 di Chrome sungguhan). Batasan yang jujur:
+pola pencariannya masih `LIKE %kata%` sehingga belum memanfaatkan indeks — sejak A.53 ada tes regresi pada
+**1.200 murid** yang membuktikan pencariannya benar dan tetap berhalaman pada skala itu, tetapi itu bukan
+uji beban waktu tanggap; dan kotak cari baru ada di halaman **Murid** (Kelas, Mapel, dan Bank Soal belum).
 
 ---
 

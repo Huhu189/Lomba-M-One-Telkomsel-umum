@@ -319,24 +319,115 @@ export function petaLokal(blok, tema, opsi = {}) {
 }
 
 /**
- * Titik tiap pos pada peta (persen dari lebar/tinggi peta), mendaki dari kiri
- * bawah ke kanan atas dengan belokan bergantian supaya terbaca sebagai jalur
- * gunung — bukan garis lurus.
+ * Rute pos untuk **setiap tema**, dalam persen lebar/tinggi peta.
+ *
+ * Tiap titik adalah tempat pos benar-benar **berdiri di sesuatu**: di lereng
+ * gunung, di dermaga/perahu/pantai/goa pulau, atau di landasan/Bumi/Saturnus/
+ * Bulan. Daftar ini dipakai bersama oleh peta (untuk menggambar) dan oleh pagar
+ * uji `__tests__/theme/latarTema.test.js` (untuk memastikan pos tidak berdiri di
+ * ruang kosong) — jadi angka di sini tidak boleh menyimpang dari latarnya.
+ *
+ * Kenapa dulu pos pernah "di udara": jalur lama menaikkan pos secara lurus ke
+ * `y = 12%` sementara puncak gunung ada di `y ≈ 39%`, sehingga pos terakhir (dan
+ * tiap pos baru yang disisipkan lewat kuis di ujung materi) berdiri di langit,
+ * di atas punggungan. Sekarang tiap rute berhenti **di** bentuk latarnya.
+ *
+ * `n` adalah nama tempat itu (dipakai uji & dokumen); koordinatnya yang
+ * menentukan gambar.
+ *
+ * @type {Record<string, Array<{ x: number, y: number, n: string, di?: string }>>}
+ */
+export const RUTE_TEMA = {
+  // Jalur pendakian berbelok-belok: basecamp kiri bawah → lereng kanan → lereng
+  // kiri → punggung kanan → puncak. Tiap titik duduk **di bawah** garis
+  // punggungan `public/tema/gunung.svg` (dari hasil ukur berkas itu, bukan dari
+  // rumus): (6%,71%) ↔ 40 px · (88%,63%) ↔ 36 px · (38%,58%) ↔ 31 px ·
+  // (64%,54%) ↔ 30 px · (50%,42%) ↔ 26 px di bawah punggungan — semuanya di
+  // daratan, dan pos terakhir berdiri tepat di bawah puncak (punggungan puncak
+  // ada di y≈39%).
+  gunung: [
+    { x: 6, y: 71, n: 'Basecamp', di: 'kaki lereng kiri' },
+    { x: 88, y: 63, n: 'Jalur Pinus', di: 'lereng kanan' },
+    { x: 38, y: 58, n: 'Sungai Deras', di: 'lereng kiri' },
+    { x: 64, y: 54, n: 'Lereng Berbatu', di: 'punggung kanan' },
+    { x: 50, y: 42, n: 'Puncak', di: 'puncak' },
+  ],
+  // Pelayaran mencari harta karun: dermaga → perahu → karang → pantai → hutan
+  // kelapa → goa harta karun. Semua titik berada di atas benda yang digambar di
+  // `public/tema/pulau.svg` (id `dermaga`, `perahu`, `karang`, `pantai`,
+  // `hutan`, `goa`).
+  pulau: [
+    { x: 8, y: 84, n: 'Dermaga', di: 'dermaga' },
+    { x: 26, y: 74, n: 'Perahu Layar', di: 'perahu' },
+    { x: 46, y: 72, n: 'Karang', di: 'karang' },
+    { x: 62, y: 62, n: 'Pantai Berpasir', di: 'pantai' },
+    { x: 74, y: 50, n: 'Hutan Kelapa', di: 'hutan' },
+    { x: 80, y: 41, n: 'Goa Harta Karun', di: 'goa' },
+  ],
+  // Peluncuran ke luar angkasa: landasan → tepi Bumi → sabuk asteroid → tepi
+  // Saturnus → permukaan Bulan. Benda yang diinjak digambar di
+  // `public/tema/angkasa.svg` (id `landasan`, `bumi`, `asteroid`, `saturnus`,
+  // `bulan`).
+  angkasa: [
+    { x: 11, y: 79, n: 'Landasan Peluncuran', di: 'landasan' },
+    { x: 26, y: 52, n: 'Orbit Bumi', di: 'bumi' },
+    { x: 50, y: 50, n: 'Sabuk Asteroid', di: 'asteroid' },
+    { x: 72, y: 33, n: 'Cincin Saturnus', di: 'saturnus' },
+    { x: 86, y: 20, n: 'Bulan', di: 'bulan' },
+  ],
+}
+
+/**
+ * Kunci rute yang dipakai sebuah adegan; adegan tak dikenal memakai rute
+ * pendakian (tema lama tidak boleh kehilangan jalurnya).
+ *
+ * @param {string|undefined|null} adegan
+ * @returns {string}
+ */
+export function ruteUntuk(adegan) {
+  return typeof adegan === 'string' && adegan in RUTE_TEMA ? adegan : 'gunung'
+}
+
+/**
+ * Titik tiap pos pada peta (persen dari lebar/tinggi peta), di atas rute tema.
+ *
+ * Pos disebar **rata di sepanjang rute**, bukan dihitung dari rumus lereng:
+ * dengan begitu menambah/menyisipkan satu bagian (mis. kuis di ujung materi)
+ * hanya menggeser pos-pos lain di rute yang sama, dan tidak ada pos yang
+ * terlempar ke langit seperti pada rumus lama (`y = 86 − maju × 74`).
+ *
+ * Jumlah pos boleh berbeda dari jumlah titik rute: rute diinterpolasi, jadi
+ * materi 2 pos maupun 12 pos sama-sama berjalan dari tempat pertama ke tempat
+ * terakhir temanya.
  *
  * @param {number} jumlah
+ * @param {string|undefined|null} [adegan]
  * @returns {Array<{ x: number, y: number }>}
  */
-export function titikJalur(jumlah) {
+export function titikJalur(jumlah, adegan) {
+  const rute = RUTE_TEMA[ruteUntuk(adegan)]
   const banyak = Math.max(1, Math.floor(jumlah))
+  const segmen = rute.length - 1
+
+  if (banyak === 1) {
+    const { x, y } = rute[0]
+    return [{ x, y }]
+  }
+
+  /** Membulatkan ke 0,1 persen supaya koordinatnya sama dengan gaya berkas lama. @param {number} angka */
+  const bulat = (angka) => Math.round(angka * 10) / 10
   const titik = []
 
   for (let indeks = 0; indeks < banyak; indeks++) {
-    const maju = banyak === 1 ? 0 : indeks / (banyak - 1)
-    const belok = Math.sin((indeks * Math.PI) / 2) * 7
-    const x = 12 + maju * 76 + belok
-    const y = 86 - maju * 72
+    const posisi = (indeks / (banyak - 1)) * segmen
+    const kiri = rute[Math.floor(posisi)] ?? rute[segmen]
+    const kanan = rute[Math.min(Math.floor(posisi) + 1, segmen)]
+    const sisa = posisi - Math.floor(posisi)
 
-    titik.push({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })
+    titik.push({
+      x: bulat(kiri.x + (kanan.x - kiri.x) * sisa),
+      y: bulat(kiri.y + (kanan.y - kiri.y) * sisa),
+    })
   }
 
   return titik

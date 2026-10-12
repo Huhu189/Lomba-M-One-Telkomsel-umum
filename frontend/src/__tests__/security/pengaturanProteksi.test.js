@@ -50,4 +50,20 @@ describe('pembacaan saklar proteksi', () => {
     expect(adaProteksiAktif({ anti_cheat: true, detect_window_resize: true })).toBe(true)
     expect(SAKLAR_RINCI).toContain('detect_window_resize')
   })
+
+  it('detect_tamper default MATI dan TIDAK ikut preset ujian', () => {
+    // Deteksi tamper merapikan DOM dan rawan salah tuduh, jadi guru harus
+    // menyalakannya sendiri — preset `exam_mode` tidak boleh menyalakannya.
+    expect(SAKLAR_RINCI).toContain('detect_tamper')
+    expect(SAKLAR_PRESET_UJIAN).not.toContain('detect_tamper')
+
+    const efektif = proteksiEfektif({ anti_cheat: true, exam_mode: true })
+    expect(efektif.detect_tamper).toBe(false)
+
+    // Saklar induk mati berarti tetap mati walau saklar rincinya menyala.
+    expect(adaProteksiAktif({ anti_cheat: false, detect_tamper: true })).toBe(false)
+
+    // Bila guru menyalakannya, ia benar-benar aktif.
+    expect(adaProteksiAktif({ anti_cheat: true, detect_tamper: true })).toBe(true)
+  })
 })

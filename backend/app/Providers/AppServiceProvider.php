@@ -249,5 +249,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('kejadian', function (Request $request) {
             return Limit::perMinute(60)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
         });
+
+        // Denyut proteksi (2D). Klien mengirim satu denyut tiap 30 detik
+        // (2/menit); batas 12/menit memberi ruang untuk muat ulang halaman dan
+        // percobaan ulang jaringan, tetapi tetap menutup kiriman borongan.
+        RateLimiter::for('denyut', function (Request $request) {
+            return Limit::perMinute(12)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
     }
 }

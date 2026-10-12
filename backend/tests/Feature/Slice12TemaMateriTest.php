@@ -145,12 +145,23 @@ it('mengirim katalog tema dari server dan menolak tamu', function (): void {
         ->and($respons->json('tema.0.fase'))->toHaveCount(6)
         ->and($respons->json('tema.0.fase.0.nama'))->toBe('Basecamp')
         ->and($respons->json('tema.0.tingkat.3.nama'))->toBe('Penakluk Puncak')
+        // Tema pilihan (putaran A.50): pelayaran harta karun & luar angkasa.
+        ->and($respons->json('tema.1.kode'))->toBe('harta-karun')
+        ->and($respons->json('tema.1.adegan'))->toBe('pulau')
+        ->and($respons->json('tema.1.satuan'))->toBe('pos')
+        ->and($respons->json('tema.1.fase'))->toHaveCount(6)
+        ->and($respons->json('tema.1.fase.0.nama'))->toBe('Dermaga')
+        ->and($respons->json('tema.1.tingkat.3.nama'))->toBe('Penemu Harta')
+        ->and($respons->json('tema.2.kode'))->toBe('luar-angkasa')
+        ->and($respons->json('tema.2.adegan'))->toBe('angkasa')
+        ->and($respons->json('tema.2.fase.0.nama'))->toBe('Landasan Peluncuran')
+        ->and($respons->json('tema.2.tingkat.3.nama'))->toBe('Penakluk Galaksi')
         // Pilihan "tanpa peta" ikut ditawarkan, tanpa fase dan tanpa tingkat.
-        ->and($respons->json('tema.1.kode'))->toBe(TemaPerjalanan::TANPA)
-        ->and($respons->json('tema.1.adegan'))->toBe('polos')
-        ->and($respons->json('tema.1.satuan'))->toBe('bagian')
-        ->and($respons->json('tema.1.fase'))->toHaveCount(0)
-        ->and($respons->json('tema.1.tingkat'))->toHaveCount(0)
+        ->and($respons->json('tema.3.kode'))->toBe(TemaPerjalanan::TANPA)
+        ->and($respons->json('tema.3.adegan'))->toBe('polos')
+        ->and($respons->json('tema.3.satuan'))->toBe('bagian')
+        ->and($respons->json('tema.3.fase'))->toHaveCount(0)
+        ->and($respons->json('tema.3.tingkat'))->toHaveCount(0)
         // Katalog tidak menyentuh data murid/guru sama sekali.
         ->and($respons->json('murid'))->toBeNull();
 });

@@ -43,21 +43,14 @@ function peta(ubah = {}) {
 }
 
 describe('PetaPerjalanan', () => {
-  it('menggambar adegan gunung dari sudut pandang mendongak, bukan foto', () => {
+  it('memakai gambar tema dari domain publik untuk gunung, bukan gambar tangan', () => {
     const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
 
-    expect(html).toContain('data-latar="ilustrasi"')
-    expect(html).toContain('jelajah-adegan')
-    // Adegan digambar sendiri: tidak ada lagi foto pihak lain di panggung.
-    expect(html).not.toContain('jelajah-foto')
-    expect(html).not.toContain('/tema/gunung.jpg')
-    // Unsur pembentuk sudut pandang dari bawah + bagian yang dianimasikan.
-    expect(html).toContain('jelajah-matahari')
-    expect(html).toContain('jelajah-awan')
-    expect(html).toContain('jelajah-kabut')
-    expect(html).toContain('jelajah-burung')
-    expect(html).toContain('jelajah-lereng-depan')
-    expect(html).toContain('preserveAspectRatio="xMidYMid slice"')
+    expect(html).toContain('data-latar="foto"')
+    expect(html).toContain('jelajah-foto')
+    expect(html).toContain('/tema/gunung.svg')
+    // Gambar tangan tidak dipakai lagi untuk tema ini.
+    expect(html).not.toContain('jelajah-adegan')
     // Empat pos = tiga ruas garis pada peta.
     expect(html.match(/jelajah-ruas/g)).toHaveLength(3)
     // Ruas pertama sudah dilewati, dua ruas sisa masih putus-putus.
@@ -78,21 +71,43 @@ describe('PetaPerjalanan', () => {
     expect(html).toContain('data-latar="video"')
   })
 
-  it('tidak lagi memakai foto pihak lain: gunung jadi adegan yang digambar', () => {
-    // Jalur foto tetap ada untuk tema berikutnya, tetapi kosong — foto gunung
-    // sungguhan sudah dibuang dari repo.
-    expect(FOTO_ADEgan.gunung).toBeUndefined()
-    expect(fotoAdegan('gunung')).toBeNull()
+  it('menunjuk berkas gambar tema gunung dan tidak lagi menggambarnya sendiri', () => {
+    // Gambar jadi berlisensi Public Domain (lihat public/tema/LISENSI.md);
+    // komponen gambar tangan masih ada untuk tema yang belum punya berkas.
+    expect(FOTO_ADEgan.gunung).toBe('/tema/gunung.svg')
+    expect(fotoAdegan('gunung')).toBe('/tema/gunung.svg')
     expect(fotoAdegan('polos')).toBeNull()
     expect(fotoAdegan(undefined)).toBeNull()
 
-    expect(adeganDigambar('gunung')).toBe(true)
+    expect(adeganDigambar('gunung')).toBe(false)
     expect(adeganDigambar('polos')).toBe(false)
     expect(adeganDigambar(undefined)).toBe(false)
 
     const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
-    expect(html).toContain('data-latar="ilustrasi"')
-    expect(html).not.toContain('jelajah-foto')
+    expect(html).toContain('data-latar="foto"')
+    expect(html).toContain('jelajah-foto')
+    expect(html).not.toContain('jelajah-adegan')
+  })
+
+  it('tema pulau & luar angkasa memakai berkas latarnya masing-masing', () => {
+    // Karya proyek ini (CC0) — lihat public/tema/LISENSI.md. Bentuk & pendaratan
+    // pos-nya dijaga __tests__/theme/latarTema.test.js.
+    expect(fotoAdegan('pulau')).toBe('/tema/pulau.svg')
+    expect(fotoAdegan('angkasa')).toBe('/tema/angkasa.svg')
+    expect(adeganDigambar('pulau')).toBe(false)
+    expect(adeganDigambar('angkasa')).toBe(false)
+
+    const pulau = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'pulau' })} />)
+    expect(pulau).toContain('data-adegan="pulau"')
+    expect(pulau).toContain('data-latar="foto"')
+    expect(pulau).toContain('/tema/pulau.svg')
+
+    const angkasa = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'angkasa' })} />)
+    expect(angkasa).toContain('data-adegan="angkasa"')
+    expect(angkasa).toContain('/tema/angkasa.svg')
+    // Panggung, jalur, dan pos tetap ada untuk kedua tema baru.
+    expect(angkasa).toContain('jelajah-jalur')
+    expect(angkasa).toContain('jelajah-pos')
   })
 
   it('memakai latar gradien tenang bila tema tidak punya foto', () => {
@@ -154,6 +169,21 @@ describe('PetaPerjalanan', () => {
     expect(html).toContain('sedang ditempuh')
     expect(html).toContain('belum dibuka')
     expect(html).toContain('Jalan Pintas (opsional)')
+  })
+
+  it('menandai tiap pos sebagai kemah di jalur, bukan bulatan berikon', () => {
+    const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
+
+    // Satu tenda per pos, lengkap dengan atap dan pintunya. (`-atap`/`-pintu`
+    // juga diawali `jelajah-pos-kemah`, jadi kelas tendanya harus dicocokkan
+    // sampai tanda kutip penutup atribut.)
+    expect(html.match(/class="jelajah-pos-kemah"/g)).toHaveLength(4)
+    expect(html.match(/jelajah-pos-kemah-atap/g)).toHaveLength(4)
+    expect(html.match(/jelajah-pos-kemah-pintu/g)).toHaveLength(4)
+    // Ikon jenis pos yang lama sudah tidak dipakai lagi.
+    expect(html).not.toContain('jelajah-pos-ikon')
+    // Nomor pos tetap tertulis di dalam penanda sebagai teks.
+    expect(html.match(/jelajah-pos-nomor">\d</g)).toHaveLength(4)
   })
 
   it('menyediakan label aksesibilitas pada panggung peta', () => {

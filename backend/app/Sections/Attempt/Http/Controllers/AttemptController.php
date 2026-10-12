@@ -12,6 +12,7 @@ use App\Sections\Attempt\Http\Resources\AttemptResource;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Services\AttemptService;
 use App\Sections\Attempt\Services\TimService;
+use App\Sections\Presence\Services\DenyutProteksiService;
 use App\Sections\Presence\Services\PresenceService;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
@@ -32,6 +33,7 @@ class AttemptController extends Controller
         Kuis $kuis,
         AttemptService $service,
         PresenceService $presence,
+        DenyutProteksiService $denyut,
     ): JsonResponse {
         $this->authorize('create', Attempt::class);
         $this->authorize('view', $kuis);
@@ -48,14 +50,19 @@ class AttemptController extends Controller
         // ping tambahan saat murid aktif.
         $presence->tandaiHadir($attempt, $this->sesi($request));
 
-        return $this->bungkusAttempt($request, $attempt, $service, true)->response()->setStatusCode(201);
+        return $this->bungkusAttempt($request, $attempt, $service, true, $denyut)->response()->setStatusCode(201);
     }
 
     /**
      * Status attempt berjalan + soal dalam urutan seed (tanpa kunci).
      */
-    public function show(Request $request, Attempt $attempt, AttemptService $service, PresenceService $presence): AttemptResource
-    {
+    public function show(
+        Request $request,
+        Attempt $attempt,
+        AttemptService $service,
+        PresenceService $presence,
+        DenyutProteksiService $denyut,
+    ): AttemptResource {
         $this->authorize('view', $attempt);
 
         $attempt = $service->muat($attempt);
@@ -66,7 +73,7 @@ class AttemptController extends Controller
 
         // Saklar ikut dikirim saat halaman dimuat ulang; kalau tidak, proteksi
         // yang dinyalakan guru akan hilang hanya karena murid menyegarkan layar.
-        return $this->bungkusAttempt($request, $attempt, $service, true);
+        return $this->bungkusAttempt($request, $attempt, $service, true, $denyut);
     }
 
     /**
@@ -103,11 +110,19 @@ class AttemptController extends Controller
      * Kumpulkan + nilai. Idempoten lewat idempotency key dari klien dan status
      * attempt di server.
      */
-    public function kumpulkan(KumpulkanRequest $request, Attempt $attempt, AttemptService $service): JsonResponse
-    {
+    public function kumpulkan(
+        KumpulkanRequest $request,
+        Attempt $attempt,
+        AttemptService $service,
+        DenyutProteksiService $denyut,
+    ): JsonResponse {
         $this->authorize('kumpulkan', $attempt);
 
         $attempt = $service->kumpulkan($attempt, (string) $request->validated('idempotency_key'));
+
+        // Ulangan selesai = tidak ada lagi sensor yang perlu dijaga; tanpa ini
+        // sapuan berikutnya akan menuduh murid yang sudah mengumpulkan.
+        $denyut->matikan($attempt);
 
         return $this->bungkusHasil($attempt, $service)->response();
     }
@@ -136,6 +151,7 @@ class AttemptController extends Controller
         Attempt $attempt,
         AttemptService $service,
         bool $denganProteksi = false,
+        ?DenyutProteksiService $denyut = null,
     ): AttemptResource {
         $resource = new AttemptResource($attempt);
         $resource->soal = $service->payloadSoal($attempt);
@@ -143,10 +159,46 @@ class AttemptController extends Controller
         $resource->tim = $this->timMurid($attempt, $request);
 
         if ($denganProteksi) {
-            $resource->proteksi = $service->saklarAntiCheat($attempt->kuis);
+            $proteksi = $service->saklarAntiCheat($attempt->kuis);
+
+            $resource->proteksi = $proteksi;
+            $resource->denyut = $this->denyutUntuk($request, $attempt, $proteksi, $denyut);
         }
 
         return $resource;
+    }
+
+    /**
+     * Siapkan denyut proteksi ber-nonce untuk payload murid (2D).
+     *
+     * Hanya murid pemilik yang memicunya: guru yang membuka attempt yang sama
+     * (mis. meninjau) tidak boleh merotasi nonce milik murid dan membuat
+     * denyutnya tertolak. Bila tidak ada satu pun saklar menyala, nonce justru
+     * dimatikan — tidak ada sensor yang perlu dijaga.
+     *
+     * @param  array<string, bool>  $proteksi
+     * @return array{nonce: string, interval_detik: int}|null
+     */
+    private function denyutUntuk(
+        Request $request,
+        Attempt $attempt,
+        array $proteksi,
+        ?DenyutProteksiService $denyut,
+    ): ?array {
+        if ($denyut === null || $request->user()?->isMurid() !== true) {
+            return null;
+        }
+
+        if (! in_array(true, $proteksi, true)) {
+            $denyut->matikan($attempt);
+
+            return null;
+        }
+
+        return [
+            'nonce' => $denyut->aktifkan($attempt),
+            'interval_detik' => DenyutProteksiService::JEDA_DETIK,
+        ];
     }
 
     /**

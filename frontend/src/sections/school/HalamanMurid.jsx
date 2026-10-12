@@ -1,15 +1,22 @@
 /**
  * Halaman Murid (slice 02) mengikuti pola papan desain: kepala halaman bersama
- * dengan tombol impor/ekspor CSV di kanan, saringan kelas, tabel data yang
- * berubah jadi kartu di HP (kolom aksi tetap terlihat), panel formulir samping,
- * dialog konfirmasi hapus, serta keadaan memuat/kosong/galat yang utuh.
+ * dengan tombol impor/ekspor CSV di kanan, saringan kelas, kotak pencarian,
+ * tabel data yang berubah jadi kartu di HP (kolom aksi tetap terlihat), panel
+ * formulir samping, dialog konfirmasi hapus, serta keadaan memuat/kosong/galat
+ * yang utuh.
+ *
+ * Kotak pencarian menyaring di SERVER (`filter[cari]`, dicari ke seluruh
+ * halaman) — bukan menyaring tabel yang sedang tampil. Menyaring di klien hanya
+ * akan mencari di 50 baris halaman ini, jadi murid ke-51 yang dicari guru tetap
+ * "tidak ada" padahal ada; itu yang membuat fitur cari terasa rusak.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { skemaMuridForm } from './validasi.js'
+import { potongUntukSorot } from './penyorotan.js'
 import {
   URL_EKSPOR_MURID,
   ambilKelas,
@@ -30,13 +37,57 @@ import TabelData from '../../shared/ui/TabelData.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { TombolIkon } from '../../shared/ui/Tombol.jsx'
 import { RUTE } from '../../routes.js'
-import { IkonPengguna, IkonPensil, IkonTambah, IkonTongSampah } from '../../icons.jsx'
+import {
+  IkonCari,
+  IkonPengguna,
+  IkonPensil,
+  IkonSilang,
+  IkonTambah,
+  IkonTongSampah,
+} from '../../icons.jsx'
 
 const nilaiAwal = { nama: '', email: '', class_id: '', nis: '', nisn: '' }
+
+/**
+ * Jeda sebelum kata kunci dikirim ke server (ms).
+ *
+ * Tanpa jeda ini, mengetik "rina" menembak empat permintaan (r, ri, rin, rina)
+ * dan hasil ketikan pertama bisa tiba SESUDAH yang terakhir — tabel berhenti di
+ * hasil yang salah. 300 ms cukup pendek untuk terasa langsung, cukup panjang
+ * untuk menggabungkan satu ketikan cepat.
+ */
+const JEDA_CARI_MS = 300
+
+/**
+ * Sorot bagian teks yang cocok dengan kata kunci pencarian.
+ *
+ * Tanpa ini daftar hanya menampilkan baris yang cocok tanpa menunjukkan bagian
+ * mana yang membuatnya cocok — guru yang mencari "rina" harus menebak sendiri
+ * di bagian mana namanya tercocokkan.
+ *
+ * @param {{ teks: string, kata: string }} props
+ */
+function Sorot({ teks, kata }) {
+  const bagian = potongUntukSorot(teks, kata)
+
+  return (
+    <>
+      {bagian.map((satu, indeks) =>
+        satu.cocok ? (
+          <mark key={indeks}>{satu.teks}</mark>
+        ) : (
+          <span key={indeks}>{satu.teks}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 export default function HalamanMurid() {
   const queryClient = useQueryClient()
   const [filterKelas, setFilterKelas] = useState('')
+  const [cari, setCari] = useState('')
+  const [cariDipakai, setCariDipakai] = useState('')
   const [halaman, setHalaman] = useState(1)
   const [idUbah, setIdUbah] = useState(/** @type {number | null} */ (null))
   const [panelBuka, setPanelBuka] = useState(false)
@@ -46,9 +97,31 @@ export default function HalamanMurid() {
 
   const kelasId = filterKelas ? Number(filterKelas) : null
   const daftarKelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
+
+  // Ketikan baru dipakai 300 ms sesudah ketikan terakhir (lihat JEDA_CARI_MS).
+  useEffect(() => {
+    const jeda = window.setTimeout(() => setCariDipakai(cari.trim()), JEDA_CARI_MS)
+    return () => window.clearTimeout(jeda)
+  }, [cari])
+
+  /**
+   * Mengetik (atau membersihkan) kotak cari selalu mengembalikan daftar ke
+   * halaman 1 — dikerjakan di sini, bukan di effect, supaya kata kunci baru
+   * tidak mendarat di halaman 3 dan menampilkan "tidak ada" padahal muridnya
+   * ada di halaman 1.
+   * @param {string} nilai
+   */
+  function ubahCari(nilai) {
+    setCari(nilai)
+    setHalaman(1)
+  }
+
   const daftarMurid = useQuery({
-    queryKey: ['murid', kelasId, halaman],
-    queryFn: () => ambilMurid(kelasId, halaman),
+    queryKey: ['murid', kelasId, halaman, cariDipakai],
+    queryFn: () => ambilMurid(kelasId, halaman, cariDipakai),
+    // Hasil lama tetap tampil selama pencarian baru berjalan; tanpa ini tabel
+    // berkedip jadi kerangka di tiap ketikan.
+    placeholderData: keepPreviousData,
   })
 
   const meta = daftarMurid.data?.meta
@@ -126,7 +199,11 @@ export default function HalamanMurid() {
         judul="Murid"
         jejak="Data induk / Murid"
         deskripsi={
-          meta ? `Menampilkan ${barisMurid.length} dari ${meta.total} murid` : 'Memuat data murid…'
+          meta
+            ? `Menampilkan ${barisMurid.length} dari ${meta.total} murid${
+                cariDipakai === '' ? '' : ` untuk “${cariDipakai}”`
+              }${daftarMurid.isFetching ? ' — mencari…' : ''}`
+            : 'Memuat data murid…'
         }
       >
         <Link className="btn btn-tepi" to={RUTE.imporMurid}>
@@ -140,26 +217,55 @@ export default function HalamanMurid() {
         </Tombol>
       </HeaderHalaman>
 
-      <div className="mb-4" style={{ maxWidth: '18rem' }}>
-        <label className="form-label fw-semibold" htmlFor="filter-kelas">
-          Kelas
-        </label>
-        <select
-          id="filter-kelas"
-          className="form-select"
-          value={filterKelas}
-          onChange={(e) => {
-            setFilterKelas(e.target.value)
-            setHalaman(1)
-          }}
-        >
-          <option value="">Semua kelas</option>
-          {(daftarKelas.data ?? []).map((kelas) => (
-            <option key={kelas.id} value={String(kelas.id)}>
-              {kelas.nama}
-            </option>
-          ))}
-        </select>
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-md-5 col-lg-4">
+          <label className="form-label fw-semibold" htmlFor="filter-kelas">
+            Kelas
+          </label>
+          <select
+            id="filter-kelas"
+            className="form-select"
+            value={filterKelas}
+            onChange={(e) => {
+              setFilterKelas(e.target.value)
+              setHalaman(1)
+            }}
+          >
+            <option value="">Semua kelas</option>
+            {(daftarKelas.data ?? []).map((kelas) => (
+              <option key={kelas.id} value={String(kelas.id)}>
+                {kelas.nama}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-12 col-md-7 col-lg-5">
+          <label className="form-label fw-semibold" htmlFor="cari-murid">
+            Cari murid
+          </label>
+          <div className="d-flex gap-2">
+            <input
+              id="cari-murid"
+              type="search"
+              className="form-control"
+              placeholder="Nama, NIS, NISN, atau email"
+              value={cari}
+              onChange={(e) => ubahCari(e.target.value)}
+            />
+            {cari !== '' && (
+              <TombolIkon
+                label="Bersihkan pencarian"
+                ikon={IkonSilang}
+                varian="tepi"
+                onClick={() => ubahCari('')}
+              />
+            )}
+          </div>
+          <p className="teks-lembut small mb-0 mt-1">
+            Dicari ke seluruh halaman, bukan hanya yang tampil di sini.
+          </p>
+        </div>
       </div>
 
       {daftarMurid.isPending && <Skeleton judul baris={4} label="Memuat murid…" />}
@@ -178,14 +284,23 @@ export default function HalamanMurid() {
           <TabelData
             label="Daftar murid"
             kolom={[
-              { kunci: 'nis', judul: 'NIS', sel: (murid) => murid.nis || '—' },
+              {
+                kunci: 'nis',
+                judul: 'NIS',
+                sel: (murid) =>
+                  murid.nis ? <Sorot teks={murid.nis} kata={cariDipakai} /> : '—',
+              },
               {
                 kunci: 'nama',
                 judul: 'Nama',
                 sel: (murid) => (
                   <>
-                    <strong className="d-block">{murid.nama}</strong>
-                    <span className="teks-lembut small">{murid.email}</span>
+                    <strong className="d-block">
+                      <Sorot teks={murid.nama} kata={cariDipakai} />
+                    </strong>
+                    <span className="teks-lembut small">
+                      <Sorot teks={murid.email} kata={cariDipakai} />
+                    </span>
                   </>
                 ),
               },
@@ -217,7 +332,22 @@ export default function HalamanMurid() {
         </div>
       )}
 
-      {daftarMurid.isSuccess && barisMurid.length === 0 && (
+      {daftarMurid.isSuccess && barisMurid.length === 0 && cariDipakai !== '' && (
+        <KosongData
+          judul={`Tidak ada murid yang cocok dengan “${cariDipakai}”`}
+          ikon={IkonCari}
+          aksi={
+            <Tombol varian="tepi" onClick={() => ubahCari('')}>
+              Bersihkan pencarian
+            </Tombol>
+          }
+        >
+          Coba nama depan, NIS, NISN, atau email. Pencarian berlaku ke seluruh daftar, jadi murid di
+          halaman lain pun ikut ditemukan.
+        </KosongData>
+      )}
+
+      {daftarMurid.isSuccess && barisMurid.length === 0 && cariDipakai === '' && (
         <KosongData
           judul="Belum ada murid pada saringan ini"
           ikon={IkonPengguna}

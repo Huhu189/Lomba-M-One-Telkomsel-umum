@@ -3,7 +3,7 @@
 Catatan ini untuk melanjutkan pekerjaan **setelah context di-compact**. Isinya sengaja
 padat: status terakhir, apa yang sudah/belum, dan cara mengulang verifikasi.
 
-Terakhir diperbarui: 2026-10-11 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
+Terakhir diperbarui: 2026-10-12 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
 A.31 — editor materi gaya video editor + kuis sisipan di dalam klip, A.32 — penunjuk langkah
 koreksi manual, A.33 — sistem luring: simpan jawaban saat internet putus + riwayat jawaban lokal
 + validasi jam monotonik, A.34 — materi berjalan: template tema + peta beranimasi + kenaikan
@@ -18,12 +18,59 @@ ponsel.** · **A.43 — ilustrasi gunung digambar sendiri (foto pihak lain dibua
 dirapatkan + tulis soal berurutan tanpa keluar dari editor, dan uji GUI bisa dijalankan langsung di atas local
 yang sedang hidup.** · **A.44 — uji perangkat mobile sungguhan lewat emulasi perangkat Chrome
 (`docs/smoke-ui-mobile.mjs`, 16/16), yang menemukan & memperbaiki tombol tema menyusut ke 37 px (di bawah
-target sentuh 44 px).**)
+target sentuh 44 px).** · **A.45 — latar peta tema gunung: dulu digambar tangan, kini berkas gambar jadi
+domain publik bergaya grafik (`frontend/public/tema/gunung.svg`, Public Domain, 16:9, 11 KB) + panggung tidak
+lagi digelapkan; ada alat ukur kecerahan `docs/tangkap-adegan-gunung.mjs`.** · **A.46 — pos peta jadi
+**kemah** (tenda, bukan bulatan berikon), jalur jadi **zigzag mendaki** (basecamp kiri bawah → puncak tengah
+atas, belokan mengecil ke atas), dan gambar latarnya **diganti**: karya proyek sendiri (CC0) dengan **satu**
+puncak saja, puncak **tumpul**, tanpa sisi tegak, dan lebih detail (60 bentuk/18 warna vs 47/16 lama). Puncaknya
+berdiri di 31% dari atas sehingga pos terakhir jalur (12%) tetap di langit; batu tetap ada; tidak ada goresan
+panjang yang ujungnya lepas (rusuk lereng yang menggantung dihapus). Dikunci pagar mutu bentuk
+`frontend/src/__tests__/theme/gunungLatar.test.js` (9 tes) yang sudah dibuktikan menangkap berkas lama (6/9
+merah).** · **A.47 — tanda pangkas `|` jadi **satu** goresan dan lebih ke dalam:** cincin `border` 1px +
+`box-sizing: border-box` menyisakan goresan **1px**, dan tanda itu duduk menempel di tepi klip sehingga
+berdempetan dengan garis tepi 3px klip sebelahnya — terbaca `||`. Kini goresan utuh 3px dengan garis luar
+(`outline`, tidak menyusutkan lebar), digeser **7,2px** ke dalam di kedua sisi (kotak seretnya tetap di
+tepi), dipendekkan jadi pegangan 25,6px, dan klip terpilih memakai garis tepi seragam 1px supaya tidak ada
+garis tipe 3px di sebelah tanda. Dikunci 4 pemeriksaan bentuk baru di `docs/smoke-ui-durasi-klip.mjs`
+(15 → **19**) yang membaca gaya terhitung `::before` + kolom piksel potret layar; uji balik CSS lama
+**3 dari 4 merah**.) · **A.48 — gunung "Pendakian bertingkat":** permintaan *"3 puncak namun yang di
+sebelah-sebelahnya itu menjadi jalur pendakian"*; bentuknya digambar ulang (66 bentuk/24 warna; satu punggung
+utama + dua puncak jalur yang lebih rendah dan di tepi) dan dikunci `theme/gunungLatar.test.js` (9 tes).
+· **A.49 — ukuran tulisan Normal/Besar lewat satu variabel `--s`:** tombol di header, pilihan diingat per
+perangkat dan dipasang sebelum render pertama, judul Bootstrap ikut membesar 12%; dibuktikan
+`docs/smoke-ui-ukuran.mjs` (11/11) plus `theme/ukuran.test.jsx`. · **A.50 — "pos di udara" ditutup + dua
+tema perjalanan baru:** jalur peta jadi **rute per tema** (`RUTE_TEMA`), pos terakhir tema gunung kembali
+berdiri di **puncak** (y=42%, punggungan 39%), katalog jadi **empat** pilihan (Harta Karun di Pulau, Luar
+Angkasa), latar baru `pulau.svg`/`angkasa.svg` **karya proyek ini (CC0, 201/200 bentuk)** dengan `id` pada
+tiap benda yang diinjak pos, dan aturan jalur terang untuk latar malam; smoke perjalanan **69/69**. ·
+**A.51 — pencarian murid yang menyaring di server:** satu kotak untuk nama/NIS/NISN/email (`filter[cari]`,
+`%` di-escape, jeda 300 ms, kembali ke halaman 1) sehingga yang dicari **seluruh daftar**, bukan 50 baris
+yang kebetulan tampil; smoke `murid` **18/18**. · **A.52 — temuan sampingan dari mengulang `smoke-http-fitur`:**
+satu pemeriksaan lama masih mengharapkan `tamper_suspected` boleh dikirim klien, padahal kategori itu sudah jadi
+**turunan server** (klien kini memakai `dom_injection`/`extension_detected`); pemeriksaannya diperbaiki di
+harness lalu dijalankan ulang **243/243**. · **A.53 — deteksi tamper sisi klien (2B–2C), penyorotan kata
+kunci pencarian, dan regresi 1.200 murid:** modul `deteksiTamper.js` memeriksa sumber extension, fungsi
+proteksi yang diganti, overlay asing (dihapus), dan kanari yang hilang, lalu mengirim `dom_injection`/
+`extension_detected` — saklar `detect_tamper` **default MATI** dan **tidak ikut preset `exam_mode`**;
+pencarian murid kini **menyorot** bagian nama/NIS/email yang cocok; dan pencarian diuji pada **1.200 murid**.
+· **A.54 — sisi server deteksi tamper (2D):** denyut proteksi ber-nonce (`POST /attempt/{id}/denyut`, nonce
+dirotasi tiap kiriman, nonce lama → 409) + sapuan yang menurunkan `tamper_suspected` sekali saja saat denyut
+berhenti padahal attempt masih berjalan; sekaligus memperbaiki dua pemeriksaan harness HTTP yang rapuh
+terhadap jumlah murid (kini pakai `filter[cari]`/`filter[class_id]`). Rincian A.48–A.54 di `laporan-pengujian.md`.
 
 ## 1. Status verifikasi terakhir
 
 | Perintah | Hasil |
 | --- | --- |
+| `./verify.sh` (root) (**A.45**, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** |
+| `npx vitest run src/__tests__/sections/material src/__tests__/theme` (**A.45**) | **110 lulus / 7 berkas** |
+| `node docs/tangkap-adegan-gunung.mjs` (**A.45**, Chrome + layanan hidup) | **exit 0** — berkas tema termuat (`/tema/gunung.svg`, 1600x900), zoom `jelajah-zoom`, luminance rata-rata **165,1** · piksel gelap **0,01%** · langit 187,5 |
+| `docs/jalankan-smoke-ui.sh perjalanan` (**A.45**) | **52/52 lulus, exit 0** — termasuk asersi baru: `src /tema/gunung.svg · termuat true · adegan tangan 0`, `zoom jelajah-zoom`, `rasio 1.78` |
+| `npm run test` (Vitest) (**A.46**) | **67 berkas / 653 tes lulus** |
+| `npx vitest run src/__tests__/theme src/__tests__/sections/material` (**A.46**) | **122 lulus / 8 berkas** (9 tes pagar bentuk latar, 14 peta, 31 perjalanan) |
+| `node docs/tangkap-adegan-gunung.mjs` (**A.46**, Chrome + layanan hidup) | **exit 0** — berkas tema termuat (`/tema/gunung.svg`, 1600x900), luminance rata-rata **200,8** (A.45: 165,1) · piksel gelap **0,01%** · langit **203,8** (A.45: 187,5) |
+| `docs/jalankan-smoke-ui.sh perjalanan` (**A.46**) | **52/52 lulus, exit 0** — latar & panggung sama seperti A.45, kini dengan penanda kemah + jalur zigzag |
 | `./verify.sh` (root) — ulang di putaran A.36 | HIJAU (exit 0) — Pest **267 passed (2443 assertions)** · Pint **340 berkas** · checkJs OK · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **63 berkas / 610 test** · realtime 15 test |
 | `php artisan test` (ulang di A.39, sesudah perbaikan) | **294 passed (2774 assertions)**, 16,5 s |
 | `php artisan test --filter=AlurTipeSoalTest` (A.39) | **22 passed (242 assertions)** — satu tes per tipe soal, lewat HTTP |
@@ -41,12 +88,19 @@ target sentuh 44 px).**)
 | `php artisan test tests/Feature/Slice12TemaMateriTest.php` (A.34) | **9 passed (123 assertions)** — tema + nama pos, katalog, video latar milik materi, kenaikan pos & tingkat, langkah opsional, laporan |
 | `npx vitest run src/__tests__/sections/material src/__tests__/theme` (A.34) | **90 passed (7 berkas)** — termasuk 24 tes `perjalanan` + 9 tes komponen `PetaPerjalanan` |
 | `docs/jalankan-smoke-perjalanan.sh` (A.34) | **34/34 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu); harness mandiri (membuat materi + video uji 2 detik sendiri, menghapusnya di akhir) |
+| `docs/jalankan-smoke-perjalanan.sh` (ulang di A.51, sesudah bagian tema pulau masuk) | **69/69 lulus, exit 0** — termasuk pemeriksaan baru: `tidak ada pos yang berdiri di langit (semuanya di bawah punggungan)`, `pos tema luar angkasa berdiri di benda rutenya (landasan → Bulan) · selisih maks 0.0%`, `latar tema luar angkasa memakai berkas angkasa.svg yang benar-benar termuat`, `jalur peta dipakai versi terang di langit malam · stroke rgba(226, 240, 255, 0.78)`, `pos tema harta karun berdiri di benda rutenya (dermaga → goa) · selisih maks 0.0%`, `latar tema harta karun memakai berkas pulau.svg yang benar-benar termuat`, `tiap pos tema harta karun berdiri di benda, bukan di langit · selisih terkecil 35 vs langit 157,219,244` |
+| `npx vitest run src/__tests__/theme src/__tests__/sections/material` (A.50) | **86 tes lulus (5 berkas)** — termasuk pagar baru `theme/latarTema.test.js`: bentuk tiga latar + tiap pos harus mendarat di gambar temanya |
+| `./vendor/bin/pest tests/Feature/Slice12TemaMateriTest.php` (ulang di A.50) | **10 passed (172 assertions)** — katalog kini empat tema, dengan urutan & fase terbaru diperiksa |
+| `./vendor/bin/pest tests/Feature/SekolahTest.php` (**A.51**) | **10 passed (78 assertions)** — termasuk tes baru pencarian: nama sebagian & huruf besar-kecil, email, NIS, NISN, murid tanpa NIS, kata kunci tanpa hasil = kosong, gabungan dengan `filter[class_id]`, `%` di-escape, kata kunci berisi spasi diabaikan |
+| `npx vitest run src/__tests__/sections/school/pencarian.test.jsx` (**A.51**) | **8 tes lulus** — ketikan cepat digabung jadi satu permintaan, menyaring di server, keadaan kosong + jalan keluar, tombol bersihkan |
+| `docs/jalankan-smoke-ui.sh murid` (**A.51**, harness baru, browser sungguhan) | **18/18 lulus, exit 0** — permintaan ke `/v1/murid` dihitung: tanpa kata kunci tidak ada `filter[cari]`, tiga ketikan jadi **satu** permintaan, tiga murid uji ketemu walau halaman 1 penuh 50 murid lain, NIS/email sama-sama menemukan, gabungan kelas + kata kunci bekerja, murid & kelas uji dihapus kembali |
+| `./verify.sh` (**A.51**, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest **332 passed (3164 assertions)** · Redis wajib 9 tes/65 asersi · Pint bersih · checkJs · ESLint · Vitest **70 berkas / 681 tes** · realtime lulus |
 | `php artisan test --filter=Slice08Test` | 12 passed (172 assertions) — termasuk 3 tes rasio/tampilan/kuis-sisipan |
 | `npx vitest run src/__tests__/sections/material` | 54 passed (4 berkas) |
 | Seluruh smoke UI satu tarikan (`nav`→`susun`→`03`→`04`→`05`→`06`→`07`) | **148 pemeriksaan lulus**: 14/14 · 40/40 · 9/9 · 18/18 · 20/20 · 27/27 · 20/20 (semua exit 0) — **terakhir dijalankan putaran A.29**, belum diulang sesudah A.30/A.31 |
 | `docs/jalankan-smoke-materi.sh` (pemutar materi + kuis sisipan, putaran A.31) | **22/22 lulus, exit 0** — backend :8000 + vite :5173 + Chrome CDP :9333 (realtime tidak perlu) |
 | `docs/jalankan-smoke-ui.sh slice06` (ulang sesudah papan 8 dua kolom, putaran A.32) | **28/28 lulus, exit 0** — backend+vite+realtime+Chrome; termasuk pemeriksaan baru “baris antrean dibuka dari kolom kiri + `aria-current`” |
-| `node docs/smoke-http-fitur.mjs` | **242/242 lulus** (butuh backend + realtime hidup) — juga dari putaran A.29 |
+| `node docs/smoke-http-fitur.mjs` (**A.52**, diulang sesudah pemeriksaan usangnya diperbaiki) | **243/243 lulus, exit 0** (22,3 dtk) — butuh backend + realtime hidup. Dulu **241/242**: pemeriksaan lama masih mengharapkan `tamper_suspected` diterima dari klien (`201`), padahal kategori itu sudah jadi **turunan server** — pemeriksaan diganti dua yang sesuai kontrak berjalan (`tamper_suspected` → 422; `dom_injection` + `extension_detected` → 201). Sebelumnya terakhir dijalankan di A.29 |
 | `node docs/smoke-ui-luring.mjs` (baru, putaran A.33) | **22/22 lulus, exit 0** (dua kali dengan versi final) — backend :8000 + vite :5173 + Chrome :9333 (realtime tidak perlu) |
 | `node docs/smoke-ui-slice04.mjs` + `slice07.mjs` (regresi sesudah A.33) | **18/18 dan 20/20 lulus, exit 0** (slice 07 butuh realtime hidup) |
 | `./verify.sh` (**A.42**, sesudah tamu per perangkat + proteksi mobile) | **SEMUA HIJAU (exit 0)** — Pest **331 passed (3126 assertions)** · Redis wajib 9 · Pint bersih · checkJs · ESLint · Vitest **66 berkas / 641 tes** · realtime **20 tes** |
@@ -56,6 +110,18 @@ target sentuh 44 px).**)
 | `npx vitest run src/__tests__/sections/auth/authStore.sesi.test.js` (**A.42**) | **12 passed** — termasuk tamu yang menekan Keluar membuang kode perangkatnya (komputer bersama), sedangkan sesi yang habis sendiri tidak |
 | `docs/jalankan-smoke-ui.sh tamu` (**A.42**, harness baru, browser sungguhan) | **9/9 lulus, exit 0** — tamu lewat formulir dapat kode perangkat, muat ulang tidak berubah, Keluar membuang kode, nama sama sesudah Keluar = akun baru, kode ngawur 422; pintu tamu dimatikan kembali di akhir |
 | `./nyalakan-local.sh status` (**A.42**) | redis/backend/realtime/frontend **HIDUP** — satu perintah menyalakan semua tanpa menghapus data (tanpa `migrate:fresh`) |
+| `npx vitest run src/__tests__/security` (**A.53**) | **33 lulus** — `deteksiTamper` 12, `useExamSecurity` 8 (default-mati + overlay dinetralkan + fail-open), `pengaturanProteksi` 6 (termasuk `detect_tamper` di luar preset), `pengirimKejadian` 7 |
+| `php artisan test --filter='pencarian tetap menemukan satu murid di antara ribuan'` (**A.53**) | **1 passed (14 assertions)**, ±1,24 dtk — 1.200 murid: `meta.total=1201`, halaman dibatasi 50, cari nama/NIS mengembalikan tepat 1, halaman terakhir memuat sisa |
+| `npx vitest run src/__tests__/sections/school` (**A.53**) | **63 lulus / 9 berkas** — termasuk 5 tes penyorotan + assertion `<mark>` di `pencarian.test.jsx` |
+| `docs/jalankan-smoke-ui.sh murid` (**A.53**, ulang sesudah penyorotan) | **18/18 lulus, exit 0** — penyorotan `<mark>` tidak mengubah perilaku yang diperiksa |
+| `docs/jalankan-smoke-ui.sh slice07` (**A.53**) | **20/20 lulus, exit 0** — payload proteksi sungguhan memuat `"detect_tamper":false` (default mati) |
+| `node docs/smoke-http-fitur.mjs` (**A.53**, backend + realtime hidup) | **243/243 lulus, exit 0** (21,5 dtk) |
+| `./verify.sh` (**A.53**, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest **333 passed (3178 assertions)** · Redis wajib 9 tes/65 asersi · Pint bersih · checkJs bersih · ESLint 0 error · Vitest **72 berkas / 702 tes** · realtime 20 tes |
+| `php artisan test --filter=DenyutProteksiTest` (**A.54**) | **6 passed (53 assertions)** — rotasi nonce, nonce salah/diulang ditolak tanpa menyegarkan liveness, sapu mencatat `tamper_suspected` sekali saja, tidak menuduh saat segar/lewat deadline, payload + endpoint, hanya pemilik & hanya saat berjalan |
+| `npx vitest run src/__tests__/sections/presence` (**A.54**) | **14 lulus / 2 berkas** — termasuk 5 tes hook `useDenyutProteksi` (default mati, rotasi nonce, 409 → muat ulang, fail-open) |
+| `node docs/smoke-http-fitur.mjs` (**A.54**, backend + realtime hidup) | **247/247 lulus, exit 0** (22,4 dtk) — 4 pemeriksaan baru di bagian K (payload menerbitkan nonce, denyut diterima & nonce dirotasi, nonce lama 409, nonce palsu 409) + 2 pemeriksaan harness yang kini memakai `filter[cari]`/`filter[class_id]` |
+| `docs/jalankan-smoke-ui.sh slice07` (**A.54**) | **20/20 lulus, exit 0** |
+| `./verify.sh` (**A.54**, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest **339 passed (3231 assertions)** · Redis wajib 9/65 · Pint bersih · checkJs · ESLint 0 error · Vitest **73 berkas / 707 tes** · realtime 20 |
 | Seluruh smoke UI dijalankan ULANG di atas local yang hidup (**A.42**, sesudah runner diperbaiki) | `tamu` **9/9** · `slice06` **28/28** · `slice07` **20/20** · `kuis-manual` **13/13** · `perjalanan` **52/52** · `materi` **27/27** — semua exit 0, keempat layanan tetap HIDUP sesudahnya |
 | **Uji perangkat mobile sungguhan (A.44, emulasi perangkat Chrome 412×915 @2.625 + sentuhan + UA Android)** | `docs/jalankan-smoke-ui.sh mobile` **16/16 lulus, exit 0** — temuan nyata: tombol tema (`.tombol-ikon`) menyusut 48→**37 px** di header ponsel (tanpa `flex-shrink: 0`) sehingga di bawah target sentuh 44 px → **diperbaiki**; sesudahnya 695 kontrol di 8 halaman semua ≥44 px, tanpa gulir mendatar, laci/hamburger lulus (tautan, Escape, overlay) |
 | **Sapu penuh 15 harness berhitung (A.43, sesudah runner Chrome diperbaiki)** | **301 pemeriksaan lulus, semua exit 0** — `tamu` 9/9 · `slice03` 9/9 · `slice04` 18/18 · `slice05` 20/20 · `slice06` 28/28 · `slice07` 20/20 · `susun` 42/42 · `kuis-manual` 13/13 · `nav` 14/14 · `luring` 22/22 · `pengaturan` 5/5 · `sidebar` 7/7 · `durasi-klip` 15/15 · `perjalanan` 52/52 · `materi` 27/27, plus `cdp` (peninjau) exit 0 — dijalankan berurutan di atas satu local yang hidup, keempat layanan tetap HIDUP |
@@ -81,6 +147,56 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 `RolesAndAdminSeeder`). Throttle masuk 5 percobaan/menit per akun — harness sudah menunggu + mencoba lagi.
 
 ## 2. Yang selesai di putaran A.30 dan A.31
+
+- **A.47 — tanda pangkas `|`: satu goresan, digeser ke dalam (12 Oktober 2026)**: permintaan *"buat `||`
+  … gak beneran cuman `|` dan juga buat lebih kedalam"*; elemennya dipastikan lebih dulu lewat pertanyaan
+  pilihan (jawabannya gagang pangkas klip, bukan penanda tegak lain). Sebabnya diukur sebelum diperbaiki:
+  potret baris klip menunjukkan goresan hanya **1px** (cincin `border: 1px` habis dipakai `width: 3px`
+  karena `box-sizing: border-box` — reboot Bootstrap juga berlaku untuk `::before`), dan di tepi kanan klip
+  terpilih ada **dua** goresan aksen: tanda (1px, x922) dan garis tepi klip sebelahnya (3px, x924–926),
+  dipisah 1px `--kartu`. Perbaikan: `border` → `outline: 1px solid var(--teks)` (outline tidak menyusutkan
+  lebar; kontras `--aksen` di atas `--sorot-hangat` hanya 2,3:1 sedangkan `--teks` di atasnya >14:1 —
+  WCAG 1.4.11), goresan digeser **0,45rem (7,2px)** ke dalam di dua sisi lewat `padding-inline`, dipendekkan
+  ke 1,6rem, dan `.nle-klip-aktif` memakai `border-inline-start-width: 1px` (warna tipe tidak tampak selama
+  terpilih — konsekuensi sadar, jenis tetap terbaca dari ikon/label + inspector). **Kotak seret tetap di
+  tepi klip**, jadi jalur seret & penjaga geometri lama tidak berubah. Verifikasi: harness
+  `docs/jalankan-smoke-ui.sh durasi-klip` **19/19** (kiri 3px jarak 7px · kanan 3px jarak 8px · satu goresan
+  per sisi), **uji balik** CSS lama **16/19** (3 dari 4 pemeriksaan bentuk merah), dan `./verify.sh`
+  **SEMUA HIJAU** (Pest 331/3126 · Vitest 67 berkas/653 tes). Pagar berbasis teks CSS **tidak bisa** dipakai:
+  Vitest men-stub `theme.css` jadi modul kosong (`test.css: false`) sehingga `?raw` selalu `''` — pagarnya
+  ditaruh di harness browser (bukti render sungguhan). Temuan sampingan dicatat di laporan A.47.5: karena
+  stubbing itu, pagar warna `tema.test.js` selama ini tidak pernah membaca `theme.css`.
+- **A.46 — kemah, jalur zigzag, gambar gunung baru (11 Oktober 2026)**: pemilik produk minta *"buat post
+  seperti kemah dan juga buat seperti memanjat gunung jadi zigzag dan ganti gunungnya, seperti gunung bukan
+  curan tapi tumpul dan lebih detail"*. Tiga hal: (a) penanda pos jadi **tenda** (`KemahPos` di
+  `PetaPerjalanan.jsx`: atap + pintu, warna tetap dari `--pos-warna`) dan ikon fase dilepas dari penanda karena
+  tidak terbaca di ukuran itu; (b) `titikJalur()` di `perjalanan.js` berganti jadi **zigzag mendaki** — pos
+  bergantian jalur kiri (12%→20%)/kanan (88%→80%) yang **mengecil ke atas**, `y` selalu naik 86%→12%, pos
+  terakhir di **puncak** (`x=50`), dan satu pos tidak punya belokan; (c) gambar latar diganti karena berkas
+  lama tersusun dari **baji bersisi tegak** (90°, plus path tanpa luas `M 577.37 220 L 577.37 834.33`) sehingga
+  terbaca seperti tebing. Empat kandidat CC0 diunduh & diukur lebih dulu, tak satu pun lebih baik, jadi
+  latarnya **dibuat sendiri di repo** (CC0, dicatat `LISENSI.md`). Permintaan lanjutan (A.46.7) menetapkan
+  **satu gunung saja** (dari garis cakrawala terhitung tepat 1 puncak, menonjol 292 px), puncak tetap di langit
+  (31% dari atas), batu tetap ada dan kini terlihat, dan **tidak ada goresan panjang yang ujungnya lepas**
+  (rusuk lereng yang berhenti di tengah lereng dihapus; yang tersisa hanya burung 3,8% lebar). Angka bentuk:
+  kemiringan sisi maks **43,3°**, putaran maks **12,6°**, sisi tegak terpanjang **27 px**, punggung puncak
+  **13,2%**, 60 bentuk/18 warna. Pagar `gunungLatar.test.js` (9 tes) **diuji balik** dengan berkas lama →
+  **6/9 merah**. Bukti: Vitest **653 tes** · checkJs bersih · ESLint 0 error · smoke perjalanan **52/52** ·
+  tangkapan kecerahan **200,8** (langit 203,8). Rincian: `laporan-pengujian.md` A.46.
+
+- **A.45 — latar gunung: gambar jadi domain publik (11 Oktober 2026, menggantikan gambar tangan)**: pemilik
+  produk minta latarnya lebih terang, tidak kaku, dan **memakai gambar jadi dari domain publik yang bergaya
+  grafik (bukan foto realis)**. Langkah pertama (palet siang cerah + lereng melengkung + gaya gambar rata +
+  panggung tak lagi digelapkan) dikerjakan penuh di `AdeganGunung.jsx`/`theme.css`, lalu langkah kedua memakai
+  `frontend/public/tema/gunung.svg` (Public Domain via publicdomainvectors/Openclipart, gambar rata 9 warna,
+  50 bentuk, tanpa raster/teks/filter, viewBox 16:9, 11 KB) — `FOTO_ADEgan.gunung` diisi dan `'gunung'`
+  dikeluarkan dari `ADEGAN_DIGAMBAR`, jadi berkasnya yang dipakai (`data-latar="foto"`). Komponen gambar tangan
+  **tidak dihapus**: kembalikan `'gunung'` ke `ADEGAN_DIGAMBAR` untuk memakainya lagi. Panggung kini hanya
+  digelapkan untuk **video** guru; gambar tema/adegan dapat kabut putih tipis. Jalur peta di atas latar terang
+  memakai warna pekat (`--jalur-belum`, `--jalur-lewat`) dan pil nomor pos diberi garis rambut. Bukti:
+  `docs/tangkap-adegan-gunung.mjs` (luminance rata-rata **165/255**, piksel gelap **0,01%** luas, langit 187)
+  + `verify.sh` SEMUA HIJAU + smoke perjalanan **52/52** dengan tiga asersi baru yang lebih ketat.
+  Rinciannya di `laporan-pengujian.md` A.45.
 
 - **A.43 — rapikan + GUI langsung diuji (11 Oktober 2026)**: adegan `gunung` kembali **digambar sendiri**
   (`sections/material/AdeganGunung.jsx`, SVG beranimasi CSS, sudut pandang mendongak dari kaki gunung) dan
@@ -256,12 +372,19 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 
 ## 4. Batasan jujur (yang belum selesai)
 
-- **Katalog tema perjalanan (A.34) baru satu tema** ("Mendaki Gunung"). Bentuk katalog sudah siap menampung
-  banyak tema, tetapi tema lain belum dibuat; smoke hanya menguji tema bawaan. **A.37 membuat adegan gambar
-  buatan dibuang; keputusan itu DIBALIK atas permintaan pemilik produk:** adegan `gunung` kini ilustrasi
-  beranimasi yang digambar sendiri (`AdeganGunung.jsx`, sudut pandang mendongak dari kaki gunung) dan foto
-  `gunung.jpg` dihapus dari repo — jadi `frontend/public/tema/` sekarang kosong. Tema/adegan lain tetap tampil
-  sebagai gradien sampai medianya ditambahkan. Video latar hanya diuji dengan satu MP4 2 detik di jalur berpotongan,
+- **Katalog tema perjalanan (A.34) kini empat pilihan** — "Mendaki Gunung", "Harta Karun di Pulau", dan
+  "Luar Angkasa" (A.50), plus "tanpa peta". Yang masih terbatas: tiap tema bawaan memakai **berkas gambar**
+  sebagai latar (video latar tetap diunggah guru sendiri), dan tiga tema baru dibuktikan pada satu ukuran
+  layar (layar ponsel sempit belum diperiksa). **Keputusan soal adegan gunung
+  sudah bolak-balik empat kali dan terakhir begini (A.46):** tema `gunung` memakai **berkas gambar tema di
+  `frontend/public/tema/gunung.svg`**, kini **karya proyek ini** yang dilepas CC0 (8 KB, 16:9, 1600×900, 18
+  warna, **satu** puncak tumpul — lihat `LISENSI.md`), dipilih setelah empat kandidat CC0 unduhan **diukur** dan
+  tak ada yang lebih baik. Komponen gambar tangan `AdeganGunung.jsx` tetap ada tetapi **tidak dipakai** untuk tema mana
+  pun (masukkan `'gunung'` ke `ADEGAN_DIGAMBAR` untuk memakainya lagi). Konsekuensinya: latar tema bergerak
+  hanya lewat zoom halus, **tidak ada lagi awan/kabut/burung beranimasi**, dan komposisi "mendongak dari kaki
+  gunung" ikut hilang bersama gambar tangan. Mengganti berkas latar cukup menukar **satu berkas**, tetapi
+  berkas pengganti harus lolos pagar bentuk `gunungLatar.test.js` (tidak boleh bersisi tegak/ujung pisau). Tema/adegan lain tetap tampil sebagai gradien sampai
+  medianya ditambahkan. Video latar hanya diuji dengan satu MP4 2 detik di jalur berpotongan,
   dan bukti "bergerak" dari DOM/CDP (`animationName` foto / `autoplay` video) — belum ada uji regresi
   visual/screenshot. Nama pos diganti per blok di editor (belum ada pengaturan massal), dan pos di  luar 6 fase template memakai nama generik "Pos n".
 - **Penjelasan setelah kuis (A.38) menempel pada KLIP kuis, bukan kuisnya.** Bila satu kuis disisipkan di dua
@@ -275,9 +398,14 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   kali buka layar; sesudah itu jam dinding) — karena itu ada banner "Jam perangkat berubah" dan deadline
   tetap diputus server. Belum diuji: dua tab bersamaan saat luring, mode tim saat luring, unggah berkas
   jawaban saat luring.
-- **Objektif 2B–2D (deteksi tamper/extension sisi klien) belum**: MutationObserver + pemindai berkala,
-  pemeriksaan integritas fungsi proteksi, endpoint denyut ber-nonce, `SapuPresence` yang mengubah denyut
-  berhenti menjadi `tamper_suspected`, dan pengirim sisi klien untuk dua kategori baru.
+- **Objektif 2B–2C (deteksi tamper/extension sisi klien) SUDAH** (A.53): `deteksiTamper.js` (MutationObserver
+  + pemindai berkala + kanari + overlay dinetralkan + integritas fungsi proteksi) menyala lewat saklar
+  `detect_tamper` (default mati, di luar preset `exam_mode`) dan mengirim `dom_injection`/`extension_detected`.
+  **2D (sisi server) SUDAH juga** (A.54): `POST /attempt/{id}/denyut` ber-nonce (nonce dirotasi tiap kiriman,
+  nonce lama → 409), dan `DenyutProteksiService::sapu()` (dipanggil `SapuPresence` tiap menit **dan**
+  `MonitorService`) menurunkan `tamper_suspected` sekali saja saat denyut berhenti padahal attempt masih
+  berjalan dan belum lewat deadline. Jadi 2B–2D tuntas; yang tetap belum adalah ambang yang bisa diatur guru
+  (kini tetap: 30 dtk / ~100 dtk) dan uji browser sungguhan untuk denyut.
 - **Papan 8 (halaman Koreksi) sudah tuntas menurut keputusan A.32**: dua kolom (antrean kiri + detail
   kanan), pemilihan baris berbasis identitas (`kunciKoreksi`/`pilihItemKoreksi`), penunjuk langkah, dan
   sisa tombol Bootstrap beres. Yang **sengaja tidak** ditiru dari mock: kolom "ketik token 6 angka" —
@@ -289,8 +417,14 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   pemutaran masih terbukti dengan **satu MP4 dev** (5,4 MB), bukan semua kodek.
 - **P-01 paginasi baru sebagian**: hanya `SoalController` dan `MuridController` memakai `paginate()`;
   kuis, materi, koreksi, peringkat, ekspor, monitor, dan kecurangan masih memuat semua baris.
+- **Pencarian murid (A.51 + A.53) masih `LIKE %kata%`**: kata kunci tidak memakai indeks kolom, jadi
+  waktunya naik seiring jumlah murid — untuk puluhan ribu murid perlu pencarian penuh atau kolom nama
+  ternormalisasi yang diindeks (belum dikerjakan). Sejak A.53 ada **penyorotan kata kunci** dan tes regresi
+  pada **1.200 murid** (kebenaran + batas halaman, bukan uji beban waktu tanggap). Kotak cari tetap baru ada
+  di halaman **Murid** (Kelas, Mapel, Bank Soal belum), dan pencarian belum menandai data ganda.
 - Tidak ada uji regresi visual/screenshot; bukti tata letak dari geometri DOM/CDP.
-- Tidak ada uji beban dengan ribuan murid; yang dibuktikan bentuk kontrak + pemangkasan `per_page`.
+- **Uji beban** (waktu tanggap pada puluhan ribu baris) tetap belum ada; yang ada sejak A.53 adalah tes
+  regresi **kebenaran** pada 1.200 murid + pemangkasan `per_page` — bukan pengukuran performa.
 - **Smoke UI tidak ikut `verify.sh`** (butuh empat layanan hidup).
 - **`docs/word/` disegarkan sebagian**: tiga berkas yang sumbernya berubah (laporan-pengujian, penjelasan-fitur, jurnal-prompt) sudah diekspor ulang lewat `python3 docs/export_docx.py`. Langkah penyegaran log mentah di dalam `export-word.sh` (`docs/export-log-sesi.py`, butuh snapshot sesi chat) **belum** dijalankan supaya transkrip byte-exact tidak berubah tanpa alasan; `log-mentah.docx` dan `catatan-demo.docx` karenanya masih dari ekspor sebelumnya (sumbernya memang tidak berubah).
 - **Belum ada deploy publik dan Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan).
@@ -313,9 +447,11 @@ npm --prefix frontend run build              # build produksi
 # sudah hidup dari nyalakan-local.sh (dan menyalakan/mematikan sendiri yang belum ada),
 # jadi urutannya bebas dan tidak ada port yang diperebutkan:
 docs/jalankan-smoke-ui.sh tamu                # mode tamu + kode perangkat (9/9)
+docs/jalankan-smoke-ui.sh ukuran              # ukuran tulisan Normal↔Besar di Chrome (11/11)
+docs/jalankan-smoke-ui.sh murid               # pencarian murid yang menyaring di server (18/18)
 docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
 docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
-docs/jalankan-smoke-perjalanan.sh             # peta perjalanan bertema + kenaikan pos/tingkat (sendiri)
+docs/jalankan-smoke-perjalanan.sh             # peta perjalanan bertema + kenaikan pos/tingkat + pendaratan pos di 3 latar (sendiri)
 for s in nav susun slice03 slice04 slice05 slice06 slice07 luring; do node docs/smoke-ui-$s.mjs; done
 node docs/smoke-http-fitur.mjs               # butuh backend + realtime
 ./docs/export-word.sh                        # segarkan 6 .docx + log mentah
@@ -328,7 +464,17 @@ nohup-nya ikut mati. Karena itu jalankan penyalaan layanan dan harness **di dala
 (`./nyalakan-local.sh && docs/jalankan-smoke-ui.sh tamu`). Di terminal pengguna sendiri, `nyalakan-local.sh`
 bertahan normal dan runner smoke memakai layanan itu apa adanya tanpa mematikannya.
 
-Langkah berikutnya yang masuk akal: **menambah tema perjalanan kedua/ketiga** (mis. "Menjelajah Laut",
-"Ruang Angkasa") memakai katalog yang sudah ada, **menyambung alur tamu sampai mengerjakan ulangan lewat
-smoke browser** (harness `tamu` baru membuktikan identitas/kode perangkat, belum mengerjakan soal), lalu
-**deteksi tamper sisi klien (2B–2D)**.
+Tema perjalanan sekarang **tiga** (Mendaki Gunung, Harta Karun di Pulau, Luar Angkasa) dan bebas dari
+"pos di udara": rutenya per tema (`RUTE_TEMA` di `sections/material/perjalanan.js`) dan dijaga
+`__tests__/theme/latarTema.test.js`. Menambah tema keempat cukup: satu entri katalog di backend, satu berkas
+latar `public/tema/*.svg` **dengan `id` pada tiap benda yang diinjak pos**, satu entri `RUTE_TEMA`, satu baris
+di `FOTO_ADEgan` — lalu jalankan pagar latar (merah kalau rute dan gambarnya tidak cocok).
+
+Langkah berikutnya yang masuk akal: **tahap 1 rencana desain putaran 3** — menggabungkan tombol tema dan
+tombol ukuran menjadi satu panel "Tampilan" (rencananya di `docs/rencana-desain-putaran3.md`, termasuk
+daftar kata papan yang masih perlu keputusan pemilik produk), **menyambung alur tamu sampai
+mengerjakan ulangan lewat smoke browser** (harness `tamu` baru membuktikan identitas/kode perangkat, belum
+mengerjakan soal), **memperluas pencarian (A.51/A.53)** ke halaman Kelas/Mapel/Bank Soal atau menggantinya
+pencarian penuh begitu jumlah muridnya besar, lalu **membuat ambang denyut (A.54) bisa diatur guru** —
+kini nilai tetap 30 detik / ~100 detik — dan **uji denyut di browser sungguhan** (yang ada sekarang: unit
+hook + kontrak HTTP + unit service). Deteksi tamper 2B–2D sendiri sudah tuntas.

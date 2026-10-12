@@ -21,6 +21,7 @@ import {
   terapkanTema,
   tingkatKe,
   titikJalur,
+  RUTE_TEMA,
 } from '../../../sections/material/perjalanan.js'
 import { blokBaru } from '../../../sections/material/editorMateri.js'
 
@@ -332,7 +333,7 @@ describe('tanpa peta', () => {
 })
 
 describe('titik jalur', () => {
-  it('mendaki dari kiri bawah ke kanan atas', () => {
+  it('mendaki dari kaki kiri ke puncak', () => {
     const titik = titikJalur(5)
 
     expect(titik).toHaveLength(5)
@@ -342,8 +343,77 @@ describe('titik jalur', () => {
     expect(titik.every((satu) => satu.y > 0 && satu.y < 100)).toBe(true)
   })
 
+  it('naik berbelok-belok (zigzag) dan tiap pos di punggungan, bukan di langit', () => {
+    const titik = titikJalur(5)
+
+    // Basecamp kiri bawah → lereng kanan → lereng kiri → punggung kanan →
+    // puncak. Ruas-ruasnya menyeberang peta, jadi terbaca sebagai jalur
+    // pendakian, bukan garis diagonal.
+    expect(titik[0].x).toBeLessThan(50)
+    expect(titik[1].x).toBeGreaterThan(50)
+    expect(titik[2].x).toBeLessThan(50)
+    expect(titik[3].x).toBeGreaterThan(50)
+    // Pos terakhir berdiri DI puncak (punggungan gambarnya ada di y ≈ 39%),
+    // bukan di langit di atasnya — sebab itu y = 42, bukan 12 seperti dulu.
+    expect(titik[4]).toEqual({ x: 50, y: 42 })
+
+    for (let indeks = 1; indeks < titik.length; indeks++) {
+      expect(titik[indeks].y).toBeLessThan(titik[indeks - 1].y)
+    }
+
+    // Ruas kecuali pendakian terakhir wajib menyeberang peta; ruas terakhir
+    // menuju puncak memang pendek secara geometri (puncak ada di tengah).
+    const ruas = titik.slice(1).map((satu, indeks) => Math.abs(satu.x - titik[indeks].x))
+    expect(ruas.slice(0, -1).every((lebar) => lebar >= 25)).toBe(true)
+    expect(ruas[ruas.length - 1]).toBeGreaterThanOrEqual(10)
+
+    // Belokan menyempit ke atas (bentuk lereng gunung).
+    expect(ruas[ruas.length - 1]).toBeLessThan(ruas[0])
+  })
+
+  it('tidak pernah menaruh pos di langit, berapa pun jumlah pos — termasuk setelah kuis disisipkan', () => {
+    // Pagar regresi untuk keluhan "saat disisipkan kuis hasilnya masih di
+    // udara": rumus lama berhenti di y = 12% (langit, di atas punggungan yang
+    // ada di y ≈ 39%), jadi menyisipkan satu bagian mendorong pos ke udara.
+    for (let jumlah = 2; jumlah <= 12; jumlah++) {
+      const titik = titikJalur(jumlah)
+
+      expect(titik).toHaveLength(jumlah)
+      expect(titik[0]).toEqual({ x: 6, y: 71 })
+      expect(titik[titik.length - 1]).toEqual({ x: 50, y: 42 })
+      // Titik teratas rute adalah puncaknya sendiri (42%), jadi tidak ada pos
+      // yang berdiri lebih tinggi dari punggungan.
+      expect(Math.min(...titik.map((satu) => satu.y))).toBeGreaterThanOrEqual(42)
+    }
+  })
+
+  it('memakai rute tema yang dipilih (pulau & angkasa berbeda dari gunung)', () => {
+    const pulau = titikJalur(RUTE_TEMA.pulau.length, 'pulau')
+    const angkasa = titikJalur(RUTE_TEMA.angkasa.length, 'angkasa')
+
+    expect(pulau).toEqual(RUTE_TEMA.pulau.map(({ x, y }) => ({ x, y })))
+    expect(angkasa).toEqual(RUTE_TEMA.angkasa.map(({ x, y }) => ({ x, y })))
+    expect(pulau).not.toEqual(titikJalur(RUTE_TEMA.pulau.length))
+
+    // Adegan tak dikenal (mis. tema lama) tetap mendapat rute pendakian.
+    expect(titikJalur(3, 'polos')).toEqual(titikJalur(3))
+    expect(titikJalur(3, undefined)).toEqual(titikJalur(3))
+  })
+
+  it('menyisipkan satu pos menggeser pos lain di rute yang sama', () => {
+    const lima = titikJalur(5, 'pulau')
+    const enam = titikJalur(6, 'pulau')
+
+    // Tempat pertama & terakhir tema tidak berubah; yang bergeser hanya pos di
+    // antaranya — jadi menambah kuis tidak memindahkan pos ke tempat lain.
+    expect(lima[0]).toEqual(enam[0])
+    expect(lima[lima.length - 1]).toEqual(enam[enam.length - 1])
+    expect(enam).toHaveLength(6)
+  })
+
   it('memberi satu titik untuk satu langkah dan tidak meledak untuk nol', () => {
-    expect(titikJalur(1)).toEqual([{ x: 12, y: 86 }])
+    expect(titikJalur(1)).toEqual([{ x: 6, y: 71 }])
+    expect(titikJalur(1, 'angkasa')).toEqual([{ x: 11, y: 79 }])
     expect(titikJalur(0)).toHaveLength(1)
   })
 })

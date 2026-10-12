@@ -765,3 +765,50 @@ Desain ulangan sekolah
 ZIP
 Unduh
 
+OUTPUT:
+Asumsi saya: ini versi matang dari putaran 2. Saya pangkas yang berlebihan (hiasan, pilihan yang jarang dipakai, catatan demo di dalam UI) dan pastikan semua layar nyaman di HP. Saya buat sebagai Design baru.
+
+Sistem, Masuk, dan Ulangan Saya (desktop + HP) sudah terbit di artifact baru. Sekarang saya menulis Ujian, Kelas, dan Materi.
+
+Desainnya sudah matang dan sudah terbit: sistem desain "Tenang dan Jelas", plus lima layar yang masing-masing punya versi desktop dan HP (390 px): Masuk, Ulangan murid, Mengerjakan ulangan, Kelola kelas (guru), dan Materi. Semuanya memakai satu stylesheet bersama dan bisa dicoba langsung.
+
+Yang saya pangkas karena terlalu lebay atau dampaknya kecil
+- Ukuran tulisan tinggal satu pilihan, Normal atau Besar, lewat satu variabel. Pengaturannya disimpan per pengguna.
+- Ikon dan dekorasi tambahan dibuang. Ikon yang tersisa hanya yang fungsional, dan tidak ada ikon jam.
+- Bilah filter di daftar ulangan murid dihapus. Daftarnya cukup dikelompokkan jadi Sedang berjalan, Akan datang, dan Selesai.
+- Tombol "Hapus" jadi teks merah, bukan tombol penuh, dan konfirmasinya menyebut apa akibatnya.
+- Tabel di HP berubah jadi kartu, dan dialog di HP jadi bottom sheet.
+- Navigasi: murid memakai tab bawah di HP, guru memakai drawer.
+
+Yang belum saya cek
+Saya belum membuka hasil akhirnya di kanvas. Tiga hal yang perlu dilihat pertama kali:
+- apakah versi HP tampil benar, karena memakai wrapper yang memuat layar desktop;
+- apakah tema.css terbaca di kanvas;
+- apakah pengaturan "waktu" dan "offline" di layar ujian ikut berubah di versi HP.
+
+Halamannya masih privat. Orang lain baru bisa membukanya setelah kamu membagikannya dari menu Share.
+
+Langkah berikutnya: kalau ada layar yang masih terasa berlebihan, sebutkan saja dan saya sederhanakan. Kalau semuanya sudah pas, saya bisa ubah jadi file tema.css plus komponen Laravel/React yang siap pakai.
+
+PROMPT:
+jangna emmaksakan card dengna wanra side
+
+PROMPT (dikoreksi):
+Jangan paksakan card dengan warna side.
+
+OUTPUT:
+Isinya sama dengan yang saya tulis. Sekarang saya publikasikan versi tanpa garis warna di sisi kartu.
+
+Garis tebal berwarna di sisi kartu "Sedang berjalan" di layar Ulangan sudah saya hapus, jadi kartunya polos dengan border biasa, dan versi HP ikut berubah. Saya hanya menemukan satu kartu seperti itu. Kartu di layar lain tidak punya garis warna di sisinya.
+
+Status kartu tetap terbaca lewat label (chip) dan tombol utamanya. Kalau yang kamu maksud juga termasuk label berwarna atau bidang yang diberi warna latar, sebutkan layar mana dan saya ratakan juga.
+
+PROMPT:
+serve
+
+OUTPUT:
+Dua file sudah terkirim: tema.css dan desain-putaran3.zip.
+
+tema.css berisi token (satu variabel ukuran, terang/gelap, jarak, tinggi tombol) dan komponen bersama. Zip berisi semua layar dan canvas.json. File support.js sengaja tidak ikut karena itu milik kanvas.
+
+Di dalam folder ada dua file yang belum pernah saya sebut sebelumnya: Materi-Editor.dc.html dan Materi-Editor-HP.dc.html. Saya tidak membuat atau memeriksanya di sesi ini, jadi isinya belum saya lihat. Anggap itu belum diperiksa sebelum kamu pakai.

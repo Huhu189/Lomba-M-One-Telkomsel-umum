@@ -67,6 +67,48 @@ final class TemaPerjalanan
                     ['nomor' => 4, 'nama' => 'Penakluk Puncak', 'min' => 100],
                 ],
             ],
+            [
+                'kode' => 'harta-karun',
+                'nama' => 'Harta Karun di Pulau',
+                'deskripsi' => 'Berlayar dari dermaga sampai goa harta karun: tiap bagian materi jadi satu pos pelayaran.',
+                'adegan' => 'pulau',
+                'satuan' => 'pos',
+                'fase' => [
+                    ['nama' => 'Dermaga', 'ikon' => 'dermaga', 'warna' => 'coklat'],
+                    ['nama' => 'Perahu Layar', 'ikon' => 'perahu', 'warna' => 'biru'],
+                    ['nama' => 'Karang', 'ikon' => 'karang', 'warna' => 'kelabu'],
+                    ['nama' => 'Pantai Berpasir', 'ikon' => 'pantai', 'warna' => 'jingga'],
+                    ['nama' => 'Hutan Kelapa', 'ikon' => 'pohon', 'warna' => 'hijau'],
+                    ['nama' => 'Goa Harta Karun', 'ikon' => 'peti', 'warna' => 'jingga'],
+                ],
+                'tingkat' => [
+                    ['nomor' => 1, 'nama' => 'Pelaut Pemula', 'min' => 0],
+                    ['nomor' => 2, 'nama' => 'Penjelajah Pulau', 'min' => 25],
+                    ['nomor' => 3, 'nama' => 'Pemburu Harta', 'min' => 60],
+                    ['nomor' => 4, 'nama' => 'Penemu Harta', 'min' => 100],
+                ],
+            ],
+            [
+                'kode' => 'luar-angkasa',
+                'nama' => 'Luar Angkasa',
+                'deskripsi' => 'Meluncur dari landasan sampai Bulan: tiap bagian materi jadi satu pos antariksa.',
+                'adegan' => 'angkasa',
+                'satuan' => 'pos',
+                'fase' => [
+                    ['nama' => 'Landasan Peluncuran', 'ikon' => 'roket', 'warna' => 'kelabu'],
+                    ['nama' => 'Orbit Bumi', 'ikon' => 'bumi', 'warna' => 'biru'],
+                    ['nama' => 'Sabuk Asteroid', 'ikon' => 'asteroid', 'warna' => 'coklat'],
+                    ['nama' => 'Cincin Saturnus', 'ikon' => 'planet', 'warna' => 'jingga'],
+                    ['nama' => 'Bulan', 'ikon' => 'bulan', 'warna' => 'kelabu'],
+                    ['nama' => 'Bintang Jauh', 'ikon' => 'bintang', 'warna' => 'jingga'],
+                ],
+                'tingkat' => [
+                    ['nomor' => 1, 'nama' => 'Astronaut Pemula', 'min' => 0],
+                    ['nomor' => 2, 'nama' => 'Penjelajah Orbit', 'min' => 25],
+                    ['nomor' => 3, 'nama' => 'Kapten Antariksa', 'min' => 60],
+                    ['nomor' => 4, 'nama' => 'Penakluk Galaksi', 'min' => 100],
+                ],
+            ],
             // Ditaruh PALING AKHIR: `temukan()` memakai entri pertama sebagai
             // cadangan, jadi urutan ini menjaga tema bawaan tetap yang pertama.
             [

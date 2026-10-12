@@ -63,6 +63,12 @@ export const skemaAttempt = z.object({
   proteksi: z
     .union([z.record(z.string(), z.boolean()), z.array(z.unknown())])
     .optional(),
+  // Denyut proteksi ber-nonce (2D): nonce awal + jeda yang diminta server. Null
+  // bila proteksi tidak menyala (tidak ada sensor yang perlu dijaga).
+  denyut: z
+    .object({ nonce: z.string(), interval_detik: z.number() })
+    .nullable()
+    .optional(),
 })
 
 /** Hasil penilaian satu soal (tanpa kunci jawaban). */
@@ -188,6 +194,22 @@ export async function ambilHasil(attemptId) {
 export async function pingKehadiran(attemptId) {
   await ambilCsrfCookie()
   await client.post(`/v1/attempt/${attemptId}/hadir`)
+}
+
+/**
+ * Denyut proteksi (2D): kirim nonce terakhir, terima nonce baru.
+ *
+ * Server menjawab 409 bila noncenya tidak lagi berlaku (halaman lama, kiriman
+ * diulang); pemanggil memuat ulang payload attempt untuk mendapat nonce segar.
+ *
+ * @param {number} attemptId
+ * @param {string} nonce
+ * @returns {Promise<{ nonce: string, interval_detik: number }>}
+ */
+export async function denyutProteksi(attemptId, nonce) {
+  await ambilCsrfCookie()
+  const respons = await client.post(`/v1/attempt/${attemptId}/denyut`, { nonce })
+  return z.object({ nonce: z.string(), interval_detik: z.number() }).parse(respons.data)
 }
 
 /**

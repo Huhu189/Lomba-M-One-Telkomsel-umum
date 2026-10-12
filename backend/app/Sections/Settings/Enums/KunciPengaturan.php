@@ -29,6 +29,12 @@ enum KunciPengaturan: string
     case BlockPrint = 'block_print';
     case BlockScreenshot = 'block_screenshot';
     case BlockDevtools = 'block_devtools';
+    // Deteksi tamper halaman (chunk anticheat, bagian "deteksi tamper"):
+    // overlay asing ber-z-index tinggi, elemen kanari yang hilang, fungsi bawaan
+    // yang diganti, dan sumber dari skema extension. Sengaja TIDAK ikut preset
+    // `exam_mode`: ia merapikan DOM (menetralkan overlay), jadi guru harus
+    // menyalakannya sendiri dengan sadar — deteksi jenis ini rawan salah tuduh.
+    case DetectTamper = 'detect_tamper';
     case DetectResize = 'detect_window_resize';
     case BlockTabSwitch = 'block_tab_switch';
     case FocusLock = 'focus_lock';
@@ -62,7 +68,7 @@ enum KunciPengaturan: string
             self::AntiCheat,
             self::BlockPaste, self::BlockRightClick, self::BlockTextSelect,
             self::BlockPrint, self::BlockScreenshot, self::BlockDevtools,
-            self::DetectResize, self::BlockTabSwitch, self::FocusLock,
+            self::DetectTamper, self::DetectResize, self::BlockTabSwitch, self::FocusLock,
             self::BlockTranslate, self::ExamMode => true,
             default => false,
         };
@@ -82,7 +88,7 @@ enum KunciPengaturan: string
             self::AntiCheat,
             self::BlockPaste, self::BlockRightClick, self::BlockTextSelect,
             self::BlockPrint, self::BlockScreenshot, self::BlockDevtools,
-            self::DetectResize, self::BlockTabSwitch, self::FocusLock,
+            self::DetectTamper, self::DetectResize, self::BlockTabSwitch, self::FocusLock,
             self::BlockTranslate, self::ExamMode => false,
             self::AmbangPaham => 80,
             self::AmbangMulaiPaham => 60,
@@ -100,7 +106,7 @@ enum KunciPengaturan: string
         return match ($this) {
             self::AntiCheat, self::BlockPaste, self::BlockRightClick, self::BlockTextSelect,
             self::BlockPrint, self::BlockScreenshot, self::BlockDevtools,
-            self::DetectResize, self::BlockTabSwitch, self::FocusLock,
+            self::DetectTamper, self::DetectResize, self::BlockTabSwitch, self::FocusLock,
             self::BlockTranslate, self::ExamMode => 'Anti-cheat',
             self::AmbangPaham, self::AmbangMulaiPaham, self::MinimalDataTag => 'Laporan & pemahaman',
             self::LayarGuru, self::ModeTim, self::Ranking => 'Tampilan & laporan',
@@ -125,6 +131,7 @@ enum KunciPengaturan: string
             self::BlockPrint => 'Sembunyikan saat dicetak',
             self::BlockScreenshot => 'Blur saat dugaan tangkapan layar',
             self::BlockDevtools => 'Deteksi alat pengembang',
+            self::DetectTamper => 'Deteksi tamper halaman (overlay asing & extension)',
             self::DetectResize => 'Blur singkat saat ukuran jendela berubah',
             self::BlockTabSwitch => 'Catat pindah tab / jendela',
             self::FocusLock => 'Kunci layar 60 detik saat keluar jendela',

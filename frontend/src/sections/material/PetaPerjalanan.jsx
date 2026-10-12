@@ -2,15 +2,23 @@
  * Peta perjalanan materi (layar murid + pratinjau editor).
  *
  * Latar panggung mengikuti prioritas: video yang diunggah guru bila ada →
- * adegan yang **digambar sendiri** (ilustrasi SVG beranimasi, mis. puncak gunung
- * dilihat dari bawah — lihat `AdeganGunung.jsx`) → foto tema berlisensi bebas
- * (lihat `frontend/public/tema/LISENSI.md`). Bila tidak ada yang bisa dipakai,
- * panggung tampil sebagai latar **gradien** tenang, jadi tidak pernah kosong.
+ * adegan yang **digambar sendiri** (ilustrasi SVG beranimasi, lihat
+ * `AdeganGunung.jsx`) → **gambar tema** berlisensi bebas dari
+ * `frontend/public/tema/` (lihat `LISENSI.md` di folder itu). Bila tidak ada
+ * yang bisa dipakai, panggung tampil sebagai latar **gradien** tenang, jadi
+ * tidak pernah kosong.
  *
- * Catatan keputusan: dulu peta sengaja tidak pernah menggambar adegan sendiri
- * dan hanya memakai media sungguhan. Itu diubah atas permintaan pemilik produk:
- * adegan `gunung` kini ilustrasi beranimasi bersudut pandang mendongak, bukan
- * foto gunung sungguhan.
+ * Catatan keputusan (bolak-balik, sengaja dicatat): awalnya peta tidak pernah
+ * menggambar adegan sendiri dan hanya memakai media sungguhan → lalu adegan
+ * `gunung` digambar sendiri sebagai SVG beranimasi (A.43) → lalu, atas
+ * permintaan pemilik produk, tema `gunung` memakai **berkas gambar bergaya
+ * grafik** (bukan foto realis): `public/tema/gunung.svg`. Berkas itu semula
+ * berkas unduhan domain publik (A.45), lalu **diganti karya proyek ini** (A.46)
+ * karena berkas unduhannya tersusun dari baji bersisi tegak sehingga terbaca
+ * seperti tebing — pagar bentuknya ada di
+ * `__tests__/theme/gunungLatar.test.js`. Jalur gambar-sendiri **tidak dihapus** — ia tetap tersedia untuk tema
+ * yang belum punya berkas, dan bisa dipakai lagi untuk `gunung` cukup dengan
+ * mengembalikan namanya ke `ADEGAN_DIGAMBAR`.
  *
  * Materi bertema "tanpa peta" tidak menggambar panggung sama sekali (lihat
  * `tanpaPeta`): yang tampil hanya bilah kemajuan dan daftar bagian, karena
@@ -26,21 +34,38 @@ import AdeganGunung from './AdeganGunung.jsx'
 import { labelPerjalanan, titikJalur, tanpaPeta } from './perjalanan.js'
 
 /**
- * Foto latar tiap **adegan** tema. Berkasnya ada di `frontend/public/tema/`
+ * Gambar latar tiap **adegan** tema. Berkasnya ada di `frontend/public/tema/`
  * (lisensi bebas — lihat `LISENSI.md` di folder itu).
  *
- * Sengaja kosong sekarang: adegan `gunung` sudah digambar sendiri (lihat
- * `ADEGAN_DIGAMBAR`), jadi tidak ada lagi gambar pihak lain di repo. Jalur ini
- * tetap ada untuk tema berikutnya yang memang memakai foto.
+ * `gunung` memakai berkas **bergaya grafik** (gambar rata, bukan foto realis)
+ * atas permintaan pemilik produk — sekarang karya proyek ini (CC0), lihat
+ * `LISENSI.md`.
+ *
+ * `pulau` dan `angkasa` juga karya proyek ini. Yang perlu diingat untuk
+ * `angkasa`: latarnya **gelap**, jadi jalur petanya dipakai versi terang lewat
+ * aturan `.jelajah[data-adegan='angkasa']` di `theme.css` — jalur pekat yang
+ * dipakai latar terang tenggelam di langit malam.
  *
  * @type {Record<string, string>}
  */
-export const FOTO_ADEgan = {}
+export const FOTO_ADEgan = {
+  gunung: '/tema/gunung.svg',
+  // "Pelayaran Harta Karun" dan "Menjelajah Luar Angkasa": karya proyek ini
+  // (CC0) yang digambar di repo, bukan berkas unduhan — lihat LISENSI.md.
+  pulau: '/tema/pulau.svg',
+  angkasa: '/tema/angkasa.svg',
+}
 
 /**
  * Nama adegan yang **digambar sendiri** (ilustrasi SVG beranimasi). Dipakai
- * sebelum foto: tidak bergantung pada berkas luar dan tetap tajam di semua
- * ukuran.
+ * sebelum berkas gambar: tidak bergantung pada berkas luar dan tetap tajam di
+ * semua ukuran.
+ *
+ * Sekarang **kosong**: tema `gunung` memakai `public/tema/gunung.svg` (gambar
+ * jadi dari domain publik). Daftar ini sengaja tetap ada — mekanisme gambar
+ * tangan masih dipakai kalau nanti ada tema tanpa berkas, dan `'gunung'` cukup
+ * dikembalikan ke sini untuk memakai gambar tangan lagi (berkasnya akan
+ * kalah karena prioritas di atas).
  *
  * Adegannya ditulis sebagai JSX tetap di bawah, bukan komponen dari variabel —
  * aturan `react-hooks/static-components` menuntut identitas komponen yang stabil
@@ -48,7 +73,7 @@ export const FOTO_ADEgan = {}
  *
  * @type {readonly string[]}
  */
-export const ADEGAN_DIGAMBAR = ['gunung']
+export const ADEGAN_DIGAMBAR = []
 
 /**
  * Foto latar untuk satu nama adegan, atau `null` bila tidak ada.
@@ -76,22 +101,21 @@ const LABEL_STATUS = {
 }
 
 /**
- * Ikon kecil tiap jenis pos. Semuanya dekoratif — teksnya selalu ada di daftar.
- * @param {{ ikon: string }} props
+ * Penanda satu pos di peta: **kemah** (tenda) di jalur pendakian, bukan
+ * bulatan berikon. Warnanya mengikuti warna pos itu (`--pos-warna` di
+ * `theme.css`), pintunya lebih terang supaya terbaca sebagai tenda.
+ *
+ * Ikon fase (tenda/pohon/sungai/batu/kabut/bendera) **tidak lagi** ditempel di
+ * dalam penanda: di ukuran penanda di peta ikon sekecil itu tidak terbaca dan
+ * membuat tendanya penuh. Identitas pos tetap aman — warnanya berbeda per pos,
+ * nomornya tertulis di bawah tenda, dan nama fasenya selalu tertulis di daftar
+ * pos di bawah peta (juga di `aria-label` panggung).
  */
-function IkonPos({ ikon }) {
-  const isi = {
-    tenda: <path d="M6 1 11 11H1zM6 5 4.2 11h3.6z" />,
-    pohon: <path d="M6 0.5 9.2 6H2.8zM6 4.5 10.4 10H1.6zM5.4 10h1.2v1.6H5.4z" />,
-    sungai: <path d="M0.8 3.4c2-2 3.6-2 5.4 0s3.4 2 5 0v1.8c-1.6 2-3.4 2-5.2 0s-3.2-2-5.2 0zM0.8 7.2c2-2 3.6-2 5.4 0s3.4 2 5 0v1.8c-1.6 2-3.4 2-5.2 0s-3.2-2-5.2 0z" />,
-    batu: <path d="M1.4 10.4 3.4 3.6l4.2-1.8 3.2 4-2.4 4.6z" />,
-    kabut: <path d="M1 3.6h10v1.4H1zM2.6 6.2h8.8v1.4H2.6zM0.6 8.8h9.6v1.4H0.6z" />,
-    bendera: <path d="M3 1h1.4v10H3zM4.4 1.6h6l-2 2 2 2h-6z" />,
-  }[ikon]
-
+function KemahPos() {
   return (
-    <svg className="jelajah-pos-ikon" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
-      {isi ?? <circle cx="6" cy="6" r="3.2" />}
+    <svg className="jelajah-pos-kemah" viewBox="0 0 24 20" aria-hidden="true" focusable="false">
+      <path className="jelajah-pos-kemah-atap" d="M12 1.4 22.5 18.6H1.5z" />
+      <path className="jelajah-pos-kemah-pintu" d="M12 8.4 16.9 18.6H7.1z" />
     </svg>
   )
 }
@@ -173,7 +197,9 @@ export default function PetaPerjalanan({ perjalanan, ringkas = false, judul }) {
   }
 
   const langkah = perjalanan.langkah
-  const titik = titikJalur(langkah.length)
+  // Rute mengikuti adegan tema: pos berdiri di bentuk latarnya (lereng gunung,
+  // dermaga/pulau, landasan/Bulan) — lihat `RUTE_TEMA` di perjalanan.js.
+  const titik = titikJalur(langkah.length, perjalanan.adegan)
   const posAktif = langkah.find((satu) => satu.nomor === perjalanan.posisi)
   const tingkat = perjalanan.tingkat
   const video = perjalanan.video_url
@@ -262,7 +288,7 @@ export default function PetaPerjalanan({ perjalanan, ringkas = false, judul }) {
             data-jenis={satu.wajib ? 'wajib' : 'opsional'}
             style={{ left: `${titik[indeks]?.x ?? 50}%`, top: `${titik[indeks]?.y ?? 50}%` }}
           >
-            <IkonPos ikon={satu.ikon} />
+            <KemahPos />
             <span className="jelajah-pos-nomor">{satu.nomor}</span>
           </span>
         ))}

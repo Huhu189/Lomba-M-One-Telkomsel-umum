@@ -249,6 +249,10 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/attempt/{attempt}/kejadian', [KecuranganController::class, 'catat'])
             ->middleware('throttle:kejadian')->name('kecurangan.catat');
         Route::post('/attempt/{attempt}/hadir', [KehadiranController::class, 'ping'])->name('presence.ping');
+        // Denyut proteksi ber-nonce (2D): membuktikan sensor di perangkat murid
+        // masih hidup. Throttle-nya murah — satu denyut tiap 30 detik.
+        Route::post('/attempt/{attempt}/denyut', [KehadiranController::class, 'denyut'])
+            ->middleware('throttle:denyut')->name('presence.denyut');
 
         // Guru: catatan kejadian, tinjauan, snapshot Live Monitor, ticket SSE.
         Route::get('/kuis/{kuis}/kejadian', [KecuranganController::class, 'daftar'])->name('kecurangan.daftar');

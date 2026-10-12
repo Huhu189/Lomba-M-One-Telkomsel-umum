@@ -7,6 +7,7 @@ import { IkonJam, IkonPerisai, IkonBintang } from '../../icons.jsx'
 import { HiasanLatar } from '../ui/Maskot.jsx'
 import Merek from './Merek.jsx'
 import TombolTema from './TombolTema.jsx'
+import TombolUkuran from './TombolUkuran.jsx'
 
 const poin = [
   { Ikon: IkonBintang, judul: 'Soal besar dan jelas', isi: 'Huruf dan tombol dibuat nyaman untuk mata anak SD.' },
@@ -25,7 +26,10 @@ export default function KerangkaAuth() {
         <HiasanLatar className="auth-panel-hias" />
         <div className="d-flex align-items-center justify-content-between position-relative">
           <Merek />
-          <TombolTema className="tema-mobile" />
+          <div className="d-flex gap-2">
+            <TombolUkuran className="tema-mobile" />
+            <TombolTema className="tema-mobile" />
+          </div>
         </div>
 
         <div className="auth-panel-tengah position-relative">
@@ -50,7 +54,10 @@ export default function KerangkaAuth() {
         </p>
       </aside>
 
-      <TombolTema className="auth-tema-desktop" />
+      <div className="auth-tema-desktop">
+        <TombolUkuran />
+        <TombolTema />
+      </div>
 
       <main id="konten" className="auth-isi" tabIndex={-1}>
         <Outlet />

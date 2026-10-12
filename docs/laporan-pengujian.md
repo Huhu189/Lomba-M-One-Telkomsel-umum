@@ -727,8 +727,10 @@ Skrip membuka jendela baru, menyalakan proteksi lewat API, lalu memakai antarmuk
 - **Layar guru ke perangkat murid** (sinkron nomor blok/posisi lewat SSE) belum ada; ia bergantung pada materi
   berblok (slice 08) dan sengaja ditunda bersama fitur itu.
 - **Deteksi tamper lanjutan** (canary, deteksi overlay asing, pemeriksaan `Function.prototype.toString`)
-  belum ditulis. Kategori `tamper_suspected` sudah ada di enum beserta skor risikonya, tetapi **belum ada yang
-  mengirimnya** — jadi jangan dianggap aktif.
+  belum ditulis **pada saat slice 07**; ia menyusul di A.53 lewat saklar `detect_tamper` (default mati, di
+  luar preset `exam_mode`) dan mengirim `dom_injection`/`extension_detected`. Kategori `tamper_suspected`
+  tetap **turunan server**, dan sisi server yang menurunkannya (denyut ber-nonce + sapuan) menyusul di
+  **A.54** — jadi sejak itu ia benar-benar aktif, tetapi **hanya bila guru menyalakan proteksi**.
 - **`fullscreen_exit`** belum dideteksi (tidak ada penanganan Fullscreen API), dan saklar
   `block_screenshot` untuk saat ini hanya menangkap tombol PrintScreen + mengaburkan layar; heuristik
   tiga jari/daya-volume yang disebut chunk belum ada.
@@ -3892,3 +3894,892 @@ sehingga `left` masih negatif. Ini **bug harness**, bukan produk — harness kin
   diuji karena DB dev tidak punya kuis `terbit` saat harness dijalankan (bagian itu dilewati dengan sadar
   dan dilaporkan sebagai lulus-terlewat, bukan hijau palsu).
 - Belum ada uji regresi visual/screenshot: buktinya angka geometri dari DOM, bukan perbandingan gambar.
+
+---
+
+## A.45. Gunung yang lebih terang & tidak kaku, lalu diganti gambar jadi domain publik (bukan gambar tangan)
+
+Dua permintaan pemilik produk pada putaran ini: (a) *"buat gunungnya lebih style seperti gambar saja dan gak
+terlalu kaku dan buat lebih terang jangan gelap"*; (b) *"atau kau pakai gambar saja gak svg tulis manual"* —
+dan saat ditanya arahnya: *"ambil dari publik namun yang cocok dan juga ingat grafik bukan realife"*.
+
+### A.45.1 Langkah pertama — gambar tangan dibuat rata & cerah (dikerjakan penuh, lalu tidak terpakai lagi)
+
+Adegan `gunung` yang digambar sendiri dulu adalah lukisan senja: palet `#0b1a33`–`#060f19` (nyaris hitam),
+lereng lurus bersudut tajam, dan gradien tiga titik yang memberi kesan 3D. Yang diubah:
+
+- **Palet adegan diganti siang cerah** (`--adegan-*` di `theme.css`): langit `#74c1f2`→`#ecf9ff`, lereng
+  `#96c1dd`, bidang depan `#74aacd`/`#6297bd`, sabuk kaki `#8cc49b`, garis tepi `#40627f`. Tidak ada lagi
+  warna lebih gelap dari `#3f6382`, jadi tidak ada bidang yang tenggelam jadi hitam.
+- **Bentuknya dibuat melengkung** di `AdeganGunung.jsx`: seluruh lereng memakai kurva Bézier, ujung puncak
+  tumpul, salju bertepi bergelombang, kaki gunung bersabuk hijau — tidak ada sudut tajam yang tersisa.
+- **Gaya "gambar" rata**: gradien lereng tiga titik dibuang (defs `ag-lereng`/`ag-lereng-depan` ikut hilang),
+  tiap bidang satu warna penuh + garis tepi tipis, dan matahari pindah ke sudut kiri atas sebagai bulatan
+  bertepi (titik denyut `transform-origin` ikut disesuaikan ke `46px 19px`).
+- **Panggung tidak lagi digelapkan**: lapisan `::after` yang dulu menutup **semua** latar dengan
+  `rgba(2,6,23,0.4)` sekarang hanya untuk **video** guru. Gambar tema dan adegan gambar tangan cuma dapat
+  kabut putih tipis di tepi bawah, jadi gambar tetap cerah.
+- **Jalur & nomor pos tetap terbaca di atas latar cerah**: jalur putih putus-putus dan aksen sky tenggelam di
+  latar terang, jadi peta bergambar memakai `--jalur-belum` (navy 72%) dan `--jalur-lewat` (`#1f4f74`), dan
+  pil nomor pos diberi garis rambut `rgba(15,23,42,0.28)` supaya batasnya tidak hilang di latar terang.
+
+Terukur lewat tangkapan panggung: luminance rata-rata **187,5** dari 255, piksel tergelap **87,4**, dan pita
+langit **200,2** — sebelumnya paletnya nyaris hitam.
+
+### A.45.2 Langkah kedua — tema `gunung` memakai gambar jadi domain publik (yang akhirnya dipakai)
+
+Pemilik produk memilih memakai **gambar jadi dari domain publik** alih-alih SVG tulisan tangan. Pencarian
+asetnya dibatasi aturan repo sendiri (`frontend/public/tema/LISENSI.md`): **hanya CC0 / public domain**, ukuran
+≤ 400 KB, sisi terpanjang ≤ 1600 px. Karena itu kandidat Commons berlisensi **CC BY-SA 4.0** (butuh atribusi +
+share-alike) **ditolak** walaupun gambarnya bagus, dan pencarian diarahkan ke pustaka CC0.
+
+Aset yang dipasang: `frontend/public/tema/gunung.svg`
+
+- "Mountains on a sunny day" (mountain scene in the spring) — halaman sumber menyatakan *"You can copy, modify,
+  distribute and perform the work, even for commercial purposes, all without asking permission"* dan berkasnya
+  bertanda `openclipart` (pustaka yang melepaskan karyanya ke domain publik). Sumber + lisensi dicatat di
+  `LISENSI.md` bersama ukuran akhirnya.
+- **Grafik, bukan foto realis** sesuai permintaan: tag halamannya `flat`, `hills`, `mountains`, `green`; isinya
+  gambar rata dengan 9 warna saja (langit `rgb(77,187,255)`, lereng biru bersalju `rgb(55,142,195)`/
+  `rgb(162,205,232)`, lapangan hijau `rgb(48,174,90)`, awan putih, matahari pucat `rgb(226,230,151)`).
+- Murni vektor: **50 bentuk, tanpa `<image>` raster, tanpa `<text>`, tanpa filter blur** — jadi tidak ada bagian
+  yang pecah saat diperbesar dan tidak ada teks nyasar. `viewBox` aslinya **1920×1080 (16:9 persis)** sehingga
+  panggung 16:9 menampilkannya utuh tanpa dipotong; hanya atribut `width`/`height` dikecilkan ke 1600×900 agar
+  memenuhi aturan ukuran (vektor: geometrinya tidak berubah). Berkas akhir **11 KB**.
+
+Perubahan kode: `FOTO_ADEgan.gunung = '/tema/gunung.svg'`, dan `'gunung'` **dikeluarkan** dari `ADEGAN_DIGAMBAR`
+sehingga berkasnya yang dipakai (prioritas: video guru → adegan gambar tangan → berkas gambar tema → gradien).
+Komponen gambar tangan **tidak dihapus** — ia tetap jalur yang diuji dan bisa dipakai lagi cukup dengan
+mengembalikan `'gunung'` ke daftar itu.
+
+### A.45.3 Alat bukti baru: `docs/tangkap-adegan-gunung.mjs`
+
+Tema gunung sekarang tidak punya animasi awan/kabut/burung, jadi "beranimasi" dan "tidak gelap" tidak lagi bisa
+dibuktikan dari struktur DOM saja. Skrip ini menyalakan Chrome lewat CDP, mencari materi bertema gunung yang
+**punya blok** (tanpa blok tidak ada titik pos maupun jalur, jadi tangkapan tidak membuktikan apa-apa),
+menangkap `.jelajah-panggung` di tema terang & gelap, lalu **mengukur pikselnya**: PNG hasil tangkapan dibaca
+balik lewat `<canvas>` di dalam peramban (Node tidak punya dekoder PNG tanpa pustaka tambahan) dan dihitung
+luminance WCAG-nya.
+
+Hasil (materi uji 2 blok → 2 pos, 1 ruas):
+
+| Tema | Latar | rata | minimum | piksel < 70 | pita atas (langit) | tengah | bawah |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| terang | berkas `/tema/gunung.svg`, termuat `true` | **165,1** | 22,7 | **0,01%** | **187,5** | 151,3 | 155,8 |
+| gelap | sama | 164,8 | 28,3 | 0,10% | 187,1 | 151,3 | 155,2 |
+
+**Catatan penting soal pagar ukurnya.** Versi pertama pagar ini menuntut *piksel tergelap* ≥ 70 dan **merah**
+(minimum 22,7) — sebabnya jelas setelah ditelusuri: angka di **lencana nomor pos** memakai `var(--teks)`
+`#0f172a` yang luminance-nya ≈ 22,6, dan teks memang harus gelap. Pagarnya lalu diubah untuk mengukur **luas**
+piksel gelap, bukan piksel tergelap: teks lencana hanya menempati **0,01%** luas, sedangkan gambar yang benar
+benar kelam akan menempati puluhan persen. Ini bukan melonggarkan asersi supaya hijau — ukuran yang lama
+mengukur hal yang salah (teks), yang baru mengukur hal yang dimaksud (gambar), dan ambangnya tetap ditegakkan
+(batas 0,5% luas + rata-rata ≥ 130 + pita langit ≥ 150).
+
+### A.45.4 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/sections/material src/__tests__/theme` | **110 lulus / 7 berkas** (termasuk 13 tes `petaPerjalanan.test.jsx` yang asersinya disesuaikan) |
+| `npm run check` (checkJs) | **bersih (exit 0)** |
+| `npx eslint .` | **0 error**, 2 warning lama React Hook Form |
+| `node docs/tangkap-adegan-gunung.mjs` | **exit 0** — gambar tema termuat (`1600x900`), zoom `jelajah-zoom`, angka di tabel A.45.3 |
+| `docs/jalankan-smoke-ui.sh perjalanan` | **52/52 lulus, exit 0** |
+| `./verify.sh` (root, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** |
+
+Tiga pemeriksaan smoke perjalanan yang berubah (karena latarnya kini berkas gambar, bukan SVG tulisan tangan) —
+sengaja dibuat **lebih ketat**, bukan lebih longgar:
+
+| Pemeriksaan | Bukti terukur saat lulus |
+| --- | --- |
+| peta memakai gambar tema domain publik yang benar-benar termuat, bukan gambar tangan | `jenis foto · src /tema/gunung.svg · termuat true · adegan tangan 0` |
+| gambar tema bergerak halus (zoom panggung), bukan gambar diam | `zoom jelajah-zoom` |
+| panggung peta tetap 16:9 supaya gambar tema tidak digepengkan | `lebar 578 · tinggi 325 · rasio 1.78` |
+
+Pemeriksaan lama yang dibuang: jumlah unsur adegan gambar tangan (`jelajah-lereng-depan` = 2, awan/kabut/burung
+≥ 1) — unsur itu memang tidak lagi dirender untuk tema ini, jadi menuntutnya berarti menguji hal yang tidak ada.
+
+### A.45.5 Temuan tak terduga — pagar "hex hanya di variabel" tidak memeriksa `theme.css`
+
+Saat memeriksa ulang pagar mutu `src/__tests__/theme/tema.test.js` (yang seharusnya menjaga "hex hanya di blok
+`:root`/`[data-bs-theme='dark']`"), ternyata **`theme.css` tidak benar-benar diperiksa**: berkasnya memang
+masuk `import.meta.glob`, tetapi Vitest mengembalikan **modul kosong** untuk berkas `.css` (pemrosesan CSS mati
+bawaan), jadi `String(mentah).length === 0` dan loop-nya tidak menemukan apa pun di berkas itu. Diperiksa
+langsung dengan tes sementara di dalam repo: 215 dari 216 berkas berisi teks, dan satu-satunya yang kosong
+persis `../../theme/theme.css`.
+
+Akibatnya `theme.css` saat ini memang punya hex di luar blok variabel (mis. gradien cadangan `.jelajah-panggung`
+`#1e3a5f`/`#2f5d84`/`#3f7f6a`) tanpa pernah ditangkap pagar itu. **Tidak diperbaiki di putaran ini** (di luar
+lingkup permintaan dan perbaikannya bisa memunculkan puluhan pelanggaran lama sekaligus), tetapi dicatat sebagai
+temuan terbuka: pagar itu hanya berlaku untuk `.js`/`.jsx`. Warna baru pada putaran ini tetap dipasang lewat
+variabel seperti aturan repo.
+
+### A.45.6 Batasan jujur
+
+- **Saya tidak bisa melihat gambar.** Aset dipilih bukan dari tampilannya, melainkan dari data yang bisa
+  diperiksa: lisensi halaman, tag (`flat`), daftar warna di dalam SVG, jumlah bentuk, ada/tidaknya `<image>`
+  raster atau `<text>`, dan angka kecerahan hasil render. "Cocok" secara estetika tetap perlu mata pemilik
+  produk — `docs/log-mentah/adegan-gunung-terang.png` & `-gelap.png` disimpan untuk itu.
+- **Komposisinya berbeda dari niat A.43.** Gambar ini adalah pemandangan luas dengan beberapa puncak, bukan
+  satu puncak dilihat mendongak dari kaki gunung. Niat itu hilang bersama gambar tangan; kalau masih diinginkan,
+  `'gunung'` cukup dikembalikan ke `ADEGAN_DIGAMBAR`.
+- **Gambar tangan tidak lagi dipakai** untuk tema mana pun sekarang — ia jalur yang diuji dan masih ada, tetapi
+  tidak dirender. Berkasnya sengaja tidak dihapus supaya keputusan ini mudah dibalik.
+- Katalog tetap **satu tema** ("Mendaki Gunung"); mekanisme berkas tema sudah siap untuk tema berikutnya.
+- Bukti visual masih **angka + tangkapan manual**, bukan uji regresi screenshot yang membandingkan gambar antar
+  versi; `docs/tangkap-adegan-gunung.mjs` butuh layanan hidup + Chrome, jadi **tidak** ikut `verify.sh`.
+- Animasi latar tema sekarang hanya zoom halus (`.jelajah-foto`), bukan awan/kabut/burung yang bergerak.
+
+---
+
+## A.46. Pos jadi kemah, jalur jadi zigzag mendaki, dan gambar gunungnya diganti (tumpul + lebih detail)
+
+Permintaan pemilik produk: *"buat post seperti kemah dan juga buat seperti memanjat gunung jadi zigzag dan ganti
+gunungnya, seperti gunung bukan curan tapi tumpul dan lebih detail"*. Tiga hal, ketiganya dikerjakan dan diukur.
+
+### A.46.1 Pos peta jadi **kemah** (tenda), bukan bulatan berikon
+
+Penanda pos di peta (`KemahPos` di `PetaPerjalanan.jsx`) sekarang sebuah **tenda**: atap segitiga
+(`.jelajah-pos-kemah-atap`) dengan **pintu lebih terang** (`.jelajah-pos-kemah-pintu`), digambar di dalam
+`viewBox 0 0 24 20`. Warnanya tetap mengikuti warna pos itu (`--pos-warna` di `theme.css`), jadi identitas pos
+tidak hilang. **Ikon fase (tenda/pohon/sungai/batu/kabut/bendera) dilepas** dari dalam penanda: di ukuran
+penanda di peta ikon sekecil itu tidak terbaca dan membuat tendanya penuh — nama fase tetap tertulis di daftar
+pos di bawah peta dan di `aria-label` panggung, jadi tidak ada informasi yang hilang.
+
+### A.46.2 Jalur jadi **zigzag mendaki**: basecamp kiri bawah → puncak tengah atas
+
+`titikJalur(jumlah)` di `perjalanan.js` tidak lagi menyebar titik secara lurus. Sekarang:
+
+- pos bergantian di **jalur kiri** (12% → 20%) dan **jalur kanan** (88% → 80%) — lebar belokan **mengecil ke
+  atas** supaya terbaca sebagai lereng gunung yang menyempit, bukan dua kolom sejajar;
+- sumbu `y` **selalu naik** (86% → 12%), jadi arah mendaki tetap terbaca walau `x` bolak-belok;
+- pos **terakhir berdiri di puncak** (`x = 50`), bukan di tepi jalur;
+- materi **satu pos** tidak punya belokan (tidak ada yang perlu didaki) — satu titik di basecamp.
+
+Tidak ada yang berubah di sisi server: jalur ini murni tampilan, dan boleh-tidaknya membuka langkah tetap
+diputus `ProgresMateriService`.
+
+### A.46.3 Gambar gunung diganti: dari *tebing* jadi *gunung tumpul*
+
+Keluhan *"seperti curan"* ternyata bisa dibuktikan, bukan cuma selera. Berkas yang dipakai sebelumnya
+(`publicdomainvectors` 78943) tersusun dari **baji bersisi tegak**: dua titik dengan `x` sama pada satu bentuk
+(`M 533.5 389 L 533.5 833 L 159 832 ...`) dan bahkan ada path **tanpa luas** (`M 577.37 220 L 577.37 834.33`).
+Sisi tegak itulah tebing; puncaknya juga ujung pisau (lebar punggung **0%**).
+
+Empat kandidat CC0 sempat diunduh dan **diukur** lebih dulu (publicdomainvectors 79101, 75640, 51822, 38980):
+tak satu pun lebih baik pada ukuran ini — 79101 malah **39%** sisinya berarah tegak (dan rasionya 4:3), 38980
+luminance-nya 88 (gelap) dengan rasio 2,25, 51822 hanya 3 warna dengan rasio 3:1, dan 75640 memuat kapal.
+Karena itu latarnya **dibuat ulang di repo** dengan kurva (karya sendiri, dilepas CC0 — dicatat di
+`LISENSI.md`): dua puncak bersalju yang membulat, punggung jauh, tiga lapis bukit, danau, pepohonan berdaun
+bulat, batu, awan, dan burung — 60 bentuk, 18 warna (berkas lama: 47 bentuk, 16 warna).
+
+Bedanya diukur, bukan dikira:
+
+| Ukuran bentuk | Berkas lama | Berkas sekarang | Ambang pagar mutu |
+| --- | --- | --- | --- |
+| Jumlah puncak di garis cakrawala | banyak (baji terpisah-pisah) | **1** | tepat 1 |
+| Kemiringan sisi maksimum | **90°** (tegak = tebing) | **43,3°** | ≤ 45° |
+| Putaran antarruas maksimum | **121,6°** (kunci tajam) | **12,6°** | ≤ 20° |
+| Sisi nyaris tegak terpanjang | 614 px (tegak) | **27 px** | ≤ 36 px |
+| Punggung puncak (20 px di bawah titik tertinggi) | **0%** (ujung pisau) | **13,2%** | ≥ 6% |
+| Bidang tanpa luas | ada 1 | tidak ada | nol |
+| Goresan panjang menggantung | tidak ada | tidak ada (burung 3,8% lebar) | ≤ 8% |
+| Warna teredup · rata-rata luminance | 127 · 199 | 93,6 · 193 | ≥ 90 · ≥ 170 |
+| Bentuk · warna | 47 · 16 | 60 · 18 | — ("lebih detail") |
+
+### A.46.4 Pagar mutu baru — dan dibuktikan **tidak kosong**
+
+`frontend/src/__tests__/theme/gunungLatar.test.js` (9 tes) mengunci sifat itu: kanvas 16:9 & ≤ 1600 px, murni
+vektor (tanpa `<image>`/`<text>`/`<filter>`), hanya perintah path `M/L/C/Z`, tidak ada bidang tanpa luas, tidak
+ada sisi nyaris tegak yang bersambung > 4% tinggi, bentuk besar tidak > 45° dan tidak berkunci > 20°, **tepat
+satu** puncak yang menonjol di garis cakrawala, punggung puncak ≥ 6% lebar, tidak ada goresan panjang tanpa isi
+(ujung lepas), dan semua warna cukup terang.
+
+Pagar yang tidak pernah merah itu tidak membuktikan apa-apa, jadi pagarnya **diuji balik**: berkas lama dipasang
+sementara ke `public/tema/gunung.svg`, lalu tes dijalankan. Hasilnya **6 dari 9 merah**, antara lain
+`expected [ '577.37,220 → 577.37,834.33' ] to deeply equal []` (bidang tanpa luas) dan kegagalan di sisi 90°,
+kunci 121,6°, serta puncak 0%. Sesudah itu berkas baru dikembalikan dan hash-nya dicocokkan
+(`901ead89…` sama sebelum dan sesudah uji balik).
+
+### A.46.5 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/theme src/__tests__/sections/material` | **122 lulus / 8 berkas** (9 tes pagar bentuk baru, 14 `petaPerjalanan`, 31 `perjalanan`) |
+| `npm run test` (seluruh Vitest) | **67 berkas / 653 tes lulus** |
+| `npm run check` (checkJs) | **bersih (exit 0)** |
+| `npm run lint` (ESLint) | **0 error**, 2 warning lama React Hook Form |
+| `docs/jalankan-smoke-ui.sh perjalanan` (Chrome + layanan hidup) | **52/52 lulus, exit 0** — termasuk `src /tema/gunung.svg · termuat true · adegan tangan 0`, zoom `jelajah-zoom`, panggung `rasio 1.78` |
+| `node docs/tangkap-adegan-gunung.mjs` (tangkapan kecerahan) | **exit 0** — lihat tabel di bawah |
+
+Tangkapan panggung (materi 2 blok → 2 pos, 1 ruas, berkas termuat `1600x900`):
+
+| Tema | rata | minimum | piksel < 70 | pita atas (langit) | tengah | bawah |
+| --- | --- | --- | --- | --- | --- | --- |
+| terang | **200,8** | 22,7 | **0,01%** | **203,8** | 207,2 | 191,2 |
+| gelap | **200,5** | 28,3 | 0,10% | 203,4 | 207,2 | 190,6 |
+
+Sebagai pembanding A.45 (berkas lama): rata **165,1** · langit **187,5**. Latarnya kini lebih terang, dan pagar
+"jangan gelap" (rata-rata ≥ 130, pita langit ≥ 150, luas gelap ≤ 0,5%) dilewati dengan margin lebar.
+
+### A.46.6 Batasan jujur
+
+- **Saya tidak bisa melihat gambarnya.** Karena itu keluhan "curan" diselesaikan dengan **mengukur bentuk**
+  (kemiringan, putaran, lebar punggung, bidang tanpa luas), bukan dengan menebak selera. Penilaian "bagus"
+  tetap milik pemilik produk — tangkapan `docs/log-mentah/adegan-gunung-terang.png` & `-gelap.png`
+  diperbarui untuk itu.
+- **Keputusan A.45 dibalik.** A.45 memilih memakai *berkas gambar jadi dari domain publik*; sekarang latarnya
+  **karya proyek ini** (CC0, dicatat di `LISENSI.md`). Alasannya terukur: dari empat kandidat CC0 yang diunduh,
+  tidak ada yang lebih baik pada ukuran di atas. Membalik keputusan ini kembali cukup menukar **satu berkas**
+  (`public/tema/gunung.svg`); pagar mutu bentuknya akan menolak berkas yang bersisi tegak, jadi berkas
+  pengganti harus lolos ukuran yang sama (ambangnya di `gunungLatar.test.js`).
+- Pangkal lereng gunung sebagian tertutup lapis bukit depan, jadi kemiringan yang **terlihat** lebih landai
+  daripada 43,3° (angka itu kemiringan paling tajam di seluruh siluet). Ini disengaja (kesan berlapis), bukan
+  sisa tebing.
+- **Salju dan batu memakai `<ellipse>`/`<circle>`**, bukan `<path>`, supaya tepinya pasti bulat (versi pertama
+  punggung salju berbentuk path bertepi bergelombang dan terukur bersudut 64°/152° — itu cacat sungguhan, lalu
+  diganti). Konsekuensinya pagar bentuk hanya memeriksa `<path>`; bentuk bulat tidak ikut diukur kecuramannya,
+  dan itu memang bukan siluet gunung.
+- Uji regresi **visual** (membandingkan gambar antar-versi) masih belum ada; buktinya angka geometri + angka
+  kecerahan + tangkapan manual. `docs/tangkap-adegan-gunung.mjs` butuh layanan hidup + Chrome sehingga **tidak**
+  ikut `verify.sh`.
+- Katalog tema tetap **satu tema** ("Mendaki Gunung"), dan animasi latar tetap hanya zoom halus.
+
+### A.46.7 Revisi atas permintaan lanjutan: **satu** gunung, batu tetap ada, puncak tetap di langit, tanpa ujung garis lepas
+
+Permintaan berikutnya: *"gunungnya hanya 1 saja dan boleh ada batunya dan endpoint-nya masih di langit,
+pastikan tidak ada endpoint yang lepas"*. Yang diubah:
+
+- **Satu gunung.** Puncak kedua (dulu di x≈1180) dihapus; sisanya lapis bukit yang landai. Diukur dari **garis
+  cakrawala** (titik teratas tiap kolom gabungan bentuk besar): puncak yang menonjol ≥ 8% tinggi kanvas =
+  **1** — di x≈884, y≈279, menonjol 292 px. Bukit terjauh sengaja diturunkan (puncaknya y≈540–600) supaya tidak
+  ikut terbaca sebagai gunung kedua.
+- **Puncak tetap di langit.** Puncak berdiri di **31% dari atas**, jadi pos terakhir jalur mendaki (12% dari
+  atas, lihat A.46.2) tetap di langit dan langit tetap bagian terbesar bingkai.
+- **Batu tetap ada, dan kini benar-benar terlihat.** Dua batu membulat dipindah ke padang depan (y 848–896);
+  sebelumnya tertutup tepi bawah bingkai (y 890–916) sehingga cuma tampak sebagai serpihan.
+- **Tidak ada ujung garis yang lepas.** Tiga garis rusuk lereng — goresan `fill="none"` sepanjang ~620 px yang
+  berhenti di tengah lereng — **dihapus**. Satu-satunya goresan yang tersisa adalah burung (3,8% lebar kanvas),
+  dan itu dikunci tes: goresan tanpa isi tidak boleh lebih besar dari 8% kanvas.
+- Salju juga diganti jadi bidang **bulat** (`<ellipse>`), bukan path bertepi bergelombang: versi pertamanya
+  terukur bersudut 64° dengan putaran 152° (bergerigi) — cacat nyata yang ketahuan justru karena diukur.
+
+Dua bug di **pagar tesnya sendiri** ketemu saat mengerjakan revisi ini, keduanya diperbaiki di sumbernya:
+
+1. `runTegak` ikut menghitung **sisi pembuangan di tepi bingkai**. Bentuk besar sengaja dilebihkan melewati tepi
+   (x = -40 dan 1640) supaya tidak ada celah saat dipotong, dan sisi potong itu tegak — dari dalam kanvas
+   memang tidak terlihat, tetapi tes menghitungnya: semua bidang besar terukur "tegak 380–414 px" padahal itu
+   palsu. Sekarang ruas di luar kanvas dikecualikan.
+2. Garis cakrawala dihitung per kolom 16 px dari titik sampel kurva yang jaraknya ~64 px (16 titik per kurva),
+   jadi tiap kolom bergantian jatuh ke bentuk lain dan cakrawalanya bergerigi ~100 px — terbaca sebagai **11
+   puncak palsu** dan tes "satu gunung" merah walau gambarnya benar. Diperbaiki: **64 titik per kurva** +
+   jendela 16 px (bukan kolom keras). Efek sampingnya angka kemiringan lebih jujur (16 titik: 39,2° vs 64
+   titik: 43,3° untuk lereng yang sama).
+
+Verifikasi sesudah revisi: Vitest **67 berkas / 653 tes lulus** · checkJs bersih · ESLint 0 error · uji balik
+berkas lama **6 dari 9 merah** (termasuk "hanya SATU gunung") · tangkapan kecerahan **rata 200,8** · pita langit
+**203,8** · piksel gelap **0,01%** (pagar "jangan gelap" dilewati dengan margin lebar).
+
+## A.47 Tanda Pangkas `|`: Satu Goresan, Digeser ke Dalam (12 Oktober 2026)
+
+Permintaan putaran ini: *"dan buat `||` pada [tanda pangkas] gak beneran cuman `|` dan juga buat lebih
+kedalam (UI-nya perbaiki)"*. Kalimatnya bisa menunjuk beberapa penanda tegak di editor materi, jadi
+elemennya dipastikan dulu lewat **pertanyaan pilihan**; jawabannya adalah **gagang pangkas klip** di
+timeline (fitur A.36).
+
+### A.47.1 Sebabnya diukur lebih dulu, bukan ditebak
+
+Tanda itu terbaca `||` karena dua hal di CSS `.nle-pangkas::before` yang lama:
+
+1. **Goresannya tinggal 1px.** Cincin `border: 1px solid var(--kartu)` + `box-sizing: border-box`
+   (reboot Bootstrap juga berlaku untuk `::before`) menghabiskan `width: 3px`: warna aksen yang
+   tersisa hanya **1px**, diapit dua garis selebar 1px berwarna `--kartu`.
+2. **Tandanya duduk menempel di tepi klip.** Pada klip yang diikuti klip lain, tanda aksen 1px itu
+   hanya dipisah **1px** `--kartu` dari garis tepi 3px klip sebelahnya — persis itulah yang terbaca
+   `||`. Di sisi kiri, cincinnya bahkan menutupi garis tipe klip sehingga yang terlihat juga 1px.
+
+Angka dari potret layar (baris tengah klip terpilih, `deviceScaleFactor: 2`, klip teks 375px):
+
+| Yang diukur | Sebelum | Sesudah |
+| --- | --- | --- |
+| Lebar goresan (piksel aksen) | **1px** | **3px** |
+| Jarak goresan dari tepi klip | kiri 1px · kanan 2px | kiri 7px · kanan 8px |
+| Goresan aksen di tepi kanan klip terpilih (klip yang diikuti klip lain) | **2** (1px + 3px, dipisah 1px) | **1** di dalam klip; yang kedua adalah garis tepi klip sebelahnya, kini 8px lebih jauh |
+
+Angka itu sama di tema **terang dan gelap** karena warnanya dibaca dari variabel tema, bukan hex tetap.
+
+### A.47.2 Yang diubah
+
+- **Satu goresan, bukan goresan bercincin.** `border` pada `::before` dibuang, diganti
+  `outline: 1px solid var(--teks)`: `outline` **tidak** menyusutkan lebar, jadi goresannya utuh 3px
+  sementara garis luarnya menjaga kontras di atas sorot hangat — aksen di atas `--sorot-hangat` hanya
+  **2,3:1**, sedangkan `--teks` di atasnya **di atas 14:1** (batas WCAG 1.4.11 yang sudah dipakai di
+  berkas ini untuk cincin fokus).
+- **Digeser ke dalam** `padding-inline-start`/`padding-inline-end: 0.45rem` (7,2px) di kedua sisi.
+  **Kotak seretnya tetap di tepi klip** — yang bergeser hanya goresannya — sehingga jalur seret dan
+  penjaga geometri lama (`sebaris`, jangkau tetikus) tidak berubah artinya.
+- **Goresan dipendekkan** dari setinggi klip (32px) menjadi 1,6rem (25,6px) supaya terbaca **pegangan**,
+  bukan dinding pemisah antarklip.
+- **`border-inline-start-width: 1px` pada `.nle-klip-aktif`.** Selama klip terpilih garis tepinya
+  seragam 1px `--teks`, jadi sisi kirinya tidak lagi memuat garis tipe 3px berwarna tepat di sebelah
+  tanda (garis tipe itulah goresan kedua di sisi kiri). **Konsekuensi sadar**: warna tipe
+  (aksen/hijau/oranye) tidak tampak selama klip terpilih — jenis klip tetap terbaca dari ikon + label
+  di dalam klip dan dari inspector, dan klip yang tidak terpilih tetap memakai garis tipe 3px berwarna.
+- **Harness `docs/smoke-ui-durasi-klip.mjs` diperluas 15 → 19 pemeriksaan.** Empat pemeriksaan baru
+  mengukur **bentuk** tanda: gaya terhitung `::before` (lebar, cincin, garis luar, tinggi, jarak geser)
+  dan pembacaan **kolom piksel potret layar** (jumlah goresan aksen di dalam pita 11px dari tiap tepi,
+  panjangnya, dan jaraknya dari tepi klip). Tanda digambar lewat `::before`, jadi bentuknya memang tidak
+  bisa dinilai dari DOM.
+
+### A.47.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `bash docs/jalankan-smoke-ui.sh durasi-klip` | **19/19 lulus** (dari 15); 4 bentuk baru: `lebar=3px cincin=0px garis luar=solid 1px` · `tinggi 25.6px < klip 32px · masuk kiri=7.2px kanan=7.2px` · `tepi kiri=1 goresan · tepi kanan=1 goresan (klip 328px)` · `kiri 3px jarak 7px · kanan 3px jarak 8px` |
+| **Uji balik** (CSS lama dikembalikan sementara, lalu SHA-nya dikembalikan persis) | **3 dari 4** pemeriksaan bentuk **GAGAL** (16/19): `cincin=1px` · `tinggi 32px < klip 32px, masuk kiri=0px kanan=0px` · `kiri 1px jarak 1px · kanan 1px jarak 2px` |
+| `./verify.sh` | **SEMUA HIJAU** — Pest **331 tes / 3126 asersi**, Redis wajib **9/65**, Pint bersih, checkJs bersih, ESLint 0 masalah, Vitest **67 berkas / 653 tes**, Realtime hijau |
+
+Potret bukti: `docs/log-mentah/gagang-pangkas-gelap.png` (potongan zoom tepi klip terpilih; berkas itu
+tidak di-commit, sama seperti tangkapan gunung A.45/A.46).
+
+### A.47.4 Berkas
+
+- `frontend/src/theme/theme.css` (`.nle-pangkas::before`, `.nle-pangkas-kiri/kanan`, `.nle-klip-aktif`)
+- `docs/smoke-ui-durasi-klip.mjs` (4 pemeriksaan bentuk baru)
+- `docs/laporan-pengujian.md` (A.47 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+### A.47.5 Batasan jujur
+
+- **Saya tetap tidak bisa melihat gambarnya.** Karena itu keluhan "`||`" diselesaikan dengan **mengukur**
+  (lebar goresan, jarak dari tepi, jumlah goresan per sisi), bukan menebak selera. Penilaian "enak
+  dilihat" tetap milik pemilik produk, dan untuk itu potret zoom-nya disimpan.
+- **Pagar ini sempat mau ditaruh di Vitest dan gagal karena alatnya.** Vitest men-stub berkas CSS
+  menjadi modul kosong (bawaan `test.css: false`), sehingga `import.meta.glob('…theme.css',
+  { query: '?raw' })` **selalu mengembalikan `''`** — pagar berbasis teks CSS tidak mungkin dibuat tanpa
+  mengubah konfigurasi global (dan mengaktifkan pemrosesan CSS akan memerahkan pagar warna yang sudah
+  ada, lihat poin berikut). Pagarnya karena itu ditaruh di harness browser, yang justru lebih kuat:
+  yang diuji adalah **hasil render sungguhan**, bukan teks berkasnya.
+- **Temuan sampingan yang jujur** (di luar permintaan putaran ini, jadi **tidak** diubah): karena
+  stubbing CSS tadi, pagar warna `src/__tests__/theme/tema.test.js` **tidak pernah benar-benar membaca
+  `theme.css`** — berkas CSS-nya kosong saat diuji. Kalau glob-nya diperbaiki, `theme.css` memang
+  memuat sekitar **48 hex di luar blok variabel** (contoh: fallback `var(--garis, #cbd5e1)` dan warna
+  khusus cetak). Jangan dikira jalur itu sudah terjaga; menutupnya butuh keputusan tersendiri
+  (apakah fallback & warna cetak termasuk "nilai hex yang dilarang").
+- **Yang tidak diukur**: apakah goresan 3px cukup besar untuk disentuh di ponsel. Sasaran seretnya tetap
+  **0,9rem (14,4px)** seperti sebelumnya — pemeriksaan sasaran sentuh ≥ 44px ada di harness mobile
+  (`docs/smoke-ui-mobile.mjs`), tetapi tanda pangkas belum masuk daftar pemeriksaannya.
+
+## A.48 Gunung "Pendakian bertingkat": tiga puncak, dua di antaranya jadi jalur pos (12 Oktober 2026)
+
+Putaran ini pemilik produk mengirim **gambar referensi** (`gunung-progres.svg`, puncak runcing dengan tutup
+salju, jurang berbentuk irisan, pohon dan batu) dan menulis *"lihat ini referensi gunung … boleh
+modifikasi"*, lalu menegaskan bentuk yang diinginkan: *"3 puncak namun yang di sebelah-sebelahnya itu
+menjadi jalur pendakian"*.
+
+Referensinya **tidak disalin** — bekasnya justru berkas yang dulu ditolak: punggung 0% (rata seperti meja),
+sisi 90° (tegak seperti tebing), dan 11 puncak palsu. Yang diambil dari referensi hanya **komposisinya**
+(tiga puncak bertingkat, langit besar, kaki berkabut), lalu digambar ulang dengan aturan repo.
+
+### A.48.1 Yang dikerjakan
+
+- **`frontend/public/tema/gunung.svg` diganti** (152 baris, 1600×900, murni vektor): langit gradien
+  tiga tingkat, matahari radial, tiga puncak — **satu punggung utama** di tengah dan **dua puncak jalur**
+  persis di jalur zigzag pos (sumbu x ≈ 14% dan ≈ 90%) — plus tutup salju, kabut kaki, tiga lapis bukit,
+danau, pohon berdaun bulat, batu, dan tiga burung kecil di langit.
+- **Siluet utama dibuat dari kurva Catmull-Rom** (di `buat-gunung.mjs`, lalu dibekukan ke berkas), bukan
+dari rangkaian segitiga: puncaknya tumpul dan putaran antarruasnya kecil, jadi tidak ada lagi sudut yang
+terbaca seperti tebing.
+- **Aturan pagar berubah, bukan dilonggarkan**: dari *"tepat satu puncak"* menjadi **"tepat satu puncak
+  utama + paling banyak dua puncak jalur"**, dan puncak jalur itu wajib memenuhi tiga syarat sekaligus:
+  menonjol ≥ 8% tinggi bingkai, **lebih rendah ≥ 10% tinggi bingkai** dari puncak utama, dan **berada di
+  tepi** (|x − 50%| ≥ 10%). Puncak kedua yang setara dengan puncak utama tetap merah — itu yang membuat
+  "dua gunung berhadapan" tertangkap.
+- Kepala berkas SVG memuat seluruh angka hasil pengukuran (bukan klaim): puncak utama menonjol 29,8%
+  (268 px) di x≈52%, dua puncak jalur 158 px dan 160 px (9,0% dan 8,1%), punggung tumpul 9,0% lebar
+  pada 2,2% tinggi di bawah titik tertinggi, kemiringan sisi maksimum 41,3°, putaran antarruas maksimum
+  6,3°, sisi tegak terpanjang 27 px, 65 nilai warna (min 94, rata 177).
+
+### A.48.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/theme/gunungLatar.test.js` | **9 tes lulus**, 124 ms (tanpa jaring: 1 berkas, `--no-file-parallelism --maxWorkers=1`) |
+| `node /tmp/ukur-gunung.mjs` (loop pengukuran cepat, di luar repo) | seluruh metrik hijau **sebelum** berkas dipasang |
+
+### A.48.3 Berkas
+
+- `frontend/public/tema/gunung.svg` (aset baru + kepala berkas berisi angka terukurnya)
+- `frontend/src/__tests__/theme/gunungLatar.test.js` (aturan puncak utama + puncak jalur)
+- `docs/laporan-pengujian.md` (A.48 ini), `docs/rencana-desain-putaran3.md` (rencana UI putaran ini)
+
+### A.48.4 Batasan jujur
+
+- **Saya tetap tidak bisa melihat gambarnya.** Seluruh penilaian di atas adalah angka (menonjol, sudut,
+  kemiringan, kecerahan), bukan selera. Putusan "enak dilihat" tetap milik pemilik produk.
+- **Tidak ada tangkapan peramban baru untuk putaran ini.** Harness-nya sudah ada
+  (`docs/tangkap-adegan-gunung.mjs`) dan belum dijalankan ulang setelah aset diganti, jadi belum ada bukti
+  potret bahwa jalur serta pos **mendarat di puncaknya masing-masing**; yang baru terbukti adalah bentuk
+  siluetnya (lewat pagar) dan geometrinya (lewat angka). Menjalankannya satu kali akan menutup celah ini.
+- **Tiga puncak berarti dua puncak ekstra di jalur.** Itu kemauan pemilik produk, tetapi konsekuensinya
+  nyata: satu penanda pos bisa berdiri nyaris sejajar dengan puncak jalur, jadi "puncak" di layar tidak
+  lagi tunggal. Pagar lama sengaja tidak dihapus, hanya diperketat (tinggi + posisi), supaya kembalinya
+  berkas bertipe "dua gunung berhadapan" tetap tertangkap.
+
+## A.49 Ukuran tulisan Normal/Besar: satu variabel `--s` (12 Oktober 2026)
+
+Papan desain putaran 3 (`desain-putaran3.zip`, dibaca dari salinan di `/tmp/desain3`, tidak di-commit)
+memuat satu perubahan yang benar-benar baru dibanding aplikasi sekarang: **"Ukuran: dua pilihan saja. Satu
+variabel, `--s`. Normal untuk semua, Besar untuk murid kecil atau layar jauh."** Aplikasi belum punya apa
+pun untuk itu — hasil `grep` untuk `--s:calc`, `data-ukuran`, dan "Ukuran tulisan" di `frontend/src`
+**kosong**. Pilihan "Rapat" yang ada di putaran 2 sengaja **tidak** ikut dibawa (papan sendiri yang
+membuangnya karena selisihnya tak terasa).
+
+Putaran ini memasang **hanya potongan itu beserta fondasinya**; sisa papan (perbandingan kata per layar,
+panel "Tampilan" yang menyatukan warna + ukuran) masuk rencana di
+`docs/rencana-desain-putaran3.md` dan dikerjakan pada putaran berikutnya.
+
+### A.49.1 Yang dikerjakan
+
+- **`theme.css`: satu variabel `--s`.** `:root { --s: 1; font-size: calc(100% * var(--s)) }` dan
+  `:root[data-ukuran='besar'] { --s: 1.12 }`. Karena `font-size` di `<html>` sendiri ikut `--s`, seluruh
+  ukuran berbasis **rem** (85 deklarasi `font-size` + utilitas Bootstrap) membesar bersama tanpa diubah
+  satu per satu. Skala px yang termasuk janji papan ("jarak dasar", "tinggi kepala") dikalikan eksplisit:
+  `--sp-1…8`, `--fs-hero/h1/h2/soal/isi/meta`, `--tinggi-kepala`.
+- **Radius, garis, dan bayangan sengaja tetap** — sama seperti papan (di `tema.css` putaran 3 pun
+  `--r-s/--r-m/--r-l` tidak ikut dikalikan): bingkai tidak boleh menggemuk, hanya isinya yang membesar.
+- **Judul Bootstrap ikut diperbaiki.** Ukuran judul bawaan mencampur rem dengan vw
+  (`.h2: calc(1.325rem + .9vw)`). Bagian rem ikut `--s`, bagian vw tidak, sehingga judul **hanya tumbuh
+  ~9%** sementara teks lain 12% (terukur: 28,004 px → 30,548 px). Rumusnya ditulis ulang
+  (`calc(1.325rem + 0.9vw * var(--s))`) di dalam `@media (max-width: 1199.98px)`; pada `--s = 1` nilainya
+  **sama persis** dengan bawaan, dan di ≥ 1200px Bootstrap memakai rem tetap yang sudah ikut `--s`.
+- **`shared/store/tema.js` jadi menyimpan dua preferensi tampilan**: `ukuran` (`normal|besar`, zod, kunci
+  `ukuran-ulangan`), `ubahUkuran()`, `bacaUkuranAwal()`, `terapkanUkuran()`, dan `mulaiUkuran()`.
+  Akses localStorage tetap dibungkus `try/catch` (mode privat) dan nilai rusak jatuh ke Normal.
+- **`shared/layout/TombolUkuran.jsx`** (pola sama dengan tombol tema): satu tombol berbalik, dengan
+  `aria-pressed` dan label yang **menuliskan keadaannya** ("Ukuran tulisan Besar — tekan untuk kembali
+  Normal"), jadi tidak bergantung pada warna/ikon saja.
+- **Ikon `IkonHuruf`** (dua huruf A berbeda tinggi) + masuk `daftarIkon`.
+- **Dipasang di bilah atas** (`KerangkaUmum`) **dan di halaman auth** (`KerangkaAuth`: di HP sebaris dengan
+  tombol tema, di layar lebar satu grup di kanan atas) — tepat sebelum render pertama lewat `main.jsx`,
+  jadi tidak ada kedipan kecil → besar.
+
+### A.49.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/theme/ukuran.test.jsx …` (4 berkas, `--no-file-parallelism --maxWorkers=1`) | **17 tes lulus** (ukuran 4 · tema 1 · ikon 5 · kerangka 7), 2,0 s |
+| `npx eslint` (7 berkas berubah) + `npm run check` (tsc strict) | lulus, tanpa temuan |
+| `docs/jalankan-smoke-ui.sh ukuran` (Chrome sungguhan, 1 berkas) | **11 pemeriksaan, SEMUA LOLOS** |
+
+Angka dari harness peramban (bukan dari membaca CSS):
+
+```
+OK   normal: --s = 1 — --s=1
+OK   normal: atribut data-ukuran — data-ukuran=normal
+OK   tombol ukuran ada di bilah — button[aria-label^="Ukuran tulisan"]
+OK   besar: --s = 1,12 — --s=1.12
+OK   besar: huruf di layar ikut membesar — 28.004px → 31.3645px   (×1,12)
+OK   besar: akar (rem) ikut membesar — 16px → 17.92px
+OK   besar: sasaran ketuk tidak menyusut — 48px → 48px
+OK   besar: halaman tidak melebar melewati layar — dokumen 741px ≤ layar 756px
+OK   besar: pilihan diingat — localStorage=besar
+OK   muat ulang: tetap Besar — --s=1.12 · data-ukuran=besar
+OK   balik ke normal: ukuran kembali seperti semula — --s=1 · judul 28.004px (awal 28.004px)
+```
+
+### A.49.3 Berkas
+
+- `frontend/src/theme/theme.css` (`--s`, `[data-ukuran='besar']`, token px dikalikan, tulis ulang ukuran
+  judul Bootstrap)
+- `frontend/src/shared/store/tema.js`, `frontend/src/shared/layout/TombolUkuran.jsx`,
+  `frontend/src/shared/layout/KerangkaUmum.jsx`, `frontend/src/shared/layout/KerangkaAuth.jsx`,
+  `frontend/src/icons.jsx`, `frontend/src/main.jsx`
+- `frontend/src/__tests__/theme/ukuran.test.jsx` (4 tes), `docs/smoke-ui-ukuran.mjs` (11 pemeriksaan),
+  `docs/rencana-desain-putaran3.md`
+- `docs/laporan-pengujian.md` (A.49 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+### A.49.4 Batasan jujur
+
+- **Pagar CSS-nya ada di peramban, bukan di Vitest.** `import.meta.glob(…, { query: '?raw' })`
+  mengembalikan `''` untuk berkas CSS di repo ini (temuan yang sama dengan A.47.5 — Vitest men-stub CSS),
+  jadi pemeriksaan "seluruh token dikalikan `--s`" saya taruh di `docs/smoke-ui-ukuran.mjs` yang mengukur
+  **hasil render**, bukan teks berkas. Harness itu yang menjadi bukti bahwa `--s` benar-benar sampai ke
+  layar.
+- **Tombolnya belum berupa panel "Tampilan".** Papan putaran 3 menggabungkan "Warna layar" dan "Ukuran
+  tulisan" dalam satu panel; sekarang keduanya **dua tombol ikon berdampingan**. Menggabungkannya (panel
+  buka-tutup + tombol Batal) dicatat di rencana, belum dikerjakan — dan papan tidak menyebut dua tombol
+  terpisah sebagai larangan.
+- **Ukuran diperiksa di satu halaman** (`/masuk`). Mekanismenya global (satu `--s` di `<html>`), tetapi
+  halaman padat tabel (mis. daftar murid) belum diukur ulang: halaman itu belum diperiksa apakah masih
+  muat tanpa gulir mendatar pada "Besar".
+- **Basis hurufnya berbeda dari demo papan.** Papan memakai basis 18 px ("Besar · isi 20px"); aplikasi ini
+  berbasis rem 17 px, jadi "Besar" menjadi ≈19 px. **Pengalinya sama** (1,12) — hanya basisnya yang beda,
+  dan itu tidak diubah pada putaran ini.
+- **Pilihan "Rapat" tidak dipasang.** Sengaja: papan sendiri yang membuangnya. Kalau ternyata masih
+  dibutuhkan, ia harus dikembalikan sebagai pilihan ketiga di `skemaUkuran` **beserta** pemeriksaan baru
+  di harness.
+
+## A.50 Pos yang Berdiri di Langit + Dua Tema Perjalanan Baru (12 Oktober 2026)
+
+Permintaan putaran ini: *"fix, saat di sisipkan quiz hasilnya masih di udara … dan buat template lain
+sekarang seperti di pelayaran untuk mencari harta karun di pulau (boleh pakai grafis gratis publik) dan
+luar angkasa"*.
+
+### A.50.1 Penyebabnya diukur dulu, bukan ditebak
+
+Jalur peta dihitung dari satu rumus: `y = 86 − maju × 74`, sehingga pos terakhir selalu berhenti di
+**y = 12%** — sedangkan punggungan gambar `gunung.svg` ada di **y ≈ 39%**. Jadi pos terakhir, dan setiap
+pos baru yang disisipkan (mis. kuis di ujung materi), berdiri **di langit di atas puncak**.
+
+Setelah cakrawala berkas itu diukur (kurva Bézier ditelusuri, bukan hanya titik kontrolnya), ternyata
+kerusakannya lebih luas dari dugaan: dua dari lima titik jalur lama berdiri di udara —
+`(30%, 54%)` **143 px di atas** punggungan, dan `(61%, 46%)` **17 px di atas** punggungan.
+
+### A.50.2 Yang dikerjakan
+
+- **Jalur peta jadi rute per tema (`RUTE_TEMA` di `sections/material/perjalanan.js`).** Tiap titik
+ditetapkan dari hasil ukur latarnya sendiri, dan `titikJalur(jumlah, adegan)` hanya **menyebar pos rata
+di sepanjang rute** — jadi menambah/menyisipkan bagian tidak lagi melempar pos ke tempat lain, apalagi ke
+langit. Tema tak dikenal (materi lama) tetap mendapat rute pendakian.
+- **Titik gunung ditempatkan di bawah punggungannya** (26–40 px di bawah garis): puncak ada di y ≈ 39%,
+pos terakhir sekarang di **y = 42%** — berdiri di puncak, bukan di langit.
+- **Dua tema baru di katalog server** (`Registry\TemaPerjalanan`): **Harta Karun di Pulau** (adegan
+`pulau`, 6 fase, tingkat Pelaut Pemula → Penemu Harta) dan **Luar Angkasa** (adegan `angkasa`, tingkat
+Astronaut Pemula → Penakluk Galaksi).
+- **Dua latar baru, karya proyek ini (CC0)** — tidak ada berkas unduhan, jadi tidak ada lisensi pihak
+ketiga yang perlu ditelusuri dan tidak butuh jaringan: `public/tema/pulau.svg` (23,6 KB · 201 bentuk) dan
+`public/tema/angkasa.svg` (18,4 KB · 200 bentuk). Tiap benda yang diinjak pos diberi `id`
+(`dermaga`, `perahu`, `karang`, `pantai`, `hutan`, `goa`, `landasan`, `bumi`, `asteroid`, `saturnus`,
+`bulan`) supaya bisa diperiksa mesin. Catatan kecil yang gampang menjebak: pada `pulau.svg` empat tempat pos
+tandanya `<g id="…">`, sedangkan `pantai` dan `hutan` hanya bisa ditandai pada `<path id="…">` karena
+bidangnya satu path — pagar bentuk membaca **kedua** bentuk penanda itu.
+- **Latar gelap punya aturan jalurnya sendiri.** Jalur peta bawaan berwarna pekat (dirancang untuk latar
+terang: gunung & pulau) dan tenggelam di langit malam, jadi `.jelajah[data-adegan='angkasa']` di
+`theme.css` menimpa `--jalur-belum`/`--jalur-lewat` dengan versi terang, sekaligus meredam lapis putih di
+kaki panggung.
+
+### A.50.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run … tema/latarTema · tema/gunungLatar · material/perjalanan · material/petaPerjalanan · material/api` | **86 tes lulus** (5 berkas) |
+| `./vendor/bin/pest tests/Feature/Slice12TemaMateriTest.php` | **10 tes lulus, 172 asersi** (katalog: 4 tema, urutan & fase terbaru) |
+| `npx eslint …` + `npm run check` (tsc strict) | bersih (dua galat tipe JSDoc ditemukan lalu diperbaiki, bukan di-suppress) |
+| `docs/jalankan-smoke-perjalanan.sh` (Chrome sungguhan) | **69/69 lulus** |
+
+Pemeriksaan baru di harness itu, apa adanya dari keluaran:
+
+```
+LULUS · tidak ada pos yang berdiri di langit (semuanya di bawah punggungan)
+LULUS · tema luar angkasa tersimpan dengan nama & fase bawaannya · nama “Luar Angkasa” · adegan angkasa
+LULUS · pos tema luar angkasa berdiri di benda rutenya (landasan → Bulan) · selisih maks 0.0%
+LULUS · latar tema luar angkasa memakai berkas angkasa.svg yang benar-benar termuat · src /tema/angkasa.svg
+LULUS · jalur peta dipakai versi terang di langit malam (aturannya berlaku) · stroke rgba(226, 240, 255, 0.78) · dash 6px, 6px
+```
+
+Perhatikan asersi **selisih maks 0,0%**: letak tanda pos di layar (diukur dari kotak panggung) sama persis
+dengan titik rute tema di berkas latarnya — jalur dan gambarnya tidak bisa lagi saling menyimpang tanpa
+ketahuan.
+
+### A.50.4 Berkas
+
+- `frontend/src/sections/material/perjalanan.js` (`RUTE_TEMA`, `ruteUntuk`, `titikJalur(jumlah, adegan)`)
+- `frontend/src/sections/material/PetaPerjalanan.jsx` (titik jalur mengikuti adegan + dua berkas latar baru)
+- `frontend/src/theme/theme.css` (aturan jalur terang untuk `[data-adegan='angkasa']`)
+- `frontend/public/tema/pulau.svg`, `frontend/public/tema/angkasa.svg`, `frontend/public/tema/LISENSI.md`
+- `backend/app/Sections/Material/Registry/TemaPerjalanan.php` (dua template baru)
+- `frontend/src/__tests__/theme/latarTema.test.js` (baru), `frontend/src/__tests__/sections/material/perjalanan.test.js`,
+  `frontend/src/__tests__/sections/material/petaPerjalanan.test.jsx`,
+  `backend/tests/Feature/Slice12TemaMateriTest.php`, `docs/smoke-ui-perjalanan.mjs`
+- `docs/laporan-pengujian.md` (A.50 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
+
+### A.50.5 Batasan jujur
+
+- **Dua tema baru sudah dibuka di layar, tetapi hanya pada satu ukuran layar.** Harness `perjalanan`
+sekarang memuat `pulau.svg` **dan** `angkasa.svg` sungguhan di Chrome dan mengukur enam/lima titik pos di
+atasnya (`selisih maks 0,0%`), jadi tampilan bawaannya bukan klaim lagi. Yang belum diperiksa: layar
+ponsel sempit untuk kedua tema ini (tema bawaan sudah punya harness perangkat terpisah).
+- **Saya tetap tidak bisa menilai "enak dilihat".** Yang diukur: bentuk berkas, kecerahan berbobot luas
+(terang vs gelap), dan tempat pos menginjak. Pilihan warna dan komposisi pulau/angkasa adalah usulan,
+bukan putusan.
+- **Tidak ada berkas gambar domain publik yang diunduh.** Pemilik produk mengizinkan, tetapi menambahkan
+grafis pihak ketiga berarti menambah baris lisensi yang harus ditelusuri; dua latar ini karena itu
+digambar di repo (CC0) dengan gaya yang sama seperti `gunung.svg`.
+- **Zon gelap hanya diuji lewat tema luar angkasa.** Belum ada tema gelap kedua, jadi aturan
+`.jelajah[data-adegan='angkasa']` belum dibuktikan bisa dipakai ulang tema gelap lain; kalau nanti ada,
+atributnya perlu digeneralisasi (mis. `[data-latar-gelap]`) **beserta** pemeriksanya.
+- **Jumlah pos yang diuji di peramban hanya 4 dan 5.** Rute untuk 2–12 pos diuji di Vitest, termasuk
+pagar regresi "tidak pernah menaruh pos di langit".
+
+---
+
+## A.51 Pencarian Murid yang Menyaring di Server (12 Oktober 2026)
+
+Daftar murid sudah berhalaman sejak P-01 (A.23): 50 baris per halaman, `meta.total` dikirim server. Yang
+belum ada: cara menemukan **satu** murid selain menyaring kelas lalu menelusuri halaman satu per satu — di
+sekolah dengan ratusan murid, anak yang kebetulan ada di halaman 4 praktis tidak ketemu. Kotak cari yang
+menyaring di klien tidak menutup celah itu: yang disaring hanya 50 baris yang kebetulan sedang tampil,
+sehingga murid ke-51 tetap terbaca "tidak ada" padahal ada.
+
+### A.51.1 Yang dikerjakan
+
+- **Server menyaring, bukan tabel yang tampil.** `MuridController@index` menerima filter baru `cari`
+  (`AllowedFilter::callback`) yang mencari ke **satu** kotak: `nis`, `nisn`, nama, dan email
+  (`orWhereHas('user')`) — tetap dibatasi satu sekolah seperti kueri sebelumnya.
+- **Detail yang mudah jadi bug, ditutup di server**: kata kunci di-`trim` (kata kosong diabaikan, bukan
+  mencari spasi), `%` dan `_` yang diketik guru di-escape supaya tidak berubah jadi wildcard (mencari
+  "100%" harus menyaring), dan `nis`/`nisn` yang boleh NULL tidak membuat murid tanpa NIS hilang dari
+  hasil pencarian nama.
+- **Kotak cari di halaman Murid** (`sections/school/HalamanMurid.jsx`): jeda **300 ms** sebelum kata kunci
+  dikirim (tanpa jeda, satu ketikan "rina" menembak empat permintaan dan hasil ketikan pertama bisa tiba
+  sesudah yang terakhir), daftar kembali ke **halaman 1** setiap kata kunci berubah, hasil lama tetap
+  tampil selama pencarian baru berjalan (`keepPreviousData`, jadi tabel tidak berkedip), keadaan kosong
+  khusus pencarian berikut tombol **"Bersihkan pencarian"**, dan kepala halaman menyebut kata kuncinya
+  (*"Menampilkan 3 dari 3 murid untuk “rina” — mencari…"*).
+- **Aturan parameter dipisah supaya bisa diuji tanpa jaringan** (`paramMurid` di `sections/school/api.js`):
+  kata kunci kosong **tidak** dikirim sebagai `filter[cari]`, dan spasi di ujung dipotong lebih dulu
+  supaya " rina " dan "rina" memakai kueri yang sama.
+
+### A.51.2 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./vendor/bin/pest tests/Feature/SekolahTest.php` | **10 passed (78 assertions)** — termasuk tes baru: nama sebagian & huruf besar-kecil, email, NIS, NISN, murid tanpa NIS, kata kunci tanpa hasil = kosong, gabungan dengan `filter[class_id]`, `%` di-escape, kata kunci berisi spasi diabaikan |
+| `npx vitest run src/__tests__/sections/school/pencarian.test.jsx` | **8 tes lulus** (5 di antaranya di `HalamanMurid`: ketikan cepat digabung, menyaring di server, keadaan kosong + jalan keluar, tombol bersihkan) |
+| `docs/jalankan-smoke-ui.sh murid` (Chrome sungguhan) | **18/18 pemeriksaan lulus, exit 0** |
+| `./verify.sh` | **SEMUA HIJAU (exit 0)** — Pest **332 tes/3164 asersi**, Redis wajib 9 tes/65 asersi, Pint bersih, `npm run check`, ESLint 0 error, Vitest **70 berkas/681 tes**, realtime lulus |
+
+Harness `murid` sengaja **menghitung permintaan** yang benar-benar ditembak ke `/v1/murid`, supaya "menyaring
+di server" dan "satu permintaan per ketikan" dibuktikan, bukan diasumsikan:
+
+```
+LULUS · ketikan cepat digabung jadi satu permintaan ke server · 1 permintaan · /v1/murid?page=1&filter[cari]=Cari
+LULUS · tiga murid uji muncul walau halaman 1 penuh murid lain (disaring server) · 3 baris
+LULUS · kelas + kata kunci dikirim bersamaan ke satu permintaan · /v1/murid?page=1&filter[class_id]=30&filter[cari]=Cari
+LULUS · kelas lain + kata kunci yang sama menghasilkan kosong (dua filter benar-benar bekerja) · kelas 26 → 0 baris
+```
+
+### A.51.3 Berkas
+
+- `backend/app/Sections/School/Http/Controllers/MuridController.php` (filter `cari` + `saringPencarian`)
+- `frontend/src/sections/school/HalamanMurid.jsx`, `frontend/src/sections/school/api.js` (`paramMurid`)
+- `frontend/src/__tests__/sections/school/pencarian.test.jsx` (baru), `backend/tests/Feature/SekolahTest.php`
+- `docs/smoke-ui-murid.mjs` (baru, dijalankan lewat `docs/jalankan-smoke-ui.sh murid`),
+  `docs/penjelasan-fitur.md` (bagian 19), `docs/handoff-sesi.md`
+
+### A.51.4 Batasan jujur
+
+- **Pencariannya masih `LIKE %kata%`**, jadi indeks kolom tidak terpakai dan waktunya naik seiring jumlah
+  murid. Untuk sekolah dengan ribuan murid, langkah berikutnya adalah pencarian penuh (full-text) atau
+  kolom `nama_norm` yang diindeks — belum dikerjakan. (Sejak A.53 ada tes regresi pada **1.200 murid** yang
+  membuktikan kebenaran pencarian + batas halaman pada skala itu, tetapi itu **bukan** uji beban waktu
+  tanggap.)
+- **Data ujinya kecil dan disengaja begitu**: harness memakai satu halaman penuh (50 murid lain) + 3 murid
+  uji. Yang dibuktikan adalah kueri yang dikirim ke server dan baris yang tampil, **bukan** waktu tanggap
+  pada ratusan ribu baris.
+- **Penyorotan kata kunci** ditambahkan kemudian di A.53 (`<mark>` di nama/NIS/email); pencarian tetap
+  hanya ada di halaman **Murid** — halaman Kelas, Mapel, dan Bank Soal belum punya kotak cari.
+- **Pencarian ini bukan pengganti impor**: mencocokkan data massal tetap lewat halaman Impor, dan kotak cari
+  tidak menandai murid yang datanya ganda.
+
+---
+
+## A.52 Temuan Sampingan: Pemeriksaan HTTP soal `tamper_suspected` Sudah Usang (12 Oktober 2026)
+
+Dipicu bukan oleh pencarian murid: saat `node docs/smoke-http-fitur.mjs` dijalankan ulang sebagai regresi
+untuk A.51 (harness API seluas ini memang tidak ikut `verify.sh`, jadi ia jarang dijalankan), hasilnya **merah
+1 dari 242**:
+
+```
+Total: 241/242 lulus · 1 gagal
+ - [K. Presence, anti-cheat, layar guru, SSE] kategori dari klien (tamper_suspected) diterima sesuai chunk anticheat → status=422
+```
+
+**Penyebabnya harness yang tertinggal, bukan kode backend.** Kategori `tamper_suspected` sudah dipindah ke
+daftar **turunan server** (ia lahir saat denyut proteksi murid berhenti padahal attempt masih berjalan —
+`SapuPresence`), sedangkan kategori deteksi sisi perangkat yang boleh dikirim klien sekarang adalah
+`dom_injection` dan `extension_detected`. Kontrak itu **sudah** diuji di
+`backend/tests/Feature/Slice07Test.php` — termasuk tes *"menerima kategori deteksi extension dari klien dan
+menolak tamper_suspected"* — dan enumnya menyebut alasannya apa adanya (klien tidak boleh menulis kategori
+turunan server supaya tidak bisa mengaburkan catatan). Pemeriksaan di smoke HTTP masih mengharapkan `201`, dan
+karena harness itu terakhir dijalankan di A.29, salahnya baru kelihatan sekarang.
+
+**Yang diperbaiki**: dua pemeriksaan di `docs/smoke-http-fitur.mjs` menggantikan yang lama, keduanya lewat
+HTTP sungguhan — `tamper_suspected` dari klien harus **422**, dan `dom_injection` + `extension_detected` dari
+klien harus **201**. Hasil ulang: **243/243 lulus, exit 0** (22,3 detik).
+
+**Batasan jujur**: `dom_injection`/`extension_detected` sudah diterima API, tetapi **frontend belum
+mengirimnya** (deteksi tamper sisi klien 2B–2D belum dikerjakan), jadi pemeriksaan ini membuktikan **kontrak
+API**, bukan deteksi sungguhan di perangkat murid *(menyusul: pengirim sisi klien di A.53, sisi server di
+A.54)*. Pelajaran yang dicatat: pemeriksaan yang tidak ikut `verify.sh` bisa tertinggal tanpa ada yang
+merah — inilah contohnya.
+
+---
+
+## A.53 Deteksi Tamper Sisi Klien, Penyorotan Kata Kunci, dan Pencarian pada Ribuan Murid (12 Oktober 2026)
+
+Menutup dua butir "belum" yang disebut apa adanya di A.51 dan A.52: deteksi tamper di perangkat murid
+(2B–2C) yang selama ini hanya punya **kontraknya** di server, dan penyorotan kata kunci di hasil pencarian.
+
+### A.53.1 Deteksi tamper halaman (2B–2C)
+
+- **Modul baru** `frontend/src/security/deteksiTamper.js` memeriksa empat hal, semuanya **bukti untuk guru**:
+  1. **sumber dari skema extension** — node (script/link/iframe/…) ber-`chrome-extension:`,
+     `moz-extension:`, atau `safari-web-extension:` → `extension_detected`;
+  2. **fungsi proteksi yang diganti** — `window.addEventListener`, `EventTarget.prototype.addEventListener`,
+     `Event.prototype.preventDefault`/`stopPropagation` dibandingkan dengan **sidik jari yang diambil saat
+     mulai** (`Function.prototype.toString.call`); yang berubah → `dom_injection`;
+  3. **overlay asing** — elemen fixed/absolute/sticky ber-z-index ≥ 1000 yang menutupi area (≥ 200×200 px)
+     **dihapus** (dinetralkan) sekaligus dicatat → `dom_injection`;
+  4. **kanari yang hilang** — elemen kanari tersembunyi yang kita sisipkan; kalau dihapus/disembunyikan →
+     `dom_injection`.
+- **Jadwal**: sidik jari + kanari saat mount, pemindaian pertama +4 detik, lalu **tiap 15 detik**, ditambah
+  `MutationObserver` dengan jeda gabung 250 ms. Tindakan hanya: hapus node asing, netralkan overlay,
+  kaburkan layar **4 detik**.
+- **Default MATI dan sengaja TIDAK ikut preset `exam_mode`**: pemindai ini merapikan DOM, jadi rawan salah
+  tuduh — guru harus menyalakannya sendiri dengan sadar. Saklar `detect_tamper` ditambahkan ke
+  `KunciPengaturan` (backend) dan ke `SAKLAR_RINCI` klien, tetapi **bukan** ke `SAKLAR_PRESET_UJIAN`.
+- **Fail-open**: setiap pemeriksaan dibungkus try/catch; `MutationObserver` yang gagal, DOM yang tidak
+  lengkap, atau kanari yang tidak bisa disisipkan tidak pernah melempar ke pohon React.
+
+Baseline sidik jari **dibandingkan dengan dirinya sendiri**, bukan dengan anggapan `"[native code]"`:
+memeriksa teks native akan salah tuduh di jsdom (dan di sebagian peramban) yang fungsi bawaannya bukan native.
+
+### A.53.2 Penyorotan kata kunci pencarian murid
+
+- Modul murni baru `frontend/src/sections/school/penyorotan.js` (`potongUntukSorot`) memecah teks jadi
+  potongan cocok/tidak, dan `HalamanMurid.jsx` merender potongan yang cocok sebagai `<mark>` di **nama, NIS,
+  dan email** — tanpa `dangerouslySetInnerHTML`.
+- Metakarakter regex (mis. `%`) diperlakukan sebagai huruf biasa, pencocokan tidak peduli huruf besar/kecil,
+  dan kata kunci kosong tidak menyorot apa pun.
+
+### A.53.3 Pencarian pada ribuan murid (regresi skala + penyorotan)
+
+- **Tes server skala besar** (`backend/tests/Feature/SekolahTest.php`): satu kelas diisi **1.200 murid**, lalu
+  dibuktikan `meta.total = 1201`, halaman pertama tetap dibatasi 50, pencarian nama mengembalikan tepat satu
+  baris, pencarian lewat NIS (`ZUL-01`) juga, dan halaman terakhir memuat sisa. Waktunya **±1,24 dtk** — jadi
+  masuk gerbang mutu tanpa memperlambat `verify.sh` berarti.
+- **Tes unit penyorotan** (`frontend/src/__tests__/sections/school/penyorotan.test.js`) dan **assertion `<mark>`**
+  di `pencarian.test.jsx`.
+
+### A.53.4 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/security` | **33 lulus** — `deteksiTamper` 12, `useExamSecurity` 8 (termasuk default-mati & overlay dinetralkan), `pengaturanProteksi` 6 (termasuk `detect_tamper` di luar preset), `pengirimKejadian` 7 |
+| `php artisan test --filter='pencarian tetap menemukan satu murid di antara ribuan'` | **1 passed (14 assertions)**, ±1,24 dtk untuk 1.200 murid |
+| `docs/jalankan-smoke-ui.sh murid` (Chrome sungguhan) | **18/18 lulus, exit 0** — penyorotan tidak merusak pemeriksaan teks |
+| `docs/jalankan-smoke-ui.sh slice07` (Chrome sungguhan) | **20/20 lulus, exit 0** — payload proteksi sungguhan memuat `"detect_tamper":false` (default mati) |
+| `node docs/smoke-http-fitur.mjs` (backend + realtime hidup) | **243/243 lulus, exit 0** (21,5 dtk) |
+| `./verify.sh` | **SEMUA HIJAU (exit 0)** — Pest **333 tes/3178 asersi**, Redis wajib 9 tes/65 asersi, Pint bersih, `npm run check` bersih, ESLint 0 error, Vitest **72 berkas/702 tes**, realtime lulus |
+
+### A.53.5 Berkas
+
+- Baru: `frontend/src/security/deteksiTamper.js`, `frontend/src/sections/school/penyorotan.js`,
+  `frontend/src/__tests__/security/deteksiTamper.test.js`,
+  `frontend/src/__tests__/sections/school/penyorotan.test.js`
+- Diubah: `frontend/src/security/pengaturanProteksi.js` (saklar `detect_tamper`),
+  `frontend/src/security/useExamSecurity.js` (wiring pemindai + label), `frontend/src/sections/school/HalamanMurid.jsx`
+  (komponen `Sorot`), `frontend/src/__tests__/security/{pengaturanProteksi,useExamSecurity}.test.*`,
+  `frontend/src/__tests__/sections/school/pencarian.test.jsx`, `backend/tests/Feature/SekolahTest.php`,
+  `backend/app/Sections/Settings/Enums/KunciPengaturan.php` (saklar `DetectTamper`)
+
+### A.53.6 Batasan jujur
+
+- **Deteksi tamper sisi server belum ada** *pada putaran A.53*: endpoint denyut ber-nonce dan sapuan
+  (`SapuPresence`) yang mengubah denyut berhenti menjadi `tamper_suspected` menyusul di **A.54**. Yang
+  selesai di A.53 adalah sisi **klien** (2B–2C) — pemindai + pengirim untuk `dom_injection` dan
+  `extension_detected`; kategori `tamper_suspected` tetap **hanya** milik server.
+- **Rawan salah tuduh memang disengaja ditangani dengan default mati**, bukan dengan membuat deteksi jadi
+  sempurna: overlay sungguhan buatan extension tetap bisa lolos (mis. yang tidak memakai z-index tinggi
+  atau lebih kecil dari 200×200 px), dan sebaliknya overlay guru yang sah ber-z-index tinggi bisa ikut
+  dihapus. Karena itu catatannya tetap bahan tinjauan, bukan vonis.
+- **Uji tamper berjalan di jsdom**, bukan di peramban sungguhan: yang dibuktikan adalah logika deteksi pada
+  DOM yang dikendalikan uji, bukan deteksi terhadap extension Chrome asli.
+- **Pencarian tetap `LIKE %kata%`**: uji 1.200 murid membuktikan **kebenaran pada skala itu** dan batas
+  halaman, **bukan** waktu tanggap pada puluhan ribu baris; indeks kolom belum terpakai dan full-text belum
+  dikerjakan.
+- **Penyorotan hanya di halaman Murid**; kotak cari di Kelas, Mapel, dan Bank Soal belum ada.
+
+---
+
+## A.54 Denyut Proteksi Ber-Nonce: Sisi Server Deteksi Tamper (2D) (12 Oktober 2026)
+
+A.53 menutup sisi **klien** deteksi tamper (2B–2C); yang tertinggal adalah **2D**: membuktikan dari sisi
+server bahwa sensor di perangkat murid masih hidup. Tanpa itu, murid cukup mematikan protection (menutup
+tab, memblokir skrip, melepas pendengar) dan tidak ada yang tahu — catatan `tamper_suspected` sudah ada di
+enum dan skornya (9), tetapi belum ada yang menurunkannya.
+
+### A.54.1 Yang dikerjakan
+
+- **Service baru** `backend/app/Sections/Presence/Services/DenyutProteksiService.php`. Bedanya dengan
+  kehadiran: kehadiran menjawab "murid masih ada", denyut menjawab "**proteksinya masih hidup**". Keduanya
+  dipisah supaya tab yang disembunyikan tetap dianggap online.
+- **Nonce + rotasi**: saat kuis disajikan dengan proteksi menyala, server menerbitkan nonce dan menandai
+  denyut ditunggu (`aktifkan()`); `terakhir` disetel ke sekarang sebagai **masa tenggang** — murid yang
+  berhenti sejak awal tetap terdeteksi, bukan lolos. Klien mengirim denyut tiap 30 detik **membawa nonce
+  terakhir**; nonce yang cocok dirotasi (`denyut()`), nonce lama/diulang **ditolak 409 dan tidak
+  menyegarkan liveness** — jadi liveness tidak bisa dipalsukan dengan memutar ulang kiriman lama.
+- **Endpoint** `POST /api/v1/attempt/{attempt}/denyut` (`KehadiranController@denyut`, `DenyutRequest`,
+  `throttle:denyut` 12/menit per akun). Policy `jawab` menjaga: hanya pemilik attempt yang masih berjalan.
+- **Payload attempt** kini memuat `denyut: { nonce, interval_detik }` (null bila proteksi tidak menyala,
+  dan tidak pernah diterbitkan untuk guru yang meninjau attempt yang sama). `kumpulkan()` memanggil
+  `matikan()`.
+- **Turunan `tamper_suspected`** di `sapu()`: hanya untuk attempt yang **masih berjalan** dan **belum lewat
+  deadline**, hanya **sekali** per attempt (penanda di cache), dan hanya bila denyut berhenti lebih dari
+  100 detik. Dipanggil `SapuPresence` (job per menit) **dan** `MonitorService::snapshot()` — supaya guru
+  melihat catatannya saat membuka Live Monitor, bukan menit depan.
+- **Fail-open**: setiap sentuhan cache di service dibungkus try/catch; Redis mati hanya mematikan denyut,
+  bukan ulangannya. `sudahDicetat()` yang gagal membaca mengembalikan `true` supaya sapuan **tidak**
+  menumpuk baris baru saat cache bermasalah.
+
+### A.54.2 Perbaikan sampingan: harness HTTP yang rapuh terhadap jumlah murid
+
+Dijalankan ulang untuk regresi, `node docs/smoke-http-fitur.mjs` justru merah **2 dari 235**: *"murid hasil
+daftar mandiri muncul di daftar murid guru"* dan *"anggota kelas cukup untuk membuat tim"*. Penyebabnya
+**bukan** fitur baru: basis data dev kini menyimpan **211 murid** dari putaran smoke sebelumnya, sedangkan
+kedua pemeriksaan itu mengambil `?per_page=200` lalu mencari di halaman pertama. Melewati 200 baris berarti
+pemeriksaan gagal walau datanya ada — jadi harness-nya rapuh pada skala, bukan kodenya rusak.
+
+**Yang diperbaiki** (memanfaatkan A.51, bukan menurunkan pemeriksaan): pencarian murid mandiri kini memakai
+`filter[cari]` ke emailnya (eksak, sekaligus membuktikan pencarian server bekerja), dan daftar anggota kelas
+memakai `filter[class_id]` supaya kelasnya disaring **di server**. Hasil ulang: **247/247 lulus, exit 0**
+(22,4 dtk; bertambah 4 pemeriksaan denyut).
+
+### A.54.3 Verifikasi (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test --filter=DenyutProteksiTest` | **6 passed (53 assertions)** — rotasi nonce, nonce salah/diulang ditolak tanpa menyegarkan, sapu mencatat sekali, tidak menuduh saat segar/lewat deadline, payload + endpoint, hanya pemilik & hanya saat berjalan |
+| `npx vitest run src/__tests__/sections/presence` | **14 lulus / 2 berkas** — termasuk 5 tes hook denyut (tanpa denyut bila proteksi mati, rotasi nonce, 409 → muat ulang, fail-open) |
+| `node docs/smoke-http-fitur.mjs` (backend + realtime hidup) | **247/247 lulus, exit 0** (22,4 dtk) — termasuk 4 pemeriksaan baru di bagian K: payload menerbitkan nonce, denyut diterima & nonce dirotasi, nonce lama ditolak 409, nonce palsu ditolak 409 |
+| `docs/jalankan-smoke-ui.sh slice07` (Chrome sungguhan) | **20/20 lulus, exit 0** — payload proteksi sungguhan tetap membawa `"detect_tamper":false` |
+| `./verify.sh` | **SEMUA HIJAU (exit 0)** — Pest **339 passed (3231 assertions)**, Redis wajib 9/65, Pint bersih, checkJs, ESLint 0 error, Vitest **73 berkas / 707 tes**, realtime 20 |
+
+### A.54.4 Berkas
+
+- Baru: `backend/app/Sections/Presence/Services/DenyutProteksiService.php`,
+  `backend/app/Sections/Presence/Http/Requests/DenyutRequest.php`, `backend/tests/Feature/DenyutProteksiTest.php`,
+  `frontend/src/sections/presence/useDenyutProteksi.js`,
+  `frontend/src/__tests__/sections/presence/denyutProteksi.test.jsx`
+- Diubah: `backend/app/Sections/Presence/Http/Controllers/KehadiranController.php`,
+  `backend/app/Sections/Presence/Jobs/SapuPresence.php`, `backend/app/Sections/Presence/Services/MonitorService.php`,
+  `backend/app/Sections/Attempt/Http/Controllers/AttemptController.php`,
+  `backend/app/Sections/Attempt/Http/Resources/AttemptResource.php`,
+  `backend/app/Providers/AppServiceProvider.php` (limiter `denyut`), `backend/routes/api.php`,
+  `frontend/src/sections/attempt/api.js` (`denyutProteksi` + skema `denyut`),
+  `frontend/src/sections/attempt/HalamanKerjakan.jsx` (wiring), `docs/smoke-http-fitur.mjs`
+
+### A.54.5 Batasan jujur
+
+- **Ambang dan jeda adalah nilai tetap**, belum bisa diatur guru: 30 detik per denyut dan 100 detik sebelum
+  dicurigai. Jaringan yang putus-putus lebih lama dari itu bisa membuat murid **jujur** tercatat
+  `tamper_suspected`; karena itu catatannya tetap bahan tinjauan (skor 9), bukan vonis, dan dedupe-nya satu
+  baris per attempt supaya tidak menumpuk.
+- **Belum ada uji browser sungguhan untuk denyut**: yang dibuktikan adalah unit hook (jsdom) + kontrak HTTP
+  + unit service. Sapuan berkala berjalan lewat penjadwal (`Schedule::job`) yang di mesin dev tidak selalu
+  hidup, jadi bukti "guru melihat catatannya otomatis di Live Monitor" bersandar pada `MonitorService` yang
+  memanggil `sapu()` saat snapshot, bukan pada cron.
+- **Nonce bukan autentikasi**: ia menutup liveness palsu (pemutaran ulang), bukan menggantikan sesi/policy.
+  Klien yang benar-benar berhenti mengirim tetap hanya bisa dicurigai setelah ambang — dan murid yang
+  menyadari hal itu bisa memutar ulang skrip denyutnya (deteksi browser memang menyimpan batasan ini).

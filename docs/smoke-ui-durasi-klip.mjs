@@ -10,7 +10,12 @@
 //      tanpa memindahkan ujung kanannya, dan
 //   4. gagang itu berlaku juga untuk klip **kuis** dan klip **media** (bukan cuma
 //      tipe klip yang kebetulan terpilih di bagian 3): materi dicari dari API
-//      berdasarkan tipe bloknya, lalu klip tipe itu diklik dan dipangkas.
+//      berdasarkan tipe bloknya, lalu klip tipe itu diklik dan dipangkas, dan
+//   5. **bentuk** tandanya: satu goresan 3px yang digeser ke dalam klip, bukan
+//      `||` (dulu goresannya tinggal 1px karena cincin `border` + `box-sizing:
+//      border-box`, dan duduk menempel di tepi sehingga berdempetan dengan garis
+//      tepi 3px klip sebelahnya). Dibuktikan dari gaya terhitung `::before` +
+//      pembacaan kolom piksel potret layar, karena tanda digambar lewat CSS.
 //
 // Materi yang dibuka tidak disimpan, jadi susunan aslinya tidak berubah.
 //
@@ -240,6 +245,111 @@ async function main() {
       'tanda | memakai kursor seret kiri-kanan',
       gagang.kursor === 'ew-resize',
       String(gagang.kursor),
+    )
+
+    // ---------- 3b. Bentuk tanda `|`: satu goresan, digeser ke dalam ----------
+    // Tandanya digambar lewat `::before`, jadi "apakah terbaca `|` atau `||`"
+    // tidak bisa dinilai dari DOM: diukur dari gaya terhitung + kolom piksel
+    // potret layar. Yang dijaga: lebar goresan utuh 3px (cincin `border: 1px`
+    // pernah menyisakan 1px karena `box-sizing: border-box`), goresan lebih
+    // pendek dari klip, digeser sama dalam di dua sisi, dan di dalam klip
+    // terpilih hanya ada SATU goresan per sisi — berjarak ≥ 5px dari tepinya.
+    const bentuk = await evalJs(`(() => {
+      const kiri = document.querySelector('.nle-pangkas-kiri')
+      const kanan = document.querySelector('.nle-pangkas-kanan')
+      const tanda = getComputedStyle(kiri, '::before')
+      const klip = document.querySelector('.nle-klip-aktif').getBoundingClientRect()
+
+      return {
+        lebar: tanda.width,
+        tinggi: tanda.height,
+        cincin: tanda.borderLeftWidth,
+        garisLuar: tanda.outlineStyle + ' ' + tanda.outlineWidth,
+        masukKiri: getComputedStyle(kiri).paddingInlineStart,
+        masukKanan: getComputedStyle(kanan).paddingInlineEnd,
+        tinggiKlip: klip.height + 'px',
+      }
+    })()`)
+    catat(
+      'tanda | digambar satu goresan 3px — tanpa cincin border yang menyusutkannya',
+      bentuk.lebar === '3px' && bentuk.cincin === '0px' && bentuk.garisLuar === 'solid 1px',
+      `lebar=${bentuk.lebar} cincin=${bentuk.cincin} garis luar=${bentuk.garisLuar}`,
+    )
+    catat(
+      'tanda | lebih pendek dari klip dan digeser sama dalam di kedua sisi',
+      Number.parseFloat(bentuk.tinggi) < Number.parseFloat(bentuk.tinggiKlip) &&
+        Number.parseFloat(bentuk.masukKiri) >= 6 &&
+        bentuk.masukKiri === bentuk.masukKanan,
+      `tinggi ${bentuk.tinggi} < klip ${bentuk.tinggiKlip} · masuk kiri=${bentuk.masukKiri} kanan=${bentuk.masukKanan}`,
+    )
+
+    const potretTanda = await send('Page.captureScreenshot', { format: 'png' }, sessionId)
+    const pitaTanda = await evalJs(`(async () => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,${potretTanda.data}'
+      await img.decode()
+      const kanvas = document.createElement('canvas')
+      kanvas.width = img.width
+      kanvas.height = img.height
+      const ctx = kanvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+
+      const aksen = (() => {
+        const m = getComputedStyle(document.documentElement).getPropertyValue('--aksen').trim().match(/^#(..)(..)(..)$/)
+        return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null
+      })()
+      if (aksen === null) throw new Error('variabel --aksen tidak terbaca sebagai hex')
+
+      const klip = document.querySelector('.nle-klip-aktif').getBoundingClientRect()
+      const baris = getImageData(klip)
+
+      function getImageData(kotak) {
+        const y = Math.round(kotak.top + kotak.height / 2)
+        return ctx.getImageData(Math.round(kotak.left), y, Math.round(kotak.width), 1).data
+      }
+      const adalah = (x) => {
+        const i = (x - Math.round(klip.left)) * 4
+        return Math.abs(baris[i] - aksen[0]) + Math.abs(baris[i + 1] - aksen[1]) + Math.abs(baris[i + 2] - aksen[2]) <= 40
+      }
+
+      /** Goresan aksen di pita dalam klip: jumlah, panjang, dan jarak ke tepinya. */
+      const pita = (sisi) => {
+        const tepiKiri = Math.round(klip.left)
+        const tepiKanan = Math.round(klip.right)
+        const dari = sisi === 'kiri' ? tepiKiri : tepiKanan - 11
+        const sampai = sisi === 'kiri' ? tepiKiri + 11 : tepiKanan
+        const goresan = []
+
+        for (let x = dari; x < sampai; x++) {
+          if (!adalah(x)) continue
+          const akhir = goresan[goresan.length - 1]
+          if (akhir && akhir.akhir === x - 1) { akhir.akhir = x; akhir.panjang++ }
+          else goresan.push({ mulai: x, akhir: x, panjang: 1 })
+        }
+
+        const pertama = goresan[0]
+        const terakhir = goresan[goresan.length - 1]
+
+        return {
+          jumlah: goresan.length,
+          panjang: goresan.length === 1 ? goresan[0].panjang : null,
+          jarak: sisi === 'kiri'
+            ? (pertama ? pertama.mulai - tepiKiri : null)
+            : (terakhir ? tepiKanan - terakhir.akhir : null),
+        }
+      }
+
+      return { kiri: pita('kiri'), kanan: pita('kanan'), lebarKlip: Math.round(klip.width) }
+    })()`)
+    catat(
+      'di dalam klip terpilih hanya ada SATU goresan aksen per sisi',
+      pitaTanda.kiri.jumlah === 1 && pitaTanda.kanan.jumlah === 1,
+      `tepi kiri=${pitaTanda.kiri.jumlah} goresan · tepi kanan=${pitaTanda.kanan.jumlah} goresan (klip ${pitaTanda.lebarKlip}px)`,
+    )
+    catat(
+      'goresan itu utuh 3px dan tidak menempel di tepi klip (jarak ≥ 5px)',
+      [pitaTanda.kiri, pitaTanda.kanan].every((satu) => satu.panjang >= 2 && satu.panjang <= 5 && satu.jarak >= 5),
+      `kiri ${pitaTanda.kiri.panjang}px jarak ${pitaTanda.kiri.jarak}px · kanan ${pitaTanda.kanan.panjang}px jarak ${pitaTanda.kanan.jarak}px`,
     )
 
     // Penjaga: pastikan titiknya benar-benar mengenai tanda `|` (bukan elemen

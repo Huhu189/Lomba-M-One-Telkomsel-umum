@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sections\Presence\Jobs;
 
+use App\Sections\Presence\Services\DenyutProteksiService;
 use App\Sections\Presence\Services\PenyiarRealtime;
 use App\Sections\Presence\Services\PresenceService;
 use Illuminate\Bus\Queueable;
@@ -33,12 +34,24 @@ class SapuPresence implements ShouldQueue
 
     public function __construct(private readonly bool $siarkan = true) {}
 
-    public function handle(PresenceService $presence, PenyiarRealtime $penyiar): void
-    {
+    public function handle(
+        PresenceService $presence,
+        DenyutProteksiService $denyut,
+        PenyiarRealtime $penyiar,
+    ): void {
         $dibuang = $presence->sapu();
+
+        // Denyut proteksi (2D): catat attempt yang sensornya berhenti padahal
+        // ulangannya masih berjalan. Galatnya sudah ditelan di dalam service
+        // (fail-open), jadi sapuan presence tetap selesai walau ini gagal.
+        $tamper = $denyut->sapu();
 
         if ($this->siarkan && $dibuang > 0) {
             $penyiar->siarkan('ulangan:presence', ['jenis' => 'sapu', 'dibuang' => $dibuang]);
+        }
+
+        if ($this->siarkan && $tamper > 0) {
+            $penyiar->siarkan('ulangan:presence', ['jenis' => 'tamper', 'dicatat' => $tamper]);
         }
     }
 

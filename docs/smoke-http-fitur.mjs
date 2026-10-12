@@ -337,9 +337,12 @@ async function utama() {
   const namaSamaB = await guru.post('/api/v1/murid', { nama: `Nama Sama ${TANDA}`, email: `sama.b.${TANDA}@murid.test`, class_id: kelasId })
   cek('dua murid boleh bernama sama (bukan 500)', namaSamaA.status === 201 && namaSamaB.status === 201, `status=${namaSamaA.status}/${namaSamaB.status} ${galatRingkas(namaSamaB.data)}`)
 
-  const daftarMurid = daftar((await guru.get('/api/v1/murid?per_page=200')).data)
-  const muridMandiri = daftarMurid.find((m) => m.email === emailMandiri)
-  cek('murid hasil daftar mandiri muncul di daftar murid guru', Boolean(muridMandiri), `total=${daftarMurid.length}`)
+  // Dicari langsung ke emailnya: basis data dev menyimpan ratusan murid dari
+  // putaran smoke sebelumnya, jadi "ada di halaman pertama" bukan lagi bukti
+  // yang sahih. Cara ini sekaligus membuktikan `filter[cari]` (A.51) bekerja.
+  const cariMandiri = daftar((await guru.get(`/api/v1/murid?filter[cari]=${encodeURIComponent(emailMandiri)}`)).data)
+  const muridMandiri = cariMandiri.find((m) => m.email === emailMandiri)
+  cek('murid hasil daftar mandiri muncul di daftar murid guru', Boolean(muridMandiri), `total=${cariMandiri.length}`)
   if (muridMandiri) {
     const pindah = await guru.put(`/api/v1/murid/${muridMandiri.id}`, { nama: 'Murid Mandiri', email: emailMandiri, class_id: kelasId })
     cek('guru memindahkan murid mandiri ke kelasnya', pindah.status === 200, `status=${pindah.status}`)
@@ -739,7 +742,10 @@ async function utama() {
 
   // ---------- J. Tim & snapshot keanggotaan ----------
   judul('J. Mode tim + snapshot anggota (Q-18)')
-  const anggotaKelas = daftar((await guru.get('/api/v1/murid?per_page=200')).data).filter((m) => m.class_id === kelasId)
+  // Saring kelasnya DI SERVER: tanpa ini, murid kelas ini bisa berada di luar
+  // halaman pertama begitu sekolah punya ratusan murid (dan tim lalu terlihat
+  // "tidak punya anggota" padahal ada).
+  const anggotaKelas = daftar((await guru.get(`/api/v1/murid?per_page=200&filter[class_id]=${kelasId}`)).data).filter((m) => m.class_id === kelasId)
   const kuisTim = await guru.post('/api/v1/kuis', {
     judul: `Ulangan Tim Smoke ${TANDA}`,
     subject_id: mapelId,
@@ -834,10 +840,39 @@ async function utama() {
   cek('kejadian anti-cheat dari klien dicatat', [200, 201].includes(kejadian.status), `status=${kejadian.status}`)
   const kejadianPalsu = await murid.post(`/api/v1/attempt/${attemptJaga}/kejadian`, { kejadian: [{ kategori: 'duplicate_session', client_at: iso(Date.now()) }] })
   cek('kategori turunan server (duplicate_session) ditolak 422 walau dikirim klien', kejadianPalsu.status === 422, `status=${kejadianPalsu.status}`)
-  // Chunk anticheat menaruh `tamper_suspected` di daftar kategori KLIEN (detektor
-  // tamper sisi perangkat), jadi klien memang boleh mengirimnya.
+  // `tamper_suspected` sudah dipindah ke daftar kategori TURUNAN SERVER: ia muncul
+  // saat denyut proteksi murid berhenti padahal attempt masih jalan (SapuPresence),
+  // jadi perangkat murid tidak boleh menulisnya sendiri. Kategori deteksi sisi
+  // perangkat yang boleh dikirim klien adalah `dom_injection` dan
+  // `extension_detected` — keduanya diuji di sini supaya daftar "boleh dari klien"
+  // tetap terbukti lewat HTTP, bukan hanya lewat enum.
   const kejadianTamper = await murid.post(`/api/v1/attempt/${attemptJaga}/kejadian`, { kejadian: [{ kategori: 'tamper_suspected', client_at: iso(Date.now()) }] })
-  cek('kategori dari klien (tamper_suspected) diterima sesuai chunk anticheat', kejadianTamper.status === 201, `status=${kejadianTamper.status}`)
+  cek('kategori turunan server (tamper_suspected) ditolak 422 walau dikirim klien', kejadianTamper.status === 422, `status=${kejadianTamper.status}`)
+  const kejadianDeteksiKlien = await murid.post(`/api/v1/attempt/${attemptJaga}/kejadian`, {
+    kejadian: [
+      { kategori: 'dom_injection', client_at: iso(Date.now()) },
+      { kategori: 'extension_detected', client_at: iso(Date.now()) },
+    ],
+  })
+  cek('kategori deteksi sisi perangkat (dom_injection, extension_detected) diterima', kejadianDeteksiKlien.status === 201, `status=${kejadianDeteksiKlien.status}`)
+
+  // Denyut proteksi ber-nonce (2D). Proteksi dinyalakan dulu supaya payload
+  // attempt menerbitkan nonce; klien lalu mengirim denyut ber-nonce dan
+  // menerima nonce baru. Nonce lama (pemutaran ulang) harus ditolak 409 —
+  // itulah yang membuat denyut membuktikan liveness, bukan sekadar kiriman.
+  await guru.put('/api/v1/pengaturan', { lingkup: 'kuis', lingkup_id: kuisJagaId, kunci: 'anti_cheat', nilai: true })
+  await guru.put('/api/v1/pengaturan', { lingkup: 'kuis', lingkup_id: kuisJagaId, kunci: 'block_paste', nilai: true })
+  const attemptJagaMuat = await murid.get(`/api/v1/attempt/${attemptJaga}`)
+  const nonceDenyut = attemptJagaMuat.data?.denyut?.nonce
+  cek('payload attempt menerbitkan nonce denyut saat proteksi menyala', typeof nonceDenyut === 'string' && nonceDenyut.length > 0, `nonce=${String(nonceDenyut).slice(0, 8)}…`)
+  const denyutSatu = await murid.post(`/api/v1/attempt/${attemptJaga}/denyut`, { nonce: nonceDenyut })
+  const nonceBaru = denyutSatu.data?.nonce
+  cek('denyut proteksi diterima dan nonce dirotasi', denyutSatu.status === 200 && typeof nonceBaru === 'string' && nonceBaru !== nonceDenyut, `status=${denyutSatu.status}`)
+  const denyutUlang = await murid.post(`/api/v1/attempt/${attemptJaga}/denyut`, { nonce: nonceDenyut })
+  cek('denyut dengan nonce lama (pemutaran ulang) ditolak 409', denyutUlang.status === 409, `status=${denyutUlang.status}`)
+  const denyutPalsu = await murid.post(`/api/v1/attempt/${attemptJaga}/denyut`, { nonce: 'nonce-palsu' })
+  cek('denyut dengan nonce palsu ditolak 409', denyutPalsu.status === 409, `status=${denyutPalsu.status}`)
+
   const kejadianDiTutup = await murid.post(`/api/v1/attempt/${attemptId}/kejadian`, { kejadian: [{ kategori: 'tab_switch', client_at: iso(Date.now()) }] })
   cek('kejadian ditolak untuk attempt yang sudah dikumpulkan (403)', kejadianDiTutup.status === 403, `status=${kejadianDiTutup.status}`)
 

@@ -182,3 +182,57 @@ describe('proteksi adaptif di perangkat sentuh', () => {
     berkas.remove()
   })
 })
+
+/**
+ * Komponen penguji deteksi tamper: saklar bisa dinyalakan/dimatikan per uji.
+ *
+ * @param {{ proteksi: Record<string, boolean> }} props
+ */
+function PercobaanTamper({ proteksi }) {
+  useExamSecurity({ attemptId: 1, proteksi, aktif: true, kirim: async () => true })
+
+  return <p>tamper</p>
+}
+
+/**
+ * Overlay asing ber-z-index tinggi yang menutupi area ulangan.
+ *
+ * @param {HTMLElement} [induk]
+ */
+function buatOverlay(induk = document.body) {
+  const node = document.createElement('div')
+  node.style.position = 'fixed'
+  node.style.zIndex = '5000'
+  node.getBoundingClientRect = () => /** @type {DOMRect} */ ({ width: 800, height: 600 })
+  induk.appendChild(node)
+
+  return node
+}
+
+describe('deteksi tamper halaman', () => {
+  it('tidak dipasang bila saklar detect_tamper mati: overlay asing dibiarkan', async () => {
+    act(() => root.render(<PercobaanTamper proteksi={{ anti_cheat: true, block_paste: true }} />))
+
+    const overlay = buatOverlay()
+
+    await act(async () => {
+      vi.advanceTimersByTime(20000)
+    })
+
+    expect(document.body.contains(overlay)).toBe(true)
+  })
+
+  it('dipasang bila detect_tamper menyala: overlay asing dinetralkan', async () => {
+    act(() => root.render(<PercobaanTamper proteksi={{ anti_cheat: true, detect_tamper: true }} />))
+
+    const overlay = buatOverlay()
+
+    await act(async () => {
+      // Pemindaian awal + pemindaian berkala.
+      vi.advanceTimersByTime(4000)
+      vi.advanceTimersByTime(15000)
+    })
+
+    expect(document.body.contains(overlay)).toBe(false)
+  })
+})

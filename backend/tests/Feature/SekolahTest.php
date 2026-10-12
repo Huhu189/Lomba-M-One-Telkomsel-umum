@@ -127,6 +127,105 @@ it('daftar murid berpaginasi dan membatasi jumlah per halaman', function (): voi
         ->assertJsonPath('meta.per_page', 200);
 });
 
+it('pencarian murid menyaring satu sekolah: nama, NIS, NISN, dan email', function (): void {
+    $kelas = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6E', 'tingkat' => 6]);
+    Sanctum::actingAs(User::factory()->guru()->create());
+
+    $muridUji = [
+        ['nama' => 'Rina Aulia', 'email' => 'rina.aulia@murid.test', 'nis' => '7001', 'nisn' => '0070011111'],
+        ['nama' => 'Budi Santoso', 'email' => 'budi.santoso@murid.test', 'nis' => '7002', 'nisn' => '0070022222'],
+        // Murid yang belum diberi NIS: pencarian nama harus tetap menemukannya.
+        ['nama' => 'Citra Dewi', 'email' => 'citra.dewi@murid.test'],
+    ];
+
+    foreach ($muridUji as $data) {
+        $this->postJson('/api/v1/murid', $data + ['class_id' => $kelas->id])->assertCreated();
+    }
+
+    // Nama: sebagian kata saja, dan tidak peduli huruf besar/kecil.
+    $this->getJson('/api/v1/murid?filter[cari]=rina')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.nama', 'Rina Aulia')
+        ->assertJsonPath('meta.total', 1);
+
+    $this->getJson('/api/v1/murid?filter[cari]=AULIA')->assertOk()->assertJsonPath('meta.total', 1);
+
+    // Email, NIS, dan NISN terjangkau dari kotak yang sama.
+    $this->getJson('/api/v1/murid?filter[cari]=budi.santoso@')->assertOk()->assertJsonPath('meta.total', 1);
+    $this->getJson('/api/v1/murid?filter[cari]=7002')->assertOk()->assertJsonPath('meta.total', 1);
+    $this->getJson('/api/v1/murid?filter[cari]=0070011111')->assertOk()->assertJsonPath('meta.total', 1);
+    $this->getJson('/api/v1/murid?filter[cari]=citra')->assertOk()->assertJsonPath('meta.total', 1);
+
+    // Kata kunci tanpa hasil berarti kosong — bukan "tampilkan semuanya".
+    $this->getJson('/api/v1/murid?filter[cari]=zzz')
+        ->assertOk()
+        ->assertJsonCount(0, 'data')
+        ->assertJsonPath('meta.total', 0);
+
+    // Pencarian digabung penyaring kelas yang sudah ada.
+    $kelasLain = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6F', 'tingkat' => 6]);
+    $this->getJson("/api/v1/murid?filter[class_id]={$kelasLain->id}&filter[cari]=rina")
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    $this->getJson("/api/v1/murid?filter[class_id]={$kelas->id}&filter[cari]=rina")
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1);
+
+    // `%` yang diketik guru di-escape: tidak boleh berubah jadi wildcard yang
+    // mengembalikan seluruh murid.
+    $this->getJson('/api/v1/murid?filter[cari]=%25')->assertOk()->assertJsonCount(0, 'data');
+
+    // Kotak kosong = daftar seperti biasa, bukan pencarian spasi.
+    $this->getJson('/api/v1/murid?filter[cari]=+++')->assertOk()->assertJsonPath('meta.total', 3);
+});
+
+it('pencarian tetap menemukan satu murid di antara ribuan dan tetap berpaginasi', function (): void {
+    $kelas = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6Z', 'tingkat' => 6]);
+
+    // Lebih dari seribu murid: satu halaman mana pun tidak memuat semuanya, jadi
+    // pencarian HARUS menyaring di server — bukan menelusuri baris yang tampil.
+    Murid::factory()->count(1200)->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $kelas->id,
+    ]);
+
+    // Jarum: satu murid dengan nama & NIS yang khas di antara ribuan.
+    $userJarum = User::factory()->muridAktif()->create(['name' => 'Zulfikar Nusantara']);
+    Murid::factory()->untuk($this->sekolah, $kelas, $userJarum)->create([
+        'nis' => 'ZUL-01',
+        'nisn' => null,
+    ]);
+
+    Sanctum::actingAs(User::factory()->guru()->create());
+
+    // Total > 1000, tetapi satu halaman tetap dibatasi (default 50).
+    $this->getJson('/api/v1/murid')
+        ->assertOk()
+        ->assertJsonCount(50, 'data')
+        ->assertJsonPath('meta.per_page', 50)
+        ->assertJsonPath('meta.total', 1201);
+
+    // Mencari jarum mengembalikan tepat satu baris walau ribuan lain ada.
+    $this->getJson('/api/v1/murid?filter[cari]=zulfikar')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.nama', 'Zulfikar Nusantara');
+
+    $this->getJson('/api/v1/murid?filter[cari]=ZUL-01')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.total', 1);
+
+    // 1201 baris = 24 halaman penuh + 1 sisa; halaman terakhir tetap memuat sisa.
+    $this->getJson('/api/v1/murid?page=25')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.last_page', 25);
+});
+
 it('validasi menolak tingkat di luar 1-6 dan nama kelas duplikat', function (): void {
     Sanctum::actingAs(User::factory()->guru()->create());
 

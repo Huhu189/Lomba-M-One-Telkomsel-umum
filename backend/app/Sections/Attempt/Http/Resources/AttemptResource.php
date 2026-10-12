@@ -46,6 +46,15 @@ class AttemptResource extends JsonResource
     public array $proteksi = [];
 
     /**
+     * Denyut proteksi ber-nonce (2D): nonce awal + jeda yang diminta server.
+     * Null bila proteksi tidak menyala (tidak ada yang perlu dijaga) atau
+     * attempt bukan milik murid yang membukanya.
+     *
+     * @var array{nonce: string, interval_detik: int}|null
+     */
+    public ?array $denyut = null;
+
+    /**
      * Ringkasan tim bila attempt ini milik tim (slice 09-C); null untuk ulangan
      * individu. Isinya nama tim + anggota, supaya murid tahu sedang mengerjakan
      * lembar siapa.
@@ -88,6 +97,7 @@ class AttemptResource extends JsonResource
             // Dipaksa jadi objek JSON: peta kosong di PHP akan menjadi `[]`,
             // sedangkan klien mengharapkan pasangan nama-saklar.
             'proteksi' => (object) $this->proteksi,
+            'denyut' => $this->denyut,
         ];
     }
 }

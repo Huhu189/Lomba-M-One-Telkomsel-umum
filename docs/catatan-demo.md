@@ -55,8 +55,10 @@ docs/jalankan-smoke-ui.sh tamu          # mode tamu: nama → kode perangkat →
 docs/jalankan-smoke-ui.sh mobile        # mode perangkat ponsel (emulasi Chrome 412×915): tata letak, target sentuh, laci
 docs/jalankan-smoke-ui.sh slice06       # koreksi manual dua kolom + token
 docs/jalankan-smoke-ui.sh slice07      # Live Monitor + anti-cheat
+docs/jalankan-smoke-ui.sh ukuran        # ukuran tulisan Normal ↔ Besar (satu variabel --s)
+docs/jalankan-smoke-ui.sh murid         # pencarian murid yang menyaring di server
 docs/jalankan-smoke-materi.sh           # pemutar materi + kuis sisipan
-docs/jalankan-smoke-perjalanan.sh       # peta perjalanan bertema + kenaikan pos
+docs/jalankan-smoke-perjalanan.sh       # peta perjalanan bertema + kenaikan pos (tiga latar)
 ```
 
 Jumlah pemeriksaan tiap harness (dan tanggal terakhir dijalankan) dicatat di
@@ -67,15 +69,22 @@ Cara kerjanya: `docs/jalankan-smoke-ui.sh <nama>` memakai layanan yang **sudah h
 proses yang benar-benar ia nyalakan. Jadi urutannya bebas: boleh dijalankan di atas local
 yang sedang dipakai, atau dari keadaan kosong.
 
-Sapu penuh (semua harness berurutan; 301 pemeriksaan, ±20 menit):
+Sapu penuh (semua harness berurutan; daftar ini dari A.43 — 301 pemeriksaan, ±20 menit):
 
 ```bash
 for s in tamu slice03 slice04 slice05 slice06 slice07 susun kuis-manual nav luring pengaturan sidebar durasi-klip; do
   bash docs/jalankan-smoke-ui.sh "$s" || echo "GAGAL: $s"
 done
+docs/jalankan-smoke-ui.sh mobile          # emulasi perangkat ponsel (A.44)
+docs/jalankan-smoke-ui.sh ukuran          # ukuran tulisan (A.49)
+docs/jalankan-smoke-ui.sh murid           # pencarian murid (A.51)
 docs/jalankan-smoke-perjalanan.sh
 docs/jalankan-smoke-materi.sh
 ```
+
+Sapu itu belum pernah diulang utuh sesudah A.44; yang dijalankan ulang di A.50/A.51 adalah
+`perjalanan` (69/69), `ukuran` (11/11), `murid` (18/18), plus `./verify.sh` — hasil terakhirnya di
+`docs/handoff-sesi.md` bagian 1.
 
 ## Demo per slice (rencana)
 
