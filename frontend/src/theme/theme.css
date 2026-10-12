@@ -4014,7 +4014,19 @@ a {
   }
 }
 
-/* Pemutar video murid: bingkai rasio terkunci + panel kuis sisipan. */
+/* Pemutar video murid: bingkai rasio terkunci + panel kuis sisipan.
+  
+   Panel kuis sengaja TIDAK menumpuk di atas gambar video: ia duduk di luar
+   bingkai — di bawah video, atau di sampingnya saat tata "horizontal" di layar
+   lebar. Dengan begitu tingginya tidak lagi dibatasi tinggi bingkai (di ponsel
+   panel selebar kolom halaman dan setinggi isinya), tombol kumpulkan tidak
+   tersembunyi di jendela gulir kecil, dan gambar video tidak pernah tertutup. */
+.pm-panggung {
+  display: grid;
+  gap: 0.75rem;
+  align-items: start;
+}
+
 .pm-bingkai {
   position: relative;
   width: min(100%, calc(75vh * var(--r, 1.7778)));
@@ -4023,21 +4035,29 @@ a {
   background: #000;
   border-radius: var(--radius);
   aspect-ratio: var(--r, 1.7778);
-  container-type: inline-size;
 }
 
 .pm-kuis {
-  position: absolute;
-  z-index: 3;
   padding: 0.85rem;
-  overflow: auto;
   color: var(--teks);
   background: var(--kartu);
-  box-shadow: 0 0 0 1px var(--garis);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+  scroll-margin-block: 0.75rem;
 }
 
 .pm-kuis:focus {
   outline: none;
+}
+
+/* Tata "horizontal": panel di samping video — hanya bila layar cukup lebar
+   untuk menampung video DAN panel tanpa memeras keduanya (kolom materi murid
+   hanya selebar ~640 px di layar 1366 px). Di bawah 1200 px kedua tata
+   sama-sama menumpuk: panel di bawah video, tidak pernah menutupi gambar. */
+@media (min-width: 1200px) {
+  .pm-panggung-kuis.pm-panggung-horizontal {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  }
 }
 
 /* Penjelasan guru setelah kuis selesai (opsional). */
@@ -4062,28 +4082,6 @@ a {
   display: block;
   width: 100%;
   margin-block: 0.4rem;
-}
-
-.pm-kuis-vertikal {
-  inset-inline: 0;
-  inset-block-end: 0;
-  max-height: 80%;
-}
-
-.pm-kuis-horizontal {
-  inset-block: 0;
-  inset-inline-end: 0;
-  width: 46%;
-}
-
-/* Bingkai sempit (mis. 9:16 di ponsel): panel samping jadi panel bawah. */
-@container (max-width: 520px) {
-  .pm-kuis-horizontal {
-    inset-block: auto 0;
-    inset-inline: 0;
-    width: auto;
-    max-height: 80%;
-  }
 }
 
 /* ==========================================================================

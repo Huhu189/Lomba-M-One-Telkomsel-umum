@@ -5,8 +5,13 @@
  * sesuai pengaturan guru (utuh / penuhi bingkai + fokus + zoom). Saat video
  * mencapai titik kuis:
  *  - mode "jeda": video berhenti sampai kuis dijawab;
- *  - mode "berjalan": video tetap main, kuis muncul di atasnya.
- * Tata letak panel kuis: vertikal (di bawah) atau horizontal (di samping).
+ *  - mode "berjalan": video tetap main, kuis muncul di samping/bawahnya.
+ *
+ * Panel kuis selalu berada DI LUAR bingkai video (di bawah video, atau di
+ * sampingnya saat tata "horizontal" dan layar cukup lebar). Menumpuknya di atas
+ * gambar dulu membuat panel hanya setinggi bingkai — di ponsel itu jadi jendela
+ * gulir kecil yang menyembunyikan soal dan tombol kumpulkan, dan gambar video
+ * ikut tertutup di mode "berjalan".
  *
  * Kuis memakai attempt latihan dari server (sama dengan blok kuis biasa) dan
  * server menolak menutup video selama kuis wajib di dalamnya belum selesai,
@@ -125,9 +130,15 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
     ? tampilanKlip({ tipe: 'kuis', tampilan: aktif.tampilan ?? undefined })
     : { mode: 'jeda', tata: 'vertikal' }
 
-  // Pindahkan fokus ke panel kuis supaya pembaca layar/keyboard langsung sampai.
+  // Pindahkan fokus ke panel kuis supaya pembaca layar/keyboard langsung sampai,
+  // dan bawa panelnya ke layar: ia muncul di bawah video, bukan di atas gambar
+  // yang sedang dilihat murid, jadi tanpa ini murid bisa tidak menyadarinya.
+  // (scrollIntoView tidak ada di jsdom, karena itu dipanggil dengan `?.`.)
   useEffect(() => {
-    if (aktif) dialogRef.current?.focus()
+    const panel = dialogRef.current
+    if (!aktif || panel === null) return
+    panel.focus({ preventScroll: true })
+    panel.scrollIntoView?.({ block: 'nearest' })
   }, [aktif])
 
   /** @param {number} detik */
@@ -221,25 +232,33 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
   return (
     <div className="mb-3">
       <div
-        className="pm-bingkai"
-        style={/** @type {import('react').CSSProperties} */ ({ '--r': rasioAngka(ringkasan.materi.rasio) })}
+        className={
+          aktif && attempt
+            ? `pm-panggung pm-panggung-kuis pm-panggung-${tampilanKuis.tata}`
+            : 'pm-panggung'
+        }
       >
-        <video
-          ref={videoRef}
-          src={media?.url}
-          controls
-          // Layar penuh bawaan menyembunyikan panel kuis; bingkai ini sudah cukup besar.
-          controlsList="nofullscreen"
-          playsInline
-          className="nle-media-penuh"
-          style={tampilanVideo}
-          onTimeUpdate={(e) => void periksa(e.currentTarget.currentTime)}
-          onEnded={() => void periksa(Number.POSITIVE_INFINITY)}
-          onPlay={(e) => {
-            // Kuis "jeda" sedang terbuka: video tidak boleh jalan di belakangnya.
-            if (menahanRef.current) e.currentTarget.pause()
-          }}
-        />
+        <div
+          className="pm-bingkai"
+          style={/** @type {import('react').CSSProperties} */ ({ '--r': rasioAngka(ringkasan.materi.rasio) })}
+        >
+          <video
+            ref={videoRef}
+            src={media?.url}
+            controls
+            // Layar penuh bawaan menyembunyikan panel kuis; bingkai ini sudah cukup besar.
+            controlsList="nofullscreen"
+            playsInline
+            className="nle-media-penuh"
+            style={tampilanVideo}
+            onTimeUpdate={(e) => void periksa(e.currentTarget.currentTime)}
+            onEnded={() => void periksa(Number.POSITIVE_INFINITY)}
+            onPlay={(e) => {
+              // Kuis "jeda" sedang terbuka: video tidak boleh jalan di belakangnya.
+              if (menahanRef.current) e.currentTarget.pause()
+            }}
+          />
+        </div>
 
         {aktif && attempt && (
           <div
