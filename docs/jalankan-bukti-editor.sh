@@ -37,6 +37,7 @@ echo "layanan siap: vite=200 backend=$b"
 ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headless --disable-gpu --no-first-run --no-proxy-server \
   --remote-debugging-port=9333 --user-data-dir=/tmp/chrome-editor-materi \
+  --autoplay-policy=no-user-gesture-required --mute-audio \
   about:blank >/tmp/chrome-editor.log 2>&1 &)
 
 # Tunggu CDP siap.

@@ -55,7 +55,7 @@ rm -rf /tmp/chrome-tangkapan
 ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headless --disable-gpu --no-first-run --no-proxy-server \
   --remote-debugging-port=9333 --user-data-dir="/tmp/chrome-tangkapan" \
-  --autoplay-policy=no-user-gesture-required \
+  --autoplay-policy=no-user-gesture-required --mute-audio \
   about:blank >/tmp/chrome-tangkapan.log 2>&1 &)
 
 for _ in $(seq 1 25); do
