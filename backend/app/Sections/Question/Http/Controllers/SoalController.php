@@ -25,7 +25,18 @@ class SoalController extends Controller
 
         $pengguna = $request->user();
 
-        $daftar = QueryBuilder::for(Soal::class)
+        // Bank soal dimuat bertahap: 20 baris per permintaan (paling banyak 100),
+        // supaya sekolah dengan ratusan soal tidak mengirim seluruh bank dalam
+        // satu respons. Klien meminta halaman berikutnya saat digulir/diklik.
+        $perHalaman = min(100, max(1, $request->integer('per_page', 20)));
+        $halaman = max(1, $request->integer('page', 1));
+
+        // Pencarian teks soal. Dipakai editor kuis supaya soal ke-51 dan
+        // seterusnya tetap terjangkau tanpa memuat seluruh bank soal.
+        // Dipotong di 80 karakter: pola LIKE panjang hanya membebani basis data.
+        $cari = mb_substr(trim((string) $request->query('q', '')), 0, 80);
+
+        $kueri = Soal::query()
             ->where('school_id', $sekolah->tunggal()->id)
             // Bank soal memuat kunci jawaban, jadi guru hanya melihat soal
             // buatannya sendiri; admin melihat semuanya (K-04).
@@ -33,6 +44,15 @@ class SoalController extends Controller
                 $pengguna !== null && ! $pengguna->hasRole('admin'),
                 fn ($query) => $query->where('dibuat_oleh', $pengguna->getKey()),
             )
+            ->when(
+                $cari !== '',
+                // `konten` bertipe JSON di kedua driver yang dipakai (SQLite &
+                // MySQL), jadi ->teks diterjemahkan ke json_extract, bukan LIKE
+                // atas seluruh JSON (yang bisa cocok ke kunci jawaban juga).
+                fn ($query) => $query->where('konten->teks', 'like', '%'.$cari.'%'),
+            );
+
+        $daftar = QueryBuilder::for($kueri)
             // Keempatnya kolom id/enum, jadi WAJIB persis. Filter teks biasa
             // milik spatie cocok sebagian (`LIKE %nilai%`): `filter[subject_id]=1`
             // ikut menarik mapel 12/21, dan `filter[tipe]=benar_salah` ikut
@@ -53,7 +73,7 @@ class SoalController extends Controller
             ->withExists(['kuis as dipakai_kuis_berjalan' => static function (Builder $query): void {
                 Soal::batasanKuisBerjalan($query);
             }])
-            ->paginate(perPage: 50, page: max(1, $request->integer('page', 1)));
+            ->paginate(perPage: $perHalaman, page: $halaman);
 
         return SoalResource::collection($daftar);
     }

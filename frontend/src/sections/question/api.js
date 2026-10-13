@@ -103,19 +103,38 @@ export async function hapusTag(id) {
 }
 
 /**
- * Daftar soal bank soal dengan filter opsional (mapel/tag/tipe/halaman).
- * @param {{ subjectId?: number|null, tagId?: number|null, tipe?: string|null, halaman?: number }} [filter]
- * @returns {Promise<z.infer<typeof skemaHalamanSoal>>}
+ * Parameter kueri bank soal, dipisah supaya bisa diuji tanpa HTTP.
+ *
+ * `per_page` selalu dikirim: bank soal dimuat bertahap (lihat `PER_HALAMAN`),
+ * jadi jumlah soal per permintaan tidak ditentukan diam-diam oleh bawaan server.
+ * Kata kunci pencarian dikirim sebagai `q` — server yang menyaring ke seluruh
+ * bank soal, bukan klien yang menelusuri baris yang sedang tampil.
+ *
+ * @param {{ subjectId?: number|null, tagId?: number|null, tipe?: string|null, halaman?: number, perHalaman?: number, cari?: string }} [filter]
+ * @returns {Record<string, string|number>}
  */
-export async function ambilSoal(filter = {}) {
+export function paramSoal(filter = {}) {
   /** @type {Record<string, string|number>} */
   const params = { page: filter.halaman ?? 1 }
 
+  if (filter.perHalaman) params.per_page = filter.perHalaman
   if (filter.subjectId) params['filter[subject_id]'] = filter.subjectId
   if (filter.tagId) params['filter[tag_id]'] = filter.tagId
   if (filter.tipe) params['filter[tipe]'] = filter.tipe
 
-  const respons = await client.get('/v1/soal', { params })
+  const kata = (filter.cari ?? '').trim()
+  if (kata !== '') params.q = kata
+
+  return params
+}
+
+/**
+ * Satu halaman bank soal (filter mapel/tag/tipe + pencarian teks soal).
+ * @param {{ subjectId?: number|null, tagId?: number|null, tipe?: string|null, halaman?: number, perHalaman?: number, cari?: string }} [filter]
+ * @returns {Promise<z.infer<typeof skemaHalamanSoal>>}
+ */
+export async function ambilSoal(filter = {}) {
+  const respons = await client.get('/v1/soal', { params: paramSoal(filter) })
   return skemaHalamanSoal.parse(respons.data)
 }
 

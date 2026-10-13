@@ -445,3 +445,46 @@ it('filter bank soal mencocokkan mapel dan tipe secara persis, bukan sebagian', 
 
     $this->getJson('/api/v1/soal?filter[subject_id]=999999')->assertOk()->assertJsonCount(0, 'data');
 });
+
+it('bank soal dikirim 20 baris per halaman dan bisa dicari', function (): void {
+    Sanctum::actingAs($this->guru);
+
+    foreach (range(1, 25) as $nomor) {
+        Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create([
+            'konten' => [
+                'teks' => "Soal latihan nomor {$nomor}",
+                'opsi' => [
+                    ['id' => 'A', 'teks' => 'pilihan pertama'],
+                    ['id' => 'B', 'teks' => 'pilihan kedua'],
+                ],
+            ],
+            'kunci' => ['jawaban' => 'A'],
+        ]);
+    }
+
+    // Bawaan 20 baris: sekolah dengan ratusan soal tidak mengirim semuanya
+    // dalam satu respons.
+    $halamanSatu = $this->getJson('/api/v1/soal')->assertOk();
+
+    expect($halamanSatu->json('data'))->toHaveCount(20)
+        ->and($halamanSatu->json('meta.total'))->toBe(25)
+        ->and($halamanSatu->json('meta.last_page'))->toBe(2);
+
+    expect($this->getJson('/api/v1/soal?page=2')->json('data'))->toHaveCount(5);
+
+    // Nilai ekstrem dipangkas: 1000 -> 100 (di sini hanya ada 25 baris), 0 -> 1.
+    expect($this->getJson('/api/v1/soal?per_page=1000')->json('data'))->toHaveCount(25);
+    expect($this->getJson('/api/v1/soal?per_page=0')->json('data'))->toHaveCount(1);
+
+    // Pencarian teks soal: soal ke-25 tetap terjangkau walau halaman pertamanya
+    // tidak memuatnya — inilah yang membuat editor kuis tidak perlu memuat
+    // seluruh bank soal.
+    $cari = $this->getJson('/api/v1/soal?q=nomor%2025')->assertOk();
+
+    expect($cari->json('data'))->toHaveCount(1)
+        ->and($cari->json('data.0.konten.teks'))->toBe('Soal latihan nomor 25');
+
+    // Pencarian hanya menyentuh teks soal, bukan opsi atau kunci jawaban.
+    expect($this->getJson('/api/v1/soal?q=pilihan')->json('data'))->toHaveCount(0);
+    expect($this->getJson('/api/v1/soal?q=nomor%2025%20tidak%20ada')->json('data'))->toHaveCount(0);
+});

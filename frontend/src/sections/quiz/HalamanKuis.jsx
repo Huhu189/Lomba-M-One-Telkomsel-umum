@@ -10,8 +10,8 @@
  * belakangan, dan soal boleh ditulis langsung di langkah 2 lewat editor yang
  * sama dengan bank soal — jadi guru tidak wajib punya stok soal lebih dulu.
  */
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'react-router-dom'
@@ -28,7 +28,7 @@ import {
   IkonTautan,
   IkonTongSampah,
 } from '../../icons.jsx'
-import { RUTE } from '../../routes.js'
+import { RUTE, ruteKuisDetail } from '../../routes.js'
 import { ambilKelas, ambilMapel } from '../school/api.js'
 import { ambilSoal, ambilTag, buatSoal } from '../question/api.js'
 import EditorSoal from '../question/EditorSoal.jsx'
@@ -89,13 +89,44 @@ function ringkasSoal(konten) {
   return teks.length > 70 ? `${teks.slice(0, 70)}…` : teks || '(tanpa teks)'
 }
 
+/** Bank soal di langkah susun dimuat 20 baris per permintaan. */
+const SOAL_PER_HALAMAN = 20
+
+/** Ketikan baru dipakai 300 ms sesudah ketikan terakhir (pola bank soal). */
+const JEDA_CARI_MS = 300
+
+/**
+ * Catatan skor + status aktif untuk soal yang sudah ada di susunan kuis.
+ * @param {{ id: number, skor: number, aktif?: boolean }[]} daftarSoal
+ * @returns {Record<number, { id: number, skor: number, aktif: boolean }>}
+ */
+function catatSusunan(daftarSoal) {
+  return Object.fromEntries(
+    daftarSoal.map((satu) => [satu.id, { id: satu.id, skor: satu.skor, aktif: satu.aktif !== false }]),
+  )
+}
+
 export default function HalamanKuis() {
   const queryClient = useQueryClient()
   const [editor, setEditor] = useState(
-    /** @type {{ id: number|null, judul: string, status: string }|null} */ (null),
+    /** @type {{ id: number|null, slug: string, judul: string, status: string }|null} */ (null),
   )
   const [langkah, setLangkah] = useState(0)
   const [soalTerpilih, setSoalTerpilih] = useState(/** @type {number[]} */ ([]))
+  /**
+   * Info soal yang pernah dilihat (dicentang di daftar, atau ikut termuat saat
+   * kuis dibuka): `id` → skor + aktif.
+   *
+   * Daftar soal dimuat bertahap 20 baris, jadi soal yang dipilih belum tentu
+   * ada di halaman yang sedang tampil. Tanpa catatan ini, soal itu terhitung
+   * 0 poin dan lolos dari pemeriksaan "semua soal yang dipilih aktif" —
+   * ringkasan langkah 3 lalu berbohong.
+   */
+  const [catatanSoal, setCatatanSoal] = useState(
+    /** @type {Record<number, { id: number, skor: number, aktif: boolean }>} */ ({}),
+  )
+  const [cariSoal, setCariSoal] = useState('')
+  const [cariSoalDipakai, setCariSoalDipakai] = useState('')
   const [kuisDihapus, setKuisDihapus] = useState(/** @type {import('./api.js').DataKuis|null} */ (null))
   // Editor soal dibuka langsung di langkah 2: guru tidak wajib menyiapkan soal
   // di bank soal lebih dulu.
@@ -118,7 +149,26 @@ export default function HalamanKuis() {
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
   const kelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
-  const bankSoal = useQuery({ queryKey: ['soal', 'semua'], queryFn: () => ambilSoal({}) })
+
+  // Ketikan digabung dulu (300 ms), lalu jadi satu permintaan ke server.
+  useEffect(() => {
+    const jeda = window.setTimeout(() => setCariSoalDipakai(cariSoal.trim()), JEDA_CARI_MS)
+    return () => window.clearTimeout(jeda)
+  }, [cariSoal])
+
+  // Bank soal dimuat bertahap: 20 soal per permintaan, sisanya menyusul saat
+  // guru menekan "muat berikutnya" — sekolah dengan ratusan soal tidak lagi
+  // mengirim seluruh bank hanya untuk membuka langkah 2.
+  const bankSoal = useInfiniteQuery({
+    queryKey: ['soal', 'pilih', cariSoalDipakai],
+    queryFn: ({ pageParam }) =>
+      ambilSoal({ halaman: pageParam, perHalaman: SOAL_PER_HALAMAN, cari: cariSoalDipakai }),
+    initialPageParam: 1,
+    getNextPageParam: (terakhir) =>
+      terakhir.meta.current_page < terakhir.meta.last_page
+        ? terakhir.meta.current_page + 1
+        : undefined,
+  })
   const tag = useQuery({ queryKey: ['tag'], queryFn: ambilTag })
 
   const {
@@ -183,7 +233,7 @@ export default function HalamanKuis() {
         : ubahKuis(editor.id, muatanKuis(data)),
     onSuccess: async (kuis) => {
       tampilkanToast('sukses', editor?.id === null ? 'Kuis dibuat sebagai draf.' : 'Kuis diperbarui.')
-      setEditor({ id: kuis.id, judul: kuis.judul, status: kuis.status })
+      setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
       // Langkah 2 langsung bisa dibuka: kuis (draf) sudah punya id di server.
       setLangkah(1)
       await segarkan()
@@ -197,6 +247,10 @@ export default function HalamanKuis() {
       buatSoal(muatan),
     onSuccess: async (soal) => {
       setSoalTerpilih((sebelum) => (sebelum.includes(soal.id) ? sebelum : [...sebelum, soal.id]))
+      setCatatanSoal((sebelum) => ({
+        ...sebelum,
+        [soal.id]: { id: soal.id, skor: soal.skor, aktif: soal.aktif !== false },
+      }))
       // Tetap di mode tulis soal, dan pasang ulang editornya untuk soal berikutnya.
       setSoalBaruKe((sebelum) => sebelum + 1)
       tampilkanToast(
@@ -267,8 +321,10 @@ export default function HalamanKuis() {
 
   /** Buka alur tiga langkah untuk kuis baru (draf di server). */
   function buatBaru() {
-    setEditor({ id: null, judul: '', status: 'draf' })
+    setEditor({ id: null, slug: '', judul: '', status: 'draf' })
     setSoalTerpilih([])
+    setCatatanSoal({})
+    setCariSoal('')
     reset(nilaiAwal)
     setLangkah(0)
   }
@@ -279,7 +335,9 @@ export default function HalamanKuis() {
    * @param {import('./api.js').DataKuis} kuis
    */
   async function mulaiUbah(kuis) {
-    setEditor({ id: kuis.id, judul: kuis.judul, status: kuis.status })
+    setCatatanSoal({})
+    setCariSoal('')
+    setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
     setValue('judul', kuis.judul)
     setValue('deskripsi', kuis.deskripsi ?? '')
     setValue('subject_id', String(kuis.subject_id ?? ''))
@@ -293,7 +351,9 @@ export default function HalamanKuis() {
 
     try {
       const rinci = await ambilKuisDetail(kuis.id)
-      setSoalTerpilih((rinci.soal ?? []).map((satu) => satu.id))
+      const terpilih = rinci.soal ?? []
+      setSoalTerpilih(terpilih.map((satu) => satu.id))
+      setCatatanSoal(catatSusunan(terpilih))
     } catch (galat) {
       tampilkanToast('salah', pesanGalatApi(galat))
     }
@@ -307,8 +367,10 @@ export default function HalamanKuis() {
   async function bukaSusun(kuis) {
     try {
       const rinci = await ambilKuisDetail(kuis.id)
-      setSoalTerpilih((rinci.soal ?? []).map((satu) => satu.id))
-      setEditor({ id: kuis.id, judul: kuis.judul, status: kuis.status })
+      const terpilih = rinci.soal ?? []
+      setSoalTerpilih(terpilih.map((satu) => satu.id))
+      setCatatanSoal(catatSusunan(terpilih))
+      setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
       setLangkah(1)
     } catch (galat) {
       tampilkanToast('salah', pesanGalatApi(galat))
@@ -318,6 +380,18 @@ export default function HalamanKuis() {
   /** @param {number} id */
   function alihkan(id) {
     setSoalTerpilih((lama) => (lama.includes(id) ? lama.filter((satu) => satu !== id) : [...lama, id]))
+  }
+
+  /**
+   * Centang/batal centang satu soal dari daftar bank soal.
+   * @param {import('../question/api.js').DataSoal} soal
+   */
+  function alihkanSoal(soal) {
+    if (!soalTerpilih.includes(soal.id)) {
+      setCatatanSoal((lama) => ({ ...lama, [soal.id]: { id: soal.id, skor: soal.skor, aktif: soal.aktif } }))
+    }
+
+    alihkan(soal.id)
   }
 
   /** @param {number} index @param {number} arah */
@@ -336,19 +410,27 @@ export default function HalamanKuis() {
 
     try {
       const kuis = await simpanSusunan.mutateAsync({ id: editor.id, soal: soalTerpilih })
-      setEditor({ id: kuis.id, judul: kuis.judul, status: kuis.status })
+      setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
       setLangkah(2)
     } catch {
       // pesan galat sudah tampil lewat onError mutasi
     }
   }
 
-  const katalog = bankSoal.data?.data ?? []
+  const katalog = bankSoal.data?.pages.flatMap((satu) => satu.data) ?? []
+  const totalSoal = bankSoal.data?.pages[0]?.meta.total
+
+  /**
+   * Info soal yang dipilih: dari halaman yang sedang dimuat, atau dari catatan
+   * saat soalnya dicentang/saat kuis dibuka.
+   */
+  const katalogTerpilih = soalTerpilih
+    .map((id) => katalog.find((satu) => satu.id === id) ?? catatanSoal[id])
+    .filter((satu) => satu !== undefined)
+
   const kelasTerpilih = (kelas.data ?? []).find((satu) => String(satu.id) === nilai.class_id)
-  const poinTerpilih = totalPoin(soalTerpilih, katalog)
-  const adaSoalNonaktif = soalTerpilih.some(
-    (id) => katalog.find((satu) => satu.id === id)?.aktif === false,
-  )
+  const poinTerpilih = totalPoin(soalTerpilih, katalogTerpilih)
+  const adaSoalNonaktif = katalogTerpilih.some((satu) => satu.aktif === false)
   const kelengkapan = kelengkapanKuis(nilai, {
     jumlahSoal: soalTerpilih.length,
     adaSoalNonaktif,
@@ -358,7 +440,7 @@ export default function HalamanKuis() {
   // Ringkasan setelan + tautan siswa untuk langkah tinjau. Seluruh aturannya ada
   // di `setelanSesi.js` (murni, diuji Vitest); di sini hanya dipanggil.
   const ringkas = ringkasSetelan(setelanSesi.data)
-  const tautan = tautanSiswa(editor?.id ?? 0, typeof window === 'undefined' ? '' : window.location.origin)
+  const tautan = tautanSiswa(editor?.slug ?? '', typeof window === 'undefined' ? '' : window.location.origin)
   const catatan = catatanTautan({ status: editor?.status ?? 'draf', tamuAktif: ringkas.tamu.aktif })
 
   /** Salin tautan siswa; bila peramban menolak, katakan apa adanya — jangan diam. */
@@ -553,9 +635,13 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
 
               <p className="teks-lembut small">
                 Pengaturan lanjutan (percobaan ulang, peringkat, dan jenis anti-cheat) mengikuti
-                pengaturan sekolah atau kelas. Khusus kuis ini, atur sendiri di{' '}
-                <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis” — ringkasan yang
-                benar-benar menyala muncul di langkah 3.
+                pengaturan sekolah atau kelas. Khusus kuis ini, atur sendiri{' '}
+                {editor !== null && editor.slug !== '' ? (
+                  <Link to={ruteKuisDetail(editor.slug)}>di halaman kuis ini</Link>
+                ) : (
+                  <span>di halaman kuis (setelah kuisnya tersimpan)</span>
+                )}{' '}
+                — ringkasan yang benar-benar menyala muncul di langkah 3.
               </p>
 
               <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
@@ -619,6 +705,26 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                       soal tidak wajib disiapkan lebih dulu.
                     </p>
 
+                    <div className="d-flex gap-2 mb-3">
+                      <input
+                        id="cari-soal-kuis"
+                        type="search"
+                        className="form-control form-control-sm"
+                        placeholder="Cari soal di bank soal"
+                        aria-label="Cari soal di bank soal"
+                        value={cariSoal}
+                        onChange={(e) => setCariSoal(e.target.value)}
+                      />
+                      {cariSoal !== '' && (
+                        <TombolIkon
+                          label="Bersihkan pencarian soal"
+                          ikon={IkonSilang}
+                          varian="tepi"
+                          onClick={() => setCariSoal('')}
+                        />
+                      )}
+                    </div>
+
                     {bankSoal.isPending && <Skeleton baris={4} label="Memuat bank soal…" />}
                     {bankSoal.isError && (
                       <Banner jenis="salah" judul="Gagal memuat bank soal">
@@ -626,7 +732,18 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                         <Tombol varian="tepi" onClick={() => bankSoal.refetch()}>Coba lagi</Tombol>
                       </Banner>
                     )}
-                    {bankSoal.isSuccess && katalog.length === 0 && (
+                    {bankSoal.isSuccess && katalog.length === 0 && cariSoalDipakai !== '' && (
+                      <div className="kotak-kosong">
+                        <p className="mb-2">
+                          Tidak ada soal yang cocok dengan “{cariSoalDipakai}”.
+                        </p>
+                        <Tombol varian="tepi" onClick={() => setCariSoal('')}>
+                          Bersihkan pencarian
+                        </Tombol>
+                      </div>
+                    )}
+
+                    {bankSoal.isSuccess && katalog.length === 0 && cariSoalDipakai === '' && (
                       <div className="kotak-kosong">
                         <p className="mb-2">Bank soal masih kosong. Tulis soalnya langsung di sini.</p>
                         <Tombol
@@ -652,7 +769,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                             className="pilih-soal"
                             role="checkbox"
                             aria-checked={dipilih}
-                            onClick={() => alihkan(soal.id)}
+                            onClick={() => alihkanSoal(soal)}
                           >
                             <span className="kotak-centang" aria-hidden="true">
                               {dipilih && <IkonCentang size={14} />}
@@ -669,6 +786,22 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                         )
                       })}
                     </div>
+
+                    {bankSoal.hasNextPage && (
+                      <div className="mt-3">
+                        <Tombol
+                          varian="tepi"
+                          ukuran="sedang"
+                          memuat={bankSoal.isFetchingNextPage}
+                          onClick={() => void bankSoal.fetchNextPage()}
+                        >
+                          Muat {SOAL_PER_HALAMAN} soal berikutnya
+                        </Tombol>
+                        <p className="teks-lembut small mb-0 mt-2">
+                          Baru {katalog.length} dari {totalSoal ?? '?'} soal yang dimuat.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -817,7 +950,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 {setelanSesi.isError && (
                   <p className="teks-lembut small mb-0 mt-2">
                     Setelan tidak bisa dimuat sekarang. Periksa di{' '}
-                    <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis”.
+                    <Link to={ruteKuisDetail(editor?.slug ?? '')}>setelan ulangan kuis ini</Link>.
                   </p>
                 )}
 

@@ -1,9 +1,14 @@
 /**
  * Halaman bank soal (slice 03) — guru/admin menyaring, menambah, mengubah,
  * dan menghapus soal objektif. Kunci jawaban hanya terlihat di sini.
+ *
+ * Daftarnya dimuat **bertahap** (20 soal per permintaan + tombol "muat
+ * berikutnya") dan pencariannya dikerjakan server. Sekolah dengan ratusan soal
+ * tidak lagi mengirim seluruh bank dalam satu respons hanya untuk menampilkan
+ * baris pertama.
  */
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ambilMapel } from '../school/api.js'
 import { ambilSoal, ambilTag, buatSoal, hapusSoal, ubahSoal } from './api.js'
 import { DAFTAR_TIPE, teksAman } from './tipeSoal.js'
@@ -17,7 +22,15 @@ import KosongData from '../../shared/ui/KosongData.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import TabelData from '../../shared/ui/TabelData.jsx'
 import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
-import { IkonPanahKiri, IkonPapan, IkonPensil, IkonTambah, IkonTongSampah } from '../../icons.jsx'
+import {
+  IkonCari,
+  IkonPanahKiri,
+  IkonPapan,
+  IkonPensil,
+  IkonSilang,
+  IkonTambah,
+  IkonTongSampah,
+} from '../../icons.jsx'
 
 /** @param {string} teks */
 function ringkas(teks) {
@@ -25,27 +38,49 @@ function ringkas(teks) {
   return bersih.length > 90 ? `${bersih.slice(0, 90)}…` : bersih || '(tanpa teks)'
 }
 
+/** Soal per permintaan — bank soal dimuat bertahap, bukan sekaligus. */
+const PER_HALAMAN = 20
+
+/** Ketikan baru dipakai 300 ms sesudah ketikan terakhir (pola halaman Murid). */
+const JEDA_CARI_MS = 300
+
 const filterAwal = { subject_id: '', tag_id: '', tipe: '' }
 
 export default function HalamanBankSoal() {
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState(filterAwal)
-  const [halaman, setHalaman] = useState(1)
+  const [cari, setCari] = useState('')
+  const [cariDipakai, setCariDipakai] = useState('')
   const [modeEditor, setModeEditor] = useState(false)
   const [soalDiubah, setSoalDiubah] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
   const [soalDihapus, setSoalDihapus] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
 
+  // Ketikan digabung dulu: satu permintaan per jeda, bukan satu per huruf.
+  useEffect(() => {
+    const jeda = window.setTimeout(() => setCariDipakai(cari.trim()), JEDA_CARI_MS)
+    return () => window.clearTimeout(jeda)
+  }, [cari])
+
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
   const tag = useQuery({ queryKey: ['tag'], queryFn: ambilTag })
-  const bankSoal = useQuery({
-    queryKey: ['soal', filter, halaman],
-    queryFn: () =>
+  const bankSoal = useInfiniteQuery({
+    // Filter/kata kunci jadi bagian kunci kueri: mengubahnya memulai daftar
+    // dari halaman 1 lagi (halaman lama tidak menempel di bawah hasil baru).
+    queryKey: ['soal', filter, cariDipakai],
+    queryFn: ({ pageParam }) =>
       ambilSoal({
         subjectId: filter.subject_id === '' ? null : Number(filter.subject_id),
         tagId: filter.tag_id === '' ? null : Number(filter.tag_id),
         tipe: filter.tipe === '' ? null : filter.tipe,
-        halaman,
+        cari: cariDipakai,
+        halaman: pageParam,
+        perHalaman: PER_HALAMAN,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (terakhir) =>
+      terakhir.meta.current_page < terakhir.meta.last_page
+        ? terakhir.meta.current_page + 1
+        : undefined,
   })
 
   const simpan = useMutation({
@@ -75,8 +110,9 @@ export default function HalamanBankSoal() {
     },
   })
 
-  const daftar = bankSoal.data?.data ?? []
-  const meta = bankSoal.data?.meta
+  const daftar = bankSoal.data?.pages.flatMap((satu) => satu.data) ?? []
+  const total = bankSoal.data?.pages[0]?.meta.total
+  const adaLagi = bankSoal.hasNextPage
 
   /** @param {import('./api.js').DataSoal} soal */
   function mulaiUbah(soal) {
@@ -140,10 +176,7 @@ export default function HalamanBankSoal() {
                   id="saring-mapel"
                   className="form-select form-select-sm"
                   value={filter.subject_id}
-                  onChange={(e) => {
-                    setFilter({ ...filter, subject_id: e.target.value })
-                    setHalaman(1)
-                  }}
+                  onChange={(e) => setFilter({ ...filter, subject_id: e.target.value })}
                 >
                   <option value="">Semua mapel</option>
                   {(mapel.data ?? []).map((satu) => (
@@ -158,10 +191,7 @@ export default function HalamanBankSoal() {
                   id="saring-tag"
                   className="form-select form-select-sm"
                   value={filter.tag_id}
-                  onChange={(e) => {
-                    setFilter({ ...filter, tag_id: e.target.value })
-                    setHalaman(1)
-                  }}
+                  onChange={(e) => setFilter({ ...filter, tag_id: e.target.value })}
                 >
                   <option value="">Semua tag</option>
                   {(tag.data ?? []).map((satu) => (
@@ -176,16 +206,38 @@ export default function HalamanBankSoal() {
                   id="saring-tipe"
                   className="form-select form-select-sm"
                   value={filter.tipe}
-                  onChange={(e) => {
-                    setFilter({ ...filter, tipe: e.target.value })
-                    setHalaman(1)
-                  }}
+                  onChange={(e) => setFilter({ ...filter, tipe: e.target.value })}
                 >
                   <option value="">Semua tipe</option>
                   {DAFTAR_TIPE.filter((tipe) => tipe.objektif).map((tipe) => (
                     <option key={tipe.nilai} value={tipe.nilai}>{tipe.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-semibold" htmlFor="cari-soal">Cari soal</label>
+                <div className="d-flex gap-2">
+                  <input
+                    id="cari-soal"
+                    type="search"
+                    className="form-control form-control-sm"
+                    placeholder="Potongan teks soal"
+                    value={cari}
+                    onChange={(e) => setCari(e.target.value)}
+                  />
+                  {cari !== '' && (
+                    <TombolIkon
+                      label="Bersihkan pencarian"
+                      ikon={IkonSilang}
+                      varian="tepi"
+                      onClick={() => setCari('')}
+                    />
+                  )}
+                </div>
+                <p className="teks-lembut small mb-0 mt-1">
+                  Dicari ke seluruh bank soal, bukan hanya yang tampil di sini.
+                </p>
               </div>
             </div>
 
@@ -200,7 +252,22 @@ export default function HalamanBankSoal() {
               </Banner>
             )}
 
-            {bankSoal.isSuccess && daftar.length === 0 && (
+            {bankSoal.isSuccess && daftar.length === 0 && cariDipakai !== '' && (
+              <KosongData
+                judul={`Tidak ada soal yang cocok dengan “${cariDipakai}”`}
+                ikon={IkonCari}
+                aksi={
+                  <Tombol varian="tepi" onClick={() => setCari('')}>
+                    Bersihkan pencarian
+                  </Tombol>
+                }
+              >
+                Coba potongan teks yang lebih pendek. Pencarian berlaku ke seluruh bank soal, jadi
+                soal lama pun ikut ditemukan.
+              </KosongData>
+            )}
+
+            {bankSoal.isSuccess && daftar.length === 0 && cariDipakai === '' && (
               <KosongData
                 judul="Belum ada soal yang cocok"
                 ikon={IkonPapan}
@@ -217,7 +284,11 @@ export default function HalamanBankSoal() {
             {daftar.length > 0 && (
               <TabelData
                 label="Daftar soal"
-                caption={meta ? `Menampilkan ${daftar.length} dari ${meta.total} soal` : undefined}
+                caption={
+                  total !== undefined
+                    ? `Menampilkan ${daftar.length} dari ${total} soal (dimuat bertahap)`
+                    : undefined
+                }
                 kolom={[
                   {
                     kunci: 'teks',
@@ -262,28 +333,20 @@ export default function HalamanBankSoal() {
               />
             )}
 
-            {meta && meta.last_page > 1 && (
-              <nav className="d-flex flex-wrap align-items-center gap-3 mt-3" aria-label="Navigasi halaman">
+            {adaLagi && (
+              <div className="d-flex flex-wrap align-items-center gap-3 mt-3">
                 <Tombol
                   varian="tepi"
                   ukuran="sedang"
-                  disabled={halaman <= 1}
-                  onClick={() => setHalaman(halaman - 1)}
+                  memuat={bankSoal.isFetchingNextPage}
+                  onClick={() => void bankSoal.fetchNextPage()}
                 >
-                  Sebelumnya
+                  Muat {PER_HALAMAN} soal berikutnya
                 </Tombol>
-                <span className="teks-lembut">
-                  Halaman {meta.current_page} dari {meta.last_page}
+                <span className="teks-lembut small">
+                  Baru {daftar.length} dari {total ?? '?'} soal yang dimuat.
                 </span>
-                <Tombol
-                  varian="tepi"
-                  ukuran="sedang"
-                  disabled={halaman >= meta.last_page}
-                  onClick={() => setHalaman(halaman + 1)}
-                >
-                  Berikutnya
-                </Tombol>
-              </nav>
+              </div>
             )}
           </div>
         </>
