@@ -68,8 +68,9 @@ git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.70**):
 
 - **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat ditulis: `48d366d` *"Catat putaran
-  A.68-A.70 di laporan pengujian dan handoff"*). Putaran **A.70** = tiga commit: `b1025b4` (rekam diri + tes),
-  `90512a2` (kueri backend), `48d366d` (laporan + handoff) — semuanya sudah dikomit.
+  A.68-A.70 di laporan pengujian dan handoff"*). **A.70** = seluruh commit berawalan `b1025b4` sampai `HEAD`
+  (`git log --oneline 6811c2c..HEAD`): rekam diri + tes, kueri backend, laporan + handoff, dan penyelarasan
+  catatan ini — semuanya sudah dikomit.
 - **`origin/main = 93f66ed`** → **belum ada satu pun commit sesi ini yang di-push**
   (`git rev-list --count origin/main..HEAD` **6** saat ditulis, sebelum commit dokumentasi ini — angka pastinya
   ambil dari perintah itu). Repo online belum memuat A.65, A.66, A.67, dan A.70; **push dulu sebelum menutup
