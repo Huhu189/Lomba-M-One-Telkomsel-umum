@@ -3614,7 +3614,9 @@ a {
 
 .pil-saring {
   min-height: 44px;
-  padding: 0 var(--sp-4);
+  /* Padding vertikal + horizontal: label panjang ("Belum ditinjau",
+     "Dinilai tidak valid") tadinya mepet ke tepi pil. Tinggi tetap ≥44 px. */
+  padding: var(--sp-2) var(--sp-5);
   border: 1.5px solid var(--garis-input);
   border-radius: 999px;
   background-color: var(--kartu);
@@ -3655,7 +3657,9 @@ a {
   gap: var(--sp-3);
   align-items: center;
   min-height: 48px;
-  padding: 0 var(--sp-4);
+  /* Padding vertikal + horizontal: label langkah ("Tinjau & publikasi")
+     tadinya mepet ke tepi pil. Tinggi tetap ≥48 px. */
+  padding: var(--sp-2) var(--sp-5);
   font-weight: 700;
   color: var(--teks);
   background-color: var(--kartu);
@@ -4822,6 +4826,40 @@ a {
   .jelajah-kabut,
   .jelajah-burung,
   .jelajah-penanda-orang {
+    animation: none;
+  }
+}
+
+/*
+ * Penanda halaman sedang diunduh (fallback rute malas, lihat src/halaman.js).
+ *
+ * Kemunculannya sengaja ditunda 150 ms: modul halaman yang sudah tersimpan di
+ * cache peramban selesai jauh sebelum itu, jadi penanda ini tidak berkedip pada
+ * perpindahan halaman yang normal — ia baru terlihat kalau unduhannya benar-
+ * benar lambat. Tinggi minimum menjaga kaki halaman tidak melompat.
+ */
+.memuat-halaman {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45vh;
+  opacity: 0;
+  animation: memuat-halaman-muncul 0.2s ease 0.15s forwards;
+}
+
+@keyframes memuat-halaman-muncul {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memuat-halaman {
+    opacity: 1;
     animation: none;
   }
 }

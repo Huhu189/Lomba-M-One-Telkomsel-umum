@@ -66,7 +66,7 @@ export const skemaTimSaya = z.object({
  */
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataDaftarTim>}
  */
 export async function ambilDaftarTim(kuisId) {
@@ -75,7 +75,7 @@ export async function ambilDaftarTim(kuisId) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {{ tim_id?: number, nama: string, murid: number[] }} data
  * @returns {Promise<z.infer<typeof skemaHasilSimpanTim>>}
  */
@@ -86,7 +86,7 @@ export async function simpanTim(kuisId, data) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {number} jumlahTim
  * @returns {Promise<DataDaftarTim>}
  */
@@ -97,7 +97,7 @@ export async function bagiTimOtomatis(kuisId, jumlahTim) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {number} timId
  * @returns {Promise<{ message: string }>}
  */
@@ -108,7 +108,7 @@ export async function hapusTim(kuisId, timId) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<z.infer<typeof skemaTimSaya>>}
  */
 export async function ambilTimSaya(kuisId) {

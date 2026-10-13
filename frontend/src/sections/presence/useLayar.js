@@ -19,11 +19,22 @@ import { ambilLayar, terbitkanTiketLayar } from './layar.js'
 /** Selang polling saat SSE tidak tersedia (ms). */
 export const POLLING_CEPAT = 5000
 
+/**
+ * Alamat layar boleh memakai slug ("unu5k") atau id lama; selain itu kosong.
+ * @param {string|number} kuisId
+ * @returns {boolean}
+ */
+function kunciKuisAda(kuisId) {
+  if (typeof kuisId === 'string') return kuisId !== ''
+
+  return Number.isInteger(kuisId) && kuisId > 0
+}
+
 /** Selang polling saat SSE hidup — cukup sebagai jaring pengaman (ms). */
 export const POLLING_LAMBAT = 20000
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis dari alamat (angka lama masih diterima)
  * @param {{ peran?: 'guru'|'murid', aktif?: boolean }} [opsi]
  */
 export default function useLayar(kuisId, opsi = {}) {
@@ -36,14 +47,14 @@ export default function useLayar(kuisId, opsi = {}) {
   const kueri = useQuery({
     queryKey: ['layar', kuisId],
     queryFn: () => ambilLayar(kuisId),
-    enabled: boleh && Number.isInteger(kuisId) && kuisId > 0,
+    enabled: boleh && kunciKuisAda(kuisId),
     refetchInterval: selang,
   })
 
   const refetch = kueri.refetch
 
   useEffect(() => {
-    if (peran !== 'murid' || !boleh || !Number.isInteger(kuisId) || kuisId <= 0) return undefined
+    if (peran !== 'murid' || !boleh || !kunciKuisAda(kuisId)) return undefined
 
     let batal = false
     /** @type {EventSource|null} */

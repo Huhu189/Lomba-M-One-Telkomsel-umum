@@ -66,8 +66,15 @@ export default function HalamanProgresTema() {
         </span>
       </div>
 
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h2 className="judul-bagian mb-0 me-auto">Tema yang dinilai</h2>
+      {/* Judul dipisah dari baris pil supaya pil tidak terlempar ke kanan saat
+          barisnya membungkus di layar sempit (pola yang sama dengan Monitor). */}
+      <h2 className="judul-bagian mb-2">Tema yang dinilai</h2>
+
+      <div
+        role="group"
+        aria-label="Saring tema"
+        className="d-flex flex-wrap gap-2 mb-3"
+      >
         {/** @type {Array<['semua'|'perlu', string]>} */ ([
           ['semua', 'Semua tema'],
           ['perlu', 'Perlu dilatih'],

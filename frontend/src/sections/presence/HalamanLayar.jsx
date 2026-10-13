@@ -22,16 +22,16 @@ import { IkonPanahKiri } from '../../icons.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import { RUTE, ruteKuisDetail, ruteMonitorKuis } from '../../routes.js'
+import { RUTE, kunciKuisSah, ruteKuisDetail, ruteMonitorKuis } from '../../routes.js'
 import { bolehSimpan, butuhSoal, butuhTulisan, simpanLayar } from './layar.js'
 import useLayar from './useLayar.js'
 
 export default function HalamanLayar() {
-  const { id } = useParams()
-  const nomor = Number(id)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
   const klienQuery = useQueryClient()
 
-  const { data, isLoading, isError, statusSse } = useLayar(nomor, { peran: 'guru' })
+  const { data, isLoading, isError, statusSse } = useLayar(kunci, { peran: 'guru' })
   const [draf, setDraf] = useState(/** @type {null | Record<string, any>} */ (null))
 
   // Sinkronisasi state turunan saat render: form hanya disegarkan ketika VERSI
@@ -58,7 +58,7 @@ export default function HalamanLayar() {
       const judul = d.judul.trim()
       const isi = d.isi.trim()
 
-      return simpanLayar(nomor, {
+      return simpanLayar(kunci, {
         mode: d.mode,
         judul: judul === '' ? null : judul,
         isi: isi === '' ? null : isi,
@@ -67,7 +67,7 @@ export default function HalamanLayar() {
     },
     onSuccess: (hasil) => {
       tampilkanToast('sukses', `Layar kelas diperbarui (${hasil.mode_label}).`)
-      void klienQuery.invalidateQueries({ queryKey: ['layar', nomor] })
+      void klienQuery.invalidateQueries({ queryKey: ['layar', kunci] })
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
@@ -118,7 +118,7 @@ export default function HalamanLayar() {
             varian="tepi"
             ikon={IkonPanahKiri}
             className="mb-3"
-            to={ruteKuisDetail(data.kuis_id)}
+            to={ruteKuisDetail(kunci)}
           >
             Kembali ke detail kuis
           </TombolTaut>
@@ -140,8 +140,10 @@ export default function HalamanLayar() {
           {!data.aktif && (
             <Banner jenis="peringatan" judul="Layar guru sedang dimatikan">
               <p className="mb-0">
-                Nyalakan kunci <strong>layar guru</strong> di <Link to={RUTE.pengaturan}>pengaturan</Link> dulu (bisa per
-                sekolah, kelas, atau kuis). Selama mati, murid tidak menerima apa pun dan perubahan ditolak server.
+                Nyalakan kunci <strong>layar guru</strong> di{' '}
+                <Link to={ruteKuisDetail(kunci)}>setelan ulangan kuis ini</Link> dulu (aturan sekolah dan
+                kelas tetap berlaku di atasnya). Selama mati, murid tidak menerima apa pun dan
+                perubahan ditolak server.
               </p>
             </Banner>
           )}

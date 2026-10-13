@@ -9,21 +9,21 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
 import TabelData from '../../shared/ui/TabelData.jsx'
-import { RUTE } from '../../routes.js'
+import { RUTE, kunciKuisSah } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
 import { ambilPeringkat } from './api.js'
 import { barisMilikSaya } from './tampilan.js'
 
 export default function HalamanPeringkat() {
-  const { kuisId } = useParams()
-  const idKuis = Number(kuisId)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
   const user = useAuthStore((s) => s.user)
   const sebagaiGuru = user?.role === 'guru' || user?.role === 'admin'
 
   const peringkat = useQuery({
-    queryKey: ['peringkat', idKuis],
-    queryFn: () => ambilPeringkat(idKuis, 20),
-    enabled: Number.isInteger(idKuis) && idKuis > 0,
+    queryKey: ['peringkat', kunci],
+    queryFn: () => ambilPeringkat(kunci, 20),
+    enabled: kunci !== '',
   })
 
   const data = peringkat.data
@@ -136,7 +136,7 @@ export default function HalamanPeringkat() {
           )}
 
           <div className="d-flex flex-wrap gap-2 mt-4">
-            <Link className="btn btn-tepi" to={`${RUTE.kuis}/${idKuis}`}>
+            <Link className="btn btn-tepi" to={`${RUTE.kuis}/${kunci}`}>
               Lihat kuis
             </Link>
             <Link className="btn btn-teks" to={RUTE.kuis}>

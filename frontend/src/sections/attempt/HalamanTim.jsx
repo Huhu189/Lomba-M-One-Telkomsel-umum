@@ -15,7 +15,7 @@ import { IkonPanahKiri } from '../../icons.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import { RUTE, ruteKuisDetail } from '../../routes.js'
+import { RUTE, kunciKuisSah, ruteKuisDetail } from '../../routes.js'
 import {
   ambilDaftarTim,
   bagiTimOtomatis,
@@ -131,8 +131,8 @@ function FormTim({ kuisId, muridKelas, tim, onSelesai, onBatal }) {
 }
 
 export default function HalamanTim() {
-  const { id } = useParams()
-  const nomor = Number(id)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
   const klienQuery = useQueryClient()
 
   const [timDiedit, setTimDiedit] = useState(/** @type {import('./tim.js').DataTim | null} */ (null))
@@ -140,29 +140,29 @@ export default function HalamanTim() {
   const [jumlahTim, setJumlahTim] = useState('')
 
   const daftar = useQuery({
-    queryKey: ['tim', nomor],
-    queryFn: () => ambilDaftarTim(nomor),
-    enabled: Number.isInteger(nomor) && nomor > 0,
+    queryKey: ['tim', kunci],
+    queryFn: () => ambilDaftarTim(kunci),
+    enabled: kunci !== '',
   })
 
   const data = daftar.data
 
   const bagi = useMutation({
-    mutationFn: (/** @type {number} */ jumlah) => bagiTimOtomatis(nomor, jumlah),
+    mutationFn: (/** @type {number} */ jumlah) => bagiTimOtomatis(kunci, jumlah),
     onSuccess: (hasil) => {
       tampilkanToast('sukses', `${hasil.jumlah_tim} tim dibagi otomatis.`)
       setJumlahTim('')
-      void klienQuery.invalidateQueries({ queryKey: ['tim', nomor] })
+      void klienQuery.invalidateQueries({ queryKey: ['tim', kunci] })
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
 
   const buang = useMutation({
-    mutationFn: (/** @type {number} */ timId) => hapusTim(nomor, timId),
+    mutationFn: (/** @type {number} */ timId) => hapusTim(kunci, timId),
     onSuccess: (hasil) => {
       tampilkanToast('sukses', hasil.message)
       setTimDiedit(null)
-      void klienQuery.invalidateQueries({ queryKey: ['tim', nomor] })
+      void klienQuery.invalidateQueries({ queryKey: ['tim', kunci] })
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
@@ -190,7 +190,7 @@ export default function HalamanTim() {
             varian="tepi"
             ikon={IkonPanahKiri}
             className="mb-3"
-            to={ruteKuisDetail(data.kuis_id)}
+            to={ruteKuisDetail(kunci)}
           >
             Kembali ke detail kuis
           </TombolTaut>
@@ -205,7 +205,8 @@ export default function HalamanTim() {
             <Banner jenis="peringatan" judul="Mode tim belum dinyalakan">
               <p className="mb-0">
                 Susunan tim di bawah sudah tersimpan, tetapi kuis baru berjalan sebagai tim setelah kunci{' '}
-                <strong>mode tim</strong> dinyalakan di <Link to={RUTE.pengaturan}>pengaturan</Link> (bisa per kuis).
+                <strong>mode tim</strong> dinyalakan di{' '}
+                <Link to={ruteKuisDetail(kunci)}>setelan ulangan kuis ini</Link>.
               </p>
             </Banner>
           )}
@@ -266,7 +267,7 @@ export default function HalamanTim() {
                 onBatal={() => setTimDiedit(null)}
                 onSelesai={() => {
                   setTimDiedit(null)
-                  void klienQuery.invalidateQueries({ queryKey: ['tim', nomor] })
+                  void klienQuery.invalidateQueries({ queryKey: ['tim', kunci] })
                 }}
               />
             ) : (
@@ -313,7 +314,7 @@ export default function HalamanTim() {
               onBatal={() => setBuatBaru(false)}
               onSelesai={() => {
                 setBuatBaru(false)
-                void klienQuery.invalidateQueries({ queryKey: ['tim', nomor] })
+                void klienQuery.invalidateQueries({ queryKey: ['tim', kunci] })
               }}
             />
           )}

@@ -77,7 +77,7 @@ export const MODE_SOAL = 'soal'
 const MODE_TULISAN = ['pengumuman', 'hasil']
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataLayar>}
  */
 export async function ambilLayar(kuisId) {
@@ -86,7 +86,7 @@ export async function ambilLayar(kuisId) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {{ mode: string, judul?: string|null, isi?: string|null, question_id?: number|null }} data
  * @returns {Promise<DataLayar>}
  */
@@ -99,7 +99,7 @@ export async function simpanLayar(kuisId, data) {
 /**
  * Tiket sekali pakai untuk mengikuti kanal kuis (jalur murid — guru memakai
  * tiket Monitor Ulangan lewat `sections/cheat/api.js`).
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<z.infer<typeof skemaTiketSse>>}
  */
 export async function terbitkanTiketLayar(kuisId) {

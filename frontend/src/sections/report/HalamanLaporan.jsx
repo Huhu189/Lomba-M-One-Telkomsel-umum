@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import Banner from '../../shared/ui/Banner.jsx'
-import { RUTE, rutePeringkat } from '../../routes.js'
+import { RUTE, kunciKuisSah, rutePeringkat } from '../../routes.js'
 import { ambilLaporanKuis, ambilLaporanTamu } from './api.js'
 import { ringkasTingkat, tingkatTampilan } from './tampilan.js'
 
@@ -24,21 +24,21 @@ function formatWaktu(iso) {
 }
 
 export default function HalamanLaporan() {
-  const { id } = useParams()
-  const idKuis = Number(id)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
 
   const laporan = useQuery({
-    queryKey: ['laporan', idKuis],
-    queryFn: () => ambilLaporanKuis(idKuis),
-    enabled: Number.isInteger(idKuis) && idKuis > 0,
+    queryKey: ['laporan', kunci],
+    queryFn: () => ambilLaporanKuis(kunci),
+    enabled: kunci !== '',
   })
 
   // Hasil siswa tamu (mode tamu tanpa login) diambil terpisah: laporan kelas
   // sengaja tidak memuat tamu, dan panelnya hanya berguna setelah ada yang masuk.
   const tamu = useQuery({
-    queryKey: ['laporan-tamu', idKuis],
-    queryFn: () => ambilLaporanTamu(idKuis),
-    enabled: Number.isInteger(idKuis) && idKuis > 0,
+    queryKey: ['laporan-tamu', kunci],
+    queryFn: () => ambilLaporanTamu(kunci),
+    enabled: kunci !== '',
   })
 
   const data = laporan.data
@@ -168,10 +168,10 @@ export default function HalamanLaporan() {
           )}
 
           <div className="d-flex flex-wrap gap-2 mt-4">
-            <Link className="btn btn-tepi" to={rutePeringkat(idKuis)}>
+            <Link className="btn btn-tepi" to={rutePeringkat(kunci)}>
               Lihat peringkat
             </Link>
-            <Link className="btn btn-teks" to={`${RUTE.kuis}/${idKuis}`}>
+            <Link className="btn btn-teks" to={`${RUTE.kuis}/${kunci}`}>
               Detail kuis
             </Link>
           </div>

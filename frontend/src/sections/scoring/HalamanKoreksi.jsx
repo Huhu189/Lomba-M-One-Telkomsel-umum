@@ -18,7 +18,7 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { IkonCentang } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import { RUTE, ruteKuisDetail } from '../../routes.js'
+import { RUTE, kunciKuisSah, ruteKuisDetail } from '../../routes.js'
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
 import {
   jawabanTeks,
@@ -214,8 +214,10 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
 }
 
 export default function HalamanKoreksi() {
-  const { id } = useParams()
-  const nomor = Number(id)
+  const { slug } = useParams()
+  // `kunciKuis` = slug kuis dari alamat; `kunci` (di bawah) = baris antrean yang
+  // sedang dibuka. Dua nama berbeda supaya tidak tertukar.
+  const kunciKuis = kunciKuisSah(slug)
   const klienQuery = useQueryClient()
   // Baris antrean yang sedang dibuka, disimpan sebagai kunci (attempt + soal) —
   // bukan nomor urut — supaya pilihan guru tidak bergeser saat antrean menyegar
@@ -223,9 +225,9 @@ export default function HalamanKoreksi() {
   const [kunci, setKunci] = useState(/** @type {string|null} */ (null))
 
   const antrean = useQuery({
-    queryKey: ['koreksi', nomor],
-    queryFn: () => ambilAntreanKoreksi(nomor),
-    enabled: Number.isInteger(nomor) && nomor > 0,
+    queryKey: ['koreksi', kunciKuis],
+    queryFn: () => ambilAntreanKoreksi(kunciKuis),
+    enabled: kunciKuis !== '',
   })
 
   const data = antrean.data
@@ -250,7 +252,7 @@ export default function HalamanKoreksi() {
         <div className="kartu-soft p-4 p-md-5">
           <HeaderHalaman
             judul={`Koreksi manual · ${data.judul_kuis}`}
-            jejak={<Link to={ruteKuisDetail(data.kuis_id)}>Kuis / {data.judul_kuis}</Link>}
+            jejak={<Link to={ruteKuisDetail(kunciKuis)}>Kuis / {data.judul_kuis}</Link>}
             deskripsi={`${data.mapel_nama ?? '—'} · ${data.kelas_nama ?? '—'} · ${data.jumlah} jawaban menunggu tinjauan. Setiap koreksi memakai token sekali pakai dan tercatat di audit.`}
           />
 
@@ -265,7 +267,7 @@ export default function HalamanKoreksi() {
               judul="Tidak ada yang perlu dikoreksi"
               ikon={IkonCentang}
               aksi={
-                <TombolTaut to={ruteKuisDetail(data.kuis_id)} varian="tepi">
+                <TombolTaut to={ruteKuisDetail(kunciKuis)} varian="tepi">
                   Kembali ke detail kuis
                 </TombolTaut>
               }
@@ -344,7 +346,7 @@ export default function HalamanKoreksi() {
                       item={terpilih}
                       alasanMin={data.alasan_min}
                       aiAktif={data.ai_aktif}
-                      onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', nomor] })}
+                      onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', kunciKuis] })}
                     />
                   </section>
                 )}

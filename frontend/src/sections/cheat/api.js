@@ -77,7 +77,7 @@ export const skemaTiketSse = z.object({
 
 /**
  * Snapshot Monitor Ulangan satu kuis.
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataMonitor>}
  */
 export async function ambilMonitor(kuisId) {
@@ -87,7 +87,7 @@ export async function ambilMonitor(kuisId) {
 
 /**
  * Catatan kecurangan satu kuis (opsional disaring status tinjauan).
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {string} [status]
  * @returns {Promise<DataKejadian[]>}
  */
@@ -113,7 +113,7 @@ export async function tinjauKejadian(kejadianId, status, catatan) {
 
 /**
  * Terbitkan ticket SSE sekali pakai untuk Monitor Ulangan.
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<z.infer<typeof skemaTiketSse>>}
  */
 export async function terbitkanTiketSse(kuisId) {

@@ -9,7 +9,7 @@ import { client } from '../../shared/api/client.js'
  * URL unduh nilai kuis sebagai CSV (slice 10). Sesi cookie, jadi cukup dipakai
  * sebagai tautan biasa — tidak ada token di URL.
  *
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {string}
  */
 export function urlEksporNilai(kuisId) {
@@ -149,7 +149,7 @@ export const skemaProgres = z.object({
  */
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @param {number} [top]
  * @returns {Promise<DataPeringkat>}
  */
@@ -161,7 +161,7 @@ export async function ambilPeringkat(kuisId, top) {
 }
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataLaporan>}
  */
 export async function ambilLaporanKuis(kuisId) {
@@ -200,7 +200,7 @@ export const skemaLaporanTamu = z.object({
  * Hasil siswa tamu pada satu kuis (guru pemilik kuis). Laporan kelas biasa
  * tidak memuat tamu — mereka di luar kelas dan di luar ranking kelas.
  *
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<z.infer<typeof skemaLaporanTamu>>}
  */
 export async function ambilLaporanTamu(kuisId) {

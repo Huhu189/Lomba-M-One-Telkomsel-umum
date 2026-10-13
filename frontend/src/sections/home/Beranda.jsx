@@ -106,14 +106,14 @@ export function namaDepan(nama) {
  */
 function tautanJadwal(kuis) {
   if (kuis.sedang_berjalan) {
-    return { to: ruteMonitorKuis(kuis.id), ikon: IkonMata, label: 'Pantau' }
+    return { to: ruteMonitorKuis(kuis.slug), ikon: IkonMata, label: 'Pantau' }
   }
 
   if (kuis.status !== 'publikasi') {
     return { to: RUTE.kuis, ikon: IkonPensil, label: 'Lanjutkan menyusun' }
   }
 
-  return { to: ruteKuisDetail(kuis.id), ikon: IkonLembarSoal, label: 'Lihat detail' }
+  return { to: ruteKuisDetail(kuis.slug), ikon: IkonLembarSoal, label: 'Lihat detail' }
 }
 
 function BerandaTamu() {
@@ -205,8 +205,8 @@ function BerandaGuru({ user }) {
 
   const ikonPerhatian = { monitor: IkonJam, koreksi: IkonCentang, avatar: IkonBendera }
   const tautanPerhatian = {
-    monitor: kuisBerjalan === null ? RUTE.kuis : ruteMonitorKuis(kuisBerjalan.id),
-    koreksi: kuisUntukKoreksi === null ? RUTE.kuis : ruteKoreksiKuis(kuisUntukKoreksi.id),
+    monitor: kuisBerjalan === null ? RUTE.kuis : ruteMonitorKuis(kuisBerjalan.slug),
+    koreksi: kuisUntukKoreksi === null ? RUTE.kuis : ruteKoreksiKuis(kuisUntukKoreksi.slug),
     avatar: RUTE.avatar,
   }
 
@@ -280,10 +280,17 @@ function BerandaGuru({ user }) {
       </section>
 
       <section aria-labelledby="judul-jadwal">
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <h2 id="judul-jadwal" className="judul-bagian mb-0 me-auto">
-            Jadwal kuis
-          </h2>
+        {/* Judul dipisah dari baris pil: bila satu baris, `me-auto` mendorong
+            pil pertama ke tepi kanan begitu barisnya membungkus di layar sempit. */}
+        <h2 id="judul-jadwal" className="judul-bagian mb-2">
+          Jadwal kuis
+        </h2>
+
+        <div
+          role="group"
+          aria-label="Saring jadwal kuis"
+          className="d-flex flex-wrap gap-2 mb-3"
+        >
           {/** @type {Array<['hari'|'minggu', string]>} */ ([
             ['hari', 'Hari ini'],
             ['minggu', 'Minggu ini'],

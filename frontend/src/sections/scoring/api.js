@@ -83,7 +83,7 @@ export const skemaHasilKoreksi = z.object({
  */
 
 /**
- * @param {number} kuisId
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataAntrean>}
  */
 export async function ambilAntreanKoreksi(kuisId) {

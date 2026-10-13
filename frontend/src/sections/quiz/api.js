@@ -26,6 +26,10 @@ export const skemaSoalTampil = z.object({
 /** Skema kuis (guru/murid; murid tidak menerima kunci di dalam soal). */
 export const skemaKuis = z.object({
   id: z.number(),
+  // Alamat kuis: slug acak (bukan id berurutan). Wajib ada karena baris kuis
+  // selalu dibuat server dengan slug — kalau hilang, tautan kuis akan rusak
+  // diam-diam, jadi lebih baik parse-nya gagal. Lihat `KuisService::simpan`.
+  slug: z.string(),
   judul: z.string(),
   deskripsi: z.string().nullable(),
   status: z.string(),
@@ -74,11 +78,11 @@ export async function ambilKuis() {
 }
 
 /**
- * @param {number} id
+ * @param {string|number} kunci slug kuis (angka lama masih diterima server)
  * @returns {Promise<DataKuis>}
  */
-export async function ambilKuisDetail(id) {
-  const respons = await client.get(`/v1/kuis/${id}`)
+export async function ambilKuisDetail(kunci) {
+  const respons = await client.get(`/v1/kuis/${encodeURIComponent(String(kunci))}`)
   return skemaKuis.parse(respons.data)
 }
 

@@ -8,7 +8,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../auth/authStore.js'
-import { RUTE, ruteKerjakanKuis, rutePeringkat } from '../../routes.js'
+import { RUTE, ruteKerjakanKuis, ruteKuisDetail, rutePeringkat } from '../../routes.js'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { ambilKuis } from './api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
@@ -65,13 +65,13 @@ export default function HalamanKuisMurid() {
                     {kuis.sedang_berjalan && (
                       <TombolTaut to={ruteKerjakanKuis(kuis.id)}>Kerjakan sekarang</TombolTaut>
                     )}
-                    <TombolTaut varian="tepi" to={`${RUTE.kuis}/${kuis.id}`}>
+                    <TombolTaut varian="tepi" to={ruteKuisDetail(kuis.slug)}>
                       Lihat detail
                     </TombolTaut>
                     {/* Peringkat kelas tidak dibuka untuk tamu (nama murid kelas
                         bukan untuk orang tanpa akun), jadi tautannya tidak ada. */}
                     {!tamu && (
-                      <TombolTaut varian="teks" to={rutePeringkat(kuis.id)}>Peringkat</TombolTaut>
+                      <TombolTaut varian="teks" to={rutePeringkat(kuis.slug)}>Peringkat</TombolTaut>
                     )}
                   </div>
                 </div>

@@ -22,7 +22,7 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { IkonCentang, IkonPerisai } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import { RUTE, ruteKuisDetail } from '../../routes.js'
+import { RUTE, kunciKuisSah, ruteKuisDetail } from '../../routes.js'
 import { urlSse } from '../../shared/api/realtime.js'
 import { ambilKejadian, ambilMonitor, terbitkanTiketSse, tinjauKejadian } from './api.js'
 import { formatDetikTerakhir, ringkasMonitor } from './ringkasMonitor.js'
@@ -43,8 +43,8 @@ function tingkatRisiko(skor) {
 }
 
 export default function HalamanMonitor() {
-  const { id } = useParams()
-  const idKuis = Number(id)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
 
   const [statusSse, setStatusSse] = useState('mencoba')
   const [saring, setSaring] = useState('')
@@ -54,22 +54,22 @@ export default function HalamanMonitor() {
   const selang = statusSse === 'hidup' ? POLLING_LAMBAT : POLLING_CEPAT
 
   const monitor = useQuery({
-    queryKey: ['monitor', idKuis],
-    queryFn: () => ambilMonitor(idKuis),
-    enabled: Number.isInteger(idKuis) && idKuis > 0,
+    queryKey: ['monitor', kunci],
+    queryFn: () => ambilMonitor(kunci),
+    enabled: kunci !== '',
     refetchInterval: selang,
   })
 
   const kejadian = useQuery({
-    queryKey: ['kejadian', idKuis, saring],
-    queryFn: () => ambilKejadian(idKuis, saring || undefined),
-    enabled: Number.isInteger(idKuis) && idKuis > 0,
+    queryKey: ['kejadian', kunci, saring],
+    queryFn: () => ambilKejadian(kunci, saring || undefined),
+    enabled: kunci !== '',
     refetchInterval: selang,
   })
 
   // SSC: tiket sekali pakai → EventSource → pembaruan langsung.
   useEffect(() => {
-    if (!Number.isInteger(idKuis) || idKuis <= 0) return undefined
+    if (kunci === '') return undefined
 
     let batal = false
     /** @type {EventSource|null} */
@@ -77,7 +77,7 @@ export default function HalamanMonitor() {
 
     async function sambung() {
       try {
-        const tiket = await terbitkanTiketSse(idKuis)
+        const tiket = await terbitkanTiketSse(kunci)
         if (batal) return
 
         sumber = new EventSource(urlSse('monitor', tiket.tiket))
@@ -110,7 +110,7 @@ export default function HalamanMonitor() {
     // `monitor`/`kejadian` sengaja tidak jadi dependensi: menyambung ulang pada
     // setiap refetch akan membuat tiket baru terus-menerus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idKuis])
+  }, [kunci])
 
   const data = monitor.data
 
@@ -161,7 +161,7 @@ export default function HalamanMonitor() {
         jejak="Kuis / Monitor Ulangan"
         deskripsi={`${data.kuis.kelas_nama ?? '—'} · ${data.jumlah_online} dari ${data.murid.length} murid sedang aktif`}
       >
-        <TombolTaut to={ruteKuisDetail(idKuis)} varian="tepi" ukuran="sedang">
+        <TombolTaut to={ruteKuisDetail(kunci)} varian="tepi" ukuran="sedang">
           Detail kuis
         </TombolTaut>
       </HeaderHalaman>
@@ -262,8 +262,16 @@ export default function HalamanMonitor() {
         </div>
       )}
 
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h2 className="judul-bagian mb-0 me-auto">Catatan untuk ditinjau</h2>
+      {/* Judul dipisah dari baris pil. Saat keduanya satu baris, `me-auto`
+          mendorong pil pertama ke tepi kanan begitu barisnya membungkus —
+          di layar HP "Semua" jadi menggantung sendiri di kanan. */}
+      <h2 className="judul-bagian mb-2">Catatan untuk ditinjau</h2>
+
+      <div
+        role="group"
+        aria-label="Saring catatan kejadian"
+        className="d-flex flex-wrap gap-2 mb-3"
+      >
         {/** @type {Array<[''|'menunggu'|'valid'|'tidak_valid', string]>} */ ([
           ['', 'Semua'],
           ['menunggu', 'Belum ditinjau'],
@@ -343,7 +351,7 @@ export default function HalamanMonitor() {
       <p className="teks-lembut small mt-3 mb-0">
         Deteksi di perangkat murid bisa diakali; karena itu semua catatan di sini hanya bahan tinjauan.
       </p>
-      <Link className="taut-sentuh mt-1" to={ruteKuisDetail(idKuis)}>
+      <Link className="taut-sentuh mt-1" to={ruteKuisDetail(kunci)}>
         Kembali ke detail kuis
       </Link>
     </div>
