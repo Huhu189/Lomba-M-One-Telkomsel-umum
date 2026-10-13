@@ -339,16 +339,26 @@ async function main() {
   catat('menekan area gelap di luar laci menutup laci', !setelahOverlay.laciAda)
 
   // ---------- 4. Layar pengerjaan ulangan di ponsel (kalau ada kuis dev) ----------
+  //
+  // CATATAN (13 Okt 2026) — dua cacat alat ukur yang membuat bagian ini SELALU
+  // "LULUS" tanpa pernah membuka satu pun halaman ulangan di ponsel:
+  //   1. dulu disaring `satu.status === 'terbit'`. Nilai itu tidak pernah ada di
+  //      API — enum `StatusKuis` memakai `publikasi` (label manusianya "Terbit",
+  //      `KuisResource` mengirim `status: status->value`);
+  //   2. `d.data` juga selalu kosong karena `KuisController@index` mengembalikan
+  //      larik TELANJANG, bukan `{ data: [...] }` (dibuktikan dengan sonde: panjang
+  //      122, sebaran publikasi 84 · draf 19 · arsip 19).
   await buka('/kuis')
   const kuisUji = await evalJs(`fetch('/api/v1/kuis?per_page=50', { credentials: 'include', headers: { Accept: 'application/json' } })
     .then((r) => r.json())
     .then((d) => {
-      const k = (d.data ?? []).find((satu) => satu.status === 'terbit')
+      const arr = Array.isArray(d) ? d : (d.data ?? [])
+      const k = arr.find((satu) => satu.status === 'publikasi')
       return k ? { id: k.id, judul: k.judul } : null
     })`)
 
   if (!kuisUji) {
-    catat('layar kuis di ponsel', true, '(tidak ada kuis terbit di DB dev — bagian ini dilewati dengan sadar)')
+    catat('layar kuis di ponsel', true, '(tidak ada kuis berstatus publikasi di DB dev — bagian ini dilewati dengan sadar)')
   } else {
     await buka(`/kuis/${kuisUji.id}`)
     const dKuis = await ukur()

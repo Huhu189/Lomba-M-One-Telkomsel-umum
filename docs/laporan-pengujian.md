@@ -5646,3 +5646,81 @@ memasang ulang `setDeviceMetricsOverride` dan menetapkan `data-bs-theme` eksplis
   kebetulan.
 - **Tidak ada pengukuran kontras baru.** Yang dibuktikan adalah nilai warnanya sama dengan `var(--panel)`
   tema yang berlaku; kontras teks di atas panel tetap dijaga tes tema yang sudah ada.
+
+## A.66 — Sapuan GUI: semua harness fitur rawan dijalankan, dua pemeriksaan mati di `mobile` dihidupkan (13 Oktober 2026)
+
+Permintaan: *"tes gui fitur fitur yang rawan rusak"*. Yang dimaksud rawan di sini = **berkas yang baru saja
+disentuh + jalur yang saling bergantung banyak lapis** (ulangan yang sedang berjalan, realtime/SSE, unggahan,
+impor berkas, mode tim, regangan pita panel, editor materi gaya video). Semuanya dijalankan di **peramban
+sungguhan** (Chrome headless + CDP), bukan lewat unit test.
+
+Layanan: `./nyalakan-local.sh` (redis + backend :8000 + realtime :4000 + frontend :5173) hidup di seluruh
+sapuan; tiap harness dijalankan lewat `docs/jalankan-smoke-ui.sh <nama>` (runner itu memakai layanan yang sudah
+hidup dan menyalakan Chrome-nya sendiri, dengan profil terpisah per harness).
+
+### A.66.1 Hasil — 30 harness, 777 pemeriksaan, semuanya lulus (exit 0)
+
+| Harness | Hasil | Harness | Hasil |
+| --- | --- | --- | --- |
+| `palet-sidebar` | 58/58 | `slice06` (koreksi manual) | 28/28 |
+| `perjalanan` | 69/69 | `materi` (pemutar) | 27/27 |
+| `kuis-materi` | 48/48 | `setelan-sesi` | 23/23 |
+| `avatar` | 44/44 | `luring` (luring/offline) | 22/22 |
+| `susun` (susun kuis) | 44/44 | `slice07` (monitor + SSE) | 21/21 |
+| `auth` (mailer log) | 36/36 | `slice05` (skor/ranking) | 20/20 |
+| `layar` (layar kelas) | 34/34 | `soal-berubah` | 19/19 |
+| `editor` (390/768/1366) | 32/32 | `durasi-klip` | 19/19 |
+| `mapel` | 32/32 | `slice04` (kerjakan ulangan) | 18/18 |
+| `tim` (mode tim) | 31/31 | `murid` (pencarian server) | 18/18 |
+| `impor-murid` | 29/29 | `kelas` | 17/17 |
+| `kuis-manual` | 15/15 | `mobile` (perangkat 412×915) | 16/16 |
+| `nav` | 14/14 | `tamu` (siswa tamu) | 9/9 |
+| `bilah-atas` | 10/10 | `sidebar` | 9/9 |
+| `slice03` (bank soal) | 9/9 | `pengaturan` (per lingkup) | 6/6 |
+
+Audit seluruh halaman (`node docs/audit-ui.mjs`, guru + murid × hp 390 + laptop 1366, terang **dan** `--gelap`):
+**44/44 halaman BERSIH di kedua tema**, ringkasan cacat `{}` di keduanya.
+
+`./verify.sh` sesudah sapuan: **SEMUA HIJAU (exit 0)** — Pest **344 passed (3290 assertions)** · Redis wajib
+**9 (65)** · Pint · checkJs · ESLint **0 error** (2 warning lama React Hook Form) · Vitest **76 berkas / 731
+tes** · realtime lulus.
+
+### A.66.2 Dua pemeriksaan yang ternyata MATI di `docs/smoke-ui-mobile.mjs` (diperbaiki)
+
+Bagian 4 harness `mobile` ("layar kuis di ponsel") **selalu** melaporkan `LULUS · … (tidak ada kuis terbit di
+DB dev — bagian ini dilewati dengan sadar)` — pemeriksaan yang tidak pernah benar-benar mengukur apa pun.
+Dua cacat alat ukur yang berdiri sendiri-sendiri menyebabkannya:
+
+1. **Status usang.** Penyaringnya `satu.status === 'terbit'`. Nilai itu tidak pernah ada di API: enum
+   `StatusKuis` memakai `publikasi` dan `KuisResource` mengirim `status: $this->status->value`
+   (`'terbit'` hanya label manusianya).
+2. **Amplop salah.** `d.data ?? []` selalu kosong karena `KuisController@index` mengembalikan larik
+   **telanjang**, bukan `{ data: [...] }`.
+
+Dibuktikan dengan sonde CDP sekali pakai (`/tmp`, dihapus lagi): sebagai `admin@sekolah.test`, `/api/v1/kuis`
+menjawab **HTTP 200 · 122 kuis · publikasi 84 · draf 19 · arsip 19**, `bentuk: array`. Jadi bukan "tidak ada
+kuis terbit" — memang alat ukurnya yang salah membaca.
+
+Sesudah diperbaiki, pemeriksaan itu benar-benar berjalan dan lulus dengan angka nyata:
+`LULUS · halaman detail kuis tidak menggulir mendatar di ponsel · +0px · elemen menembus 0 · kuis #248`
+(mobile tetap **16/16**, exit 0).
+
+### A.66.3 Berkas
+
+- **Diubah (nol berkas produk):** `docs/smoke-ui-mobile.mjs` — dua perbaikan penyaring + catatan mengapa;
+  tidak ada kode aplikasi yang disentuh (sapuan ini memang hanya pengukuran).
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 10 + tabel status).
+
+### A.66.4 Batasan jujur
+
+- **Chrome headless, bukan perangkat fisik.** Ukuran sentuh, DPR, dan UA Android diemulasikan; tidak ada uji
+  di ponsel/tablet sungguhan pada putaran ini.
+- **Satu jalur `auth` bergantung `MAIL_MAILER=log`.** Runner menyalakan backend sendiri untuk harness `auth`
+  supaya isi surat bisa dibaca; kalau backend sudah hidup dengan `.env` biasa, langkah lewat email
+  **dilewati** dan harness mencetaknya sebagai `DILEWATI` (putaran ini 0 langkah dilewati karena backend
+  dimatikan dulu).
+- **Tidak ada harness GUI untuk jalur penjelasan *media* di pemutar materi** dan **endpoint HTTP murni**
+  (`docs/smoke-http-fitur.mjs`, 243 pemeriksaan) **tidak dijalankan** pada sapuan ini — keduanya di luar
+  cakupan "GUI".
+- **Yang tidak diukur ulang:** peran murid/tamu pada halaman guru (hanya sebagian harness yang masuk sebagai
+  murid), dan perangkat sentuh nyata.

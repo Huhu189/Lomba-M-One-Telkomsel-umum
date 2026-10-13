@@ -83,7 +83,11 @@ Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), san
 
 ### 0.4 Sudah terverifikasi (jangan diulang tanpa perubahan kode)
 
-**A.60** (paling mutakhir, sesudah beranda berikon + Monitor Ulangan + Pengaturan per ulangan + sisa temuan
+**A.66** (13 Okt 2026, sapuan GUI seluruh fitur rawan): 30 harness / **777 pemeriksaan lulus** + audit 44
+  halaman bersih di terang & gelap; lihat tabel bagian 1 dan `laporan-pengujian.md` A.66 — jangan diulang tanpa
+  perubahan kode.
+
+**A.60** (sesudah beranda berikon + Monitor Ulangan + Pengaturan per ulangan + sisa temuan
   audit): `./verify.sh` **SEMUA HIJAU** — Pest 342 (3251 asersi) · Redis wajib 9 · Pint 354 berkas · checkJs ·
 ESLint 0 error · Vitest **75 berkas/727 tes** · realtime 20/20; lalu `docs/jalankan-smoke-ui.sh pengaturan`
 **6/6**, `… slice07` **21/21**, `… slice06` **28/28**, `… slice04` **18/18**, `… mobile` **16/16**,
@@ -272,6 +276,7 @@ dan tiga sisa temuan audit ditutup — dua di antaranya ternyata cacat alat ukur
 
 | Perintah | Hasil |
 | --- | --- |
+| **Sapuan GUI fitur rawan (**A.66**, 13 Okt 2026)** — 30 harness lewat `docs/jalankan-smoke-ui.sh` + `node docs/audit-ui.mjs` (terang & `--gelap`) | **777 pemeriksaan LULUS, semuanya exit 0**; audit **44/44 halaman bersih di kedua tema** (cacat `{}`); sesudahnya `./verify.sh` **SEMUA HIJAU** (Pest 344/3290 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error · Vitest 76/731 · realtime). Dua pemeriksaan mati di `docs/smoke-ui-mobile.mjs` ditemukan & dihidupkan. Rincian: `laporan-pengujian.md` **A.66** |
 | `./verify.sh` (root) (**A.55**, sesudah semua suntingan putaran ini) | **SEMUA HIJAU (exit 0)** — Pest, Pint, `npm run check`, ESLint, Vitest, dan realtime (20 tes) semuanya lulus |
 | `docs/jalankan-smoke-ui.sh kuis-materi` (**A.55**, Chrome + layanan hidup) | **48/48 lulus, exit 0** — panel kuis tampil di bawah video (hp, `posisi: bawah`, panel 274×567 untuk isi 565 px, gulir dalam panel 0) dan di sampingnya di laptop tata horizontal (panel 280×567 vs bingkai 220×124); gulir mendatar halaman 0 px; kontrol negatif: CSS lama **27/42** (panel `274×123` menumpuk bingkai `274×154`, +55 px mendatar) |
 | `docs/jalankan-smoke-ui.sh mobile` + `docs/jalankan-smoke-ui.sh materi` (**A.55**, regresi) | **16/16** dan **27/27 lulus, exit 0** — bilah atas masih bersih di 8 halaman guru beremulasi ponsel, dan alur kuis sisipan di pemutar video tidak berubah |
@@ -772,3 +777,25 @@ Regresi: `sidebar` 9/9 · `nav` 14/14 · `mobile` 16/16 (1 dilewati dengan sadar
 
 Cara mengulang: `docs/jalankan-smoke-ui.sh palet-sidebar`. Belum diukur: peran murid/tamu (harness masuk
 sebagai guru) dan lebar < 992 px (panelnya memang digantikan laci, diuji oleh `mobile`).
+
+## 10. A.66 — sapuan GUI seluruh fitur rawan (13 Oktober 2026)
+
+Permintaan: *"tes gui fitur fitur yang rawan rusak"*. Dijalankan **30 harness GUI** (semua berkas
+`docs/smoke-ui-*.mjs` kecuali sonde `cdp` dan berkas HTTP murni) lewat `docs/jalankan-smoke-ui.sh <nama>` di
+peramban sungguhan, saat `./nyalakan-local.sh` hidup: **777 pemeriksaan, semuanya lulus, exit 0**. Plus
+`node docs/audit-ui.mjs` pada 44 halaman (guru+murid × hp/laptop) dalam **terang dan gelap**: keduanya
+**BERSIH** (`{}`). `./verify.sh` sesudahnya **SEMUA HIJAU**.
+
+**Temuan nyata: dua pemeriksaan mati di `docs/smoke-ui-mobile.mjs`** (bagian "layar kuis di ponsel") yang
+selalu melaporkan LULUS tanpa mengukur apa pun — dulu bahkan beralasan "tidak ada kuis terbit di DB dev":
+(1) penyaring status memakai `'terbit'`, padahal API (`StatusKuis`/`KuisResource`) memakai **`publikasi`**;
+(2) `d.data ?? []` selalu kosong karena `/api/v1/kuis` mengembalikan **larik telanjang** (sonde: 200 · 122
+kuis · publikasi 84 · draf 19 · arsip 19). Sesudah diperbaiki pemeriksaan itu benar-benar mengukur dan lulus:
+`+0px · elemen menembus 0 · kuis #248`.
+
+Cara mengulang: `./nyalakan-local.sh` lalu `for h in …; do docs/jalankan-smoke-ui.sh "$h"; done` (daftar lengkap
+ada di `docs/laporan-pengujian.md` A.66.1). Untuk `auth`, matikan backend dulu supaya runner menyalakannya
+dengan `MAIL_MAILER=log` — kalau tidak, langkah lewat email dicetak `DILEWATI`.
+
+Belum diukur pada putaran ini: perangkat sentuh fisik, jalur penjelasan *media* di pemutar materi, dan
+`docs/smoke-http-fitur.mjs` (243 pemeriksaan HTTP, bukan GUI).
