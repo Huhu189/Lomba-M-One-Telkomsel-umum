@@ -54,12 +54,16 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
   `AGENT.md` isinya identik), `jurnal-prompt.docx`, `log-mentah.docx`, `penjelasan-fitur.docx`,
   `catatan-demo.docx`, dan `laporan-pengujian.docx`. Teks prompt **asli** tidak lagi ditaruh di sini,
   melainkan di log mentah.
-- **`docs/log-mentah/`** = log mentah apa adanya: `sesi-2026-10-05-chat-messages.json.gz` (salinan
-  **byte-exact** dari berkas chat sesi asli — tidak disunting) + `sesi-2026-10-05-transkrip.md`
-  (transkrip mentah: isi utuh, argumen panggilan alat tidak dipotong), plus prompt/log pekerjaan AI lain di luar repo (`prompt-claude-eksternal.md`,
-  `log-claude-eksternal.md`). Pekerjaan luar repo wajib dicatat tempatnya di log dan tidak boleh
-  dijadikan bukti tanpa diverifikasi ulang di repo ini.
-- `docs/export-log-sesi.py` menyegarkan log mentah (gzip byte-exact + transkrip);
+- **`docs/log-mentah/`** = log mentah apa adanya, **satu folder per sesi** bernama id sesinya:
+  `<sesi>/chat-messages.json.gz` (salinan **byte-exact** dari berkas chat asli — tidak disunting),
+  `<sesi>/transkrip.md` (transkrip mentah: isi utuh, argumen panggilan alat tidak dipotong), dan
+  `<sesi>/info.json` (jumlah pesan, ukuran, md5 isi `.gz` supaya byte-exactness bisa diperiksa).
+  Indeks ringkas semua sesi ada di `docs/log-mentah/README.md` (dibuat ulang tiap ekspor). Bukti visual
+  di `docs/log-mentah/tangkapan/`; prompt/log pekerjaan AI lain di luar repo di
+  `docs/log-mentah/eksternal/` — pekerjaan luar repo wajib dicatat tempatnya dan tidak boleh dijadikan
+  bukti tanpa diverifikasi ulang di repo ini.
+- `docs/export-log-sesi.py` menyegarkan log mentah (gzip byte-exact + transkrip) dengan membaca berkas
+  sesi **per pesan**, sehingga sesi 412 MB pun aman di mesin ini (dulu berkasnya dimuat utuh ke memori);
   `docs/export-word.sh` memanggilnya lalu mengekspor dokumen Word. Jalankan keduanya setiap akhir slice
   supaya log mentah selalu mutakhir, lalu komit hasilnya.
 - **Log mentah tidak boleh disunting** (isi berkas `.gz` apa adanya, tanpa potong/ringkas).

@@ -8,7 +8,7 @@
     { "path": "AGENT.md", "role": "Dokumen acuan utama: peran, aturan lomba, stack, keamanan, pagar mutu, cara kerja, larangan." },
     { "path": "chunk_map.json", "role": "Urutan slice, dependensi, anggaran prompt, urutan pemotongan, hal yang tidak boleh dipotong." },
     { "path": "docs/jurnal-prompt.md", "role": "Jurnal prompt (maksimal 5 entri) yang dikumpulkan ke panitia." },
-    { "path": "docs/log-mentah/", "role": "Log mentah seluruh prompt dan jawaban, tanpa penyuntingan: sesi-2026-10-05-chat-messages.json.gz (salinan byte-exact berkas chat sesi asli) + sesi-2026-10-05-transkrip.md (bantuan baca), plus prompt/log pekerjaan AI lain di luar repo. Diserap ulang tiap akhir slice lewat docs/export-log-sesi.py." },
+    { "path": "docs/log-mentah/", "role": "Log mentah seluruh prompt dan jawaban, tanpa penyuntingan, satu folder per sesi: <sesi>/chat-messages.json.gz (salinan byte-exact berkas chat asli), <sesi>/transkrip.md (transkrip utuh tanpa potong), <sesi>/info.json (jumlah pesan + md5 untuk memeriksa). Indeks ringkas semua sesi di README.md; bukti visual di tangkapan/, pekerjaan AI di luar repo di eksternal/. Diserap ulang tiap akhir putaran lewat docs/export-log-sesi.py." },
     { "path": "docs/penjelasan-fitur.md", "role": "Penjelasan fitur utama untuk juri dan guru (bukan untuk agent)." },
     { "path": "docs/laporan-pengujian.md", "role": "Laporan apa yang dijalankan dan hasilnya, dipisah jujur dari yang belum dijalankan." },
     { "path": "docs/catatan-demo.md", "role": "Cara mendemokan aplikasi pada tiap akhir slice." },

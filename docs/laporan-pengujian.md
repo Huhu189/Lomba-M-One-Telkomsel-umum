@@ -7,7 +7,7 @@ Bagian A.1–A.30 adalah catatan apa adanya dari sesi-sesinya masing-masing; sta
 > pengguna. Ringkasan prompt kini ada di `docs/word/AGENT.md` + `AGENT.docx` (bukan lagi dump prompt
 > verbatim), `docs/word/` memuat seluruh dokumen `.docx` yang dikumpulkan, arsip `docs/word-arsip/`
 > beserta berkas log bertanggal di `docs/log-mentah/` dihapus, dan log mentah sesi diganti oleh
-> `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz` (byte-exact) + transkrip bacanya.
+> `docs/log-mentah/2026-10-05T07-39-24.876Z/chat-messages.json.gz` (byte-exact) + transkrip bacanya.
 > Penyebutan nama berkas lama di bawah ini adalah catatan apa adanya dari sesi saat itu.
 >
 > **Catatan revisi dokumentasi (8 Oktober 2026):** atas permintaan pengguna, log mentah disegarkan
@@ -1102,7 +1102,7 @@ Guru ingin menyusun materi `/materi` "seperti video editor" — hasil susunannya
   → tambah blok teks → ketik teks → DOM dicek: 2 klip, klip aktif "¶ Blok 2 Teks",
   indikator "Blok 2 dari 2", dan **monitor pratinjau menampilkan teks yang baru
   diketik** (reaksi langsung terbukti).
-- **Bukti visual**: `docs/log-mentah/editor-materi-terang.png` (74,8% kertas krem,
+- **Bukti visual**: `docs/log-mentah/tangkapan/editor-materi-terang.png` (74,8% kertas krem,
   klip aktif stabilo) dan `editor-materi-gelap.png` (75,2% navy gelap #0F1631) —
   diverifikasi beda lewat MD5 + analisis piksel Python (dekode PNG manual).
 
@@ -1123,8 +1123,8 @@ Guru ingin menyusun materi `/materi` "seperti video editor" — hasil susunannya
 Pengguna melampirkan hasil audit statis (`audit-projectla-lomba.md`: 84 temuan — 1 kritis, 18
 tinggi, 51 sedang, 14 rendah, **tanpa ada kode yang dijalankan** karena PHP tidak tersedia di
 sandbox audit) dengan instruksi "cek lagi dan kerjakan progres penyelesaian bug". Berkas prompt
-dan log pekerjaan audit itu disimpan apa adanya di `docs/log-mentah/prompt-claude-eksternal.md`
-dan `docs/log-mentah/log-claude-eksternal.md` supaya asal setiap temuan bisa ditelusuri.
+dan log pekerjaan audit itu disimpan apa adanya di `docs/log-mentah/eksternal/prompt-claude-eksternal.md`
+dan `docs/log-mentah/eksternal/log-claude-eksternal.md` supaya asal setiap temuan bisa ditelusuri.
 
 Isi berkas audit **tidak lengkap**: hanya 23 temuan yang membawa rincian lokasi + skenario
 (U-01..U-04, Q-01..Q-19). Enam temuan lain punya ringkasan Top-10 yang skenarionya cukup jelas
@@ -1205,8 +1205,8 @@ Permintaan pengguna: "perbaiki docs nya — untuk prompt pakai `docs`, untuk log
 benar-benar mentah, dan yang ada ringkasan di Word". Yang dikerjakan:
 - **Prompt**: tetap satu tempat di `docs/` (`jurnal-prompt.md` untuk 5 entri jurnal, `log-mentah/`
   untuk seluruh prompt & jawaban mentah); tidak ada teks prompt yang dipindah keluar dari `docs/`.
-- **Log mentah**: `sesi-2026-10-05-chat-messages.json.gz` disegarkan dari sesi asli (207 pesan,
-  salinan byte-exact) dan transkripnya kini **utuh tanpa potong** — sebelumnya setiap argumen
+- **Log mentah**: `docs/log-mentah/2026-10-05T07-39-24.876Z/chat-messages.json.gz` disegarkan dari sesi asli
+  (207 pesan saat itu, salinan byte-exact) dan transkripnya kini **utuh tanpa potong** — sebelumnya setiap argumen
   panggilan alat dipotong di 400 karakter. Transkrip juga dibaca dari berkas `.gz` yang ikut
   dikumpulkan, sehingga angka byte + md5 di kepalanya benar-benar sepadan dengan salinan mentahnya
   (sebelumnya dihitung dari berkas sesi yang masih hidup dan bisa berbeda).
@@ -1214,8 +1214,8 @@ benar-benar mentah, dan yang ada ringkasan di Word". Yang dikerjakan:
   `log-mentah.docx`, `penjelasan-fitur.docx`, `catatan-demo.docx`, `laporan-pengujian.docx`).
 
 ### A.18.7 Rujukan log mentah
-`docs/log-mentah/sesi-2026-10-05-transkrip.md` (dan salinan byte-exact
-`sesi-2026-10-05-chat-messages.json.gz`): `2026-10-08 ±15.30–19.45 WIB` (audit satu per ID sampai
+`docs/log-mentah/2026-10-05T07-39-24.876Z/transkrip.md` (dan salinan byte-exact
+`docs/log-mentah/2026-10-05T07-39-24.876Z/chat-messages.json.gz`): `2026-10-08 ±15.30–19.45 WIB` (audit satu per ID sampai
 `verify.sh` hijau + ekspor Word) dan `2026-10-08 ±20.10 WIB` (perapian dokumen).
 
 ## A.19 Pematangan & Pengujian Ulang Menyeluruh (9 Oktober 2026)
@@ -1281,8 +1281,9 @@ menjadi kutip tunggal lalu pint hijau.
 - Sesi 9 Oktober 2026 (±10.50–15.10 WIB) melakukan pematangan + pengujian ulang menyeluruh, smoke
   HTTP/UI, audit UI, dan perbaikan sasaran sentuh.
 - **Log mentah sesi ini SUDAH diekspor** ke `docs/log-mentah/` lewat `./docs/export-word.sh`
-  (pukul ±15.08 WIB): `sesi-2026-10-05-chat-messages.json.gz` (≈24,2 MB, salinan byte-exact) dan
-  `sesi-2026-10-05-transkrip.md` (≈10,7 MB, transkrip utuh tanpa potong). Kedua berkas disegarkan
+  (pukul ±15.08 WIB): `docs/log-mentah/2026-10-05T07-39-24.876Z/chat-messages.json.gz` (≈24,2 MB saat itu,
+  salinan byte-exact) dan `docs/log-mentah/2026-10-05T07-39-24.876Z/transkrip.md` (≈10,7 MB saat itu,
+  transkrip utuh tanpa potong). Kedua berkas disegarkan
   (menggantikan salinan lama), bukan ditulis sebagai berkas bertanggal baru, karena sesi ini adalah
   sesi `2026-10-05T07-39-24.876Z` yang sama dan terus berjalan.
 - **Sesi masih berjalan**, jadi berkas `.gz` di atas adalah snapshot per ±15.08 WIB, bukan akhir
@@ -4019,7 +4020,7 @@ variabel seperti aturan repo.
 - **Saya tidak bisa melihat gambar.** Aset dipilih bukan dari tampilannya, melainkan dari data yang bisa
   diperiksa: lisensi halaman, tag (`flat`), daftar warna di dalam SVG, jumlah bentuk, ada/tidaknya `<image>`
   raster atau `<text>`, dan angka kecerahan hasil render. "Cocok" secara estetika tetap perlu mata pemilik
-  produk — `docs/log-mentah/adegan-gunung-terang.png` & `-gelap.png` disimpan untuk itu.
+  produk — `docs/log-mentah/tangkapan/adegan-gunung-terang.png` & `-gelap.png` disimpan untuk itu.
 - **Komposisinya berbeda dari niat A.43.** Gambar ini adalah pemandangan luas dengan beberapa puncak, bukan
   satu puncak dilihat mendongak dari kaki gunung. Niat itu hilang bersama gambar tangan; kalau masih diinginkan,
   `'gunung'` cukup dikembalikan ke `ADEGAN_DIGAMBAR`.
@@ -4126,7 +4127,7 @@ Sebagai pembanding A.45 (berkas lama): rata **165,1** · langit **187,5**. Latar
 
 - **Saya tidak bisa melihat gambarnya.** Karena itu keluhan "curan" diselesaikan dengan **mengukur bentuk**
   (kemiringan, putaran, lebar punggung, bidang tanpa luas), bukan dengan menebak selera. Penilaian "bagus"
-  tetap milik pemilik produk — tangkapan `docs/log-mentah/adegan-gunung-terang.png` & `-gelap.png`
+  tetap milik pemilik produk — tangkapan `docs/log-mentah/tangkapan/adegan-gunung-terang.png` & `-gelap.png`
   diperbarui untuk itu.
 - **Keputusan A.45 dibalik.** A.45 memilih memakai *berkas gambar jadi dari domain publik*; sekarang latarnya
   **karya proyek ini** (CC0, dicatat di `LISENSI.md`). Alasannya terukur: dari empat kandidat CC0 yang diunduh,
@@ -4239,7 +4240,7 @@ Angka itu sama di tema **terang dan gelap** karena warnanya dibaca dari variabel
 | **Uji balik** (CSS lama dikembalikan sementara, lalu SHA-nya dikembalikan persis) | **3 dari 4** pemeriksaan bentuk **GAGAL** (16/19): `cincin=1px` · `tinggi 32px < klip 32px, masuk kiri=0px kanan=0px` · `kiri 1px jarak 1px · kanan 1px jarak 2px` |
 | `./verify.sh` | **SEMUA HIJAU** — Pest **331 tes / 3126 asersi**, Redis wajib **9/65**, Pint bersih, checkJs bersih, ESLint 0 masalah, Vitest **67 berkas / 653 tes**, Realtime hijau |
 
-Potret bukti: `docs/log-mentah/gagang-pangkas-gelap.png` (potongan zoom tepi klip terpilih; berkas itu
+Potret bukti: `docs/log-mentah/tangkapan/gagang-pangkas-gelap.png` (potongan zoom tepi klip terpilih; berkas itu
 tidak di-commit, sama seperti tangkapan gunung A.45/A.46).
 
 ### A.47.4 Berkas
@@ -6134,3 +6135,93 @@ butuh kamera sungguhan (lihat batasan di bawah).
 - **Belum di-push.** `origin/main` masih tertinggal seluruh commit sesi ini (`git rev-list --count
   origin/main..HEAD`); pekerjaan besar A.61–A.69 (65 entri) juga masih menumpuk di working tree dan belum ikut
   dikomit putaran ini.
+
+## A.71 — Log mentah diganti dari sesi asli (412 MB, 539 pesan) + folder `docs/` dirapikan (13 Oktober 2026)
+
+### A.71.1 Permintaan
+
+**“`sesi-2026-10-05-transkrip.md` kau ganti dengan ini sebagai log penuh, buatkan log benar-benar [benar],
+ringkas, dan rapihin folder docs (ingat sesi-mu juga ditambahkan).”** Lampirannya `chat-messages.json.zip`
+berisi berkas sesi asli proyek ini sebesar **412.229.403 byte**. Jawaban atas pertanyaan pilihan: struktur
+folder dirapikan **secara aman** (tanpa memindahkan harness/skrip/laporan yang dirujuk banyak berkas) dan
+log ditulis **utuh** dengan tambahan **indeks ringkas**.
+
+### A.71.2 Yang ditemukan sebelum mengerjakan
+
+- Sesi `2026-10-05T07-39-24.876Z` kini **412 MB / 539 pesan** (log yang tersimpan di repo sebelumnya adalah
+  snapshot 10 Okt: 76 MB / 207 pesan), tetapi sekitar 400 MB isinya `metadata.runState` yang berulang tiap
+  pesan.
+- Ekspor lama memakai `json.load` — artinya berkas 412 MB harus dimuat **utuh** ke memori. Di mesin ini
+  (RAM 8 GB, sisa bebas di bawah 1 GB saat dikerjakan) itu bukan sekadar lambat, melainkan berisiko OOM.
+- Ada **tiga** sesi yang benar-benar berisi percakapan di folder chat proyek ini: sesi besar itu,
+  `2026-10-12T13-01-29.434Z` (543.490 byte · 2 pesan), dan `2026-10-13T12-30-29.489Z` = sesi putaran ini
+  (5,8 MB · 6 pesan). Tujuh puluh satu folder lain tidak memuat `chat-messages.json`.
+
+### A.71.3 Yang diubah
+
+- **`docs/export-log-sesi.py` (ditulis ulang).** Berkas sesi dibaca **per pesan** memakai
+  `json.JSONDecoder.raw_decode` dengan buffer 1 MB yang dipangkas setelah tiap pesan, jadi puncak memori tetap
+  ratusan MB (terukur **270 MB** untuk berkas 412 MB). Tanpa argumen ia mengekspor **semua** sesi yang ada;
+  satu folder per sesi berisi `chat-messages.json.gz` (byte-exact), `transkrip.md` (utuh), dan `info.json`
+  (jumlah pesan, ukuran, md5, waktu ekspor). `docs/log-mentah/README.md` — indeks ringkas semua sesi —
+  **dibuat ulang tiap ekspor**, jadi angkanya tidak mungkin basi.
+- **Struktur `docs/log-mentah/` dirapikan** menjadi `2026-10-05T07-39-24.876Z/`, `2026-10-12T13-01-29.434Z/`,
+  `2026-10-13T12-30-29.489Z/`, plus `tangkapan/` (7 potret bukti), `eksternal/` (prompt & log AI luar repo),
+  dan `README.md`. Dua berkas lama (`sesi-2026-10-05-chat-messages.json.gz`, `sesi-2026-10-05-transkrip.md`)
+  dihapus karena sudah digantikan versi yang lebih lengkap — bukan dibiarkan sebagai salinan ketinggalan.
+- **Rujukan ikut diperbarui** (tanpa memindahkan berkas yang dirujuk): `AGENT.md`, `00-index.json`,
+  `docs/word/AGENT.md`, `docs/jurnal-prompt.md`, `docs/laporan-pengujian.md`, `docs/handoff-sesi.md`,
+  dan `docs/export-word.sh` (sumber `log-mentah.docx` kini **gabungan transkrip semua sesi**, bukan satu
+  berkas bertanggal tetap).
+- **`docs/README.md` (baru)** = daftar isi folder `docs/`: dokumen untuk dikumpulkan, laporan, log mentah,
+  runner + daftar harness, alat ekspor, dan aturan singkatnya.
+- **`docs/export_word_sesi.py`** disesuaikan (berkas `.md` di `log-mentah/` kini dicari rekursif).
+
+### A.71.4 Angka (diukur)
+
+| | Log yang tersimpan sebelumnya (snapshot 10 Okt) | Setelah A.71 (13 Okt) |
+| --- | --- | --- |
+| `chat-messages.json` (sumber) | ≈76 MB · 207 pesan | **412.229.403 B · 539 pesan** |
+| `chat-messages.json.gz` (byte-exact) | 28.352.816 B | **68.581.188 B** |
+| `transkrip.md` (utuh) | 13.052.539 B | **26.819.105 B** |
+| Puncak memori ekspor | memuat JSON utuh (tidak terukur; 412 MB butuh GB) | **270 MB** · 3 sesi dalam **15,6 detik** |
+
+### A.71.5 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `python3 docs/export-log-sesi.py` | **3 sesi** diekspor; `2026-10-05…`: 539 pesan · 412.229.403 B (md5 `ccc58e6bc00045be22af061f89e10f3b`) · gz 68.581.188 B · transkrip 26.819.105 B |
+| `gzip -dc <sesi>/chat-messages.json.gz \| md5` (dua sesi, independen dari skrip) | **sama** dengan `chat_messages_md5` di `info.json` sesi itu — byte-exact terbukti untuk sesi 412 MB dan sesi putaran ini |
+| `bash -n docs/export-word.sh` + uji logika penggabungan | sintaks OK; dua folder uji → dua transkrip **digabung**, kasus tanpa transkrip **dilewati** tanpa keluar dengan galat |
+| `grep -rn` rujukan path lama di luar `log-mentah/` | **0 sisa** (isi log mentah sendiri sengaja tidak disentuh) |
+| `python3 -c "ast.parse(...)"` untuk `export-log-sesi.py` & `export_word_sesi.py` | sintaks OK |
+
+Berkas aplikasi (backend/frontend/realtime) **tidak disentuh** putaran ini, jadi `./verify.sh` tidak dijalankan
+ulang — tidak ada satu baris pun kode produk yang berubah.
+
+### A.71.6 Batasan jujur
+
+- **Transkrip sesi putaran ini adalah snapshot saat ekspor.** Sesi `2026-10-13T12-30-29.489Z` masih berjalan,
+  jadi `transkrip.md` + `.gz`-nya berhenti pada pesan terakhir yang sudah tertulis ke berkas sesi; jalankan
+  ulang `python3 docs/export-log-sesi.py` sebelum mengumpulkan.
+- **`docs/word/log-mentah.docx` belum diekspor ulang.** Sumbernya kini gabungan transkrip ~27 MB, jadi pandoc/
+  python-docx butuh waktu dan berkasnya besar; ini masuk langkah penyegaran dokumen (papan pending 0.6 butir 3),
+  bukan dikerjakan di sini.
+- **Repo bertambah ≈95 MB** (68,6 MB `.gz` + 26,8 MB transkrip). Masih di bawah batas berkas GitHub (100 MB),
+  tetapi sesi besar yang terus berjalan bisa mendekati batas itu — kalau terjadi, yang dipotong adalah
+  *transkrip* (diringkas sebagai berkas tambahan), **bukan** salinan byte-exact-nya.
+- **Perapian hanya menyentuh `docs/log-mentah/` + indeks baru.** Harness (`.mjs`), runner (`.sh`), dan laporan
+  tetap di tempatnya karena dirujuk puluhan berkas; memindahkannya ditawarkan sebagai opsi penuh dan
+  **belum** dikerjakan.
+- **51 folder sesi lain** di folder chat proyek tidak memuat `chat-messages.json` (hanya berkas runtime),
+  jadi tidak ada isi percakapan yang bisa diekspor dari sana.
+
+### A.71.7 Berkas
+
+- **Ditulis ulang:** `docs/export-log-sesi.py`; **disesuaikan:** `docs/export-word.sh`, `docs/export_word_sesi.py`.
+- **Baru:** `docs/README.md`, `docs/log-mentah/README.md` (dibuat skrip), tiga folder
+  `docs/log-mentah/<sesi>/` (`chat-messages.json.gz`, `transkrip.md`, `info.json`) di dalamnya.
+- **Dipindah:** delapan berkas ke `docs/log-mentah/tangkapan/` dan `docs/log-mentah/eksternal/` (isi tidak diubah).
+- **Dihapus:** `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz`, `docs/log-mentah/sesi-2026-10-05-transkrip.md`.
+- **Diubah (rujukan):** `AGENT.md`, `00-index.json`, `docs/word/AGENT.md`, `docs/jurnal-prompt.md`,
+  `docs/handoff-sesi.md`, dan entri A.18/A.33 di laporan ini.

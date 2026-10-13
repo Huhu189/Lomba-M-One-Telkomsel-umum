@@ -49,7 +49,7 @@ Isi berkas ini identik dengan `docs/word/AGENT.docx`.
 - **Catatan keterbukaan**: pekerjaan ini berjalan **di luar repository** memakai salinan zip lalu
   disalin masuk. Backend tidak diubah, tanpa dependency baru, dan tidak ada satu pun klaim di dalamnya
   yang dianggap bukti — semuanya diverifikasi ulang di repo ini. Prompt dan lognya disimpan apa adanya:
-  `docs/log-mentah/prompt-claude-eksternal.md` dan `docs/log-mentah/log-claude-eksternal.md`.
+  `docs/log-mentah/eksternal/prompt-claude-eksternal.md` dan `docs/log-mentah/eksternal/log-claude-eksternal.md`.
 
 ## Aturan dari prompt yang wajib dipatuhi
 - Repo **public sejak commit pertama**, dibangun dari kosong (tanpa project lama, fork, atau template).
@@ -61,9 +61,13 @@ Isi berkas ini identik dengan `docs/word/AGENT.docx`.
   konfliknya, lalu ikuti lomba.
 
 ## Log mentah (cara berkas ini dijaga tetap mutakhir)
-- `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz` — salinan **byte-exact** (gzip) dari berkas
-  chat sesi asli, tanpa disunting.
-- `docs/log-mentah/sesi-2026-10-05-transkrip.md` — transkrip mentah yang enak dibaca: isinya utuh
-  apa adanya, argumen panggilan alat **tidak dipotong**.
-- Keduanya **disegarkan ulang setiap akhir slice** dengan `docs/export-log-sesi.py` supaya log selalu
-  mutakhir; `docs/export-word.sh` memanggilnya sekaligus mengekspor dokumen Word.
+- `docs/log-mentah/<sesi>/chat-messages.json.gz` — salinan **byte-exact** (gzip) dari berkas chat sesi asli,
+  tanpa disunting (`<sesi>` = id sesi, mis. `2026-10-05T07-39-24.876Z`).
+- `docs/log-mentah/<sesi>/transkrip.md` — transkrip mentah yang enak dibaca: isinya utuh apa adanya,
+  argumen panggilan alat **tidak dipotong**. Sahabatnya, `<sesi>/info.json`, menyimpan jumlah pesan,
+  ukuran, dan md5 isi `.gz` — jadi byte-exactness bisa diperiksa siapa pun (`gzip -dc … | md5`).
+- `docs/log-mentah/README.md` — indeks ringkas semua sesi; dibuat ulang tiap ekspor, jadi angkanya
+  mengikuti berkas yang benar-benar ada.
+- Semuanya **disegarkan ulang setiap akhir putaran** dengan `docs/export-log-sesi.py` supaya log selalu
+  mutakhir (skrip itu membaca berkas sesi per pesan, jadi sesi 412 MB tetap aman di mesin 8 GB);
+  `docs/export-word.sh` memanggilnya sekaligus mengekspor dokumen Word.

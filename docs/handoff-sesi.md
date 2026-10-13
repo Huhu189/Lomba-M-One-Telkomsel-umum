@@ -254,7 +254,8 @@ Patuhi kebiasaan hemat memory di bagian 0.7; jalankan ./verify.sh + harness smok
 
 Log mentah sesi sebelumnya tersimpan di luar repo
 (`~/.config/manicode/projects/Desktop/chats/2026-10-05T07-39-24.876Z/`); bukti yang dikumpulkan ada di
-`docs/log-mentah/` (`sesi-2026-10-05-chat-messages.json.gz` + transkrip).
+`docs/log-mentah/` (satu folder per sesi: `chat-messages.json.gz` byte-exact + `transkrip.md` utuh +
+`info.json`; indeks di `docs/log-mentah/README.md`).
 
 Terakhir diperbarui: 2026-10-12 (putaran A.30 — 22 tipe soal + 2A kategori kecurangan,
 A.31 — editor materi gaya video editor + kuis sisipan di dalam klip, A.32 — penunjuk langkah
@@ -346,6 +347,7 @@ riwayat A.30–A.60:**
 | A.68 | bank soal dimuat bertahap + pencarian server; `/pengaturan` kembali jadi **halaman akun**; setelan ulangan pindah ke tiap kuis; slug kuis | bagian 12 · laporan A.68 |
 | A.69 | **bundel frontend dipotong per halaman** (`React.lazy` + `Suspense`, pramuat tautan menu) — 923,63 kB → 555,26 kB bundel awal | bagian 0.1a & 13 · laporan A.69 |
 | A.70 | **patch kinerja dari luar repo diterapkan** (kueri berulang ulangan/impor/laporan, `snapshot_soal`, `afterCommit`, `retry_after`) + dua bug **rekam diri lampiran** (durasi 0 detik, perekam tak dimatikan) | bagian 14 · laporan A.70 |
+| A.71 | **log mentah diganti dari sesi asli** (412 MB / 539 pesan) lewat eksportir streaming, **satu folder per sesi** + indeks, `docs/README.md` baru, rujukan path diperbarui | bagian 15 · laporan A.71 |
 
 ## 1. Status verifikasi terakhir
 
@@ -624,7 +626,7 @@ Ini salinan **13 Okt 2026, sesudah A.69**; selengkapnya di bagian 0.2.
   A.61–A.64). Daftar per berkas ada di bagian 0.2; daftar pasti: `git status --short`.
 - Putaran **A.33–A.64 sudah dikomit**; daftar berkas per putaran tidak didaftar ulang di sini supaya dokumen
   tetap ringkas — pakai `docs/laporan-pengujian.md` (bagian A.33–A.67) atau `git show --stat <commit>`.
-- `docs/log-mentah/log-claude-eksternal.md` dan `prompt-claude-eksternal.md` sudah ikut commit A.33–A.39
+- `docs/log-mentah/eksternal/log-claude-eksternal.md` dan `prompt-claude-eksternal.md` sudah ikut commit A.33–A.39
   (catatan mentah eksternal; isinya tidak diubah).
 - Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
   `frontend/dist/` memang diabaikan, jadi hasil build untuk pengukuran tidak ikut masuk.
@@ -1003,3 +1005,37 @@ kamera `not called`, `expected +0 to be 60`). Satu perbaikan ikutan: Pint menamb
 
 **Cara mengulang:** `./verify.sh`; `npx vitest run src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx`.
 Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.70**.
+
+## 15. A.71 — log mentah diganti dari sesi asli + folder `docs/` dirapikan (13 Oktober 2026)
+
+**Permintaan:** *“`sesi-2026-10-05-transkrip.md` kau ganti dengan ini sebagai log penuh, buatkan log benar-benar
+[benar], ringkas, dan rapihin folder docs (ingat sesi-mu juga ditambahkan).”* Lampirannya salinan sesi asli
+proyek ini: **412 MB / 539 pesan** (log yang tersimpan di repo sebelumnya masih snapshot 10 Okt: 76 MB / 207
+pesan). Jawaban pilihan pengguna: perapian **aman** (tidak memindahkan harness/skrip/laporan) dan log ditulis
+**utuh** + **indeks ringkas**.
+
+**Yang dikerjakan:**
+
+- **`docs/export-log-sesi.py` ditulis ulang** — berkas sesi dibaca **per pesan** (`JSONDecoder.raw_decode`,
+buffer 1 MB), jadi sesi 412 MB aman di mesin 8 GB (puncak terukur **270 MB**, 3 sesi dalam 15,6 detik).
+  Tanpa argumen ia mengekspor **semua** sesi; satu folder per sesi berisi `chat-messages.json.gz` (byte-exact),
+  `transkrip.md` (utuh), `info.json` (angka + md5), dan `docs/log-mentah/README.md` sebagai indeks yang
+  dibuat ulang tiap ekspor.
+- **Struktur `log-mentah/`:** tiga folder sesi (`2026-10-05T07-39-24.876Z`, `2026-10-12T13-01-29.434Z`,
+  `2026-10-13T12-30-29.489Z`) + `tangkapan/` (7 potret bukti) + `eksternal/` (prompt/log AI luar repo) +
+  `README.md`. Dua berkas lama dihapus karena digantikan versi lebih lengkap.
+- **`docs/README.md` baru** = daftar isi folder docs (dokumen panitia, laporan, log mentah, runner + daftar
+  harness, alat ekspor, aturan).
+- **Rujukan path diperbarui** di `AGENT.md`, `00-index.json`, `docs/word/AGENT.md`, `docs/jurnal-prompt.md`,
+  `docs/laporan-pengujian.md`, handoff ini, dan `docs/export-word.sh` (`log-mentah.docx` = gabungan transkrip
+  **semua** sesi).
+
+**Bukti:** `gzip -dc <sesi>/chat-messages.json.gz | md5` **sama** dengan `info.json` untuk dua sesi (byte-exact,
+termasuk sesi 412 MB) · `bash -n docs/export-word.sh` OK + uji logika penggabungan (2 folder digabung, kasus
+kosong dilewati) · `grep` path lama di luar `log-mentah/` = **0 sisa** · sintaks dua skrip Python diperiksa.
+Angka: `chat-messages.json` 412.229.403 B · `.gz` 68.581.188 B · `transkrip.md` 26.819.105 B. Berkas aplikasi
+**tidak disentuh**, jadi `./verify.sh` tidak dijalankan ulang.
+
+**Cara mengulang:** `python3 docs/export-log-sesi.py` (lalu periksa md5 dari `info.json`).
+Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.71** (transkrip sesi ini masih snapshot, `log-mentah.docx`
+belum diekspor ulang, repo bertambah ≈95 MB).
