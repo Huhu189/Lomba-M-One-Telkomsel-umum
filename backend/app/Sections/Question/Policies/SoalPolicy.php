@@ -10,6 +10,10 @@ use App\Sections\Question\Models\Soal;
 /**
  * Bank soal memuat kunci jawaban, jadi seluruh jalurnya hanya untuk guru/admin.
  * Murid menerima soal lewat endpoint kuis dengan resource tanpa kunci.
+ *
+ * Membaca: guru **dan** kepala sekolah (peran `admin`) — ia perlu meninjau mutu
+ * soal. Mengubah: guru saja (`User::bolehMengubahAkademik()`), supaya kunci dan
+ * skor soal yang sedang dipakai ulangan tidak berubah di tangan pemantau.
  */
 class SoalPolicy
 {
@@ -29,7 +33,7 @@ class SoalPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     /**
@@ -41,7 +45,7 @@ class SoalPolicy
      */
     public function update(User $user, Soal $soal): bool
     {
-        return $user->isGuru() && $user->bolehKelola($soal->dibuat_oleh);
+        return $user->bolehMengubahAkademik() && $user->bolehKelola($soal->dibuat_oleh);
     }
 
     public function delete(User $user, Soal $soal): bool

@@ -15,7 +15,9 @@ import { skemaKelasForm } from './validasi.js'
 import { ambilKelas, buatKelas, ubahKelas, hapusKelas } from './api.js'
 import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
@@ -45,6 +47,9 @@ const kolomKelas = [
 
 export default function HalamanKelas() {
   const queryClient = useQueryClient()
+  // Kepala sekolah (peran `admin`) memang membuka halaman ini, tetapi server
+  // menolak setiap perubahan data induk — jadi tombolnya tidak ditampilkan.
+  const hanyaLihat = useHanyaMelihat()
   const [idUbah, setIdUbah] = useState(/** @type {number | null} */ (null))
   const [panelBuka, setPanelBuka] = useState(false)
   const [kelasDihapus, setKelasDihapus] = useState(
@@ -145,10 +150,14 @@ export default function HalamanKelas() {
         jejak="Data induk / Kelas"
         deskripsi={ringkas}
       >
-        <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-          Tambah kelas
-        </Tombol>
+        {!hanyaLihat && (
+          <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+            Tambah kelas
+          </Tombol>
+        )}
       </HeaderHalaman>
+
+      <CatatanHanyaMelihat />
 
       {daftarKelas.isPending && <Skeleton judul baris={4} label="Memuat kelas…" />}
 
@@ -183,26 +192,32 @@ export default function HalamanKelas() {
             label="Daftar kelas"
             kolom={[
               ...kolomKelas,
-              {
-                kunci: 'aksi',
-                judul: 'Aksi',
-                aksi: true,
-                sel: (kelas) => (
-                  <div className="aksi-baris">
-                    <TombolIkon
-                      label={`Ubah kelas ${kelas.nama}`}
-                      ikon={IkonPensil}
-                      onClick={() => bukaUbah(kelas)}
-                    />
-                    <TombolIkon
-                      label={`Hapus kelas ${kelas.nama}`}
-                      ikon={IkonTongSampah}
-                      varian="bahaya"
-                      onClick={() => setKelasDihapus(kelas)}
-                    />
-                  </div>
-                ),
-              },
+              // Kolom Aksi tidak ditampilkan untuk kepala sekolah: kolom kosong
+              // berjudul "Aksi" tetap terbaca sebagai janji yang tidak ditepati.
+              ...(hanyaLihat
+                ? []
+                : [
+                    {
+                      kunci: 'aksi',
+                      judul: 'Aksi',
+                      aksi: true,
+                      sel: (/** @type {import('./api.js').DataKelas} */ kelas) => (
+                        <div className="aksi-baris">
+                          <TombolIkon
+                            label={`Ubah kelas ${kelas.nama}`}
+                            ikon={IkonPensil}
+                            onClick={() => bukaUbah(kelas)}
+                          />
+                          <TombolIkon
+                            label={`Hapus kelas ${kelas.nama}`}
+                            ikon={IkonTongSampah}
+                            varian="bahaya"
+                            onClick={() => setKelasDihapus(kelas)}
+                          />
+                        </div>
+                      ),
+                    },
+                  ]),
             ]}
             baris={terlihat}
             kunciBaris={(kelas) => kelas.id}
@@ -215,9 +230,11 @@ export default function HalamanKelas() {
           judul={data.length === 0 ? 'Belum ada kelas' : `Belum ada kelas tingkat ${saring}`}
           ikon={IkonKisi}
           aksi={
-            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-              Tambah kelas
-            </Tombol>
+            hanyaLihat ? undefined : (
+              <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+                Tambah kelas
+              </Tombol>
+            )
           }
         >
           Kelas dipakai untuk mengelompokkan murid dan membagikan kuis. Tambahkan satu kelas, lalu

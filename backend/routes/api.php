@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Sections\Admin\Http\Controllers\AkunSekolahController;
+use App\Sections\Admin\Http\Controllers\MonitorSekolahController;
 use App\Sections\Attempt\Http\Controllers\AttemptController;
 use App\Sections\Attempt\Http\Controllers\BerkasJawabanController;
 use App\Sections\Attempt\Http\Controllers\TimController;
@@ -281,6 +283,24 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/kuis/{kuis}/layar', [LayarController::class, 'simpan'])->name('layar.simpan');
         Route::post('/kuis/{kuis}/sse-tiket-murid', [TiketSseController::class, 'terbitkanMurid'])
             ->middleware('throttle:tiket')->name('sse.tiket_murid');
+
+        // Panel admin sekolah (14 Okt 2026): dasbor skala sekolah + kelola akun
+        // guru/murid (email, sandi, status). Gerbang sebenarnya adalah policy
+        // AkunSekolahPolicy — guru yang menembak rute ini ditolak 403 walau ia
+        // sudah masuk — sedangkan mutasinya memakai token konfirmasi sekali pakai
+        // + alasan + audit, pola yang sama dengan koreksi nilai.
+        Route::prefix('admin')->group(function (): void {
+            Route::get('/monitor', [MonitorSekolahController::class, 'show'])->name('admin.monitor');
+            Route::get('/akun', [AkunSekolahController::class, 'index'])->name('admin.akun.index');
+            Route::post('/akun/{akun}/token', [AkunSekolahController::class, 'token'])
+                ->middleware('throttle:kelola-akun')->name('admin.akun.token');
+            Route::put('/akun/{akun}/email', [AkunSekolahController::class, 'ubahEmail'])
+                ->middleware('throttle:kelola-akun')->name('admin.akun.email');
+            Route::put('/akun/{akun}/sandi', [AkunSekolahController::class, 'setelSandi'])
+                ->middleware('throttle:kelola-akun')->name('admin.akun.sandi');
+            Route::put('/akun/{akun}/status', [AkunSekolahController::class, 'ubahStatus'])
+                ->middleware('throttle:kelola-akun')->name('admin.akun.status');
+        });
     });
 });
 

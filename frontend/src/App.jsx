@@ -26,6 +26,7 @@ import BatasGalatUlangan from './sections/attempt/BatasGalatUlangan.jsx'
 import {
   EditorMateri,
   HalamanAkun,
+  HalamanAkunSekolah,
   HalamanAturUlangSandi,
   HalamanBadge,
   HalamanBankSoal,
@@ -123,6 +124,22 @@ function HanyaMurid() {
   return user.role === 'murid' ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
 }
 
+/**
+ * Halaman panel admin sekolah: hanya peran `admin` (guru dialihkan ke beranda).
+ *
+ * Guru tetap tidak diberi jalan ke sini walau ia punya hak di hampir semua
+ * halaman lain: mengubah email atau menyetel sandi akun orang lain adalah
+ * tindakan administratif yang bisa dipakai mengambil alih akun (lihat
+ * AkunSekolahPolicy) — jadi menunya pun tidak muncul untuk guru.
+ */
+function HanyaAdmin() {
+  const user = useAuthStore((s) => s.user)
+
+  if (!user) return <KeMasuk />
+
+  return user.role === 'admin' ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
+}
+
 /** Halaman data induk: hanya guru/admin (murid dialihkan ke beranda). */
 function HanyaGuru() {
   const user = useAuthStore((s) => s.user)
@@ -131,6 +148,35 @@ function HanyaGuru() {
 
   const isGuru = user.role === 'guru' || user.role === 'admin'
   return isGuru ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
+}
+
+/**
+ * Halaman yang menuntut kemampuan **mengubah** data akademik: impor murid,
+ * koreksi nilai, kelola tim, layar kelas, dan penyunting materi.
+ *
+ * Kepala sekolah (peran `admin`) dialihkan ke beranda. Halamannya memang akan
+ * gagal di API-nya (403), tetapi membiarkannya terbuka hanya membuatnya menunggu
+ * halaman yang tidak bisa dipakai — jadi pagarnya dipasang di depan.
+ */
+function HanyaGuruMengajar() {
+  const user = useAuthStore((s) => s.user)
+
+  if (!user) return <KeMasuk />
+
+  return user.role === 'guru' ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
+}
+
+/**
+ * Halaman yang terbuka untuk murid dan guru, tetapi bukan kepala sekolah:
+ * halaman avatar (murid memasang, guru meninjau laporan). Kepala sekolah tidak
+ * memutuskan tampilan avatar murid (lihat AvatarPolicy).
+ */
+function BukanKepalaSekolah() {
+  const user = useAuthStore((s) => s.user)
+
+  if (!user) return <KeMasuk />
+
+  return user.role === 'admin' ? <Navigate to={RUTE.beranda} replace /> : <Outlet />
 }
 
 /** Kerangka aplikasi: sesi, toast, dan router. */
@@ -159,26 +205,35 @@ export default function App() {
         <Route element={<GerbangUmum />}>
           <Route path={RUTE.beranda} element={<Beranda />} />
 
-          {/* Data induk (slice 02) — guru/admin. */}
+          {/* Data induk (slice 02) — guru/admin boleh membaca; yang menambah dan
+              mengubah hanya guru (kepala sekolah hanya melihat). */}
           <Route element={<HanyaGuru />}>
             <Route path={RUTE.kelas} element={<HalamanKelas />} />
             <Route path={RUTE.mapel} element={<HalamanMapel />} />
             <Route path={RUTE.murid} element={<HalamanMurid />} />
-            <Route path={RUTE.imporMurid} element={<HalamanImporMurid />} />
             <Route path={RUTE.bankSoal} element={<HalamanBankSoal />} />
             <Route path={RUTE.tag} element={<HalamanTag />} />
 
-            {/* Laporan per tema memuat data seluruh kelas — guru saja (slice 05). */}
+            {/* Laporan per tema memuat data seluruh kelas — guru & kepala sekolah
+                (kepala sekolah memang bertugas membacanya). */}
             <Route path={RUTE.laporanKuis} element={<HalamanLaporan />} />
-
-            {/* Antrean koreksi manual memuat kunci jawaban — guru saja (slice 06). */}
-            <Route path={RUTE.koreksiKuis} element={<HalamanKoreksi />} />
+            {/* Monitor Ulangan: memantau, bukan menilai — tetap terbaca. */}
             <Route path={RUTE.monitorKuis} element={<HalamanMonitor />} />
+          </Route>
+
+          {/* Jalur yang benar-benar mengubah data akademik — guru pengajar saja. */}
+          <Route element={<HanyaGuruMengajar />}>
+            <Route path={RUTE.imporMurid} element={<HalamanImporMurid />} />
+            <Route path={RUTE.koreksiKuis} element={<HalamanKoreksi />} />
             <Route path={RUTE.timKuis} element={<HalamanTim />} />
             <Route path={RUTE.layarKuis} element={<HalamanLayar />} />
-
-            {/* Editor materi bergaya video editor — guru/admin saja. */}
+            {/* Editor materi bergaya video editor. */}
             <Route path={RUTE.materiEditor} element={<EditorMateri />} />
+          </Route>
+
+          {/* Panel admin sekolah (14 Okt 2026) — admin saja, bukan guru. */}
+          <Route element={<HanyaAdmin />}>
+            <Route path={RUTE.adminAkun} element={<HalamanAkunSekolah />} />
           </Route>
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}
@@ -213,8 +268,11 @@ export default function App() {
             {/* Materi berblok (slice 08) — guru menyusun, murid menempuh. */}
             <Route path={RUTE.materi} element={<PilihHalamanMateri />} />
 
-            {/* Avatar + moderasi (slice 08) — murid memasang, guru meninjau laporan. */}
-            <Route path={RUTE.avatar} element={<PilihHalamanAvatar />} />
+            {/* Avatar + moderasi (slice 08) — murid memasang, guru meninjau
+                laporan; kepala sekolah tidak memutuskan tampilan avatar murid. */}
+            <Route element={<BukanKepalaSekolah />}>
+              <Route path={RUTE.avatar} element={<PilihHalamanAvatar />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<HalamanTidakDitemukan />} />

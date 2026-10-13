@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Sections\Question\Models\Tag;
 
 /**
- * Tag: murid hanya baca; guru/admin boleh mengubah.
+ * Tag: murid hanya baca; **guru** yang mengubah.
+ *
+ * Kepala sekolah (peran `admin`) hanya melihat — lihat `User::bolehMengubahAkademik()`.
  */
 class TagPolicy
 {
@@ -24,16 +26,16 @@ class TagPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function update(User $user, Tag $tag): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function delete(User $user, Tag $tag): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

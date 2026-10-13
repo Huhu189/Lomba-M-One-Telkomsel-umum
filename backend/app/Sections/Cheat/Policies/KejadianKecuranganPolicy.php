@@ -40,7 +40,10 @@ class KejadianKecuranganPolicy
      */
     public function tinjau(User $user, KejadianKecurangan $kejadian): bool
     {
-        if (! $user->isGuru()) {
+        // Meninjau = mengubah keputusan atas bukti, jadi kepala sekolah (peran
+        // `admin`) tidak ikut; ia tetap boleh MEMBACA seluruh catatan lewat
+        // `lihatSemua`.
+        if (! $user->bolehMengubahAkademik()) {
             return false;
         }
 

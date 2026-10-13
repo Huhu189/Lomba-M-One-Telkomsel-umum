@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Sections\School\Models\Kelas;
 
 /**
- * Kelas: murid hanya baca; guru/admin boleh mengubah.
+ * Kelas: murid hanya baca; **guru** yang mengubah.
+ *
+ * Kepala sekolah (peran `admin`) hanya melihat — lihat `User::bolehMengubahAkademik()`.
  */
 class KelasPolicy
 {
@@ -24,16 +26,16 @@ class KelasPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function update(User $user, Kelas $kelas): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function delete(User $user, Kelas $kelas): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

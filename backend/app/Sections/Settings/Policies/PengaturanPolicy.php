@@ -11,9 +11,19 @@ use App\Sections\Settings\Enums\LingkupPengaturan;
 /**
  * Pengaturan: hanya guru/admin yang boleh membacanya (K-05) — murid menerima
  * saklar proteksi lewat payload attempt, jadi ia tidak perlu tahu proteksi mana
- * yang menyala. Mengubah lingkup kuis hanya pemilik kuisnya (S-05), dan lingkup
- * sekolah/kelas hanya admin — satu guru tidak boleh mematikan anti-cheat atau
- * menaikkan batas percobaan untuk seluruh sekolah.
+ * yang menyala.
+ *
+ * Mengubah lingkup **kuis** hanya pemilik kuisnya (S-05). Itulah satu-satunya
+ * lapis yang bisa diubah: proteksi, batas percobaan, dan mode tim memang urusan
+ * guru yang mengerjakan ulangan itu, dan ia mengaturnya dari panel setelan di
+ * kuisnya (`PanelSetelanUlangan`).
+ *
+ * Lapis **sekolah/kelas** kini tidak bisa diubah siapa pun lewat API (14 Okt
+ * 2026). Sebelumnya hanya admin; karena kepala sekolah sekarang hanya mengawasi
+ * dan bukan mengajar, kepemilikan lapis itu tidak lagi punya pemilik alami —
+ * satu guru tidak boleh mematikan anti-cheat untuk seluruh sekolah (K-05), dan
+ * kepala sekolah tidak menyusun ulangan. Efeknya lapis itu tetap pada nilai
+ * bawaan aplikasi, yang memang sudah jadi perilaku awalnya.
  */
 class PengaturanPolicy
 {
@@ -47,8 +57,9 @@ class PengaturanPolicy
 
         // Lingkup sekolah/kelas berlaku untuk SELURUH sekolah (anti-cheat,
         // batas percobaan, retry), dan di skema ini tidak ada pemilik per guru
-        // untuk baris pengaturan itu — jadi hanya admin (K-05). Sebelumnya guru
-        // mana pun bisa mengubahnya.
-        return $user->hasRole('admin');
+        // untuk baris pengaturan itu. Sebelumnya guru mana pun bisa mengubahnya,
+        // lalu dipersempit ke admin (K-05); sekarang tidak ada yang boleh — lihat
+        // catatan kelas ini.
+        return false;
     }
 }

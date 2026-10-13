@@ -10,12 +10,15 @@ use Illuminate\Validation\Rule;
 
 /**
  * Tinjauan guru: valid atau tidak valid (bukan "menunggu" — itu status awal).
+ *
+ * Kepala sekolah tidak ikut meninjau (ia hanya membaca catatannya); gerbang
+ * pemiliknya sendiri ada di `KejadianKecuranganPolicy::tinjau`.
  */
 class TinjauKejadianRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isGuru() === true;
+        return $this->user()?->bolehMengubahAkademik() === true;
     }
 
     /**

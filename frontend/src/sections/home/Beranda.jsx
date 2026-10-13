@@ -11,7 +11,7 @@
  * (Akun belum terverifikasi tidak pernah sampai ke sini: backend menolaknya di
  * jalur login & sesi.)
  */
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   IkonBendera,
@@ -40,6 +40,13 @@ import { formatJadwal, statusTampilan } from '../quiz/status.js'
 import { ambilAntreanKoreksi } from '../scoring/api.js'
 import { ambilKelas, ambilMurid } from '../school/api.js'
 import { angkaBeranda, bagiJadwal, perluPerhatian } from './dashboard.js'
+
+/**
+ * Dasbor admin dimuat malas: murid dan guru tidak pernah membukanya, jadi
+ * modulnya tidak perlu ikut bundel awal (halaman ini memang statis karena
+ * beranda semua orang).
+ */
+const BerandaAdmin = lazy(() => import('../admin/BerandaAdmin.jsx'))
 
 const fitur = [
   {
@@ -475,5 +482,14 @@ export default function Beranda() {
   }, [])
 
   if (!user) return <BerandaTamu />
-  return user.role === 'murid' ? <BerandaMurid user={user} /> : <BerandaGuru user={user} />
+  if (user.role === 'murid') return <BerandaMurid user={user} />
+  if (user.role === 'admin') {
+    return (
+      <Suspense fallback={<Skeleton judul baris={3} label="Memuat dasbor sekolah…" />}>
+        <BerandaAdmin user={user} />
+      </Suspense>
+    )
+  }
+
+  return <BerandaGuru user={user} />
 }

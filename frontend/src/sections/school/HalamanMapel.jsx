@@ -11,7 +11,9 @@ import { skemaMapelForm } from './validasi.js'
 import { ambilMapel, buatMapel, ubahMapel, hapusMapel } from './api.js'
 import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
@@ -25,6 +27,8 @@ const nilaiAwal = { nama: '', kode: '' }
 
 export default function HalamanMapel() {
   const queryClient = useQueryClient()
+  // Kepala sekolah hanya melihat daftar ini; server menolak setiap perubahannya.
+  const hanyaLihat = useHanyaMelihat()
   const [idUbah, setIdUbah] = useState(/** @type {number | null} */ (null))
   const [panelBuka, setPanelBuka] = useState(false)
   const [mapelDihapus, setMapelDihapus] = useState(
@@ -117,10 +121,14 @@ export default function HalamanMapel() {
             : 'Memuat daftar mata pelajaran…'
         }
       >
-        <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-          Tambah mapel
-        </Tombol>
+        {!hanyaLihat && (
+          <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+            Tambah mapel
+          </Tombol>
+        )}
       </HeaderHalaman>
+
+      <CatatanHanyaMelihat />
 
       {daftarMapel.isPending && <Skeleton judul baris={3} label="Memuat mapel…" />}
 
@@ -140,26 +148,31 @@ export default function HalamanMapel() {
             kolom={[
               { kunci: 'nama', judul: 'Nama', sel: (mapel) => <strong>{mapel.nama}</strong> },
               { kunci: 'kode', judul: 'Kode', sel: (mapel) => mapel.kode || '—' },
-              {
-                kunci: 'aksi',
-                judul: 'Aksi',
-                aksi: true,
-                sel: (mapel) => (
-                  <div className="aksi-baris">
-                    <TombolIkon
-                      label={`Ubah mapel ${mapel.nama}`}
-                      ikon={IkonPensil}
-                      onClick={() => bukaUbah(mapel)}
-                    />
-                    <TombolIkon
-                      label={`Hapus mapel ${mapel.nama}`}
-                      ikon={IkonTongSampah}
-                      varian="bahaya"
-                      onClick={() => setMapelDihapus(mapel)}
-                    />
-                  </div>
-                ),
-              },
+              // Kepala sekolah tidak punya kolom Aksi — bukan kolom kosong.
+              ...(hanyaLihat
+                ? []
+                : [
+                    {
+                      kunci: 'aksi',
+                      judul: 'Aksi',
+                      aksi: true,
+                      sel: (/** @type {import('./api.js').DataMapel} */ mapel) => (
+                        <div className="aksi-baris">
+                          <TombolIkon
+                            label={`Ubah mapel ${mapel.nama}`}
+                            ikon={IkonPensil}
+                            onClick={() => bukaUbah(mapel)}
+                          />
+                          <TombolIkon
+                            label={`Hapus mapel ${mapel.nama}`}
+                            ikon={IkonTongSampah}
+                            varian="bahaya"
+                            onClick={() => setMapelDihapus(mapel)}
+                          />
+                        </div>
+                      ),
+                    },
+                  ]),
             ]}
             baris={data}
             kunciBaris={(mapel) => mapel.id}
@@ -172,9 +185,11 @@ export default function HalamanMapel() {
           judul="Belum ada mata pelajaran"
           ikon={IkonLapis}
           aksi={
-            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-              Tambah mapel
-            </Tombol>
+            hanyaLihat ? undefined : (
+              <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+                Tambah mapel
+              </Tombol>
+            )
           }
         >
           Mata pelajaran dipakai saat menyusun kuis dan laporan. Tambahkan satu, contohnya Matematika

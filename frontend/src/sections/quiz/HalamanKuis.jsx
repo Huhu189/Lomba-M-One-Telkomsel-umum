@@ -50,13 +50,15 @@ import { LABEL_SUMBER, catatanTautan, ringkasSetelan, tautanSiswa } from './sete
 import { ambilPengaturan } from '../settings/api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import LangkahPil from '../../shared/ui/LangkahPil.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
-import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
+import { Tombol, TombolIkon, TombolTaut } from '../../shared/ui/Tombol.jsx'
 
 const nilaiAwal = {
   judul: '',
@@ -107,6 +109,9 @@ function catatSusunan(daftarSoal) {
 }
 
 export default function HalamanKuis() {
+  // Kepala sekolah memantau daftar ulangan, tetapi menyusun, mengubah,
+  // menerbitkan, mengarsipkan, dan menghapusnya milik guru (KuisPolicy).
+  const hanyaLihat = useHanyaMelihat()
   const queryClient = useQueryClient()
   const [editor, setEditor] = useState(
     /** @type {{ id: number|null, slug: string, judul: string, status: string }|null} */ (null),
@@ -1070,8 +1075,10 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
         jejak="Ujian / Kuis"
         deskripsi="Kuis dibuat sebagai draf; murid baru melihatnya setelah diterbitkan dan jadwalnya dimulai."
       >
-        <Tombol onClick={buatBaru}>Buat kuis</Tombol>
+        {!hanyaLihat && <Tombol onClick={buatBaru}>Buat kuis</Tombol>}
       </HeaderHalaman>
+
+      <CatatanHanyaMelihat />
 
       <div className="kartu-soft p-4">
         {daftarKuis.isPending && <Skeleton judul baris={3} label="Memuat kuis…" />}
@@ -1087,7 +1094,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
           <KosongData
             judul="Belum ada kuis"
             ikon={IkonDaftar}
-            aksi={<Tombol onClick={buatBaru}>Buat kuis</Tombol>}
+            aksi={hanyaLihat ? undefined : <Tombol onClick={buatBaru}>Buat kuis</Tombol>}
           >
             Susun kuis pertama dalam tiga langkah: info dan jadwal, susun soal, lalu tinjau dan
             publikasikan.
@@ -1114,49 +1121,64 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 </p>
 
                 <div className="kartu-aksi">
-                  <Tombol
-                    varian="tepi"
-                    ukuran="sedang"
-                    ikon={IkonPensil}
-                    onClick={() => void mulaiUbah(kuis)}
-                  >
-                    Ubah
-                  </Tombol>
-                  <Tombol
-                    varian="tepi"
-                    ukuran="sedang"
-                    ikon={IkonDaftar}
-                    onClick={() => void bukaSusun(kuis)}
-                  >
-                    Susun soal
-                  </Tombol>
-                  {kuis.status === 'draf' && (
-                    <Tombol
-                      ukuran="sedang"
-                      ikon={IkonKirim}
-                      memuat={publikasi.isPending}
-                      onClick={() => publikasi.mutate(kuis.id)}
-                    >
-                      Terbitkan
-                    </Tombol>
+                  {/**
+                   * Kepala sekolah tidak mendapat tombol penyuntingan sama
+                   * sekali. Yang ia butuh justru jalan masuk ke halaman kuis:
+                   * dari sana ia bisa memantau ulangan dan membaca laporan tanpa
+                   * bisa mengubah apa pun.
+                   */}
+                  {hanyaLihat && (
+                    <TombolTaut varian="tepi" ukuran="sedang" to={ruteKuisDetail(kuis.slug)}>
+                      Lihat detail
+                    </TombolTaut>
                   )}
-                  {kuis.status !== 'arsip' && (
-                    <Tombol
-                      varian="tepi"
-                      ukuran="sedang"
-                      ikon={IkonBuku}
-                      memuat={arsipkan.isPending}
-                      onClick={() => arsipkan.mutate(kuis.id)}
-                    >
-                      Arsipkan
-                    </Tombol>
+                  {!hanyaLihat && (
+                    <>
+                      <Tombol
+                        varian="tepi"
+                        ukuran="sedang"
+                        ikon={IkonPensil}
+                        onClick={() => void mulaiUbah(kuis)}
+                      >
+                        Ubah
+                      </Tombol>
+                      <Tombol
+                        varian="tepi"
+                        ukuran="sedang"
+                        ikon={IkonDaftar}
+                        onClick={() => void bukaSusun(kuis)}
+                      >
+                        Susun soal
+                      </Tombol>
+                      {kuis.status === 'draf' && (
+                        <Tombol
+                          ukuran="sedang"
+                          ikon={IkonKirim}
+                          memuat={publikasi.isPending}
+                          onClick={() => publikasi.mutate(kuis.id)}
+                        >
+                          Terbitkan
+                        </Tombol>
+                      )}
+                      {kuis.status !== 'arsip' && (
+                        <Tombol
+                          varian="tepi"
+                          ukuran="sedang"
+                          ikon={IkonBuku}
+                          memuat={arsipkan.isPending}
+                          onClick={() => arsipkan.mutate(kuis.id)}
+                        >
+                          Arsipkan
+                        </Tombol>
+                      )}
+                      <TombolIkon
+                        label={`Hapus kuis ${kuis.judul}`}
+                        ikon={IkonTongSampah}
+                        varian="bahaya"
+                        onClick={() => setKuisDihapus(kuis)}
+                      />
+                    </>
                   )}
-                  <TombolIkon
-                    label={`Hapus kuis ${kuis.judul}`}
-                    ikon={IkonTongSampah}
-                    varian="bahaya"
-                    onClick={() => setKuisDihapus(kuis)}
-                  />
                 </div>
               </div>
             )

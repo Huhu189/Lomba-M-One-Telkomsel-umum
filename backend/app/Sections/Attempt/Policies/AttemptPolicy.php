@@ -10,8 +10,10 @@ use App\Sections\Attempt\Models\Tim;
 use App\Sections\Quiz\Models\Kuis;
 
 /**
- * Attempt: murid hanya boleh menyentuh attempt miliknya; guru boleh melihat
- * dan mengoreksi nilainya (koreksi manual slice 06, pemantauan slice 07).
+ * Attempt: murid hanya boleh menyentuh attempt miliknya; guru boleh melihat dan
+ * mengoreksi nilainya (koreksi manual slice 06, pemantauan slice 07). Kepala
+ * sekolah (peran `admin`) ikut **membaca** — hasil, jawaban, dan pantauan —
+ * tetapi tidak mengoreksi maupun menghapus (lihat `User::bolehMengubahAkademik()`).
  */
 class AttemptPolicy
 {
@@ -76,7 +78,9 @@ class AttemptPolicy
      */
     public function koreksi(User $user, Attempt $attempt): bool
     {
-        return $this->bolehLihatSebagaiGuru($user, $attempt);
+        // Menyimpan nilai berarti mengubah data akademik, jadi kepala sekolah
+        // tidak ikut — ia masih boleh membaca attempt yang sama lewat `view`.
+        return $user->bolehMengubahAkademik() && $this->bolehLihatSebagaiGuru($user, $attempt);
     }
 
     /**
@@ -99,7 +103,7 @@ class AttemptPolicy
 
     public function delete(User $user, Attempt $attempt): bool
     {
-        return $this->bolehLihatSebagaiGuru($user, $attempt);
+        return $user->bolehMengubahAkademik() && $this->bolehLihatSebagaiGuru($user, $attempt);
     }
 
     private function milikMurid(User $user, Attempt $attempt): bool

@@ -38,6 +38,8 @@ const muat = {
 
   // Data induk & akun (slice 02).
   akun: () => import('./sections/settings/HalamanAkun.jsx'),
+  // Panel admin sekolah (14 Okt 2026) — hanya peran admin.
+  adminAkun: () => import('./sections/admin/HalamanAkunSekolah.jsx'),
   kelas: () => import('./sections/school/HalamanKelas.jsx'),
   mapel: () => import('./sections/school/HalamanMapel.jsx'),
   murid: () => import('./sections/school/HalamanMurid.jsx'),
@@ -80,6 +82,7 @@ export const HalamanPerluVerifikasi = lazy(muat.perluVerifikasi)
 
 // Data induk & akun.
 export const HalamanAkun = lazy(muat.akun)
+export const HalamanAkunSekolah = lazy(muat.adminAkun)
 export const HalamanKelas = lazy(muat.kelas)
 export const HalamanMapel = lazy(muat.mapel)
 export const HalamanMurid = lazy(muat.murid)
@@ -124,6 +127,7 @@ export const PilihHalamanAvatar = lazy(muat.avatar)
 const pramuat = {
   [RUTE.imporMurid]: muat.imporMurid,
   [RUTE.pengaturan]: muat.akun,
+  [RUTE.adminAkun]: muat.adminAkun,
   [RUTE.kelas]: muat.kelas,
   [RUTE.mapel]: muat.mapel,
   [RUTE.murid]: muat.murid,

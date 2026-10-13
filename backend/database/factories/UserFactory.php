@@ -70,6 +70,19 @@ class UserFactory extends Factory
         return $this->state(fn () => ['is_tamu' => true]);
     }
 
+    /**
+     * Admin sekolah aktif — panel admin (dasbor skala sekolah + kelola akun)
+     * hanya bisa dibuka peran ini.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn () => [
+            'email_verified_at' => now(),
+            'status' => UserStatus::Aktif->value,
+            'role' => 'admin',
+        ]);
+    }
+
     /** Akun ditangguhkan (untuk test blokir). */
     public function suspended(): static
     {

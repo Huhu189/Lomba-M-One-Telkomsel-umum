@@ -15,7 +15,9 @@ import { DAFTAR_TIPE, teksAman } from './tipeSoal.js'
 import EditorSoal from './EditorSoal.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
@@ -48,6 +50,9 @@ const filterAwal = { subject_id: '', tag_id: '', tipe: '' }
 
 export default function HalamanBankSoal() {
   const queryClient = useQueryClient()
+  // Kepala sekolah membaca bank soal (termasuk kunci jawabannya) untuk
+  // mengawasi, tetapi menyusun soal tetap milik guru — SoalPolicy menolaknya.
+  const hanyaLihat = useHanyaMelihat()
   const [filter, setFilter] = useState(filterAwal)
   const [cari, setCari] = useState('')
   const [cariDipakai, setCariDipakai] = useState('')
@@ -162,10 +167,17 @@ export default function HalamanBankSoal() {
             jejak="Soal / Bank soal"
             deskripsi="Hanya soal objektif (pilihan ganda, benar/salah, menjodohkan, mengurutkan) yang siap dipakai kuis."
           >
-            <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
-              Tambah soal
-            </Tombol>
+            {!hanyaLihat && (
+              <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
+                Tambah soal
+              </Tombol>
+            )}
           </HeaderHalaman>
+
+          <CatatanHanyaMelihat>
+            Bank soal dibaca apa adanya, termasuk kunci jawabannya. Menambah, menyunting, atau
+            menghapus soal dikerjakan guru pemilik soal.
+          </CatatanHanyaMelihat>
 
           <div className="kartu-soft p-4">
 
@@ -272,9 +284,11 @@ export default function HalamanBankSoal() {
                 judul="Belum ada soal yang cocok"
                 ikon={IkonPapan}
                 aksi={
-                  <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
-                    Tambah soal
-                  </Tombol>
+                  hanyaLihat ? undefined : (
+                    <Tombol ikon={IkonTambah} onClick={mulaiTambah}>
+                      Tambah soal
+                    </Tombol>
+                  )
                 }
               >
                 Longgarkan saringan di atas, atau tambahkan soal baru ke bank soal.
@@ -307,26 +321,30 @@ export default function HalamanBankSoal() {
                   { kunci: 'mapel_nama', judul: 'Mapel', sel: (soal) => soal.mapel_nama ?? '—' },
                   { kunci: 'tag_nama', judul: 'Tag', sel: (soal) => soal.tag_nama ?? '—' },
                   { kunci: 'skor', judul: 'Skor' },
-                  {
-                    kunci: 'aksi',
-                    judul: 'Aksi',
-                    aksi: true,
-                    sel: (soal) => (
-                      <div className="aksi-baris">
-                        <TombolIkon
-                          label={`Ubah soal: ${ringkas(teksAman(soal.konten.teks))}`}
-                          ikon={IkonPensil}
-                          onClick={() => mulaiUbah(soal)}
-                        />
-                        <TombolIkon
-                          label={`Hapus soal: ${ringkas(teksAman(soal.konten.teks))}`}
-                          ikon={IkonTongSampah}
-                          varian="bahaya"
-                          onClick={() => setSoalDihapus(soal)}
-                        />
-                      </div>
-                    ),
-                  },
+                  ...(hanyaLihat
+                    ? []
+                    : [
+                        {
+                          kunci: 'aksi',
+                          judul: 'Aksi',
+                          aksi: true,
+                          sel: (/** @type {import('./api.js').DataSoal} */ soal) => (
+                            <div className="aksi-baris">
+                              <TombolIkon
+                                label={`Ubah soal: ${ringkas(teksAman(soal.konten.teks))}`}
+                                ikon={IkonPensil}
+                                onClick={() => mulaiUbah(soal)}
+                              />
+                              <TombolIkon
+                                label={`Hapus soal: ${ringkas(teksAman(soal.konten.teks))}`}
+                                ikon={IkonTongSampah}
+                                varian="bahaya"
+                                onClick={() => setSoalDihapus(soal)}
+                              />
+                            </div>
+                          ),
+                        },
+                      ]),
                 ]}
                 baris={daftar}
                 kunciBaris={(soal) => soal.id}

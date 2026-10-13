@@ -27,6 +27,7 @@ import {
   IkonGrafik,
   IkonKeluar,
   IkonKisi,
+  IkonKunci,
   IkonLapis,
   IkonLembarSoal,
   IkonMenu,
@@ -112,6 +113,8 @@ function TautBagian({ to, ikon: Ikon, children, className = 'papan-nav-taut', on
 /** Menu guru/admin, dikelompokkan seperti papan desain. */
 const GRUP_GURU = /** @type {GrupMenu[]} */ ([
   {
+    // Untuk guru, beranda memang "Ringkasan" tugasnya; untuk admin, beranda itu
+    // dasbor sekolah (lihat GRUP_ADMIN) — satu rute, dua arti yang jelas.
     nama: 'Ringkasan',
     item: [{ to: RUTE.beranda, ikon: IkonRumah, label: 'Beranda' }],
   },
@@ -140,6 +143,51 @@ const GRUP_GURU = /** @type {GrupMenu[]} */ ([
       // kuis, jadi menunya tidak lagi bernama "Pengaturan".
       { to: RUTE.pengaturan, ikon: IkonGear, label: 'Akun' },
     ],
+  },
+])
+
+/**
+ * Menu kepala sekolah (peran `admin`): memantau keadaan sekolah + mengelola
+ * akun guru/murid, tanpa alat penyuntingan.
+ *
+ * Sejak 14 Okt 2026 kepala sekolah hanya **melihat** data akademik, jadi menunya
+ * berisi dasbor, kelola akun, dan halaman daftar/laporan yang memang bisa dibaca.
+ */
+const GRUP_ADMIN = /** @type {GrupMenu[]} */ ([
+  {
+    nama: 'Admin sekolah',
+    item: [
+      { to: RUTE.beranda, ikon: IkonRumah, label: 'Dasbor Sekolah' },
+      { to: RUTE.adminAkun, ikon: IkonKunci, label: 'Kelola Akun' },
+    ],
+  },
+  // Yang di bawah adalah daftar dan laporan yang memang bisa ia BACA. Menu guru
+  // sengaja tidak disalin utuh: Impor Murid, Moderasi Avatar, dan penyunting
+  // kuis/materi tidak ada di sini karena servernya akan menolak (lihat
+  // `User::bolehMengubahAkademik()`), dan menu yang menjanjikan hal yang tidak
+  // bisa dikerjakan lebih buruk daripada menu yang lebih pendek.
+  {
+    nama: 'Pengawasan',
+    item: [
+      { to: RUTE.kuis, ikon: IkonLembarSoal, label: 'Kuis' },
+      { to: RUTE.bankSoal, ikon: IkonPapan, label: 'Bank Soal' },
+      { to: RUTE.tag, ikon: IkonTanda, label: 'Tag Soal' },
+      { to: RUTE.materi, ikon: IkonBuku, label: 'Materi' },
+    ],
+  },
+  {
+    nama: 'Data induk',
+    item: [
+      { to: RUTE.kelas, ikon: IkonKisi, label: 'Kelas' },
+      { to: RUTE.mapel, ikon: IkonLapis, label: 'Mapel' },
+      { to: RUTE.murid, ikon: IkonPengguna, label: 'Murid' },
+    ],
+  },
+  // Akun sendiri (nama, kata sandi, tema) tetap miliknya — itu bukan data
+  // akademik, dan kepala sekolah juga perlu bisa mengganti sandinya sendiri.
+  {
+    nama: 'Akun saya',
+    item: [{ to: RUTE.pengaturan, ikon: IkonGear, label: 'Akun' }],
   },
 ])
 
@@ -223,7 +271,15 @@ export default function KerangkaUmum() {
     return () => window.removeEventListener('keydown', tekan)
   }, [laci])
 
-  const grup = !user ? [] : user.isTamu ? GRUP_TAMU : user.role === 'murid' ? GRUP_MURID : GRUP_GURU
+  const grup = !user
+    ? []
+    : user.isTamu
+      ? GRUP_TAMU
+      : user.role === 'murid'
+        ? GRUP_MURID
+        : user.role === 'admin'
+          ? GRUP_ADMIN
+          : GRUP_GURU
   const adaMenu = grup.length > 0
 
   async function keluarSesi() {

@@ -101,6 +101,33 @@ class User extends Authenticatable
     }
 
     /**
+     * Kepala sekolah (peran `admin`): melihat seluruh sekolah, boleh mengelola
+     * akun guru/murid, tetapi **tidak mengubah data akademik** (14 Okt 2026).
+     *
+     * Perannya mengawasi dan merapikan administrasi, bukan mengajar: menyusun
+     * kuis, mengganti kunci soal, mengubah nilai, dan menangguhkan catatan
+     * kecurangan tetap milik guru yang mengerjakan ulangan itu — supaya tidak ada
+     * dua pihak yang bisa mengubah nilai anak yang sama tanpa jejak siapa yang
+     * mengerjakan.
+     */
+    public function hanyaMelihat(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    /**
+     * Boleh mengubah data akademik: guru yang bukan kepala sekolah.
+     *
+     * Dipakai seluruh policy **tulis** (buat/ubah/hapus/publikasi/koreksi),
+     * sedangkan policy **baca** tetap memakai `isGuru()` supaya kepala sekolah
+     * tetap bisa membuka daftar, kunci, laporan, dan jejak audit.
+     */
+    public function bolehMengubahAkademik(): bool
+    {
+        return $this->isGuru() && ! $this->hanyaMelihat();
+    }
+
+    /**
      * Akun siswa tamu (mode tamu tanpa login) — membuat namanya sendiri, tanpa
      * kata sandi, dan tidak terdaftar di kelas mana pun. Dipakai untuk
      * mengecualikannya dari aturan "kuis harus kelasmu" dan menggantinya dengan

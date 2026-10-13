@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Sections\School\Models\Murid;
 
 /**
- * Murid: murid hanya baca; guru/admin boleh mengelola dan mengimpor.
+ * Murid: murid hanya baca; **guru** yang mengelola dan mengimpor.
+ *
+ * Kepala sekolah (peran `admin`) hanya melihat — lihat `User::bolehMengubahAkademik()`.
  */
 class MuridPolicy
 {
@@ -24,16 +26,16 @@ class MuridPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function update(User $user, Murid $murid): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function delete(User $user, Murid $murid): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

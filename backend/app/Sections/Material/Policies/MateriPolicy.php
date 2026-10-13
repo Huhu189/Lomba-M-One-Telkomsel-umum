@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Sections\Material\Models\Materi;
 
 /**
- * Materi: guru/admin mengelola; murid hanya melihat materi terbit kelasnya.
+ * Materi: **guru** mengelola; murid hanya melihat materi terbit kelasnya, dan
+ * kepala sekolah (peran `admin`) membaca beserta laporannya tanpa mengubah
+ * (lihat `User::bolehMengubahAkademik()`).
  */
 class MateriPolicy
 {
@@ -42,12 +44,12 @@ class MateriPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function update(User $user, Materi $materi): bool
     {
-        return $user->isGuru() && $user->bolehKelola($materi->dibuat_oleh);
+        return $user->bolehMengubahAkademik() && $user->bolehKelola($materi->dibuat_oleh);
     }
 
     public function delete(User $user, Materi $materi): bool
@@ -79,7 +81,8 @@ class MateriPolicy
      */
     public function laporan(User $user, Materi $materi): bool
     {
-        return $this->update($user, $materi);
+        // Membaca laporan, bukan mengubahnya: kepala sekolah tetap boleh.
+        return $user->isGuru() && $user->bolehKelola($materi->dibuat_oleh);
     }
 
     /** Murid menempuh materi (progres, bukan pengelolaan). */

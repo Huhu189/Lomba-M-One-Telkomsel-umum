@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Sekolah;
+use App\Sections\Settings\Enums\KunciPengaturan;
+use App\Sections\Settings\Enums\LingkupPengaturan;
+use App\Sections\Settings\Services\PengaturanService;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,33 +41,28 @@ it('nilai bawaan tersedia sebelum ada pengaturan tersimpan', function (): void {
         ->assertJsonPath('pengaturan.anti_cheat.nilai', false);
 });
 
-it('hanya admin yang mengubah pengaturan sekolah; guru dan murid ditolak', function (): void {
+it('tidak ada yang boleh mengubah pengaturan lingkup sekolah', function (): void {
     // Lingkup sekolah berlaku untuk SELURUH sekolah (anti-cheat, batas
-    // percobaan, retry), jadi bukan hak satu guru untuk mengubahnya (K-05).
-    Sanctum::actingAs($this->guru);
+    // percobaan, retry). Ia tidak punya pemilik alami: guru tidak boleh
+    // memutuskan untuk seluruh sekolah (K-05), dan sejak 14 Okt 2026 kepala
+    // sekolah hanya mengawasi — bukan mengajar. Kontrol yang nyata ada di lapis
+    // KUIS milik guru pemiliknya (S-05); lihat uji resolusi di bawah.
+    foreach ([$this->guru, $this->murid, $this->admin] as $akun) {
+        auth()->forgetGuards();
+        Sanctum::actingAs($akun);
 
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])
-        ->assertStatus(403);
+        $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])
+            ->assertStatus(403);
+    }
 
-    auth()->forgetGuards();
-    Sanctum::actingAs($this->murid);
-
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])
-        ->assertStatus(403);
-
-    auth()->forgetGuards();
-    Sanctum::actingAs($this->admin);
-
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])
-        ->assertOk()
-        ->assertJsonPath('pengaturan.retry.nilai', false)
-        ->assertJsonPath('pengaturan.retry.sumber', 'sekolah');
-
-    // Guru tetap boleh MEMBACA aturan yang berlaku (termasuk yang ditetapkan admin).
+    // Nilainya tetap bawaan, dan guru tetap boleh MEMBACANYA (K-05 hanya
+    // menutup jalur baca untuk murid).
     auth()->forgetGuards();
     Sanctum::actingAs($this->guru);
 
-    $this->getJson('/api/v1/pengaturan')->assertOk()->assertJsonPath('pengaturan.retry.nilai', false);
+    $this->getJson('/api/v1/pengaturan')->assertOk()
+        ->assertJsonPath('pengaturan.retry.nilai', true)
+        ->assertJsonPath('pengaturan.retry.sumber', 'bawaan');
 });
 
 it('murid tidak boleh membaca pengaturan sama sekali', function (): void {
@@ -77,14 +75,16 @@ it('murid tidak boleh membaca pengaturan sama sekali', function (): void {
 });
 
 it('resolusi tiga lapis kuis > kelas > sekolah; lock sekolah mengalahkan semua', function (): void {
-    // Lapis sekolah/kelas hanya admin (K-05), lapis kuis tetap diuji lewat
-    // pemilik kuisnya supaya jalur kepemilikan (S-05) benar-benar diuji.
-    Sanctum::actingAs($this->admin);
+    // Lapis sekolah/kelas tidak bisa diubah lewat API lagi (uji di atas), jadi
+    // barisnya ditulis langsung lewat service — yang diuji di sini adalah
+    // RESOLUSINYA, bukan izinnya. Lapis kuis tetap lewat API supaya jalur
+    // kepemilikan (S-05) benar-benar diuji.
+    $service = app(PengaturanService::class);
 
     // Kelas menimpa sekolah.
-    $this->putJson('/api/v1/pengaturan', [
-        'lingkup' => 'kelas', 'lingkup_id' => $this->kelas->id, 'kunci' => 'retry', 'nilai' => true,
-    ])->assertOk();
+    $service->simpan(LingkupPengaturan::Kelas, $this->kelas->id, KunciPengaturan::Retry, true);
+
+    Sanctum::actingAs($this->guru);
 
     $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id)->assertOk();
     expect($res->json('pengaturan.retry.nilai'))->toBeTrue()
@@ -109,12 +109,7 @@ it('resolusi tiga lapis kuis > kelas > sekolah; lock sekolah mengalahkan semua',
         ->and($res->json('pengaturan.retry.sumber'))->toBe('kuis');
 
     // Sekolah mengunci → lapis bawah diabaikan.
-    auth()->forgetGuards();
-    Sanctum::actingAs($this->admin);
-
-    $this->putJson('/api/v1/pengaturan', [
-        'lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => true, 'terkunci' => true,
-    ])->assertOk();
+    $service->simpan(LingkupPengaturan::Sekolah, $this->sekolah->id, KunciPengaturan::Retry, true, true);
 
     $res = $this->getJson('/api/v1/pengaturan?kelas_id='.$this->kelas->id.'&kuis_id='.$kuis->id)->assertOk();
     expect($res->json('pengaturan.retry.nilai'))->toBeTrue()
@@ -123,15 +118,28 @@ it('resolusi tiga lapis kuis > kelas > sekolah; lock sekolah mengalahkan semua',
 });
 
 it('cache pengaturan ter-invalidasi saat nilai berubah', function (): void {
-    Sanctum::actingAs($this->admin);
+    // Jalur tulis yang tersisa adalah lapis kuis milik guru, jadi itu yang
+    // dipakai untuk membuktikan cache ikut dibuang saat nilai berubah.
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
+        'dibuat_oleh' => $this->guru->id,
+    ]);
+
+    Sanctum::actingAs($this->guru);
 
     // Isi cache dengan nilai awal.
-    $this->getJson('/api/v1/pengaturan')->assertOk()->assertJsonPath('pengaturan.retry.nilai', true);
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$kuis->id)
+        ->assertOk()
+        ->assertJsonPath('pengaturan.retry.nilai', true);
 
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])->assertOk();
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'retry', 'nilai' => false,
+    ])->assertOk();
 
     // Bila cache tidak diinvalidasi, nilai lama (true) akan tersaji lagi.
-    $this->getJson('/api/v1/pengaturan')->assertOk()->assertJsonPath('pengaturan.retry.nilai', false);
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$kuis->id)
+        ->assertOk()
+        ->assertJsonPath('pengaturan.retry.nilai', false)
+        ->assertJsonPath('pengaturan.retry.sumber', 'kuis');
 });
 
 it('murid tidak boleh mengubah pengaturan', function (): void {
@@ -142,11 +150,17 @@ it('murid tidak boleh mengubah pengaturan', function (): void {
 });
 
 it('validasi menolak tipe nilai yang salah', function (): void {
-    Sanctum::actingAs($this->admin);
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
+        'dibuat_oleh' => $this->guru->id,
+    ]);
 
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => 'bukan-bool'])
-        ->assertStatus(422)->assertJsonValidationErrors(['nilai']);
+    Sanctum::actingAs($this->guru);
 
-    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'batas_percobaan', 'nilai' => 2.5])
-        ->assertStatus(422)->assertJsonValidationErrors(['nilai']);
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'retry', 'nilai' => 'bukan-bool',
+    ])->assertStatus(422)->assertJsonValidationErrors(['nilai']);
+
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'batas_percobaan', 'nilai' => 2.5,
+    ])->assertStatus(422)->assertJsonValidationErrors(['nilai']);
 });

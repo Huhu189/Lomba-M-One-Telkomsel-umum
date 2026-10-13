@@ -81,15 +81,20 @@ class AvatarPolicy
         return $this->lihat($user, $avatar);
     }
 
-    /** Antrean moderasi + pulihkan: guru saja. */
+    /**
+     * Antrean moderasi + pulihkan: guru saja.
+     *
+     * Kepala sekolah (peran `admin`) tidak ikut memutuskan tampilan avatar murid —
+     * itu pekerjaan guru kelas. Ia tetap boleh **melihat** avatar lewat `lihat`.
+     */
     public function moderasi(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     /** Hapus avatar murid (tindakan moderasi) — selalu lewat antrean guru. */
     public function delete(User $user, Avatar $avatar): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Sections\School\Models\Mapel;
 
 /**
- * Mapel: murid hanya baca; guru/admin boleh mengubah.
+ * Mapel: murid hanya baca; **guru** yang mengubah.
+ *
+ * Kepala sekolah (peran `admin`) hanya melihat — lihat `User::bolehMengubahAkademik()`.
  */
 class MapelPolicy
 {
@@ -24,16 +26,16 @@ class MapelPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function update(User $user, Mapel $mapel): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     public function delete(User $user, Mapel $mapel): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

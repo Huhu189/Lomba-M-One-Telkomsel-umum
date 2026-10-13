@@ -9,7 +9,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
@@ -22,6 +24,9 @@ import { ambilMateri, buatMateri } from './api.js'
 export default function HalamanMateri() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Kepala sekolah membaca daftar materi tanpa menyusunnya: membuat materi dan
+  // membuka editornya adalah milik guru (MateriPolicy).
+  const hanyaLihat = useHanyaMelihat()
   const [galat, setGalat] = useState('')
   const [form, setForm] = useState({
     judul: '',
@@ -58,95 +63,102 @@ export default function HalamanMateri() {
 
       {galat && <Banner jenis="salah">{galat}</Banner>}
 
-      <div className="row g-4">
-        <div className="col-12 col-lg-5">
-          <section className="kartu-soal p-3">
-            <h2 className="h6 fw-bold mb-3">Materi baru</h2>
-            <div className="mb-2">
-              <label className="form-label" htmlFor="materi-judul">
-                Judul
-              </label>
-              <input
-                id="materi-judul"
-                className="form-control"
-                value={form.judul}
-                onChange={(e) => setForm({ ...form, judul: e.target.value })}
-                maxLength={150}
-              />
-            </div>
-            <div className="mb-2">
-              <label className="form-label" htmlFor="materi-mapel">
-                Mapel
-              </label>
-              <select
-                id="materi-mapel"
-                className="form-select"
-                value={form.subject_id}
-                onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
-              >
-                <option value="">Pilih mapel…</option>
-                {(mapel.data ?? []).map((satu) => (
-                  <option key={satu.id} value={satu.id}>
-                    {satu.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-2">
-              <label className="form-label" htmlFor="materi-kelas">
-                Kelas
-              </label>
-              <select
-                id="materi-kelas"
-                className="form-select"
-                value={form.class_id}
-                onChange={(e) => setForm({ ...form, class_id: e.target.value })}
-              >
-                <option value="">Pilih kelas…</option>
-                {(kelas.data ?? []).map((satu) => (
-                  <option key={satu.id} value={satu.id}>
-                    {satu.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label" htmlFor="materi-tema">
-                Tema
-              </label>
-              <select
-                id="materi-tema"
-                className="form-select"
-                value={form.tag_id}
-                onChange={(e) => setForm({ ...form, tag_id: e.target.value })}
-              >
-                <option value="">Tanpa tema</option>
-                {(tag.data ?? []).map((satu) => (
-                  <option key={satu.id} value={satu.id}>
-                    {satu.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Tombol
-              memuat={simpanMateri.isPending}
-              disabled={!form.judul || !form.subject_id || !form.class_id}
-              onClick={() =>
-                simpanMateri.mutate({
-                  judul: form.judul,
-                  deskripsi: form.deskripsi || undefined,
-                  subject_id: Number(form.subject_id),
-                  class_id: Number(form.class_id),
-                  tag_id: form.tag_id ? Number(form.tag_id) : null,
-                })
-              }
-            >
-              Buat & buka editor
-            </Tombol>
-          </section>
-        </div>
+      <CatatanHanyaMelihat>
+        Daftar materi dibaca dari sini. Menyusun blok, menimpa media, dan menyisipkan kuis
+        dikerjakan guru lewat editornya.
+      </CatatanHanyaMelihat>
 
-        <div className="col-12 col-lg-7">
+      <div className="row g-4">
+        {!hanyaLihat && (
+          <div className="col-12 col-lg-5">
+            <section className="kartu-soal p-3">
+              <h2 className="h6 fw-bold mb-3">Materi baru</h2>
+              <div className="mb-2">
+                <label className="form-label" htmlFor="materi-judul">
+                  Judul
+                </label>
+                <input
+                  id="materi-judul"
+                  className="form-control"
+                  value={form.judul}
+                  onChange={(e) => setForm({ ...form, judul: e.target.value })}
+                  maxLength={150}
+                />
+              </div>
+              <div className="mb-2">
+                <label className="form-label" htmlFor="materi-mapel">
+                  Mapel
+                </label>
+                <select
+                  id="materi-mapel"
+                  className="form-select"
+                  value={form.subject_id}
+                  onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
+                >
+                  <option value="">Pilih mapel…</option>
+                  {(mapel.data ?? []).map((satu) => (
+                    <option key={satu.id} value={satu.id}>
+                      {satu.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-2">
+                <label className="form-label" htmlFor="materi-kelas">
+                  Kelas
+                </label>
+                <select
+                  id="materi-kelas"
+                  className="form-select"
+                  value={form.class_id}
+                  onChange={(e) => setForm({ ...form, class_id: e.target.value })}
+                >
+                  <option value="">Pilih kelas…</option>
+                  {(kelas.data ?? []).map((satu) => (
+                    <option key={satu.id} value={satu.id}>
+                      {satu.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-3">
+                <label className="form-label" htmlFor="materi-tema">
+                  Tema
+                </label>
+                <select
+                  id="materi-tema"
+                  className="form-select"
+                  value={form.tag_id}
+                  onChange={(e) => setForm({ ...form, tag_id: e.target.value })}
+                >
+                  <option value="">Tanpa tema</option>
+                  {(tag.data ?? []).map((satu) => (
+                    <option key={satu.id} value={satu.id}>
+                      {satu.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Tombol
+                memuat={simpanMateri.isPending}
+                disabled={!form.judul || !form.subject_id || !form.class_id}
+                onClick={() =>
+                  simpanMateri.mutate({
+                    judul: form.judul,
+                    deskripsi: form.deskripsi || undefined,
+                    subject_id: Number(form.subject_id),
+                    class_id: Number(form.class_id),
+                    tag_id: form.tag_id ? Number(form.tag_id) : null,
+                  })
+                }
+              >
+                Buat & buka editor
+              </Tombol>
+            </section>
+          </div>
+        )}
+
+        <div className={hanyaLihat ? 'col-12' : 'col-12 col-lg-7'}>
           <section className="kartu-soal p-3">
             <h2 className="h6 fw-bold mb-3">Daftar materi</h2>
             {daftar.isLoading && <p className="teks-lembut mb-0">Memuat…</p>}
@@ -161,7 +173,11 @@ export default function HalamanMateri() {
                         {satu.kelas_nama ?? '-'} · {satu.jumlah_blok ?? 0} blok · {satu.status_label}
                       </span>
                     </div>
-                    <TombolTaut varian="tepi" to={ruteMateriEditor(satu.id)}>Buka editor</TombolTaut>
+                    {!hanyaLihat && (
+                      <TombolTaut varian="tepi" to={ruteMateriEditor(satu.id)}>
+                        Buka editor
+                      </TombolTaut>
+                    )}
                   </div>
                 </li>
               ))}

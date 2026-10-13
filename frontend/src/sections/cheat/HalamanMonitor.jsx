@@ -13,7 +13,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
@@ -43,6 +45,12 @@ function tingkatRisiko(skor) {
 }
 
 export default function HalamanMonitor() {
+  /**
+   * Kepala sekolah membaca catatan kecurangan, tetapi meninjau (menandai valid
+   * atau tidak) adalah keputusan atas bukti — itu milik guru pemilik kuis, dan
+   * `KejadianKecuranganPolicy::tinjau` memang menolaknya.
+   */
+  const hanyaLihat = useHanyaMelihat()
   const { slug } = useParams()
   const kunci = kunciKuisSah(slug)
 
@@ -295,6 +303,11 @@ export default function HalamanMonitor() {
         pengembang yang terdeteksi dari ukuran jendela.
       </p>
 
+      <CatatanHanyaMelihat>
+        Catatan di bawah dibaca apa adanya. Yang memutuskan sebuah catatan valid atau tidak adalah
+        guru pemilik kuis itu.
+      </CatatanHanyaMelihat>
+
       {(kejadian.data ?? []).length === 0 ? (
         <KosongData judul="Tidak ada catatan pada saringan ini" ikon={IkonCentang}>
           Ulangan berjalan tanpa catatan yang perlu ditinjau — itu kabar baik.
@@ -321,7 +334,7 @@ export default function HalamanMonitor() {
                   {satu.dari_klien ? '' : ' · dihitung server'}
                 </p>
 
-                {satu.review_status === 'menunggu' && (
+                {satu.review_status === 'menunggu' && !hanyaLihat && (
                   <div className="d-flex gap-2">
                     <Tombol
                       varian="tepi"

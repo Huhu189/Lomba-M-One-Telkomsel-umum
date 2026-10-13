@@ -23,6 +23,7 @@ const SIMBOL_MALAS = Symbol.for('react.lazy')
 /** Jalur halaman tetap yang tautannya ada di menu (jadi layak dipramuat). */
 const jalurMenu = [
   RUTE.pengaturan,
+  RUTE.adminAkun,
   RUTE.kelas,
   RUTE.mapel,
   RUTE.murid,
@@ -44,6 +45,7 @@ const halamanMalas = [
   'HalamanVerifikasiEmail',
   'HalamanPerluVerifikasi',
   'HalamanAkun',
+  'HalamanAkunSekolah',
   'HalamanKelas',
   'HalamanMapel',
   'HalamanMurid',
@@ -104,6 +106,15 @@ describe('peta pramuat menu', () => {
     expect(pemuatHalaman(RUTE.beranda)).toBeNull()
     expect(pemuatHalaman(RUTE.daftar)).toBeNull()
     expect(pemuatHalaman(RUTE.lupaSandi)).toBeNull()
+  })
+
+  it('rute panel admin tidak tertukar dengan halaman lain', () => {
+    // `/admin/akun` tidak boleh disorot oleh pemuat halaman mana pun selain
+    // miliknya; pemeriksaan ini menangkap salah tempel peta pramuat.
+    expect(pemuatHalaman(RUTE.adminAkun)).not.toBe(pemuatHalaman(RUTE.pengaturan))
+    expect(pemuatHalaman(RUTE.adminAkun)).not.toBe(pemuatHalaman(RUTE.murid))
+    expect(pemuatHalaman('/admin')).toBeNull()
+    expect(pemuatHalaman('/admin/lain')).toBeNull()
   })
 })
 

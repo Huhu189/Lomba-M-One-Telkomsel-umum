@@ -20,6 +20,8 @@ import {
   rutePeringkat,
 } from '../../routes.js'
 import { useAuthStore } from '../auth/authStore.js'
+import { useHanyaMelihat } from '../../shared/akses.js'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import { IkonPanahKiri } from '../../icons.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
@@ -33,6 +35,10 @@ export default function HalamanKuisDetail() {
   const kunci = kunciKuisSah(slug)
   const user = useAuthStore((s) => s.user)
   const sebagaiGuru = user?.role === 'guru' || user?.role === 'admin'
+  // Kepala sekolah membuka halaman ini dengan kunci jawaban ikut tampil, tetapi
+  // tanpa satu pun alat penyuntingan: setelan ulangan, koreksi, tim, dan layar
+  // kelas semuanya ditolak server untuk perannya.
+  const hanyaLihat = useHanyaMelihat()
 
   const kuis = useQuery({
     queryKey: ['kuis', kunci, sebagaiGuru ? 'guru' : 'murid'],
@@ -97,21 +103,28 @@ export default function HalamanKuisDetail() {
                     Unduh nilai (CSV)
                   </a>
                 )}
-                {sebagaiGuru && (
+                {sebagaiGuru && !hanyaLihat && (
                   <TombolTaut varian="tepi" to={ruteKoreksiKuis(data.slug)}>Koreksi manual</TombolTaut>
                 )}
                 {sebagaiGuru && (
                   <TombolTaut varian="tepi" to={ruteMonitorKuis(data.slug)}>Monitor Ulangan</TombolTaut>
                 )}
-                {sebagaiGuru && (
+                {sebagaiGuru && !hanyaLihat && (
                   <TombolTaut varian="tepi" to={ruteTimKuis(data.slug)}>Kelola tim</TombolTaut>
                 )}
-                {sebagaiGuru && (
+                {sebagaiGuru && !hanyaLihat && (
                   <TombolTaut varian="tepi" to={ruteLayarKuis(data.slug)}>Layar kelas</TombolTaut>
                 )}
               </div>
 
-              {sebagaiGuru && (
+              {hanyaLihat && (
+                <CatatanHanyaMelihat>
+                  Setelan ulangan disusun guru pemilik kuis ini — dari proteksi anti-cheat sampai
+                  batas percobaan. Kepala sekolah memantau jalannya ulangan dan membaca hasilnya.
+                </CatatanHanyaMelihat>
+              )}
+
+              {sebagaiGuru && !hanyaLihat && (
                 <section className="kartu-soft p-4 mt-4" aria-labelledby="judul-setelan-ulangan">
                   <h2 id="judul-setelan-ulangan" className="judul-bagian">
                     Setelan ulangan

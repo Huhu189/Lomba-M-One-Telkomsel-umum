@@ -17,6 +17,10 @@ export const RUTE = {
   // Halaman akun sendiri (nama, kata sandi, tampilan). Setelan per ulangan
   // TIDAK di sini lagi — ia menyatu dengan kuisnya (lihat `kuisDetail`).
   pengaturan: '/pengaturan',
+  // Panel admin sekolah (14 Okt 2026): kelola akun guru/murid. Dasbornya sendiri
+  // menempati beranda (`/`) karena admin memang membuka aplikasi untuk memantau
+  // sekolah, bukan untuk mengerjakan ulangan.
+  adminAkun: '/admin/akun',
   // Bank soal, tag, dan kuis (slice 03).
   bankSoal: '/bank-soal',
   tag: '/tag',

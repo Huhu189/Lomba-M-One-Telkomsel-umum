@@ -7,7 +7,10 @@ namespace App\Sections\School\Policies;
 use App\Models\User;
 
 /**
- * Sekolah: semua pengguna terautentikasi boleh membaca; hanya guru/admin boleh mengubah.
+ * Sekolah: semua pengguna terautentikasi boleh membaca; hanya **guru** yang
+ * mengubah identitas sekolah.
+ *
+ * Kepala sekolah (peran `admin`) hanya melihat — lihat `User::bolehMengubahAkademik()`.
  */
 class SekolahPolicy
 {
@@ -18,6 +21,6 @@ class SekolahPolicy
 
     public function update(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 }

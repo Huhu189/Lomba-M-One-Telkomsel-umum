@@ -29,6 +29,8 @@ import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import PanelForm from '../../shared/ui/PanelForm.jsx'
@@ -85,6 +87,9 @@ function Sorot({ teks, kata }) {
 
 export default function HalamanMurid() {
   const queryClient = useQueryClient()
+  // Kepala sekolah boleh menelusuri dan mengunduh daftar murid, tetapi tidak
+  // menambah, mengimpor, mengubah, atau menghapusnya (server menolak 403).
+  const hanyaLihat = useHanyaMelihat()
   const [filterKelas, setFilterKelas] = useState('')
   const [cari, setCari] = useState('')
   const [cariDipakai, setCariDipakai] = useState('')
@@ -223,16 +228,24 @@ export default function HalamanMurid() {
             : 'Memuat data murid…'
         }
       >
-        <Link className="btn btn-tepi" to={RUTE.imporMurid}>
-          Impor CSV
-        </Link>
+        {/** Menambah dan mengimpor murid ditolak server untuk kepala sekolah. */}
+        {!hanyaLihat && (
+          <>
+            <Link className="btn btn-tepi" to={RUTE.imporMurid}>
+              Impor CSV
+            </Link>
+            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+              Tambah murid
+            </Tombol>
+          </>
+        )}
+        {/** Mengunduh daftar tetap boleh: itu membaca, bukan mengubah. */}
         <a className="btn btn-tepi" href={URL_EKSPOR_MURID}>
           Ekspor CSV
         </a>
-        <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-          Tambah murid
-        </Tombol>
       </HeaderHalaman>
+
+      <CatatanHanyaMelihat />
 
       <div className="row g-3 mb-4">
         <div className="col-12 col-md-5 col-lg-4">
@@ -322,26 +335,30 @@ export default function HalamanMurid() {
                 ),
               },
               { kunci: 'kelas_nama', judul: 'Kelas', sel: (murid) => murid.kelas_nama || '—' },
-              {
-                kunci: 'aksi',
-                judul: 'Aksi',
-                aksi: true,
-                sel: (murid) => (
-                  <div className="aksi-baris">
-                    <TombolIkon
-                      label={`Ubah murid ${murid.nama}`}
-                      ikon={IkonPensil}
-                      onClick={() => bukaUbah(murid)}
-                    />
-                    <TombolIkon
-                      label={`Hapus murid ${murid.nama}`}
-                      ikon={IkonTongSampah}
-                      varian="bahaya"
-                      onClick={() => setMuridDihapus(murid)}
-                    />
-                  </div>
-                ),
-              },
+              ...(hanyaLihat
+                ? []
+                : [
+                    {
+                      kunci: 'aksi',
+                      judul: 'Aksi',
+                      aksi: true,
+                      sel: (/** @type {import('./api.js').DataMurid} */ murid) => (
+                        <div className="aksi-baris">
+                          <TombolIkon
+                            label={`Ubah murid ${murid.nama}`}
+                            ikon={IkonPensil}
+                            onClick={() => bukaUbah(murid)}
+                          />
+                          <TombolIkon
+                            label={`Hapus murid ${murid.nama}`}
+                            ikon={IkonTongSampah}
+                            varian="bahaya"
+                            onClick={() => setMuridDihapus(murid)}
+                          />
+                        </div>
+                      ),
+                    },
+                  ]),
             ]}
             baris={barisMurid}
             kunciBaris={(murid) => murid.id}
@@ -369,9 +386,11 @@ export default function HalamanMurid() {
           judul="Belum ada murid pada saringan ini"
           ikon={IkonPengguna}
           aksi={
-            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-              Tambah murid
-            </Tombol>
+            hanyaLihat ? undefined : (
+              <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+                Tambah murid
+              </Tombol>
+            )
           }
         >
           Murid bisa ditambahkan satu per satu atau sekaligus lewat berkas CSV berisi nama, email,

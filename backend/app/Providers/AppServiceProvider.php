@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Sections\Admin\Policies\AkunSekolahPolicy;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Policies\AttemptPolicy;
 use App\Sections\Avatar\Models\Avatar;
@@ -101,6 +103,10 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         // Policy model berada di luar App\Models, jadi didaftarkan eksplisit.
+        // Panel admin sekolah mengelola model `User` (akun guru/murid), yang
+        // berada di App\Models — bukan di section — jadi policy-nya tetap
+        // didaftarkan eksplisit.
+        Gate::policy(User::class, AkunSekolahPolicy::class);
         Gate::policy(Sekolah::class, SekolahPolicy::class);
         Gate::policy(Kelas::class, KelasPolicy::class);
         Gate::policy(Mapel::class, MapelPolicy::class);
@@ -263,6 +269,14 @@ class AppServiceProvider extends ServiceProvider
         // percobaan ulang jaringan, tetapi tetap menutup kiriman borongan.
         RateLimiter::for('denyut', function (Request $request) {
             return Limit::perMinute(12)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
+
+        // Kelola akun dari panel admin (14 Okt 2026). Tiap panggilan menulis satu
+        // baris token/audit, jadi batasnya per AKUN admin — bukan per IP sekolah
+        // (satu sekolah = satu alamat). Longgar karena admin memang bisa
+        // memperbaiki banyak akun berurutan di awal tahun ajaran.
+        RateLimiter::for('kelola-akun', function (Request $request) {
+            return Limit::perMinute(30)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
         });
     }
 }

@@ -12,7 +12,9 @@ import { skemaTagForm } from './validasi.js'
 import { ambilTag, buatTag, hapusTag, ubahTag } from './api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import { useHanyaMelihat } from '../../shared/akses.js'
 import Banner from '../../shared/ui/Banner.jsx'
+import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
@@ -26,6 +28,9 @@ const nilaiAwal = { nama: '', deskripsi: '' }
 
 export default function HalamanTag() {
   const queryClient = useQueryClient()
+  // Kepala sekolah hanya membaca tag & temanya; menambah/mengubah/menghapus
+  // ditolak server untuk perannya (TagPolicy).
+  const hanyaLihat = useHanyaMelihat()
   const [idUbah, setIdUbah] = useState(/** @type {number|null} */ (null))
   const [panelBuka, setPanelBuka] = useState(false)
   const [tagDihapus, setTagDihapus] = useState(/** @type {import('./api.js').DataTag | null} */ (null))
@@ -98,10 +103,14 @@ export default function HalamanTag() {
         jejak="Ujian / Tag Soal"
         deskripsi="Satu tag dipakai dua hal: menandai soal di bank soal dan menjadi tema pada laporan pemahaman."
       >
-        <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-          Tambah tag
-        </Tombol>
+        {!hanyaLihat && (
+          <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+            Tambah tag
+          </Tombol>
+        )}
       </HeaderHalaman>
+
+      <CatatanHanyaMelihat />
 
       {daftarTag.isPending && <Skeleton judul baris={3} label="Memuat tag…" />}
 
@@ -126,26 +135,30 @@ export default function HalamanTag() {
                 sel: (tag) => tag.deskripsi || '—',
               },
               { kunci: 'jumlah_soal', judul: 'Soal', sel: (tag) => `${tag.jumlah_soal ?? 0} soal` },
-              {
-                kunci: 'aksi',
-                judul: 'Aksi',
-                aksi: true,
-                sel: (tag) => (
-                  <div className="aksi-baris">
-                    <TombolIkon
-                      label={`Ubah tag ${tag.nama}`}
-                      ikon={IkonPensil}
-                      onClick={() => bukaUbah(tag)}
-                    />
-                    <TombolIkon
-                      label={`Hapus tag ${tag.nama}`}
-                      ikon={IkonTongSampah}
-                      varian="bahaya"
-                      onClick={() => setTagDihapus(tag)}
-                    />
-                  </div>
-                ),
-              },
+              ...(hanyaLihat
+                ? []
+                : [
+                    {
+                      kunci: 'aksi',
+                      judul: 'Aksi',
+                      aksi: true,
+                      sel: (/** @type {import('./api.js').DataTag} */ tag) => (
+                        <div className="aksi-baris">
+                          <TombolIkon
+                            label={`Ubah tag ${tag.nama}`}
+                            ikon={IkonPensil}
+                            onClick={() => bukaUbah(tag)}
+                          />
+                          <TombolIkon
+                            label={`Hapus tag ${tag.nama}`}
+                            ikon={IkonTongSampah}
+                            varian="bahaya"
+                            onClick={() => setTagDihapus(tag)}
+                          />
+                        </div>
+                      ),
+                    },
+                  ]),
             ]}
             baris={data}
             kunciBaris={(tag) => tag.id}
@@ -158,9 +171,11 @@ export default function HalamanTag() {
           judul="Belum ada tag"
           ikon={IkonTanda}
           aksi={
-            <Tombol ikon={IkonTambah} onClick={bukaTambah}>
-              Tambah tag
-            </Tombol>
+            hanyaLihat ? undefined : (
+              <Tombol ikon={IkonTambah} onClick={bukaTambah}>
+                Tambah tag
+              </Tombol>
+            )
           }
         >
           Tag membantu guru melihat tema mana yang masih lemah. Tambahkan satu, contohnya Operasi

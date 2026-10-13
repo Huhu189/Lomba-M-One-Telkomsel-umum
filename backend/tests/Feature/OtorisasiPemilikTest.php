@@ -108,8 +108,21 @@ it('guru lain tidak bisa mengubah, menerbitkan, atau menghapus kuis milik guru l
     // Penerbitan juga menuntut kuis punya soal — aturan domain, bukan kepemilikan.
     $this->kuisB->soal()->attach($this->soalB->id, ['urutan' => 1]);
 
-    // Admin boleh semuanya, termasuk kuis milik guru lain.
+    // Kepala sekolah TIDAK ikut mengubah kuis milik guru lain (14 Okt 2026):
+    // ia memantau dan membaca, bukan menyusun ulangan — supaya nilai anak hanya
+    // berubah di tangan pihak yang benar-benar mengerjakan ulangannya.
     o04Masuk($this->admin);
+    $this->postJson("/api/v1/kuis/{$this->kuisB->id}/publikasi")->assertStatus(403);
+    $this->deleteJson("/api/v1/kuis/{$this->kuisB->id}")->assertStatus(403);
+
+    expect(Kuis::query()->whereKey($this->kuisB->id)->exists())->toBeTrue()
+        ->and($this->kuisB->refresh()->status)->toBe(StatusKuis::Draf);
+
+    // Membacanya tetap boleh: dasbor sekolah menghitung kuis ini.
+    $this->getJson("/api/v1/kuis/{$this->kuisB->id}")->assertOk();
+
+    // Pemiliknya sendiri tetap bisa menerbitkan dan menghapus.
+    o04Masuk($this->guruB);
     $this->postJson("/api/v1/kuis/{$this->kuisB->id}/publikasi")->assertOk();
     $this->deleteJson("/api/v1/kuis/{$this->kuisB->id}")->assertOk();
 });
@@ -128,9 +141,14 @@ it('guru lain tidak bisa mengubah atau menghapus soal milik guru lain', function
 
     expect((int) $this->soalB->refresh()->skor)->toBe(5);
 
-    // Admin boleh.
+    // Kepala sekolah boleh MEMBACA soal beserta kuncinya, tetapi tidak
+    // menghapusnya: kunci yang sedang dipakai ulangan berjalan bukan miliknya.
     o04Masuk($this->admin);
-    $this->deleteJson("/api/v1/soal/{$this->soalB->id}")->assertOk();
+    $this->getJson("/api/v1/soal/{$this->soalB->id}")->assertOk();
+    $this->deleteJson("/api/v1/soal/{$this->soalB->id}")->assertStatus(403);
+    $this->putJson("/api/v1/soal/{$this->soalB->id}", o04IsiSoal($this))->assertStatus(403);
+
+    expect(Soal::query()->whereKey($this->soalB->id)->exists())->toBeTrue();
 });
 
 it('guru lain tidak bisa mengubah pengaturan lingkup kuis milik guru lain', function (): void {
@@ -154,14 +172,22 @@ it('guru lain tidak bisa mengubah pengaturan lingkup kuis milik guru lain', func
         'nilai' => true,
     ])->assertOk();
 
-    // Admin boleh.
+    // Kepala sekolah tidak ikut mengubah aturan ulangan orang lain: kontrol
+    // setelan ada pada guru pemilik kuisnya.
     o04Masuk($this->admin);
     $this->putJson('/api/v1/pengaturan', [
         'lingkup' => 'kuis',
         'lingkup_id' => $this->kuisB->id,
         'kunci' => 'mode_tim',
         'nilai' => false,
-    ])->assertOk();
+    ])->assertStatus(403);
+
+    // Nilainya tetap seperti yang dipilih pemiliknya, dan ia tetap boleh
+    // membacanya (itu yang dipakai laporan/dasbor).
+    o04Masuk($this->guruB);
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$this->kuisB->id)
+        ->assertOk()
+        ->assertJsonPath('pengaturan.mode_tim.nilai', true);
 });
 
 it('guru lain tidak bisa membuka antrean koreksi atau mengubah nilai pada kuis guru lain', function (): void {
@@ -281,12 +307,17 @@ it('guru lain tidak bisa mengubah, menerbitkan, atau mengunggah berkas materi gu
     $this->putJson("/api/v1/materi/{$materiB->id}", $isiMateri)->assertOk();
     $this->postJson("/api/v1/materi/{$materiB->id}/publikasi")->assertOk();
 
-    // Admin boleh semuanya.
+    // Kepala sekolah boleh membaca materi + laporannya, tetapi tidak
+    // menghapusnya.
     o04Masuk($this->admin);
-    $this->deleteJson("/api/v1/materi/{$materiB->id}")->assertOk();
+    $this->getJson("/api/v1/materi/{$materiB->id}")->assertOk();
+    $this->getJson("/api/v1/materi/{$materiB->id}/laporan")->assertOk();
+    $this->deleteJson("/api/v1/materi/{$materiB->id}")->assertStatus(403);
+
+    expect(Materi::query()->whereKey($materiB->id)->exists())->toBeTrue();
 });
 
-it('kuis tanpa pemilik tidak lagi dianggap milik bersama: guru ditolak, admin boleh', function (): void {
+it('kuis tanpa pemilik tidak lagi dianggap milik bersama: guru dan kepala sekolah ditolak', function (): void {
     $kuisLama = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->create([
         'judul' => 'Kuis tanpa pemilik',
         'dibuat_oleh' => null,
@@ -303,10 +334,12 @@ it('kuis tanpa pemilik tidak lagi dianggap milik bersama: guru ditolak, admin bo
 
     expect($kuisLama->refresh()->judul)->toBe('Kuis tanpa pemilik');
 
+    // Kepala sekolah membaca baris itu, tetapi tidak mengubahnya.
     o04Masuk($this->admin);
-    $this->putJson("/api/v1/kuis/{$kuisLama->id}", o04IsiKuis($this))->assertOk();
+    $this->getJson("/api/v1/kuis/{$kuisLama->id}")->assertOk();
+    $this->putJson("/api/v1/kuis/{$kuisLama->id}", o04IsiKuis($this))->assertStatus(403);
 
-    expect($kuisLama->refresh()->judul)->toBe('Kuis diubah');
+    expect($kuisLama->refresh()->judul)->toBe('Kuis tanpa pemilik');
 });
 
 it('migrasi pengisian pemilik mengisi baris lama tanpa pemilik supaya ikut terbaca pemiliknya', function (): void {
@@ -326,7 +359,9 @@ it('migrasi pengisian pemilik mengisi baris lama tanpa pemilik supaya ikut terba
     expect((int) $kuisLama->refresh()->dibuat_oleh)->toBe((int) $this->admin->id)
         ->and((int) $soalLama->refresh()->dibuat_oleh)->toBe((int) $this->admin->id);
 
-    // Sesudah diisi, baris lama kembali bisa dikelola — sekarang oleh pemiliknya.
+    // Sesudah diisi, baris lama kembali terbaca oleh pemiliknya (admin) — dan
+    // tetap tidak bisa diubah olehnya, karena kepala sekolah hanya membaca.
     o04Masuk($this->admin);
-    $this->putJson("/api/v1/soal/{$soalLama->id}", o04IsiSoal($this))->assertOk();
+    $this->getJson("/api/v1/soal/{$soalLama->id}")->assertOk();
+    $this->putJson("/api/v1/soal/{$soalLama->id}", o04IsiSoal($this))->assertStatus(403);
 });

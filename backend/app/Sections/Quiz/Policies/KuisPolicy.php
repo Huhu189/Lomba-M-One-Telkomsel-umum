@@ -10,7 +10,9 @@ use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Tamu\Services\TamuService;
 
 /**
- * Kuis: guru/admin mengelola; murid hanya melihat kuis terbit kelasnya.
+ * Kuis: **guru** mengelola; murid hanya melihat kuis terbit kelasnya, dan kepala
+ * sekolah (peran `admin`) membaca kuis beserta laporannya tanpa mengubah apa pun
+ * (lihat `User::bolehMengubahAkademik()`).
  */
 class KuisPolicy
 {
@@ -51,19 +53,22 @@ class KuisPolicy
 
     public function create(User $user): bool
     {
-        return $user->isGuru();
+        return $user->bolehMengubahAkademik();
     }
 
     /**
-     * Ubah/susun kuis — hanya pembuatnya; admin boleh semuanya (S-04).
+     * Ubah/susun kuis — hanya pembuatnya.
      *
      * Sebelumnya semua guru setara, jadi guru mana pun bisa mengubah judul,
      * jadwal, daftar soal, dan urutan pengacakan kuis milik guru lain — termasuk
-     * saat ulangannya sedang berjalan.
+     * saat ulangannya sedang berjalan. Sejak 14 Okt 2026 kepala sekolah pun tidak
+     * lagi ikut mengubah: ia memantau keadaan sekolah, bukan menyusun ulangan
+     * (S-04 lama dibatalkan oleh permintaan itu), sehingga nilai anak hanya bisa
+     * diubah pihak yang benar-benar mengerjakan ulangannya.
      */
     public function update(User $user, Kuis $kuis): bool
     {
-        return $user->isGuru() && $user->bolehKelola($kuis->dibuat_oleh);
+        return $user->bolehMengubahAkademik() && $user->bolehKelola($kuis->dibuat_oleh);
     }
 
     public function delete(User $user, Kuis $kuis): bool
@@ -83,7 +88,9 @@ class KuisPolicy
      */
     public function laporan(User $user, Kuis $kuis): bool
     {
-        return $this->update($user, $kuis);
+        // Membaca laporan nilai/pemahaman, bukan mengubahnya — kepala sekolah
+        // tetap boleh membukanya (itu salah satu tugasnya).
+        return $user->isGuru() && $user->bolehKelola($kuis->dibuat_oleh);
     }
 
     /**
@@ -93,6 +100,7 @@ class KuisPolicy
      */
     public function koreksi(User $user, Kuis $kuis): bool
     {
+        // Menyimpan nilai, jadi mengikuti aturan tulis.
         return $this->update($user, $kuis);
     }
 

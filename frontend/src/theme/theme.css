@@ -3399,6 +3399,72 @@ a {
   justify-content: flex-end;
 }
 
+/* Catatan "hanya melihat" untuk kepala sekolah: halaman yang tampil tanpa
+ * tombol ubah harus menjelaskan alasannya, bukan terlihat seperti rusak. */
+.catatan-hanya-melihat {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-inline-start: 3px solid var(--aksen);
+  border-radius: var(--radius-kecil);
+  background-color: var(--kartu-lembut);
+  color: var(--teks-lembut);
+  font-size: 0.925rem;
+}
+
+/* ---------- Menu aksi per baris tabel ---------- */
+
+/* Dulu tiga tombol ikon berjajar (kelola akun). Ikon tanpa teks memaksa guru
+ * menebak artinya, dan di HP tiga tombol itu mendorong kolom Aksi keluar layar.
+ * Sekarang satu tombol menu yang membuka pilihan BER-TEKS. */
+.menu-aksi {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu-aksi-daftar {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--sp-1));
+  inset-inline-end: 0;
+  min-width: 13rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-1);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  box-shadow: var(--bayangan-besar);
+  text-align: start;
+}
+
+.menu-aksi-item {
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-kecil);
+  background-color: transparent;
+  color: inherit;
+  font-weight: 600;
+  text-align: start;
+}
+
+.menu-aksi-item:hover,
+.menu-aksi-item:focus-visible {
+  background-color: var(--kartu-lembut);
+}
+
+/* Aksi merusak (menangguhkan akun) tetap dikenali warnanya. */
+.menu-aksi-bahaya {
+  color: var(--status-salah);
+}
+
+/* Pilihan tindakan yang sedang aktif di menu "…" panel kelola akun. */
+.menu-aksi-item-aktif {
+  background-color: var(--kartu-lembut);
+  font-weight: 700;
+}
+
 /* Di HP kolom Aksi dulu terdorong keluar layar (temuan 08). Mulai < 700 px
  * tiap baris berubah jadi kartu dan label kolom dibawa oleh data-label. */
 @media (max-width: 699.98px) {
