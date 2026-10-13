@@ -182,10 +182,13 @@ def utama() -> None:
 
     if dir_log_md and os.path.isdir(dir_log_md):
         bagian.append(paragraf("1. Log kerja repo (docs/log-mentah) — apa adanya", "Judul1"))
-        for nama in sorted(os.listdir(dir_log_md)):
-            sub = os.path.join(dir_log_md, nama)
-            if os.path.isfile(sub) and nama.endswith(".md"):
-                bagian.append(paragraf(f"BERKAS: {nama}", "Judul2"))
+        # Sejak A.71 log-mentah berisi satu folder per sesi, jadi berkasnya dicari rekursif.
+        for akar, _, berkas in os.walk(dir_log_md):
+            for nama in sorted(berkas):
+                if not nama.endswith(".md"):
+                    continue
+                sub = os.path.join(akar, nama)
+                bagian.append(paragraf(f"BERKAS: {os.path.relpath(sub, dir_log_md)}", "Judul2"))
                 tambah_teks(bagian, open(sub, encoding="utf-8").read())
 
     bagian.append(paragraf("2. chat-meta.json", "Judul1"))
