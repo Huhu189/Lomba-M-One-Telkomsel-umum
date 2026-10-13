@@ -67,10 +67,13 @@ git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 
 Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.70**):
 
-- **`HEAD = 90512a2`** (*"Hentikan kueri berat berulang di jalur ulangan, impor murid, dan laporan"* = **A.70**;
-  commit A.70 ada dua: `b1025b4` rekam diri + `90512a2` kueri backend — keduanya sudah dikomit).
-- **`origin/main = 93f66ed`** → **5 commit lokal belum di-push** (`93f66ed..90512a2`: A.65, A.66, A.67, A.70).
-  Repo online belum memuat kelimanya; **push dulu sebelum menutup sesi**.
+- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat ditulis: `48d366d` *"Catat putaran
+  A.68-A.70 di laporan pengujian dan handoff"*). Putaran **A.70** = tiga commit: `b1025b4` (rekam diri + tes),
+  `90512a2` (kueri backend), `48d366d` (laporan + handoff) — semuanya sudah dikomit.
+- **`origin/main = 93f66ed`** → **belum ada satu pun commit sesi ini yang di-push**
+  (`git rev-list --count origin/main..HEAD` **6** saat ditulis, sebelum commit dokumentasi ini — angka pastinya
+  ambil dari perintah itu). Repo online belum memuat A.65, A.66, A.67, dan A.70; **push dulu sebelum menutup
+  sesi**.
 - **Working tree = 65 entri belum dikomit** (`git status --short`): 44 diubah · 3 dihapus · 18 berkas baru.
   Isinya terutama putaran **A.68 + A.69** (ditambah dokumentasi A.61–A.64 yang belum ikut commit):
   - **18 baru:** backend `Sections/Auth/{Services/AkunService.php,Http/Controllers/AkunController.php,
@@ -190,7 +193,8 @@ kurang: **deploy publik dengan link yang bisa dibuka**, **Octane Swoole** (atau 
 **jurnal prompt maksimal 5 entri + log mentah utuh**, dan repo **public sejak commit pertama**. Empat hal itu
 mengalahkan semua pekerjaan rapi-rapi di bawah.
 
-1. **Commit + push pekerjaan yang menumpuk** (65 entri, **5 commit lokal belum di-push**; A.70 sudah dikomit). Pisahkan kecil-kecil
+1. **Commit + push pekerjaan yang menumpuk** (65 entri; **A.70 dan dokumentasinya sudah dikomit**, tetapi belum
+   ada yang di-push — lihat 0.2). Pisahkan kecil-kecil
    mengikuti gaya riwayat yang ada (satu putaran = satu commit, judul kalimat perintah/berita, tanpa tanggal
    commit buatan): (a) slug kuis + bank soal bertahap (`bankSoalLazy`, `paramSoal`, `catatanSoal`),
    (b) `/pengaturan` jadi halaman akun + setelan ulangan per kuis (`AkunService`, `PanelSetelanUlangan`,

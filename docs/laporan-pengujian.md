@@ -6115,7 +6115,8 @@ butuh kamera sungguhan (lihat batasan di bawah).
 - **Diubah (frontend):** `frontend/src/sections/attempt/UnggahLampiran.jsx`.
 - **Baru (uji):** `frontend/src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx` (205 baris, 3 tes).
 - **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 14).
-- **Commit:** `b1025b4` (rekam diri + tes) dan `90512a2` (kueri backend). Belum di-push.
+- **Commit:** `b1025b4` (rekam diri + tes), `90512a2` (kueri backend), dan satu commit dokumentasi
+  (laporan ini + handoff). Belum di-push.
 
 ### A.70.6 Batasan jujur
 
@@ -6130,5 +6131,6 @@ butuh kamera sungguhan (lihat batasan di bawah).
   itu, atau akses kolom baru di monitor/ekspor akan melempar `MissingAttributeException` (di non-produksi).
 - **`retry_after` hanya naik untuk koneksi `database`** (yang dipakai `.env`); opsi Redis/beanstalk tetap 90 detik.
   Kenaikannya juga menunda percobaan ulang pekerjaan yang benar-benar gagal, jadi ini tukar-menukar yang sadar.
-- **Belum di-push.** `origin/main` masih tertinggal 5 commit; pekerjaan besar A.61–A.69 (65 entri) juga masih
-  menumpuk di working tree dan belum ikut dikomit putaran ini.
+- **Belum di-push.** `origin/main` masih tertinggal seluruh commit sesi ini (`git rev-list --count
+  origin/main..HEAD`); pekerjaan besar A.61–A.69 (65 entri) juga masih menumpuk di working tree dan belum ikut
+  dikomit putaran ini.
