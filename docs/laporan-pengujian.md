@@ -5369,3 +5369,204 @@ bisa direproduksi: pada satu kali dijalankan berantai, runner melaporkan exit 1 
 sendiri berbunyi "hasil smoke cdp: 0" dan tidak ada satu pun baris `GAGAL`; tiga kali dijalankan ulang
 (sendiri dan berantai sesudah `perjalanan`) exit 0. `cdp` memang peninjau (menuangkan isi halaman), bukan
 harness berhitung.
+
+---
+
+## A.63 — Layar kelas, mode tim, dan impor murid diuji di peramban sungguhan (13 Oktober 2026)
+
+Tiga jalur yang cakupan GUI-nya masih kosong: **layar kelas** (slice 10), **mode tim** (slice 09), dan
+**impor murid CSV** (slice 07). Semuanya sudah lama punya uji backend (`Slice10LayarTest`, `Slice09TimTest`,
+`ImporMuridTest`), tetapi belum pernah dijalankan dari peramban — dan sapu A.62.6 (23 harness berhitung)
+memang tidak memuat ketiganya. Layar kelas yang paling telanjang: halaman `/kuis/:id/layar` **belum pernah
+dibuka di peramban sama sekali**, padahal inti fiturnya justru pasangan dua perangkat (guru mengubah,
+perangkat murid menyusul tanpa memuat ulang).
+
+### A.63.1 Harness baru `layar` — satu guru + satu murid, dua peramban (34 pemeriksaan)
+
+Dua konteks peramban (dua profil cookie terpisah) dipakai sekaligus, seperti `soal-berubah`: guru
+mengendalikan, murid mengerjakan. Harness membuat sendiri soal + kuis kelas murid uji, lalu menghapusnya di
+`finally`.
+
+| Bagian | Yang dibuktikan |
+| --- | --- |
+| Saklar `layar_guru` mati | Halaman mengatakannya terus terang ("Layar guru sedang dimatikan … murid tidak menerima apa pun") **dan** pemilih mode + tombol simpan benar-benar terkunci |
+| Saklar dinyalakan | Peringatan hilang, pemilih mode hidup — lewat halaman yang dimuat ulang setelah kunci diubah |
+| Mode yang butuh bahan | "Sorot satu soal" tanpa soal terpilih: tombol simpan mati **dan** sebabnya di layar ("Pilih dulu soal yang mau disorot.") — ditolak lebih awal oleh halaman, bukan oleh server |
+| Pengumuman | Guru menyiarkan; toast melaporkan mode yang tayang; pratinjau "Yang dilihat murid" memuat judul + isi |
+| Pengumuman → murid | Murid menerimanya di layar ulangannya **tanpa memuat ulang**, lengkap dengan "Dari gurumu · pembaruan N" |
+| Sorot soal → murid | Panel `Soal yang disorot guru` muncul, menyebut "Guru menyorot soal nomor 1", **dan isi soalnya benar-benar sampai**; soal ulangan milik murid tetap di layar (tidak terkunci) |
+| Kosongkan layar | Form kembali ke kosong & tetap bisa disiarkan; panel di perangkat murid **hilang** — kembali ke tampilan ulangan biasa |
+| Pagar murid | `PUT /v1/kuis/{id}/layar` dari murid **403**; `GET`-nya 200 tetapi **tanpa** `daftar_soal`/`daftar_mode` (bahan pengendali tidak ikut ke perangkat murid) |
+| Tanpa kunci | Panel sorotan tidak memuat "Kunci jawaban" |
+
+### A.63.2 Harness `tim` dan `impor-murid` (sudah dikomit tanpa entri laporan)
+
+Keduanya ditulis pada putaran sebelumnya (**commit `4d0292c`**) dan ikut diverifikasi ulang di sini:
+
+- `tim` (**31 pemeriksaan**): halaman menyebut jumlah murid kelas apa adanya, keadaan kosong dan "mode tim
+  belum dinyalakan" dikatakan terus terang, "Bagi otomatis" menyarankan jumlah tim yang masuk akal lalu
+  **membagi seluruh murid** (tidak ada yang tertinggal), murid benar-benar melihat nama tim & anggotanya,
+  susunan tetap sama setelah halaman dimuat ulang, hapus/buat tim melaporkan hasilnya, murid dari tim yang
+  dihapus dilaporkan belum bertim, dan kunci `mode_tim` bisa dinyalakan untuk kuis itu (peringatan hilang).
+- `impor-murid` (**29 pemeriksaan**): kolom wajib/opsional disebut apa adanya, tombol Impor mati sebelum ada
+  berkas, **judul kolom lazim guru diterima** ("Nama Lengkap", "Nama Kelas", "Nomor Induk Siswa") tanpa 422,
+  tabel galat menyebut **nomor baris** + sebabnya (kelas tidak ada, email milik akun non-murid, NIS ganda di
+  dalam berkas) sebagai `role=alert`, baris yang ditolak **tidak** meninggalkan murid di server, impor bersih
+  dilaporkan sebagai status, dan berkas Excel (BOM + pemisah `;`) jalan lewat API.
+
+### A.63.3 Bukti (dijalankan, bukan klaim)
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh layar` (**harness baru**) | **34/34 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh tim` (verifikasi ulang) | **31/31 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh impor-murid` (verifikasi ulang) | **29/29 lulus, exit 0** |
+| `node --check docs/smoke-ui-layar.mjs` | exit 0 |
+
+Ketiganya dijalankan lewat runner yang sama (`docs/jalankan-smoke-ui.sh`) di atas satu local yang hidup:
+backend :8000, vite :5173, realtime :4000, Chrome :9333 milik runner. Jumlahnya **94 pemeriksaan lulus,
+0 gagal**, semuanya exit 0.
+
+### A.63.4 Berkas
+
+- **Baru (harness):** `docs/smoke-ui-layar.mjs`.
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini).
+- **Sudah ada sejak `4d0292c`:** `docs/smoke-ui-tim.mjs`, `docs/smoke-ui-impor-murid.mjs`.
+
+### A.63.5 Batasan jujur
+
+- **Yang dibuktikan adalah "murid menyusul", bukan "lewat SSE".** Harness menunggu panel berubah dalam
+  batas 40 detik — itu cukup untuk jalur polling (5 detik saat SSE gagal, 20 detik saat SSE hidup sebagai
+  jaring pengaman). Jadi pemberitahuan realtime yang gagal lalu diselamatkan polling tetap dinyatakan lulus;
+  yang gagal adalah bila perangkat murid **tidak pernah** menyusul. Kontrak SSE-nya sendiri sudah dijaga uji
+  backend `Slice10LayarTest` (kanal `ulangan:kuis:{id}:murid`).
+- **Mode "Instruksi setelah ulangan" (`hasil`) tidak dijalankan** di harness ini. Yang diuji tiga mode:
+  `pengumuman`, `soal`, dan `kosong`. Mode `hasil` memakai komponen `Banner` yang sama dengan `pengumuman`
+  jadi risikonya kecil, tetapi tetap belum dibuka di peramban.
+- **Satu murid saja.** "Kelas lain tidak boleh mengikuti" dibuktikan uji backend (403 pada `GET`/`sse-tiket-murid`
+  dari kelas lain), bukan di browser.
+- **Chrome headless + CDP**, bukan perangkat fisik; kedipan/animasi tidak dinilai, hanya keadaan DOM yang
+  dibaca ulang.
+
+---
+
+## A.64 — Tiga celah cakupan GUI ditutup: Mapel, Avatar/Moderasi, dan Alur Akun Murid (13 Oktober 2026)
+
+Setelah A.63, seluruh harness dijalankan ulang atas pertanyaan "apakah SEMUA fitur sudah terbukti di
+peramban?" — jawabannya belum. Audit peta rute (`frontend/src/routes.js`) melawan 27 berkas
+`docs/smoke-ui-*.mjs` menemukan tiga jalur yang tidak punya bukti peramban sama sekali:
+
+| Jalur | Bukti yang ada sebelum putaran ini |
+| --- | --- |
+| `/daftar` · `/perlu-verifikasi` · `/verifikasi-email` · `/lupa-sandi` · `/atur-ulang-sandi` | **Nol harness.** Hanya `AuthTest.php` (backend) + unit `authStore`/`validasi` (Vitest) |
+| `/mapel` | **Nol harness.** Hanya `SekolahTest.php` (backend) + `cdp` yang menuangkan isi halaman tanpa memeriksa |
+| `/avatar` (perilaku) | Hanya **tata letak** oleh `mobile`; tak ada asersi unggah/lapor/tinjau. Ada `Slice08AvatarTest` di backend |
+
+Ketiganya ditutup berurutan dari yang paling murah.
+
+### A.64.1 `mapel` — 32 pemeriksaan, dan satu cacat nyata yang ketahuan
+
+Halaman `/mapel` adalah kembaran `/kelas` ("pola yang sama"), dan justru itu yang membuat harness ini
+berharga: **jalan pertama 29/32** — tiga pemeriksaan merah, semuanya pada satu kasus yang paling sering
+terjadi (guru mengetik nama mapel yang memang sudah ada, mis. "Matematika"):
+
+| Sebelum | Sesudah |
+| --- | --- |
+| Sebabnya hanya muncul sebagai toast, dan berbunyi **"The nama has already been taken."** (pesan bawaan framework) | Sebabnya tampil **di bawah isian nama** dan berbunyi "Nama mapel ini sudah dipakai di sekolah ini. Pakai nama lain, misalnya Matematika Lanjutan." |
+
+Perbaikannya meniru halaman Kelas yang sudah lebih dulu memakai pola itu: `SimpanMapelRequest::messages()`
+(pesan Indonesia) + `HalamanMapel` memetakan `errors` per kolom ke isiannya lewat `galatKolom` + `setError`.
+Harness dijalankan ulang: **32/32 lulus**.
+
+**Temuan sampingan yang ikut diperbaiki:** halaman **Murid** punya cacat yang sama persis (`SimpanMuridRequest`
+tanpa `messages()`, `onError` hanya toast), padahal `galatKolom` sudah lama ada. Keduanya kini memakai pola yang
+sama seperti Kelas/Mapel, dan harness `murid` dijalankan ulang sebagai regresi (**18/18**). Ketiga halaman data
+induk sekarang konsisten: sebab galat per kolom terbaca tepat di bawah isiannya.
+
+### A.64.2 `avatar` — 44 pemeriksaan, tiga peran, satu berkas yang ditolak server
+
+Tiga konteks peramban dipakai sekaligus: murid pemilik avatar, murid pelapor, dan guru moderator. Yang
+dibuktikan: berkas bukan gambar ditolak **di klien** dari magic bytes (sebelum dikirim) dan berkas >2 MiB
+ditolak lebih awal lagi; unggahan yang sah tampil sebagai hasil **encode ulang server (256×256)**; "Kembalikan
+ke bawaan" benar-benar menghapus; satu laporan **belum** menyembunyikan apa pun dan laporan berulang dari anak
+yang sama tidak menambah hitungan; setelah beberapa anak berbeda melapor, avatar berhenti tampil bagi murid lain
+**tetapi pemiliknya masih melihat fotonya**; guru memulihkan (hitungan laporan direset) dan bisa menghapusnya;
+serta pagar peran (murid 403 pada `pulihkan`, `moderasi`, dan saat melaporkan avatarnya sendiri).
+
+Dua kali jalan pertama gagal, dan **keduanya cacat harness, bukan cacat produk**:
+
+1. **18/43** — berkas PNG uji (1×1 dari base64) ditolak server dengan "Gambar tidak bisa dibaca". Harness
+   sekarang **membuat sendiri** PNG 64×64 yang sah (`zlib.deflateSync` + `crc32`) dan memverifikasinya dulu
+   dengan GD sebelum dipakai.
+2. **35/43** — laporan "berhenti tampil setelah 3 pelapor" tidak tercapai karena harness hanya membuat 2 murid
+   pendamping (pemilik avatar tidak bisa melaporkan avatarnya sendiri). Dengan 3 pendamping: **44/44 lulus**.
+
+Ambang laporan dibiarkan apa adanya (bawaan 3, dari `config/avatar.php`) — harness menyesuaikan diri, bukan
+menurunkan ambangnya supaya lulus.
+
+### A.64.3 `auth` — 36 pemeriksaan, termasuk membuka tautan dari email
+
+Jalur akun murid dari nol: validasi formulir yang benar-benar menahan pengiriman (nama, email, sandi <10,
+sandi tidak sama), pendaftaran sungguhan → langsung masuk → mendarat di `/perlu-verifikasi`, **gerbang akun
+pending** yang menahan `/` dan `/kuis`, anti-enumerasi `/lupa-sandi` (jawaban identik untuk email terdaftar &
+tidak terdaftar), lalu — yang paling penting — **tautan dari email benar-benar dibuka**: verifikasi email, dan
+atur ulang kata sandi. Kata sandinya betul-betul berganti: masuk dengan sandi **baru** berhasil, dengan sandi
+**lama** 422; tautan yang sama sekali lagi dijawab halaman "Tautan sudah pernah dipakai"; token palsu ditolak
+tanpa pernah menampilkan "kata sandi sudah diganti".
+
+Dua keputusan yang membuat ini mungkin:
+
+- **Runner menyalakan backend dengan `MAIL_MAILER=log`** khusus harness `auth`
+  (`docs/jalankan-smoke-ui.sh`). Tanpa itu, tiap jalan smoke akan **mengirim email asli** lewat SMTP Gmail di
+  `backend/.env` dev, dan tautannya tetap tidak bisa dibaca harness. Backend yang sudah hidup di :8000 tidak
+  pernah disentuh; harness lalu mencetak **DILEWATI** untuk langkah email, bukan lulus diam-diam.
+- **Harness membaca `backend/storage/logs/laravel.log`** (hanya baris baru sejak ia mulai) dan mengambil
+  tautannya dari isi surat, termasuk membuka pembungkusan quoted-printable (`=\n`, `=3D`) yang bisa memotong
+  URL panjang.
+
+Jalan pertama 22/27 & 34/35; penyebabnya dua, keduanya di harness: (a) halaman auth memantulkan pemakai yang
+**sudah masuk** ke beranda, jadi langkah lupa-sandi harus dijalankan sesudah keluar; (b) halaman "tautan sudah
+pernah dipakai" baru bisa diketahui dari **jawaban server**, jadi formulirnya harus benar-benar dikirim sekali
+lagi. Sesudah perbaikan: **36/36 lulus, 0 langkah dilewati**.
+
+### A.64.4 Bukti (dijalankan, bukan klaim)
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh mapel` (**harness baru**) | **29/32 → 32/32 lulus**, exit 0 (sesudah perbaikan produk) |
+| `docs/jalankan-smoke-ui.sh avatar` (**harness baru**) | **18/43 → 35/43 → 44/44 lulus**, exit 0 |
+| `docs/jalankan-smoke-ui.sh auth` (**harness baru**) | **22/27 → 34/35 → 36/36 lulus, 0 dilewati**, exit 0 |
+| `docs/jalankan-smoke-ui.sh murid` (regresi perbaikan Murid) | **18/18 lulus**, exit 0 |
+| `docs/jalankan-smoke-ui.sh layar` · `tim` · `impor-murid` (A.63, regresi) | **34/34 · 31/31 · 29/29 lulus**, exit 0 |
+| `./verify.sh` (seluruh pagar mutu) | **SEMUA HIJAU (exit 0)** — Pest **344 lulus (3290 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint bersih, checkJs exit 0, ESLint **0 error** (2 peringatan lama), Vitest **76 berkas**, realtime hijau |
+| `php artisan test --filter='SekolahTest\|ImporMuridTest'` | **23 lulus (155 asersi)** sesudah pesan galat Indonesia ditambahkan |
+| `npx eslint` + `npm run check` (berkas yang disunting) | **0 error**, checkJs exit 0 |
+
+Catatan throttle jujur: sesi `auth` sesekali menabrak batas masuk per menit saat memeriksa "sandi lama gagal"
+(dua kali menunggu 20 detik di satu jalan). Harness menunggu dan melanjutkan, bukan melewati pemeriksaannya.
+
+### A.64.5 Berkas
+
+- **Baru (harness):** `docs/smoke-ui-mapel.mjs`, `docs/smoke-ui-avatar.mjs`, `docs/smoke-ui-auth.mjs`.
+- **Diubah (produk):** `backend/app/Sections/School/Http/Requests/SimpanMapelRequest.php` (+`messages()`),
+  `backend/app/Sections/School/Http/Requests/SimpanMuridRequest.php` (+`messages()`),
+  `frontend/src/sections/school/HalamanMapel.jsx` (galat per kolom),
+  `frontend/src/sections/school/HalamanMurid.jsx` (galat per kolom).
+- **Diubah (runner):** `docs/jalankan-smoke-ui.sh` — `MAIL_MAILER=log` untuk harness `auth` saja, dengan
+  peringatan tercetak bila backend-nya kebetulan sudah hidup.
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 8).
+
+### A.64.6 Batasan jujur
+
+- **Langkah email hanya terbukti pada mailer `log`.** Kalau `auth` dijalankan di atas backend yang sudah hidup
+  dengan SMTP, dua langkah (buka tautan verifikasi & buka tautan reset) dilaporkan **DILEWATI** dengan
+  alasannya — bukan lulus. Sisa 34 pemeriksaan tetap berjalan.
+- **Email sungguhan tidak diuji.** Harness tidak pernah mengirim surat ke Gmail dan tidak memeriksa kotak masuk;
+  yang dibuktikan adalah isi surat yang dihasilkan aplikasi + tautannya benar-benar bisa diklik dan bekerja.
+- **Alur guru/admin tidak disentuh.** `AuthTest` backend tetap satu-satunya bukti untuk pendaftaran guru
+  (memang tidak ada jalur self-register), reset sandi guru, dan halaman verifikasi untuk akun non-murid.
+- **Harness `avatar` membuat tiga akun murid sementara** (dibersihkan di `finally`, dan keberadaannya tidak
+  sengaja diandalkan harness lain). Ambang laporan & ukuran gambar tetap sesuai `config/avatar.php`; tidak ada
+  saklar produksi yang dilonggarkan untuk lulus.
+- **Halaman moderasi tidak diuji pada antrean yang panjang** (puluhan avatar terlapor sekaligus); yang
+  dibuktikan adalah satu avatar per keputusan (pulihkan & hapus).

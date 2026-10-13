@@ -25,7 +25,7 @@ import {
   ubahMurid,
   hapusMurid,
 } from './api.js'
-import { pesanGalatApi, teksGalat } from '../auth/api.js'
+import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
@@ -132,6 +132,8 @@ export default function HalamanMurid() {
     handleSubmit,
     reset,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(skemaMuridForm),
@@ -154,7 +156,22 @@ export default function HalamanMurid() {
       tutupPanel()
       await queryClient.invalidateQueries({ queryKey: ['murid'] })
     },
-    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+    onError: (galat) => {
+      // Sebab per kolom ditampilkan di bawah isiannya. "Email sudah dipakai" dan
+      // "NIS sudah dipakai" adalah galat yang paling sering muncul saat guru
+      // menambah murid, dan toast sendirian membuat guru menebak kolom mana yang
+      // harus diganti — sama seperti halaman Kelas & Mapel.
+      const kolom = galatKolom(galat)
+
+      clearErrors()
+      if (kolom.nama) setError('nama', { message: kolom.nama })
+      if (kolom.email) setError('email', { message: kolom.email })
+      if (kolom.class_id) setError('class_id', { message: kolom.class_id })
+      if (kolom.nis) setError('nis', { message: kolom.nis })
+      if (kolom.nisn) setError('nisn', { message: kolom.nisn })
+
+      tampilkanToast('salah', pesanGalatApi(galat))
+    },
   })
 
   const hapus = useMutation({

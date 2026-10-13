@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { skemaMapelForm } from './validasi.js'
 import { ambilMapel, buatMapel, ubahMapel, hapusMapel } from './api.js'
-import { pesanGalatApi, teksGalat } from '../auth/api.js'
+import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
@@ -38,6 +38,8 @@ export default function HalamanMapel() {
     handleSubmit,
     reset,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(skemaMapelForm),
@@ -54,7 +56,19 @@ export default function HalamanMapel() {
       tutupPanel()
       await queryClient.invalidateQueries({ queryKey: ['mapel'] })
     },
-    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+    onError: (galat) => {
+      // Sebab per kolom ditampilkan di bawah isiannya. "Nama mapel sudah
+      // dipakai" adalah galat yang paling sering muncul (nama yang paling wajar
+      // diketik pun sering sudah ada), dan toast sendirian membuat guru menebak
+      // kolom mana yang harus diganti — sama seperti halaman Kelas.
+      const kolom = galatKolom(galat)
+
+      clearErrors()
+      if (kolom.nama) setError('nama', { message: kolom.nama })
+      if (kolom.kode) setError('kode', { message: kolom.kode })
+
+      tampilkanToast('salah', pesanGalatApi(galat))
+    },
   })
 
   const hapus = useMutation({

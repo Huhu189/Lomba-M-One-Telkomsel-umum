@@ -47,6 +47,36 @@ class SimpanMuridRequest extends FormRequest
         ];
     }
 
+    /**
+     * Pesan galat dalam bahasa Indonesia.
+     *
+     * Tanpa ini guru hanya melihat "The email has already been taken." saat
+     * menambah murid yang email (atau NIS-)nya sudah dipakai — penyebab paling
+     * sering di halaman ini. Pesannya kini menyebut penyebabnya dan apa yang
+     * harus dilakukan, sama seperti halaman Kelas & Mapel.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'nama.required' => 'Nama murid wajib diisi.',
+            'nama.min' => 'Nama minimal 2 karakter.',
+            'nama.max' => 'Nama maksimal 120 karakter.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.max' => 'Email maksimal 120 karakter.',
+            'email.unique' => 'Email ini sudah dipakai akun lain. Pakai email lain, misalnya email orang tua atau wali.',
+            'class_id.required' => 'Pilih dulu kelas muridnya.',
+            'class_id.integer' => 'Kelas harus berupa angka.',
+            'class_id.exists' => 'Kelas itu tidak ada di sekolah ini.',
+            'nis.unique' => 'NIS ini sudah dipakai murid lain di sekolah ini.',
+            'nis.max' => 'NIS maksimal 30 karakter.',
+            'nisn.max' => 'NISN maksimal 20 karakter.',
+            'kata_sandi.min' => 'Kata sandi minimal 10 karakter.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

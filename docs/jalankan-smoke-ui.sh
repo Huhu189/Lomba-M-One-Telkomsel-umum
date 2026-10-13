@@ -65,10 +65,29 @@ bersihkan() {
 trap bersihkan EXIT
 
 # ---- 1. Layanan: pakai yang sudah hidup, nyalakan sisanya -------------------
+#
+# Harness `auth` membuktikan juga "buka tautan dari email". Itu hanya mungkin
+# kalau isi suratnya BISA DIBACA: mailer `log` menulis surat ke
+# `backend/storage/logs/laravel.log`, sedangkan `smtp` (bawaan `.env` dev)
+# mengirimkannya ke Gmail sungguhan dan tautannya tidak bisa dibaca harness —
+# sekaligus berarti tiap jalan smoke mengirim email asli. Karena itu backend
+# milik runner ini dinyalakan dengan mailer log untuk harness `auth` saja.
+# Backend yang SUDAH hidup tidak pernah disentuh (dan harness-nya akan
+# melaporkan langkah email sebagai dilewati, bukan diam-diam lulus).
+LINGKUNGAN_BACKEND=""
+if [ "$NAMA" = "auth" ]; then
+  LINGKUNGAN_BACKEND="MAIL_MAILER=log"
+fi
+
 if hidup_backend; then
   echo "backend  :8000  sudah hidup — dipakai apa adanya"
+  if [ "$NAMA" = "auth" ]; then
+    echo "           perhatian: harness auth ingin MAIL_MAILER=log, sedangkan backend yang"
+    echo "           sudah hidup memakai .env-nya sendiri — langkah lewat email akan DILEWATI."
+    echo "           Matikan backend itu dulu supaya runner menyalakannya sendiri."
+  fi
 else
-  ( cd "$ROOT/backend" && exec php artisan serve --host=127.0.0.1 --port=8000 ) >/tmp/srv-b.log 2>&1 &
+  ( cd "$ROOT/backend" && exec env $LINGKUNGAN_BACKEND php artisan serve --host=127.0.0.1 --port=8000 ) >/tmp/srv-b.log 2>&1 &
   PIDS+=($!)
 fi
 
@@ -88,7 +107,7 @@ fi
 
 # Queue worker selalu dijalankan sendiri: `--stop-when-empty` membuatnya keluar
 # saat antrean kosong, jadi ia tidak pernah menabrak apa pun yang sudah hidup.
-( cd "$ROOT/backend" && exec php artisan queue:work --stop-when-empty --tries=1 ) >/tmp/srv-q.log 2>&1 &
+( cd "$ROOT/backend" && exec env $LINGKUNGAN_BACKEND php artisan queue:work --stop-when-empty --tries=1 ) >/tmp/srv-q.log 2>&1 &
 
 siap=0
 for _ in $(seq 1 30); do

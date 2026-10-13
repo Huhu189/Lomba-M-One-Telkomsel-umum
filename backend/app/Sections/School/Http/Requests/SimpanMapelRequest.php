@@ -36,6 +36,29 @@ class SimpanMapelRequest extends FormRequest
         ];
     }
 
+    /**
+     * Pesan galat dalam bahasa Indonesia.
+     *
+     * Sebelumnya guru hanya melihat "The nama has already been taken." — dan
+     * nama yang paling wajar diketik (mis. "Matematika" yang memang sudah ada)
+     * justru yang ditolak, jadi guru menyimpulkan halamannya rusak padahal
+     * mapelnya cuma belum bisa bernama sama. Pesannya kini menyebut sebabnya dan
+     * apa yang harus dilakukan — sama seperti halaman Kelas.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'nama.required' => 'Nama mapel wajib diisi.',
+            'nama.min' => 'Nama mapel minimal 2 karakter.',
+            'nama.max' => 'Nama mapel maksimal 80 karakter.',
+            'nama.unique' => 'Nama mapel ini sudah dipakai di sekolah ini. Pakai nama lain, misalnya Matematika Lanjutan.',
+            'kode.max' => 'Kode maksimal 20 karakter.',
+            'kode.regex' => 'Kode hanya boleh berisi huruf, angka, dan tanda hubung.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

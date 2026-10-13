@@ -702,3 +702,53 @@ Cara mengulang verifikasi: `docs/jalankan-smoke-ui.sh soal-berubah` (harness **b
 soal" diterapkan sebagai (a) ringkasan kunci di bawah soal pada editor dan (b) total susunan di bawah
 daftar. Kalau yang dimaksud layar lain (mis. halaman hasil murid atau tabel bank soal), yang dipindah
 hanya letak ringkasannya — mekanisme versi & penolakan kunci/skor tidak terpengaruh.
+
+## 7. A.63 — layar kelas, mode tim, dan impor murid diuji di peramban (13 Oktober 2026)
+
+Tiga jalur yang sudah punya uji backend tetapi **belum pernah dibuka dari peramban**, kini punya harness GUI
+sendiri lewat runner yang sama (`docs/jalankan-smoke-ui.sh`). Sapu A.62.6 memuat 23 harness berhitung dan
+ketiganya memang tidak ada di daftar itu.
+
+| Harness | Pemeriksaan | Inti yang dibuktikan |
+| --- | --- | --- |
+| `layar` (**baru**) | **34/34** | Dua peramban sekaligus: guru menyiarkan **pengumuman**, lalu **sorot satu soal** (isi soalnya ikut sampai), lalu **mengosongkan layar** — perangkat murid menyusul tanpa memuat ulang. Saklar `layar_guru` mati diucapkan terus terang dan benar-benar mengunci pemilih mode + tombol simpan; mode yang butuh bahan menolak disimpan tanpa bahannya; murid `PUT` layar **403**, `GET`-nya tanpa bahan pengendali; panel sorotan tanpa kunci jawaban. |
+| `tim` | **31/31** | "Bagi otomatis" membagi **seluruh** murid kelas, murid benar-benar melihat nama tim & anggotanya, susunan tetap sama setelah halaman dimuat ulang, hapus/buat tim melaporkan hasilnya, murid dari tim yang dihapus dilaporkan belum bertim, kunci `mode_tim` bisa dinyalakan untuk kuis itu. |
+| `impor-murid` | **29/29** | Judul kolom lazim guru diterima ("Nama Lengkap", "Nama Kelas", "Nomor Induk Siswa") tanpa 422, tabel galat menyebut **nomor baris** + sebabnya sebagai `role=alert`, baris yang ditolak **tidak** meninggalkan murid di server, impor bersih dilaporkan sebagai status, berkas Excel (BOM + pemisah `;`) jalan lewat API. |
+
+Cara mengulang: `docs/jalankan-smoke-ui.sh layar` · `… tim` · `… impor-murid` (backend :8000, vite :5173,
+realtime :4000, Chrome :9333 — runner menyalakan sendiri layanan yang belum hidup). Jumlahnya **94
+pemeriksaan lulus, 0 gagal**, semuanya exit 0. Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.63**.
+
+Catatan untuk sesi berikutnya: `layar` mengubah kunci `layar_guru` di tengah jalan dan **mengembalikannya di
+`finally`** bersama kuis + soal ujinya, jadi aman dijalankan berulang di DB dev. Yang masih gelap:
+**mode `hasil`** ("Instruksi setelah ulangan") belum pernah dibuka di peramban, dan sorotan baru diuji dengan
+**satu murid**. Yang dibuktikan juga "murid menyusul", bukan "lewat SSE" — kontrak SSE-nya dijaga uji backend
+`Slice10LayarTest`.
+
+## 8. A.64 — tiga celah cakupan GUI ditutup (13 Oktober 2026)
+
+Audit `frontend/src/routes.js` melawan seluruh `docs/smoke-ui-*.mjs` menemukan tiga jalur yang belum punya bukti
+peramban, dan ketiganya kini punya harness sendiri (berurutan dari yang paling murah):
+
+| Harness | Pemeriksaan | Inti yang dibuktikan |
+| --- | --- | --- |
+| `mapel` (**baru**) | **32/32** | Halaman terjangkau dari sidebar; nama kosong/pendek & kode berspasi ditolak di klien dengan pesan di bawah isiannya; **nama mapel yang sudah dipakai** menjelaskan sebabnya di bawah isian nama (bahasa Indonesia); kode dinormalkan server jadi huruf besar; ubah & hapus lewat dialog konfirmasi yang menyebut dampaknya dan bisa dibatalkan; satu muat halaman memeriksa sesi sekali; fokus jendela tidak menembak permintaan baru |
+| `avatar` (**baru**) | **44/44** | Tiga peran (pemilik, pelapor, guru): berkas bukan gambar & >2 MiB ditolak di klien; unggahan sah tampil sebagai hasil encode ulang **256×256**; "kembalikan ke bawaan" benar-benar menghapus; satu laporan belum menyembunyikan, laporan berulang anak yang sama tidak menambah hitungan, dan setelah beberapa anak berbeda melapor avatarnya berhenti tampil bagi murid lain **sementara pemiliknya masih melihatnya**; guru memulihkan (hitungan direset) & menghapus; murid 403 pada jalur guru |
+| `auth` (**baru**) | **36/36**, 0 dilewati | Validasi formulir yang benar-benar menahan pengiriman; daftar → langsung masuk → `/perlu-verifikasi`; **gerbang akun pending** menahan `/` dan `/kuis`; anti-enumerasi `/lupa-sandi` (jawaban identik untuk email terdaftar & tidak); **tautan verifikasi & reset dari "email" benar-benar dibuka**; sandi baru berlaku, sandi lama 422; tautan sekali pakai; token palsu **tidak** mengaku berhasil |
+
+**Perbaikan produk yang ketahuan harness `mapel`** (dan cacat yang sama di halaman Murid): nama/kode yang
+ditolak server dulu hanya muncul sebagai toast berbahasa Inggris. Kini `SimpanMapelRequest` dan
+`SimpanMuridRequest` punya `messages()` berbahasa Indonesia, dan `HalamanMapel`/`HalamanMurid` memetakan galat
+per kolom ke isiannya — sama seperti halaman Kelas. Harness `murid` dijalankan ulang sebagai regresi
+(**18/18**).
+
+**Penting untuk sesi berikutnya — cara menjalankan `auth`:** tautan email hanya bisa dibaca harness kalau
+backend-nya memakai mailer `log`. Itu sebabnya `docs/jalankan-smoke-ui.sh` menyalakan backend-nya sendiri dengan
+`MAIL_MAILER=log` **khusus harness `auth`** (tanpa itu, tiap jalan smoke mengirim email asli lewat SMTP Gmail di
+`backend/.env`, dan tautannya tetap tidak terbaca). Kalau backend :8000 sudah hidup lebih dulu, runner
+mencetak peringatan dan harness melaporkan **DILEWATI** untuk dua langkah email — matikan backend itu dulu
+kalau ingin alur penuhnya.
+
+Cara mengulang: `docs/jalankan-smoke-ui.sh mapel` · `… avatar` · `… auth` · `… murid` (regresi), lalu
+`./verify.sh`. Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.64**. Sisa yang masih gelap: mode
+`hasil` pada `layar`, dan moderasi avatar pada antrean panjang.
