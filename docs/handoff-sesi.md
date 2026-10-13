@@ -11,9 +11,15 @@ membengkak ke 3,3 GB). Rincian tiap putaran ada di bagian 1–5 dan `docs/lapora
 
 ### 0.1 Proyek ini apa (30 detik)
 
-`lomba_m` = aplikasi ulangan & materi sekolah: **Laravel 11** (`backend/`) + **React 18 / Vite**
+`lomba_m` = aplikasi ulangan & materi sekolah: **Laravel 11** (`backend/`) + **React 19 / Vite**
 (`frontend/`) + **Node SSE** (`realtime/`), semuanya di satu repo. "Materi berjalan" menampilkan tiap blok
-materi sebagai satu **pos** di peta perjalanan bertema. Tiga tempat yang mengatur tema:
+materi sebagai satu **pos** di peta perjalanan bertema. Dua berkas kunci yang paling sering dicari orang baru:
+
+- pemotongan bundel per halaman: `frontend/src/halaman.js` (`React.lazy` + peta pramuat) dengan `Suspense`
+  di `shared/layout/KerangkaUmum.jsx` & `KerangkaAuth.jsx` — lihat bagian 0.1a di bawah.
+- peta rute: `frontend/src/routes.js`; kerangka + router: `frontend/src/App.jsx`.
+
+Tiga tempat yang mengatur tema:
 
 - katalog tema: `backend/app/Sections/Material/Registry/TemaPerjalanan.php`
 - rute pos per tema: `frontend/src/sections/material/perjalanan.js` (`RUTE_TEMA`)
@@ -22,47 +28,66 @@ materi sebagai satu **pos** di peta perjalanan bertema. Tiga tempat yang mengatu
 Tema **tidak** boleh menaruh pos di ruang kosong — dijaga `frontend/src/__tests__/theme/latarTema.test.js`
 (tiap benda yang diinjak pos punya `id` di berkas SVG-nya).
 
+### 0.1a Bundel frontend dipotong per halaman (A.69 — cara kerjanya)
+
+`frontend/src/App.jsx` **tidak** mengimpor halaman secara statis lagi: yang statis hanya kerangka ulangan,
+Beranda, halaman masuk, dan 404. Semua halaman lain lewat `frontend/src/halaman.js` (`React.lazy`), dan
+`Suspense`-nya dipasang **di dalam** kerangka (bukan membungkus seluruh aplikasi) supaya menu/bilah atas/kaki
+halaman tetap tampil selama modul diunduh. Tautan panel samping memanggil `pramuatHalaman(jalur)` saat
+disorot/difokus.
+
+Kalau menambah halaman baru: **(1)** tambahkan pemuatnya di `muat` (`frontend/src/halaman.js`), **(2)** ekspor
+komponen malasnya di berkas yang sama, **(3)** impor dari `./halaman.js` di `App.jsx` (jangan lewat jalur
+`sections/...`), **(4)** tambahkan jalur menu ke peta `pramuat` bila tautannya ada di sidebar. Tes
+`__tests__/halaman.test.js` akan merah kalau urutan ini dilanggar (ia juga mengunci daftar impor statis
+`App.jsx`, jadi satu baris `import` statis baru sudah cukup membuatnya gagal — itu memang disengaja).
+
+### 0.1b Peta berkas (ke mana harus menoleh)
+
+| Kalau menyentuh… | Buka |
+| --- | --- |
+| aturan proyek (wajib dibaca agen baru) | `AGENT.md` (akar repo) — stack final, prinsip keamanan, pagar mutu, larangan |
+| rute & gerbang peran | `frontend/src/routes.js`, `frontend/src/App.jsx` |
+| bundel per halaman | `frontend/src/halaman.js` + `Suspense` di `frontend/src/shared/layout/{KerangkaUmum,KerangkaAuth}.jsx` |
+| backend | `backend/app/Sections/<Nama>/` (Controller · Service · Policy · Http/Requests · Http/Resources) + `backend/routes/api.php` |
+| realtime (SSE) | `realtime/src/server.js`; kontraknya di `backend/app/Sections/Presence/` |
+| uji | backend `backend/tests/` · frontend `frontend/src/__tests__/` (mengikuti struktur `src/`) · realtime `realtime/test/` |
+| pagar mutu | `./verify.sh` (Pest · Redis wajib · Pint · checkJs · ESLint · Vitest · realtime) |
+| menyalakan lokal | `./nyalakan-local.sh` (+ `status`/`stop`) |
+| harness GUI | `docs/smoke-ui-*.mjs` dijalankan lewat `docs/jalankan-smoke-ui.sh <nama>`; audit tata letak `docs/audit-ui.mjs`; HTTP murni `docs/smoke-http-fitur.mjs` |
+| dokumen untuk dikumpulkan | `docs/penjelasan-fitur.md` · `docs/laporan-pengujian.md` · `docs/catatan-demo.md` · `docs/jurnal-prompt.md` · `docs/log-mentah/` · `docs/word/*.docx` |
+| rencana/permintaan pemilik produk yang belum dikerjakan | bagian 0.6 di bawah + `docs/rencana-desain-putaran3.md` |
+
 ### 0.2 Kondisi repo persis (verifikasi sendiri)
 
-`git status --short && git diff --stat && git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD`
+```bash
+git status --short && git diff --stat
+git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
+```
 
-Keadaan saat handoff ini diperbarui (12 Okt 2026, putaran **A.60**): `HEAD = 5c36b49`
-(*"Hentikan editor materi melebar +151 px di ponsel"* = **A.56**, sudah dikomit), `origin/main = 14545f5`
-(*"Catat putaran A.55 dan audit tampilan"*), jadi **1 commit di depan** — bukan 9 seperti catatan lama.
-Working tree yang belum dikomit = putaran **A.58 (tombol ukuran tulisan dibuang)** **+ A.59 (ringkasan
-setelan sesi + tautan siswa)** **+ A.60 (beranda berikon, Monitor Ulangan, Pengaturan per ulangan, sisa
-temuan audit, impor ber-alias)** — 35 entri di `git status --short`; `theme.css`, `penjelasan-fitur.md`,
-`laporan-pengujian.md`, dan `handoff-sesi.md` ikut di lebih dari satu putaran, jadi jumlah file-nya bukan
-penjumlahan bersih. Daftar pasti: `git status --short`.
+Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.70**):
 
-A.55: `frontend/src/sections/material/PemutarMateri.jsx`, `frontend/src/theme/theme.css`, lima runner
-`docs/jalankan-*.sh` (`--mute-audio`), `docs/{penjelasan-fitur,laporan-pengujian,handoff-sesi}.md`,
-`docs/word/{laporan-pengujian,penjelasan-fitur}.docx`, dan berkas **baru** `docs/smoke-ui-kuis-materi.mjs`.
-
-A.58 (`git status --short`, 16 terdaftar + 1 baru): `frontend/src/shared/layout/KerangkaUmum.jsx`,
-`frontend/src/shared/layout/KerangkaAuth.jsx`, `frontend/src/shared/store/tema.js`, `frontend/src/main.jsx`,
-`frontend/src/icons.jsx`, `frontend/src/theme/theme.css`, `docs/penjelasan-fitur.md`,
-`docs/catatan-demo.md`, `docs/rencana-desain-putaran3.md`, `docs/laporan-pengujian.md` (entri A.58), dua
-ekspor Word yang disegarkan (`docs/word/penjelasan-fitur.docx`, `docs/word/laporan-pengujian.docx`), berkas
-**baru** `docs/smoke-ui-bilah-atas.mjs`, dan yang **dihapus**:
-`frontend/src/shared/layout/TombolUkuran.jsx`, `frontend/src/__tests__/theme/ukuran.test.jsx`,
-`docs/smoke-ui-ukuran.mjs`.
-
-A.59: `frontend/src/sections/quiz/HalamanKuis.jsx`, `frontend/src/App.jsx`, `frontend/src/icons.jsx`,
-`docs/penjelasan-fitur.md` (bagian 5), `docs/catatan-demo.md`, `docs/handoff-sesi.md`,
-`docs/laporan-pengujian.md` (entri A.59), dua ekspor Word, dan berkas **baru**:
-`frontend/src/sections/quiz/setelanSesi.js`, `frontend/src/__tests__/sections/quiz/setelanSesi.test.js`,
-`docs/smoke-ui-setelan-sesi.mjs`.
-
-A.60: `backend/app/Sections/School/Services/ImporMuridService.php` (+ alias kolom),
-`backend/tests/Feature/ImporMuridTest.php` (+2 tes), `frontend/src/shared/ui/Tombol.jsx` (`TombolTautIkon`),
-`frontend/src/sections/home/Beranda.jsx`, `frontend/src/sections/cheat/HalamanMonitor.jsx`,
-`frontend/src/sections/quiz/HalamanKuisDetail.jsx`, `frontend/src/sections/presence/HalamanLayar.jsx`,
-`frontend/src/sections/settings/HalamanPengaturan.jsx`, `frontend/src/sections/settings/lingkup.js`,
-`frontend/src/__tests__/sections/settings/lingkup.test.js`, `frontend/src/theme/theme.css`,
-`docs/audit-ui.mjs`, `docs/smoke-ui-pengaturan.mjs`, `docs/smoke-ui-slice07.mjs`,
-`docs/{penjelasan-fitur,catatan-demo,laporan-pengujian,handoff-sesi}.md`.
-Jangan ikut dikomit: arsip/zip, `.agents/`, `.claude/`, `.DS_Store`.
+- **`HEAD = 90512a2`** (*"Hentikan kueri berat berulang di jalur ulangan, impor murid, dan laporan"* = **A.70**;
+  commit A.70 ada dua: `b1025b4` rekam diri + `90512a2` kueri backend — keduanya sudah dikomit).
+- **`origin/main = 93f66ed`** → **5 commit lokal belum di-push** (`93f66ed..90512a2`: A.65, A.66, A.67, A.70).
+  Repo online belum memuat kelimanya; **push dulu sebelum menutup sesi**.
+- **Working tree = 65 entri belum dikomit** (`git status --short`): 44 diubah · 3 dihapus · 18 berkas baru.
+  Isinya terutama putaran **A.68 + A.69** (ditambah dokumentasi A.61–A.64 yang belum ikut commit):
+  - **18 baru:** backend `Sections/Auth/{Services/AkunService.php,Http/Controllers/AkunController.php,
+    Http/Requests/{PerbaruiAkunRequest,GantiSandiRequest}.php}`, migrasi `2026_10_13_000001_tambah_slug_kuis.php`,
+    tes `backend/tests/Feature/{AkunTest,SlugKuisTest}.php`; frontend `src/halaman.js`,
+    `src/shared/ui/MemuatHalaman.jsx`, `src/sections/settings/{HalamanAkun.jsx,validasiAkun.js}`,
+    `src/sections/quiz/PanelSetelanUlangan.jsx`, empat tes baru (`__tests__/halaman.test.js`,
+    `__tests__/sections/question/bankSoalLazy.test.jsx`, `__tests__/sections/quiz/setelanUlangan.test.jsx`,
+    `__tests__/sections/settings/{halamanAkun.test.jsx,validasiAkun.test.js}`); docs
+    `docs/ukur-bundel-peramban.mjs`.
+  - **3 dihapus:** `src/sections/settings/HalamanPengaturan.jsx`, `src/sections/settings/lingkup.js`,
+    `__tests__/sections/settings/lingkup.test.js` (halaman akun menggantikannya).
+  - Daftar pasti & terkini selalu: `git status --short`. Karena `theme.css`, `App.jsx`, `routes.js`, dan
+    `docs/*.md` ikut di beberapa putaran, jumlah berkasnya bukan penjumlahan bersih per putaran.
+- **Jangan ikut dikomit:** arsip/zip, `.agents/`, `.claude/`, `.DS_Store`. `frontend/dist/` memang sudah
+  diabaikan (`.gitignore`), jadi hasil `npm run build` aman untuk pengukuran.
+- **`docs/word/*.docx` belum disegarkan** untuk A.68/A.69 — lihat papan pending 0.6 butir 3.
 
 ### 0.3 Nyalakan layanan & gerbang mutu
 
@@ -83,35 +108,39 @@ Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), san
 
 ### 0.4 Sudah terverifikasi (jangan diulang tanpa perubahan kode)
 
-**A.66** (13 Okt 2026, sapuan GUI seluruh fitur rawan): 30 harness / **777 pemeriksaan lulus** + audit 44
-  halaman bersih di terang & gelap; lihat tabel bagian 1 dan `laporan-pengujian.md` A.66 — jangan diulang tanpa
-  perubahan kode.
+**A.70** (13 Okt 2026, patch kinerja + rekam diri dari luar repo) — **putaran terakhir, sudah dikomit (`b1025b4`, `90512a2`), belum di-push**: `./verify.sh` **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih · checkJs exit 0 · ESLint 0 error · Vitest **81 berkas / 763 tes** · realtime. Kueri `payloadSoal`+`versiSoal` **2 → 1** (diukur, attempt 10 soal); soal kuis di jalur mulai 4 kueri → 1; impor CSV tak lagi `SELECT` per baris / `argon2id` per baris; `snapshot_soal` tak lagi ditarik monitor & ekspor; job saran AI `afterCommit`; `retry_after` queue database 90 → 180 dtk. Bug rekam diri lampiran (durasi basi 0 detik + perekam tak dimatikan saat keluar soal) diperbaiki; tes baru `unggahLampiranRekam` **3/3 lulus** dengan kontrol negatif **3/3 MERAH** atas kode lama. Rincian: A.70.
 
-**A.67** (13 Okt 2026, audit pemeriksaan mati di harness GUI): `slice07` 21/21 · `kuis-materi` 48/48 ·
-  `audit-ui kuis` bersih — sesudah tiga pemeriksaan negatif diperkuat; kontrol negatif A/B ada di A.67.3.
+**A.69** (13 Okt 2026, bundel dipotong per halaman) — **belum dikomit**:
+  `npm run build` → bundel awal **555,26 kB / 176,35 kB gzip** (dari **923,63 kB / 262,06 kB gzip** satu berkas),
+  54 berkas JS; diukur juga **di peramban** (`node docs/ukur-bundel-peramban.mjs`, harness baru): membuka app
+  **6 berkas / 555,30 kB**, tekan “Daftar” **2 berkas kecil** tanpa muat ulang. `npm run check` exit 0 · ESLint
+  0 error (2 peringatan lama) · Vitest **80 berkas / 760 tes**; smoke `pengaturan` **12/12** · `susun` **44/44** ·
+  `slice04` **18/18** · `nav` **14/14** · `kuis-materi` **48/48** · `slice07` **21/21**, semuanya exit 0.
+  Backend tidak disentuh → Pest/Pint/Redis **belum** dijalankan ulang untuk putaran ini. Rincian: A.69.
 
-**A.60** (sesudah beranda berikon + Monitor Ulangan + Pengaturan per ulangan + sisa temuan
-  audit): `./verify.sh` **SEMUA HIJAU** — Pest 342 (3251 asersi) · Redis wajib 9 · Pint 354 berkas · checkJs ·
-ESLint 0 error · Vitest **75 berkas/727 tes** · realtime 20/20; lalu `docs/jalankan-smoke-ui.sh pengaturan`
-**6/6**, `… slice07` **21/21**, `… slice06` **28/28**, `… slice04` **18/18**, `… mobile` **16/16**,
-`… nav` **14/14**; dan `node docs/audit-ui.mjs` **seluruh halaman BERSIH (ringkasan cacat `{}`)**.
+**A.68** (13 Okt 2026, bank soal bertahap + `/pengaturan` jadi halaman akun) — belum dikomit: `./verify.sh`
+  **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih (361 berkas) · checkJs exit 0 ·
+  ESLint 0 error · Vitest **79 berkas / 752 tes** · realtime 20; smoke `pengaturan` **12/12** (harness ditulis
+  ulang) · `slice03` **9/9** · `susun` **44/44** · `kuis-manual` **15/15**. Rincian: A.68.
 
-**A.59** (ringkasan setelan sesi + tautan siswa): `./verify.sh` **SEMUA HIJAU** —
-Pest 340 (3242 asersi) · Redis wajib 9 · Pint 354 berkas · checkJs · ESLint 0 error · Vitest **75 berkas/
-730 tes** · realtime 20/20; lalu `docs/jalankan-smoke-ui.sh setelan-sesi` **23/23** (baru), `… mobile`
-**16/16**, `… kuis-manual` **13/13**.
+**A.66 + A.67** (13 Okt 2026, sudah dikomit): sapuan GUI **30 harness / 777 pemeriksaan lulus** + audit
+  **44 halaman bersih di terang & gelap**; lalu audit pemeriksaan mati (`slice07` 21/21 · `kuis-materi` 48/48 ·
+  `audit-ui kuis` bersih, dengan kontrol negatif A/B di A.67.3). Jangan diulang tanpa perubahan kode.
 
-**A.58**: `./verify.sh` SEMUA HIJAU — Pest 340 · Vitest 74 berkas/713 tes · realtime 20; lalu
-`docs/jalankan-smoke-ui.sh bilah-atas` **10/10**, `… mobile` **16/16**, `… nav` **14/14**.
+Putaran **A.55–A.64** (masing-masing sudah `./verify.sh` SEMUA HIJAU + smoke terkait): **A.55** panel kuis
+keluar bingkai video · **A.56** editor materi berhenti melebar di ponsel (commit `5c36b49` — **tidak punya
+entri laporan tersendiri**, buktinya harness `docs/smoke-ui-editor.mjs`) · **A.57 belum dikerjakan** (tema
+“Harta Karun di Pulau” POV dari atas — masih di papan pending) · **A.58** tombol ukuran tulisan dibuang ·
+**A.59** ringkasan setelan sesi + tautan siswa · **A.60** beranda berikon + Monitor Ulangan + pengaturan per
+ulangan + impor ber-alias · **A.61** soal boleh diperbaiki di tengah ulangan · **A.62** kartu pertanyaan
+(pilihan PG dipindah ke bawah pertanyaan) · **A.63** layar+tim+impor-murid di peramban · **A.64** mapel+
+avatar+auth (tiga celah cakupan GUI). Angka lengkapnya di `docs/laporan-pengujian.md` A.55–A.64; bagian 1 di
+bawah hanya tabel hasil terakhir.
 
-Catatan angka: Vitest A.55 (75/717) turun 1 berkas & 4 tes di A.58 (`theme/ukuran.test.jsx` pensiun) lalu
-naik 1 berkas & 17 tes di A.59 (`sections/quiz/setelanSesi.test.js`).
+Catatan angka Vitest (naik terus, jadi jangan bingung bila menemukan angka lama di riwayat): 717 (A.55) →
+727 (A.61) → 752 (A.68) → **760 (A.69, 80 berkas)**.
 
-**A.55**: `./verify.sh` SEMUA HIJAU (Pest 339 · Pint · checkJs · ESLint · Vitest 75 berkas/717 tes ·
-realtime 20), `docs/jalankan-smoke-ui.sh kuis-materi` **48/48**, `… mobile` **16/16**, `… materi` **27/27**,
-`… perjalanan` **69/69**. Perubahan sesudahnya hanya berkas dokumentasi/Word.
-
-### 0.5 HASIL AUDIT TAMPILAN — 12 Okt 2026 (baru; sudah dijalankan, jangan ulang)
+### 0.5 HASIL AUDIT TAMPILAN — 12 Okt 2026 (historis; temuan B sudah ditutup di A.56)
 
 Saya jalankan `docs/audit-ui.mjs` (guru+murid × hp 390 px + laptop 1366 px) **plus satu probe terarah**
 untuk halaman yang tidak ada di daftar audit itu (materi guru, editor materi, avatar, progres tema).
@@ -148,33 +177,51 @@ tautan jejak 19 px di Koreksi kuis naik ke **44 px** tanpa menggeser tata letak 
 Angka di atas dari Chrome headless/CDP (bukan perangkat fisik). Untuk menjalankan ulang audit:
 `node docs/audit-ui.mjs [filter] [--gelap]` dengan backend+vite+Chrome :9333 hidup.
 
+**Status 13 Okt 2026:** temuan B (editor materi melebar di ponsel) **sudah diperbaiki di A.56** (commit
+`5c36b49`, diuji harness `docs/smoke-ui-editor.mjs`), dan tiga sisa temuan A.60 **sudah ditutup**. Yang masih
+terbuka dari audit itu hanya satu: **target sentuh < 44 px di kontrol editor** (`.nle-segmen` 28 px,
+`.nle-tool-kecil` 25×28, `.nle-plus` 38×38) bila editor dipakai di layar sentuh — belum ada keputusan produk
+apakah itu perlu diubah (editor memang alat desktop).
+
 ### 0.6 PAPAN PENDING (kerjakan berurutan)
 
-1. **Commit + push putaran A.58 + A.59 + A.60** sebelum menumpuk pekerjaan baru (pisahkan per langkah kecil:
-   tombol ukuran dibuang, ringkasan setelan sesi + tautan siswa, monitor + beranda berikon, pengaturan per
-   ulangan, impor ber-alias, dokumentasi). 35 entri di `git status --short`, **1 commit di depan** `origin/main`.
-2. ~~**A.56 — Rombak tampilan yang patah: editor materi di lebar ponsel.**~~ **SELESAI & DIKOMIT** (`5c36b49`,
-   harness baru `docs/smoke-ui-editor.mjs`) — jangan dikerjakan lagi; yang tersisa dari temuan itu adalah
-   merapikan target sentuh editor di laptop (`.nle-segmen` 28 px, `.nle-tool-kecil` 25×28, `.nle-plus` 38×38)
-   bila editor dipakai di layar sentuh. Sasaran lama (arsip): `/materi/:id/editor`
-   **tidak** bergulir mendatar di 390 px (kini +151 px). Titik rawan dari audit: baris `.nle-tool`
-   (lebar tetap 324 px → buat bisa membungkus/menyusut), panel inspector kanan (+138 px → tumpuk ke bawah
-   di < 768 px atau beri `min-width: 0` + gulir internal), `.nle-klip` & pita timeline. Bukti yang diminta:
-   harness baru (mis. `docs/smoke-ui-editor.mjs`) yang menuntut overflow **0 px** di 390/768/1366 px +
-   `./verify.sh` hijau. Sekalian pertimbangkan target sentuh < 44 px di editor.
-3. **A.57 — Rombak tema "Harta Karun di Pulau" jadi sudut pandang dari ATAS** (permintaan pemilik produk,
-   12 Okt 2026: *"pantai dari POV di atas, murid seperti berlayar"*). Artinya: ganti
-   `frontend/public/tema/pulau.svg` (kini terbaca mendatar) dengan latar laut **mata burung / dari atas**
-   (seperti peta), pos berdiri di atas benda (perahu, dermaga, karang, …), dan **penanda pos murid bergerak
-   seperti berlayar** antar pos. Rute tetap `RUTE_TEMA.pulau` di `perjalanan.js`; berkas baru WAJIB mengikuti
-   bentuk penanda `id` yang lama dan **lolos** `frontend/src/__tests__/theme/latarTema.test.js` (jalankan
-   merah-dulu sebagai kontrol sebelum menyentuh berkas). Bukti: pagar latar hijau + `docs/jalankan-smoke-ui.sh
-   perjalanan`. **Catatan:** pemilik produk juga menyebut "ruang angkasa", tetapi belum dipastikan apakah
-   tema `angkasa` ikut dirombak — **tanyakan dulu**, jangan sentuh tanpa konfirmasi.
-4. Sudah terdaftar sebelumnya: (a) selaraskan pratinjau kanvas editor guru dengan posisi panel kuis A.55
-   (di bawah/samping bingkai, bukan menimpa gambar) — **di-merge dengan A.56** karena sama-sama editor;
-   (b) jadikan asersi "kartu Perlu perhatian tanpa garis sisi berwarna" permanen di `docs/smoke-ui-mobile.mjs`;
-   (c) audit tata letak 360/768/1024/1440 px.
+**0. Deadline lomba: 15 Okt 2026 15.30 WIB** (pengumuman 25 Okt). Yang **wajib** menurut `AGENT.md` dan masih
+kurang: **deploy publik dengan link yang bisa dibuka**, **Octane Swoole** (atau catatan jujur bila gagal),
+**jurnal prompt maksimal 5 entri + log mentah utuh**, dan repo **public sejak commit pertama**. Empat hal itu
+mengalahkan semua pekerjaan rapi-rapi di bawah.
+
+1. **Commit + push pekerjaan yang menumpuk** (65 entri, **5 commit lokal belum di-push**; A.70 sudah dikomit). Pisahkan kecil-kecil
+   mengikuti gaya riwayat yang ada (satu putaran = satu commit, judul kalimat perintah/berita, tanpa tanggal
+   commit buatan): (a) slug kuis + bank soal bertahap (`bankSoalLazy`, `paramSoal`, `catatanSoal`),
+   (b) `/pengaturan` jadi halaman akun + setelan ulangan per kuis (`AkunService`, `PanelSetelanUlangan`,
+   penghapusan `HalamanPengaturan`/`lingkup`), (c) bundel per halaman (`halaman.js`, `MemuatHalaman`, tes,
+   `docs/ukur-bundel-peramban.mjs`), (d) dokumentasi A.61–A.69. **Push** sesudahnya (`origin/main` tertinggal
+   3 commit + isi baru).
+2. **Deploy** (belum ada sama sekali). Rencana yang paling murah: frontend `npm run build` → hosting statis,
+   backend Laravel + MySQL + Redis → satu VPS/container, realtime Node → proses kecil terpisah; URL backend
+   disuntik lewat env `VITE_*`/`APP_URL`, cookie Sanctum `SameSite=Lax` + HTTPS, dan `frontend/vite.config.js`
+   proxy tidak dipakai di produksi (perlu base URL API eksplisit). Sesudah hidup: catat linknya di
+   `docs/catatan-demo.md` + `README.md`, lalu jalankan ulang `docs/jalankan-smoke-ui.sh pengaturan` terhadap
+   deploy bila memungkinkan.
+3. **Segarkan dokumen untuk dikumpulkan**: `./docs/export-word.sh` (menyegarkan `docs/word/*.docx` +
+   log mentah) atau `python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx` bila snapshot sesi
+   tidak mau disentuh. Per 13 Okt 2026 `docs/word/*.docx` **belum** memuat A.68/A.69.
+4. **Jurnal prompt**: cek `docs/jurnal-prompt.md` masih ≤ 5 entri dan log mentah di `docs/log-mentah/` utuh
+   (`.gz` byte-exact, tidak disunting).
+5. Pekerjaan rapi-rapi yang sudah terdaftar (boleh ditunda kalau waktu mepet):
+   (a) **selaraskan pratinjau kanvas editor guru** dengan posisi panel kuis A.55 (panel di bawah/samping
+   bingkai, bukan menimpa gambar);
+   (b) **A.57 — rombak tema “Harta Karun di Pulau” jadi POV dari ATAS** (*"pantai dari POV di atas, murid
+   seperti berlayar"* — permintaan pemilik produk 12 Okt 2026): ganti `frontend/public/tema/pulau.svg`
+   dengan latar laut mata burung, pos berdiri di atas benda, penanda pos bergerak seperti berlayar; rute tetap
+   `RUTE_TEMA.pulau` dan berkas baru **wajib lolos** `__tests__/theme/latarTema.test.js` (jalankan
+   merah-dulu sebagai kontrol). **Tanyakan dulu** apakah tema `angkasa` ikut dirombak — jangan sentuh tanpa
+   konfirmasi;
+   (c) jadikan asersi "kartu Perlu perhatian tanpa garis sisi berwarna" permanen di `docs/smoke-ui-mobile.mjs`;
+   (d) audit tata letak 360/768/1024/1440 px; (e) target sentuh < 44 px di kontrol editor materi;
+   (f) perluas pencarian ke Kelas/Mapel/Bank Soal; (g) ambang denyut proteksi (A.54) bisa diatur guru +
+   uji denyut di peramban sungguhan; (h) mode `hasil` pada Layar kelas dan moderasi avatar pada antrean
+   panjang (dua jalur yang masih gelap di GUI).
 
 ### 0.7 Kebiasaan hemat memory (WAJIB dipertahankan)
 
@@ -187,10 +234,15 @@ mematikan dirinya sendiri**. Layanan yang berdiri sendiri saat idle ikut memakan
 ```
 Lanjutkan proyek lomba_m di "folder tanpa judul 2/lomba_m".
 Baca docs/handoff-sesi.md bagian "## 0. MULAI DI SINI" saja — jangan memuat riwayat lain.
+Status: putaran A.68 (bank soal bertahap + /pengaturan jadi halaman akun) dan A.69 (bundel dipotong per halaman)
+SUDAH SELESAI dan terverifikasi, tetapi BELUM DIKOMIT. A.70 (patch kinerja + perbaikan rekam diri lampiran)
+SUDAH dikomit (`b1025b4`, `90512a2`) tetapi belum di-push; total 5 commit lokal belum di-push.
 Kerjakan PAPAN PENDING bagian 0.6 secara berurutan:
-1) commit + push putaran A.58 + A.59 + A.60,
-2) A.57 rombak tema "Harta Karun di Pulau" jadi POV dari atas (murid seperti berlayar).
-Patuhi kebiasaan hemat memory di bagian 0.7 dan jalankan ./verify.sh + harnes smoke terkait sebagai bukti.
+1) commit kecil-kecil + push pekerjaan yang menumpuk (A.61-A.69),
+2) deploy publik dengan link yang bisa dibuka (deadline 15 Okt 2026 15.30 WIB),
+3) segarkan docs/word + jurnal prompt + log mentah sebelum dikumpulkan.
+Patuhi kebiasaan hemat memory di bagian 0.7; jalankan ./verify.sh + harness smoke terkait sebagai bukti
+(jangan mengulang pemeriksaan yang sudah hijau tanpa perubahan kode — daftarnya di bagian 0.4).
 ```
 
 ### 0.9 Jangan salin riwayat lama
@@ -275,10 +327,27 @@ ulangan** (bukan per akun), impor murid menerima judul kolom lazim ("Nama Lengka
 dan tiga sisa temuan audit ditutup — dua di antaranya ternyata cacat alat ukur, satu cacat layar nyata
 (tautan jejak 19 px → 44 px tanpa menggeser tata letak).
 
+**Riwayat sesudah itu (13 Okt 2026) — dua paragraf panjang di atas sengaja dibiarkan apa adanya sebagai
+riwayat A.30–A.60:**
+
+| Putaran | Isi singkat | Di mana |
+| --- | --- | --- |
+| A.61 | soal boleh diperbaiki di tengah ulangan (cap versi soal, spanduk “Guru memperbarui soal”, sidebar tanpa scrollbar, susun soal spesifik per soal) | bagian 6 · laporan A.61 |
+| A.62 | kartu pertanyaan: pilihan PG di editor dipindah **di bawah** pertanyaan | laporan A.62 |
+| A.63–A.64 | sapuan GUI + tiga celah cakupan GUI ditutup: harness baru **`layar`** (34/34), **`tim`** (31/31), **`impor-murid`** (29/29), **`mapel`** (32/32), **`avatar`** (44/44), **`auth`** (36/36 — butuh `MAIL_MAILER=log`) | bagian 7–8 · laporan A.63/A.64 |
+| A.65 | pita palet panel samping memanjang sampai dasar kolom konten (harness `palet-sidebar` 58/58) | bagian 9 · laporan A.65 |
+| A.66 | sapuan GUI 30 harness: **777 pemeriksaan lulus**, audit 44 halaman bersih di dua tema; dua pemeriksaan **mati** di `smoke-ui-mobile.mjs` dihidupkan | bagian 10 · laporan A.66 |
+| A.67 | audit pemeriksaan mati di seluruh harness (kontrol negatif A/B) | bagian 11 · laporan A.67 |
+| A.68 | bank soal dimuat bertahap + pencarian server; `/pengaturan` kembali jadi **halaman akun**; setelan ulangan pindah ke tiap kuis; slug kuis | bagian 12 · laporan A.68 |
+| A.69 | **bundel frontend dipotong per halaman** (`React.lazy` + `Suspense`, pramuat tautan menu) — 923,63 kB → 555,26 kB bundel awal | bagian 0.1a & 13 · laporan A.69 |
+| A.70 | **patch kinerja dari luar repo diterapkan** (kueri berulang ulangan/impor/laporan, `snapshot_soal`, `afterCommit`, `retry_after`) + dua bug **rekam diri lampiran** (durasi 0 detik, perekam tak dimatikan) | bagian 14 · laporan A.70 |
+
 ## 1. Status verifikasi terakhir
 
 | Perintah | Hasil |
 | --- | --- |
+| **Bundel per halaman (**A.69**, 13 Okt 2026 — putaran terakhir, belum dikomit)** — `npm run build` sebelum/sesudah, `node docs/ukur-bundel-peramban.mjs` (Chrome + `vite preview`), `npm run check`, `npm run lint`, `npm run test`, enam harness smoke | Bundel awal **923,63 kB → 555,26 kB** (262,06 → **176,35 kB gzip**), 54 berkas JS; di peramban: buka app **6 berkas / 555,30 kB** lalu tekan “Daftar” **2 berkas kecil** tanpa muat ulang; checkJs exit 0 · ESLint 0 error · Vitest **80 berkas / 760 tes**; smoke `pengaturan` 12/12 · `susun` 44/44 · `slice04` 18/18 · `nav` 14/14 · `kuis-materi` 48/48 · `slice07` 21/21 — semua exit 0. Rincian: **A.69** |
+| **Bank soal bertahap + `/pengaturan` jadi halaman akun (**A.68**, 13 Okt 2026 — belum dikomit)** — `./verify.sh` + `docs/jalankan-smoke-ui.sh pengaturan/slice03/susun/kuis-manual` | `./verify.sh` **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih (361 berkas) · checkJs · ESLint 0 error · Vitest **79 berkas/752 tes** · realtime 20; smoke `pengaturan` **12/12** (harness ditulis ulang) · `slice03` **9/9** · `susun` **44/44** · `kuis-manual` **15/15**. Rincian: **A.68** |
 | **Audit pemeriksaan mati harness GUI (**A.67**, 13 Okt 2026)** — `slice07`, `kuis-materi`, `audit-ui` | `slice07` **21/21** · `kuis-materi` **48/48** · `audit-ui kuis` **BERSIH (`{}`)** — semuanya exit 0. Kontrol negatif A/B: klaim lama **21/21 lulus** atas respons tak terpakai (buta) vs klaim baru **20/21 · exit 1**. Rincian: `laporan-pengujian.md` **A.67** |
 | **Sapuan GUI fitur rawan (**A.66**, 13 Okt 2026)** — 30 harness lewat `docs/jalankan-smoke-ui.sh` + `node docs/audit-ui.mjs` (terang & `--gelap`) | **777 pemeriksaan LULUS, semuanya exit 0**; audit **44/44 halaman bersih di kedua tema** (cacat `{}`); sesudahnya `./verify.sh` **SEMUA HIJAU** (Pest 344/3290 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error · Vitest 76/731 · realtime). Dua pemeriksaan mati di `docs/smoke-ui-mobile.mjs` ditemukan & dihidupkan. Rincian: `laporan-pengujian.md` **A.66** |
 | `./verify.sh` (root) (**A.55**, sesudah semua suntingan putaran ini) | **SEMUA HIJAU (exit 0)** — Pest, Pint, `npm run check`, ESLint, Vitest, dan realtime (20 tes) semuanya lulus |
@@ -541,21 +610,19 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 
 ## 3. Kondisi git (`git status`)
 
-- `HEAD` = **`7154875`** — "Buktikan di browser sungguhan: kelas bertabrakan terbaca sebabnya, fokus jendela
-  tidak menembak ulang" (putaran A.51–A.54). `origin/main` masih di **`1f7a2de`**, jadi **9 commit lokal
-  belum di-push** (`1f7a2de..7154875`) — repo online baru memuat pekerjaan sampai A.40. **Push dulu sebelum
-  menutup sesi.**
-- **Riwayat putaran A.33–A.54 sudah semuanya dikomit** (`fe68410`, `f8ed168`, `1ddf042`, `ef12a82`, `5f4b3ec`,
-  `7e6c24c`, `ed03aec`, `1eb7acb`, `7154875`). Daftar berkas per putaran tidak lagi didaftar ulang di sini
-  supaya dokumen ini tetap ringkas: pakai `laporan-pengujian.md` (bagian A.33–A.54) atau `git show --stat <commit>`.
-- **Belum dikomit di working tree = putaran A.55 saja (13 berkas)**: `frontend/src/sections/material/PemutarMateri.jsx`,
-  `frontend/src/theme/theme.css`, lima runner `docs/jalankan-*.sh` (`--mute-audio`), dokumentasi
-  (`docs/penjelasan-fitur.md`, `docs/laporan-pengujian.md` bagian A.55, `docs/handoff-sesi.md`), dua ekspor Word
-  yang ikut disegarkan (`docs/word/laporan-pengujian.docx`, `docs/word/penjelasan-fitur.docx`), dan berkas
-  **baru** `docs/smoke-ui-kuis-materi.mjs`.
+Ini salinan **13 Okt 2026, sesudah A.69**; selengkapnya di bagian 0.2.
+
+- `HEAD` = **`6811c2c`** (*"Perkuat pemeriksaan negatif yang bisa lulus tanpa bukti"* = A.67).
+- `origin/main` = **`93f66ed`** → **3 commit lokal belum di-push** (A.65, A.66, A.67). Push dulu sebelum
+  menutup sesi.
+- **Belum dikomit: 65 entri** — 44 diubah, 3 dihapus, 18 baru, isinya putaran **A.68 + A.69** (plus dokumentasi
+  A.61–A.64). Daftar per berkas ada di bagian 0.2; daftar pasti: `git status --short`.
+- Putaran **A.33–A.64 sudah dikomit**; daftar berkas per putaran tidak didaftar ulang di sini supaya dokumen
+  tetap ringkas — pakai `docs/laporan-pengujian.md` (bagian A.33–A.67) atau `git show --stat <commit>`.
 - `docs/log-mentah/log-claude-eksternal.md` dan `prompt-claude-eksternal.md` sudah ikut commit A.33–A.39
   (catatan mentah eksternal; isinya tidak diubah).
 - Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
+  `frontend/dist/` memang diabaikan, jadi hasil build untuk pengukuran tidak ikut masuk.
 
 ## 4. Batasan jujur (yang belum selesai)
 
@@ -608,16 +675,28 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   **atas** bingkai (`.nle-kuis` — pratinjau "saat kuis masuk"), sedangkan murid sekarang melihatnya di
   bawah/samping bingkai. Label "Vertikal (panel di bawah)" / "Horizontal (panel di samping)" sudah cocok,
   kanvasnya belum.
-- **Editor materi patah di lebar ponsel (temuan audit 12 Okt 2026, belum diperbaiki).** Di 390 px halaman
-  editor `/materi/:id/editor` bergulir mendatar **+151 px** (baris `.nle-tool` tetap 324 px, panel inspector
-  kanan +138 px); di laptop banyak kontrol < 44 px. Editor **tidak pernah** masuk daftar audit mana pun
-  (`smoke-ui-mobile.mjs` menyapu 8 halaman non-editor; `audit-ui.mjs` tidak memuat editor). Bukan regresi
-  A.55. Dijadwalkan sebagai **A.56** dan butuh harness editor baru (overflow 0 px di 390/768/1366 px).
+- **Editor materi di lebar ponsel: SUDAH DIPERBAIKI di A.56** (commit `5c36b49`, harness `docs/smoke-ui-editor.mjs`
+  menuntut overflow 0 px di 390/768/1366 px). Yang **belum**: kontrol editor < 44 px di layar sentuh
+  (`.nle-segmen` 28 px, `.nle-tool-kecil` 25×28, `.nle-plus` 38×38) — belum diputuskan apakah itu perlu
+  diubah, karena editor memang alat desktop.
 - **Tata "horizontal" hanya aktif di viewport ≥1200 px** (di 1366 px kolom materi murid hanya ±640 px lebar);
   di bawah itu kedua tata menumpuk ke bawah supaya video tidak diperas. Angka tata letak A.55 diukur di dua
   viewport saja (390×844, 1366×900) lewat Chrome headless/CDP, bukan perangkat fisik.
 - **P-01 paginasi baru sebagian**: hanya `SoalController` dan `MuridController` memakai `paginate()`;
-  kuis, materi, koreksi, peringkat, ekspor, monitor, dan kecurangan masih memuat semua baris.
+  kuis, materi, koreksi, peringkat, ekspor, monitor, dan kecurangan masih memuat semua baris. Bank soal
+  (A.68) memakai `paginate()` **lewat `SoalController`**, jadi batas 20 baris itu tetap dijaga server (maks 100).
+- **Bank soal yang dimuat bertahap (A.68) belum punya pemeriksaan peramban khusus**: tombol “Muat 20 soal
+  berikutnya” baru dibuktikan lewat tes komponen (`bankSoalLazy`, 7 lulus) + regresi `slice03`/`susun`/
+  `kuis-manual`; belum ada harness yang benar-benar menekan tombol itu di Chrome.
+- **Halaman Akun (A.68) belum menampilkan daftar perangkat/sesi** yang sedang masuk; ganti kata sandi
+  memang mengakhiri sesi lain, tetapi tidak ada daftar yang bisa dilihat guru. Email sengaja tidak bisa
+  diubah dari sana (butuh alur verifikasi tersendiri).
+- **Bundel per halaman (A.69) — batas pengukurannya**: angka “6 berkas / 555,30 kB” diukur di peramban pada
+  rute **tanpa sesi** (beranda tamu, `/daftar`, `/lupa-sandi`) tanpa backend, jadi ia membuktikan
+  “awalnya hanya 6 berkas, sisanya menyusul per halaman”, **bukan** waktu muat atau byte terkompresi
+  (angka gzip tetap dari Vite). Jalur guru ber-sesi (panel samping, halaman kuis) tidak diukur byte-nya,
+  hanya dibuktikan tetap berfungsi oleh enam harness smoke. Jeda 150 ms penanda tunggu belum diperiksa
+  secara visual, dan pramuat hanya berlaku untuk tautan menu (rute berparameter & halaman auth tidak).
 - **Pencarian murid (A.51 + A.53) masih `LIKE %kata%`**: kata kunci tidak memakai indeks kolom, jadi
   waktunya naik seiring jumlah murid — untuk puluhan ribu murid perlu pencarian penuh atau kolom nama
   ternormalisasi yang diindeks (belum dikerjakan). Sejak A.53 ada **penyorotan kata kunci** dan tes regresi
@@ -647,12 +726,17 @@ npm --prefix frontend run build              # build produksi
 # Cara menguji GUI langsung: satu perintah per harness. Runner memakai layanan yang
 # sudah hidup dari nyalakan-local.sh (dan menyalakan/mematikan sendiri yang belum ada),
 # jadi urutannya bebas dan tidak ada port yang diperebutkan:
-docs/jalankan-smoke-ui.sh tamu                # mode tamu + kode perangkat (9/9)
-docs/jalankan-smoke-ui.sh bilah-atas          # tombol ukuran tulisan benar-benar hilang (10/10)
-docs/jalankan-smoke-ui.sh setelan-sesi         # panel setelan sesi + tautan siswa + masuk lewat tautan (23/23)
-docs/jalankan-smoke-ui.sh murid               # pencarian murid yang menyaring di server (18/18)
-docs/jalankan-smoke-ui.sh kuis-materi        # kuis di halaman materi: tata panel, keterbacaan, bunyi bisu (48/48)
-docs/jalankan-smoke-ui.sh slice06             # harness lama: backend+vite+realtime+Chrome sendiri
+docs/jalankan-smoke-ui.sh pengaturan        # halaman akun + setelan ulangan di tiap kuis (12/12)
+docs/jalankan-smoke-ui.sh slice03           # bank soal + editor kuis (9/9)
+docs/jalankan-smoke-ui.sh slice04           # kerjakan + hasil, dua halaman yang kini dimuat malas (18/18)
+docs/jalankan-smoke-ui.sh susun             # editor kuis (44/44)
+docs/jalankan-smoke-ui.sh nav / mobile / sidebar / palet-sidebar   # tata letak & menu (14/14 · 16/16 · 9/9 · 58/58)
+docs/jalankan-smoke-ui.sh layar / tim / impor-murid               # 34/34 · 31/31 · 29/29
+docs/jalankan-smoke-ui.sh mapel / avatar / auth                   # 32/32 · 44/44 · 36/36 (auth butuh MAIL_MAILER=log)
+docs/jalankan-smoke-ui.sh soal-berubah / setelan-sesi / kuis-materi # 19/19 · 23/23 · 48/48
+docs/jalankan-smoke-ui.sh tamu / murid / kuis-manual / slice06     # 9/9 · 18/18 · 15/15 · 28/28
+docs/jalankan-smoke-ui.sh editor            # editor materi: tidak melebar di 390/768/1366 px
+# Daftar lengkap 30 harness berhitung + hasilnya: docs/laporan-pengujian.md A.66.1
 docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
 docs/jalankan-smoke-perjalanan.sh             # peta perjalanan bertema + kenaikan pos/tingkat + pendaratan pos di 3 latar (sendiri)
 for s in nav susun slice03 slice04 slice05 slice06 slice07 luring; do node docs/smoke-ui-$s.mjs; done
@@ -673,18 +757,14 @@ Tema perjalanan sekarang **tiga** (Mendaki Gunung, Harta Karun di Pulau, Luar An
 latar `public/tema/*.svg` **dengan `id` pada tiap benda yang diinjak pos**, satu entri `RUTE_TEMA`, satu baris
 di `FOTO_ADEgan` — lalu jalankan pagar latar (merah kalau rute dan gambarnya tidak cocok).
 
-Langkah berikutnya yang masuk akal: **commit + push putaran A.55** (13 berkas: panel kuis pindah ke luar
-bingkai video, bilah atas bisa menyusut, `--mute-audio`, harness `smoke-ui-kuis-materi.mjs`), lalu
-**A.56 — rombak editor materi yang melebar +151 px di ponsel** (temuan audit 12 Okt, lihat bagian 0.5/0.6),
-**A.57 — rombak tema "Harta Karun di Pulau" jadi POV dari atas (murid seperti berlayar)**,
-**menyelaraskan pratinjau kanvas editor** dengan posisi panel yang baru, **tahap 1 rencana desain putaran 3** — menggabungkan tombol tema dan
-tombol ukuran menjadi satu panel "Tampilan" (rencananya di `docs/rencana-desain-putaran3.md`, termasuk
-daftar kata papan yang masih perlu keputusan pemilik produk), **menyambung alur tamu sampai
-mengerjakan ulangan lewat smoke browser** (harness `tamu` baru membuktikan identitas/kode perangkat, belum
-mengerjakan soal), **memperluas pencarian (A.51/A.53)** ke halaman Kelas/Mapel/Bank Soal atau menggantinya
-pencarian penuh begitu jumlah muridnya besar, lalu **membuat ambang denyut (A.54) bisa diatur guru** —
-kini nilai tetap 30 detik / ~100 detik — dan **uji denyut di browser sungguhan** (yang ada sekarang: unit
-hook + kontrak HTTP + unit service). Deteksi tamper 2B–2D sendiri sudah tuntas.
+Langkah berikutnya — urutannya ada di **papan pending 0.6**, ringkasnya: **(1) commit kecil-kecil + push**
+pekerjaan yang menumpuk (A.61–A.69), **(2) deploy publik** dengan link yang bisa dibuka (deadline 15 Okt 2026
+15.30 WIB), **(3) segarkan `docs/word` + jurnal prompt + log mentah** sebelum dikumpulkan, lalu **(4)**
+pekerjaan rapi-rapi: menyelaraskan pratinjau kanvas editor dengan posisi panel A.55, **A.57** (tema “Harta
+Karun di Pulau” jadi POV dari atas — tanyakan dulu soal tema angkasa), target sentuh editor, perluasan
+pencarian ke Kelas/Mapel/Bank Soal, ambang denyut proteksi yang bisa diatur guru + uji denyut di peramban,
+serta dua jalur GUI yang masih gelap (mode `hasil` Layar kelas, moderasi avatar pada antrean panjang).
+Deteksi tamper 2B–2D sudah tuntas; jangan dikerjakan lagi.
 
 ## 6. A.61 — kebijakan "soal boleh diperbaiki di tengah ulangan" (13 Oktober 2026)
 
@@ -823,3 +903,98 @@ Bukti sesudah perbaikan: `docs/jalankan-smoke-ui.sh slice07` **21/21** · `… k
 `node docs/audit-ui.mjs kuis` **BERSIH `{}`** — semuanya exit 0. Kontrol negatif A/B (dua salinan di `/tmp`
 dengan respons tak terpakai yang sama): klaim lama **21/21 lulus** (buta) vs klaim baru **20/21 · exit 1**.
 Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.67**.
+## 12. A.68 — bank soal dimuat bertahap, `/pengaturan` jadi halaman akun (13 Oktober 2026)
+
+Dua permintaan pemilik produk dikerjakan bersamaan.
+
+**(1) Bank soal tidak lagi memuat semua.** Daftar soal (Bank Soal **dan** panel pilih-soal di langkah 2 editor
+kuis) sekarang 20 baris per permintaan (`useInfiniteQuery`) dengan tombol “Muat 20 soal berikutnya” yang
+**menambahkan** baris, plus kotak **Cari soal** yang menyaring di server (`q`, jeda 300 ms). Yang ikut
+diperbaiki: soal yang sudah dicentang tetapi tidak ada di halaman yang sedang tampil dulu terhitung 0 poin dan
+lolos dari pemeriksaan “semua soal yang dipilih aktif”; sekarang info soal yang pernah dilihat dicatat di klien
+(`catatanSoal`) dan dipakai menghitung ringkasan langkah 3.
+
+**(2) Setelan ulangan pindah ke kuisnya; `/pengaturan` kembali jadi akun.** Panel setelan (anti-cheat, batas
+percobaan, peringkat, layar guru, siswa tamu, …) kini ada di **halaman detail kuis** (`/kuis/:slug`) sebagai
+`sections/quiz/PanelSetelanUlangan.jsx` — tanpa pemilih ulangan, jadi tidak ada cara salah memilih. Halaman
+`/pengaturan` berisi **akun**: nama tampilan, ganti kata sandi (sandi lama wajib; sesi lain diakhiri, sesi yang
+dipakai tetap hidup), tema, dan pintasan avatar. Rutenya pindah keluar dari gerbang guru (kini milik semua
+peran) dan menunya bernama **Akun**. `HalamanPengaturan.jsx` + `lingkup.js` + tesnya dihapus; tautan lama di
+editor kuis, Layar kelas, dan Kelola tim menunjuk halaman kuisnya. Backend baru: `PUT /v1/akun` dan
+`PUT /v1/akun/sandi` (+ limiter `sandi` 6/menit per akun, `AkunService`, `backend/tests/Feature/AkunTest.php`).
+Email sengaja tidak bisa diubah dari sana (butuh alur verifikasi tersendiri).
+
+Bukti: `./verify.sh` **SEMUA HIJAU** (Pest 357 + Redis 9, Pint bersih, checkJs 0, ESLint 0 error/2 peringatan
+lama, Vitest **79 berkas / 752 tes**, realtime 20). Tes baru: `AkunTest` (10), `bankSoalLazy` (7),
+`setelanUlangan` (4), `halamanAkun` (6), `validasiAkun` (7).
+
+Bukti peramban (Chrome sungguhan, layanan sudah hidup): `docs/jalankan-smoke-ui.sh pengaturan` **12/12** (halaman
+akun + alamat **slug** `/kuis/gitbvewc` membuka kuis yang benar + panel setelan di halaman itu, saklar diubah
+lalu dikembalikan), `slice03` **9/9**, `susun` **44/44**, `kuis-manual` **15/15**. Otorisasi slug:
+`SlugKuisTest` **2 lulus** (kuis guru lain tetap 403 di jalur baca/ubah/hapus).
+
+**Yang belum:** harness peramban khusus untuk tombol “Muat 20 soal berikutnya” (baru dibuktikan tes komponen);
+halaman akun belum menampilkan daftar sesi; belum ada kontrol negatif untuk tes baru. Rincian:
+`docs/laporan-pengujian.md` **A.68**.
+
+## 13. A.69 — bundel frontend dipotong per halaman (13 Oktober 2026)
+
+**Permintaan:** “potong bundel frontend per halaman dengan React.lazy + Suspense supaya aplikasi tidak memuat
+semua kode sekaligus.” Sebelumnya `App.jsx` mengimpor semua halaman secara statis → `npm run build` mengeluarkan
+satu berkas **923,63 kB (262,06 kB gzip)**.
+
+**Yang diubah:** `frontend/src/halaman.js` (baru) = satu daftar pemuat halaman (`React.lazy` untuk 27 halaman +
+peta pramuat jalur menu), `shared/ui/MemuatHalaman.jsx` (baru) = penanda tunggu `Suspense`, `App.jsx` hanya
+mengimpor statis kerangka ulangan + Beranda + halaman masuk + 404, dan `Suspense` dipasang **di dalam**
+`KerangkaUmum`/`KerangkaAuth` (area konten) sehingga menu, bilah atas, dan kaki halaman tidak ikut hilang selama
+modul diunduh. Tautan panel samping memulai unduhan saat disorot/difokus (`pramuatHalaman`), dan penanda tunggu
+baru muncul setelah 150 ms lalu memudar masuk (tanpa kedip pada perpindahan normal; gerak dihentikan bila
+`prefers-reduced-motion`).
+
+**Bukti:** `npm run build` → bundel awal **555,26 kB / 176,35 kB gzip** menurut `index.html` (skrip utama + lima
+`modulepreload`) = **−39,9% mentah / −32,7% gzip**; 54 berkas JS, mis. `HalamanKerjakan` 41,57 kB (14,27 gzip)
+baru diunduh saat ulangan dibuka. Diukur ulang di peramban sungguhan (bangun produksi + `vite preview` + Chrome
+ber-CDP, harness baru `docs/ukur-bundel-peramban.mjs`): membuka app **6 berkas / 555,30 kB** lalu beranda tampil;
+tekan “Daftar” **2 berkas kecil** menyusul tanpa muat ulang; `/lupa-sandi` 2 berkas kecil. `npm run check` exit 0,
+ESLint 0 error (2 peringatan lama), Vitest **80 berkas / 760 tes**. Peramban sungguhan: `pengaturan` **12/12**,
+`susun` **44/44**, `slice04` **18/18**, `nav` **14/14**, `kuis-materi` **48/48**, `slice07` **21/21** — semuanya
+exit 0 (dua yang terakhir menyentuh halaman malas terberat: editor materi dan Monitor Ulangan).
+Backend/realtime tidak disentuh, jadi Pest/Pint/Redis tidak dijalankan ulang.
+
+**Yang belum:** pengukuran peramban hanya pada rute tanpa sesi (beranda tamu, `/daftar`, `/lupa-sandi`) dan
+melaporkan ukuran mentah, bukan waktu muat atau byte terkompresi; jeda 150 ms penanda tunggu tidak diperiksa
+secara visual; belum ada kontrol negatif untuk tes baru. Rincian: `docs/laporan-pengujian.md` **A.69**.
+
+## 14. A.70 — patch kinerja & rekam diri dari luar repo (13 Oktober 2026)
+
+**Permintaan:** *“cek file patch ini apakah relevan jika ya apply”* — dua berkas `backend.patch` (8 berkas) +
+`frontend.patch` (1 berkas), datang sebagai `files (68).zip` dari luar repo. Isinya diperiksa baris per baris
+dulu (kecocokan konteks `git apply --check`, daftar kolom `KOLOM_RINGAN` dibandingkan dengan seluruh kolom tabel
+`attempts` di migrasi, dan siapa saja pembaca `snapshot_soal` di `backend/app`), baru diterapkan — sesuai aturan
+AGENT.md bahwa pekerjaan luar repo tidak boleh dijadikan bukti tanpa diverifikasi ulang di sini.
+
+**Yang dikerjakan (10 berkas):**
+
+- **Kueri berulang** — `AttemptService`/`AttemptController`: soal hidup dimuat **sekali** lalu dibagi ke
+  `payloadSoal()` + `versiSoal()` (dulu 2 kueri identik per permintaan; diukur 2 → 1 untuk attempt 10 soal);
+  kolom yang diambil dipersempit ke `id, konten, updated_at`. Jalur mulai: soal kuis dimuat sekali (dulu 4 kueri).
+- **Impor murid** — email akun non-murid dimuat sekali per berkas (dulu satu `SELECT` per baris CSV) dan hash
+  acak dihitung **sekali per impor** (dulu `argon2id` per baris → impor ratusan murid rawan timeout).
+- **`Attempt::scopeTanpaSnapshot()`** dipakai `MonitorService` + `EksporNilaiService`: berhenti menarik
+  `snapshot_soal` (JSON seluruh soal **+ kunci**) di dua jalur yang tidak membacanya. **Migrasi baru yang
+  menambah kolom `attempts` wajib memperbarui `KOLOM_RINGAN`.**
+- **`PenilaiAiService`** memakai `->afterCommit()` (worker tidak lagi bisa membaca attempt sebelum transaksi
+  `tutup()` commit → saran AI tidak hilang diam-diam).
+- **`config/queue.php`** — `retry_after` koneksi `database` 90 → 180 detik (masih bisa ditimpa `env`).
+- **Rekam diri lampiran (`UnggahLampiran.jsx`)** — dua bug: durasi selalu terkirim **0 detik** (state basi di
+  dalam `onstop`, kini lewat ref) dan keluar dari soal saat merekam tidak membersihkan apa pun (kini perekam +
+  jalur kamera/mikrofon dimatikan dan rekaman yang ditinggalkan **tidak** diunggah).
+
+**Bukti:** `./verify.sh` **SEMUA HIJAU** (Pest 357/3356 · Redis wajib 9/65 · Pint bersih · checkJs · ESLint 0
+error · Vitest **81 berkas / 763 tes** · realtime). Tes baru `unggahLampiranRekam.test.jsx` **3/3 lulus**, dan
+**kontrol negatifnya 3/3 MERAH** saat dijalankan atas kode sebelum perbaikan (`expected +0 to be 3`, jalur
+kamera `not called`, `expected +0 to be 60`). Satu perbaikan ikutan: Pint menambahkan
+`use Illuminate\Support\Collection;` di `AttemptService`. Commit: `b1025b4` + `90512a2` (belum di-push).
+
+**Cara mengulang:** `./verify.sh`; `npx vitest run src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx`.
+Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.70**.

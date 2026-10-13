@@ -5797,3 +5797,338 @@ literal regex di halaman — kesalahan alat kontrol, bukan produk; varian final 
   sekarang hanyalah: panel tidak terukur = GAGAL, dan daftar ukurnya benar-benar ada.
 - **`./verify.sh` tidak dijalankan ulang di putaran ini** karena tidak ada berkas produk yang tersentuh
   (hanya harness/dokumentasi, yang tidak masuk cakupan `verify.sh`).
+
+## A.68 — Bank soal dimuat bertahap + /pengaturan kembali menjadi halaman akun (13 Oktober 2026)
+
+### A.68.1 Dua permintaan yang dikerjakan putaran ini
+
+1. **“Bank soal jangan load semuanya.”** Daftar soal (dan daftar pilih-soal saat menyusun kuis) sebelumnya
+   meminta seluruh bank dengan `GET /v1/soal` tanpa `per_page`, jadi sekolah dengan ratusan soal mengirim
+   semuanya hanya untuk menampilkan baris pertama. Untuk menemukan soal ke-51 pun tidak ada jalan selain
+   membuka halaman satu per satu (kotak cari belum ada).
+2. **“Setelan ulangan ada di tiap kuis, bukan di halaman pengaturan — halaman itu untuk akun saja.”**
+   Halaman `/pengaturan` (sejak 12 Oktober 2026) memang sudah per ulangan, tetapi masih berupa **pemilih
+   ulangan**: guru harus memilih ulangannya dulu padahal ia sudah membuka kuis itu. Sekarang panelnya
+   menyatu dengan halaman detail/kelola kuis, dan `/pengaturan` benar-benar berisi setelan akun.
+
+### A.68.2 Bank soal: 20 baris per permintaan + pencarian di server
+
+- `paramSoal()` baru di `sections/question/api.js` mengirim `page`, `per_page`, filter mapel/tag/tipe, dan
+  `q` (kata kunci) — dipisah dari pemanggilan HTTP-nya supaya bisa diuji tanpa jaringan.
+- Halaman Bank Soal memakai `useInfiniteQuery` dengan `getNextPageParam` dari `meta.current_page/last_page`:
+  baris baru **ditambahkan** ke bawah daftar, bukan menggantikan. Tombol “Muat 20 soal berikutnya” hanya
+  muncul bila masih ada halaman, dan keterangan berubah jadi “Menampilkan 20 dari 25 soal (dimuat bertahap)”.
+- Kotak **Cari soal** mengirim kata kunci ke server setelah 300 ms (pola yang sama dengan halaman Murid),
+  kembali ke halaman 1 tiap kata kunci berubah, dan keadaan kosongnya menyebut kata kuncinya +
+  tombol *Bersihkan pencarian*.
+- Panel **pilih soal** di langkah 2 editor kuis memakai mekanisme yang sama (20 baris + cari + muat berikutnya),
+  sehingga soal ke-51 tetap terjangkau tanpa memuat seluruh bank.
+- **Cacat yang ikut ditutup:** soal yang sudah dipilih tetapi tidak ada di halaman yang sedang tampil dulu
+  terhitung **0 poin** dan lolos dari pemeriksaan “semua soal yang dipilih aktif” (`totalPoin()` memang
+  mendokumentasikan “dihitung 0”, yang aman untuk tampilan tetapi salah untuk kelengkapan publikasi).
+  Sekarang skor + status aktif soal yang pernah dilihat (dicentang, ikut termuat saat kuis dibuka, atau baru
+  dibuat di sesi itu) dicatat di klien (`catatanSoal`) dan dipakai menghitung ringkasan langkah 3.
+
+### A.68.3 Setelan ulangan pindah ke kuis; `/pengaturan` jadi halaman akun
+
+**Frontend**
+
+- `sections/quiz/PanelSetelanUlangan.jsx` (baru) = panel setelan **satu kuis**, tanpa pemilih lingkup:
+  selalu menyimpan `lingkup: 'kuis'`, `lingkup_id: kuisId`. Nilai yang dikunci sekolah tetap ditandai
+  “dikunci sekolah”, saklarnya mati, dan tombol massal melewatinya sambil melaporkan berapa yang dilewati.
+- Panel itu dipasang di `HalamanKuisDetail` (halaman `/kuis/:slug`) untuk guru/admin; murid tidak melihatnya.
+- `sections/settings/HalamanAkun.jsx` (baru) menggantikan `HalamanPengaturan.jsx`: nama tampilan + email
+  (hanya dibaca), ganti kata sandi (sandi lama wajib), tema terang/gelap, pintasan avatar untuk murid, dan
+  penunjuk bahwa setelan ulangan ada di tiap kuis. Akun siswa tamu mendapat penjelasan, bukan formulir yang
+  pasti ditolak.
+- Rute `/pengaturan` dipindah keluar dari gerbang guru (sekarang di grup `HanyaMasuk`) dan menunya bernama
+  **Akun** — untuk guru **dan** murid. `sections/settings/lingkup.js` beserta tesnya dihapus (pemilihnya
+  memang tidak ada lagi); tautan lama yang menunjuk “pengaturan lingkup Kuis” di editor kuis, Layar kelas,
+  dan Kelola tim kini menunjuk halaman kuisnya.
+- Aturan form akun ada di `sections/settings/validasiAkun.js` (cermin aturan server: nama 2–60 huruf, sandi
+  baru ≥10 karakter dan dua kali sama; bentuk sandi **lama** tidak dinilai di klien karena hanya server yang
+  bisa mencocokkannya).
+
+**Backend**
+
+- `PUT /v1/akun` (`AkunController@perbarui`) + `PUT /v1/akun/sandi` (`gantiSandi`), keduanya di dalam grup
+  `auth:sanctum` + `akun-aktif`. Ganti sandi memakai throttle baru **`sandi`** (6/menit per akun).
+- `AkunService` memegang aturannya: `perbaruiNama()`, `gantiSandi()` (sandi lama wajib benar, `remember_token`
+  diacak ulang, **sesi lain diakhiri** sedangkan sesi yang sedang dipakai dibiarkan hidup), dan penolakan akun
+  siswa tamu (mereka masuk lewat kode perangkat, tidak punya sandi). Controller tetap tipis dan tidak menyentuh
+  fasade DB (pagar arch test).
+- Email sengaja **tidak** bisa diubah dari sana: ia alamat verifikasi/pemulihan akun, jadi perubahannya butuh
+  alur verifikasi tersendiri yang belum ada. Ini diuji (menyelipkan `email` di muatan tidak mengubah apa pun).
+
+### A.68.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (seluruh pagar mutu) | **SEMUA HIJAU (exit 0)** — Pest **357 lulus (3356 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint bersih (361 berkas), checkJs exit 0, ESLint **0 error** (2 peringatan lama), Vitest **79 berkas / 752 tes**, realtime 20 tes |
+| `php artisan test --filter=AkunTest` | **10 lulus (41 asersi)** — nama, email tidak berubah, sandi lama salah ditolak, hash tersimpan, sandi baru benar-benar bisa masuk (lewat `POST /auth/masuk`), sesi lain diakhiri & sesi aktif hidup, tamu 422, tanpa sesi 401 |
+| `npx vitest run src/__tests__/sections/question/bankSoalLazy.test.jsx` | **7 lulus** — `paramSoal`; permintaan pertama benar-benar `per_page: 20`; “muat berikutnya” meminta halaman 2 dan **menambahkan** baris (soal ke-25 muncul, 20 baris pertama tetap ada, tombolnya hilang saat habis); cari soal membawa `q` + kembali ke halaman 1; keadaan kosong pencarian |
+| `npx vitest run src/__tests__/sections/quiz/setelanUlangan.test.jsx` | **4 lulus** — panel terikat pada kuis yang dibuka (tanpa `<select>` pemilih), “2/3 aktif” + “dikunci sekolah”, simpan memakai lingkup `kuis` + id kuisnya, tombol massal melewati yang dikunci dan melaporkannya |
+| `npx vitest run src/__tests__/sections/settings/halamanAkun.test.jsx` | **6 lulus** — halaman akun tanpa satu pun saklar ulangan + penunjuk “per ulangan”; nama terisi dari sesi & email read-only; simpan nama memperbarui sesi; konfirmasi beda ditahan di klien; sandi terkirim lalu formulir dikosongkan; tampilan akun tamu |
+| `npx vitest run src/__tests__/sections/settings/validasiAkun.test.js` | **7 lulus** — cermin aturan server, termasuk “sandi lama tidak dinilai bentuknya di klien” |
+| `src/__tests__/shared/layout/kerangkaUmum.test.jsx` | **diperbarui** (menu “Pengaturan” → “Akun” + tautan `a[href="/pengaturan"]` ada di menu guru dan murid), lulus |
+| `docs/jalankan-smoke-ui.sh pengaturan` (**harness ditulis ulang**, Chrome sungguhan) | **12/12 lulus · exit 0** — `/pengaturan` benar-benar halaman akun (judul “Akun”, nama “Admin Sekolah”, email terbaca, dua isian sandi, **0 saklar ulangan**, tanpa pemilih lingkup); alamat kuis memakai **slug** (`/kuis/gitbvewc`) dan membuka kuis yang benar; panel “Setelan ulangan” tampil di halaman itu (20 saklar + tombol massal); saklar diubah **lewat klik sungguhan** lalu dikembalikan (`false → true → false`) |
+| `php artisan test --filter=SlugKuisTest` (alamat slug + pemiliknya) | **2 lulus (13 asersi)** — slug acak 8 huruf, `/v1/kuis/{slug}` = alamat resmi, dan **seluruh jalur (baca/ubah/hapus) kuis guru lain tetap 403 walau slug-nya diketahui** |
+| `php artisan test --filter='OtorisasiPemilikTest\|BankSoalTest'` | **21 lulus (202 asersi)** — termasuk “guru lain tidak bisa membaca kuis, nilai, monitor, dan catatan kecurangan” serta “bank soal dikirim 20 baris per halaman dan bisa dicari” |
+| `docs/jalankan-smoke-ui.sh slice03` (regresi bank soal + kuis) | **9/9 lulus · exit 0** — bank soal/editor kuis tetap jalan; keluaran menu membuktikan nama baru: guru `… Moderasi Avatar | Akun`, murid `… Progres Tema | Lencana | Akun` |
+| `docs/jalankan-smoke-ui.sh susun` (regresi penyusunan kuis) | **44/44 lulus · exit 0** |
+| `docs/jalankan-smoke-ui.sh kuis-manual` (regresi kuis manual, termasuk panel pilih-soal) | **15/15 lulus · exit 0** |
+
+### A.68.5 Berkas
+
+- **Baru (produk):** `backend/app/Sections/Auth/Services/AkunService.php`,
+  `backend/app/Sections/Auth/Http/Controllers/AkunController.php`,
+  `backend/app/Sections/Auth/Http/Requests/{PerbaruiAkunRequest,GantiSandiRequest}.php`,
+  `frontend/src/sections/settings/HalamanAkun.jsx`, `frontend/src/sections/settings/validasiAkun.js`,
+  `frontend/src/sections/quiz/PanelSetelanUlangan.jsx`.
+- **Baru (uji):** `backend/tests/Feature/AkunTest.php`,
+  `frontend/src/__tests__/sections/question/bankSoalLazy.test.jsx`,
+  `frontend/src/__tests__/sections/quiz/setelanUlangan.test.jsx`,
+  `frontend/src/__tests__/sections/settings/halamanAkun.test.jsx`,
+  `frontend/src/__tests__/sections/settings/validasiAkun.test.js`.
+- **Diubah (produk):** `backend/routes/api.php`, `backend/app/Providers/AppServiceProvider.php` (limiter `sandi`),
+  `frontend/src/App.jsx`, `frontend/src/routes.js`, `frontend/src/shared/layout/KerangkaUmum.jsx`,
+  `frontend/src/sections/question/api.js`, `frontend/src/sections/question/HalamanBankSoal.jsx`,
+  `frontend/src/sections/quiz/HalamanKuis.jsx`, `frontend/src/sections/quiz/HalamanKuisDetail.jsx`,
+  `frontend/src/sections/settings/api.js`, `frontend/src/sections/presence/HalamanLayar.jsx`,
+  `frontend/src/sections/attempt/HalamanTim.jsx`.
+- **Dihapus:** `frontend/src/sections/settings/HalamanPengaturan.jsx`,
+  `frontend/src/sections/settings/lingkup.js`, `frontend/src/__tests__/sections/settings/lingkup.test.js`.
+- **Diubah (harness):** `docs/smoke-ui-pengaturan.mjs` (ditulis ulang: halaman akun + panel per kuis),
+  `docs/audit-ui.mjs` (label halaman “Akun”).
+- **Diubah (docs):** `docs/penjelasan-fitur.md` (bagian 5 diperbarui, bagian 13 & 19 diselaraskan,
+  bagian **20** dan **21** baru), `docs/laporan-pengujian.md` (entri ini).
+
+### A.68.6 Batasan jujur
+
+- **Bank soal yang “dimuat bertahap” belum punya pemeriksaan peramban khusus.** Yang membuktikannya di
+  peramban adalah tes komponen (`bankSoalLazy`, 7 lulus) ditambah regresi `slice03`/`susun`/`kuis-manual`
+  yang jalan di halaman dan panel yang sama — bukan harness yang benar-benar menekan “Muat 20 soal berikutnya”
+  di Chrome. Jadi angka 20 dan perilaku “menambah baris” terbukti di uji komponen, belum di peramban.
+- **Harness `pengaturan` hanya memakai satu kuis** (#248, yang pertama di daftar guru) untuk memeriksa panel
+  setelan; panel pada kuis lain tidak diuji terpisah.
+- **Kontrol negatif tidak dibuat** untuk kedua tes baru (tidak ada salinan tes yang dijalankan di atas kode
+  lama untuk membuktikan tesnya bergigi). Tes peramban dulu yang memakai pola itu; di sini tidak diulang.
+- **Halaman Akun belum menampilkan daftar sesi/perangkat** yang sedang masuk — hanya mengakhirinya.
+- **`PUT /v1/akun` tidak menerima perubahan email**; bila nanti dibutuhkan, ia butuh alur verifikasi ulang
+  tersendiri (belum dikerjakan).
+- **Batas 20 baris ditentukan klien** (`PER_HALAMAN` di halaman Bank Soal dan `SOAL_PER_HALAMAN` di editor
+  kuis); server tetap membatasinya di 100 baris per permintaan, jadi angka klien boleh berbeda tanpa membuka
+  celah.
+
+---
+
+## A.69 — Bundel frontend dipotong per halaman dengan `React.lazy` + `Suspense` (13 Oktober 2026)
+
+### A.69.1 Permintaan
+
+**“Potong bundel frontend per halaman dengan React.lazy + Suspense supaya aplikasi tidak memuat semua kode
+sekaligus.”** Keluhan yang benar: `App.jsx` mengimpor **semua** halaman secara statis, dan `npm run build`
+memang mengeluarkan **satu** berkas JS **923,63 kB** (262,06 kB gzip) yang harus lewat jaringan sebelum apa pun
+terlihat — termasuk editor materi, monitor ulangan, dan antrean koreksi guru di perangkat murid, serta layar
+ulangan anak di perangkat guru.
+
+### A.69.2 Yang diubah
+
+- **`frontend/src/halaman.js` (baru)** = satu daftar pemuat halaman. 27 halaman dibungkus `React.lazy`,
+  dan hanya di sini jalur impornya ditulis, sehingga `lazy` dan pramuat menu tidak mungkin menunjuk modul yang
+  berbeda. Berisi juga `pemuatHalaman(jalur)` (murni, bisa diperiksa tes tanpa mengunduh modul) dan
+  `pramuatHalaman(jalur)` (memulai unduhan; kegagalannya sengaja didiamkan karena pramuat hanyalah percepatan
+  dan navigasi itu sendiri yang akan menampilkan galatnya).
+- **`frontend/src/shared/ui/MemuatHalaman.jsx` (baru)** = penanda tunggu `Suspense` dengan `role="status"`.
+- **`frontend/src/shared/layout/KerangkaUmum.jsx`** — `<Outlet />` dibungkus `Suspense`, dan tiap tautan menu
+  memanggil `pramuatHalaman(to)` saat **disorot/difokus**. Boundary-nya sengaja di **dalam** kerangka, bukan
+  membungkus seluruh aplikasi: dengan begitu menu, bilah atas, dan kaki halaman tetap di tempatnya selama modul
+  diunduh (tidak ada layar kosong).
+- **`frontend/src/shared/layout/KerangkaAuth.jsx`** — sama untuk halaman auth: panel merek sudah tampil lebih
+  dulu, formulirnya menyusul.
+- **`frontend/src/theme/theme.css`** — `.memuat-halaman`: muncul dengan jeda **150 ms** lalu memudar masuk, dan
+  tingginya diisi (`min-height: 45vh`) supaya kaki halaman tidak melompat. Gerak dihentikan bila pengguna
+  meminta `prefers-reduced-motion`. Tanpa warna hex baru (pagar `tema.test.js`).
+- **`frontend/src/App.jsx`** — yang tetap diimpor statis hanya kerangka ulangan, `Beranda`, `HalamanMasuk`, dan
+  `HalamanTidakDitemukan` (alasannya di dalam berkasnya); sisanya lewat `./halaman.js`.
+
+### A.69.3 Hasil `npm run build` (angka, bukan kesan)
+
+| | Sebelum | Sesudah |
+| --- | --- | --- |
+| JS sebelum halaman tampil | satu berkas **923,63 kB** / **262,06 kB gzip** | berkas utama **328,98 kB** (103,94 gzip) + 5 berkas `modulepreload` dari `index.html` (`client` 209,84/66,51 · `query` 7,74/2,68 · `mutation` 3,44/1,15 · `api` 3,75/1,46 · `api` 1,51/0,61) = **555,26 kB** / **176,35 kB gzip** |
+| Berkas JS di `dist/assets` | 1 | 54 |
+
+Selisih bundel awal: **−39,9% mentah**, **−32,7% gzip**. Yang tidak lagi ikut ke setiap pengguna antara lain
+`HalamanKerjakan` 41,57 kB (14,27 gzip), `EditorSoal` 46,52 kB, `RendererSoal` 31,94 kB, `EditorMateri`
+30,84 kB, `HalamanMonitor` 8,44 kB, `HalamanKoreksi` 8,24 kB.
+
+Dicek ulang **di peramban sungguhan** (bangun produksi + `vite preview` + Chrome ber-CDP,
+`docs/ukur-bundel-peramban.mjs`): membuka aplikasi hanya meminta **6 berkas JS = 555,30 kB** (sama dengan
+keenam berkas di `index.html`), lalu berpindah ke `/daftar` cukup **2 berkas kecil** (2,35 kB + 1,17 kB) tanpa
+muat ulang, dan `/lupa-sandi` 2 berkas kecil (2,27 kB + 0,41 kB). Jadi yang terkirim di awal benar-benar hanya
+kerangka + halaman pertama, bukan seluruh aplikasi.
+
+### A.69.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npm run build` (sebelum) | 1 berkas JS, **923,63 kB / 262,06 kB gzip** |
+| `npm run build` (sesudah) | 54 berkas; peta ukuran di A.69.3 (keluaran membuktikan halaman-halaman berat keluar sebagai potongan sendiri) |
+| `node docs/ukur-bundel-peramban.mjs` (bangun produksi di `vite preview` + Chrome ber-CDP; **harness baru**) | **exit 0** — Fase 1 membuka `/`: **6 berkas, 555,30 kB** (`index` 328,98 + `client` 209,85 + `query` 7,75 + `api` 3,76 + `mutation` 3,44 + `api` 1,52) dan beranda **benar-benar tampil** (bukan “Menyiapkan…”); Fase 2 menekan tautan “Daftar” di bilah atas (**navigasi dalam aplikasi, tanpa muat ulang**): hanya `HalamanDaftar` 2,35 kB + `MeterSandi` 1,17 kB menyusul, dan `#konten` berisi “Buat akun murid…”; Fase 3 membuka `/lupa-sandi` dari alamat: `HalamanLupaSandi` 2,27 kB + `useHitungMundur` 0,41 kB |
+| `npm run check` (checkJs/tsc) | **exit 0** (tanpa galat) |
+| `npm run lint` (ESLint) | **0 error** (2 peringatan lama di `HalamanDaftar.jsx`, `react-hooks/incompatible-library`, bukan dari perubahan ini) |
+| `npm run test` (Vitest seluruhnya) | **80 berkas / 760 tes lulus** (sebelumnya 79/752) |
+| `npx vitest run src/__tests__/halaman.test.js` | **6 lulus** — 27 halaman non-kerangka benar-benar bertanda `Symbol.for('react.lazy')` (impor statis tidak bertanda itu); peta pramuat menutup tiap jalur menu; rute berparameter (`/kuis/:slug`, `/kerjakan/12`, `/hasil/3`) & jalur asing **null**; beranda/auth sengaja null; **empat impor statis di `App.jsx` dikunci tes** (satu baris `import` statis baru sudah cukup mengembalikan seluruh kode ke bundel awal) |
+| `npx vitest run src/__tests__/shared/layout/kerangkaUmum.test.jsx` | **9 lulus** (2 baru) — (a) tiap tautan menu hasil render punya pemuat, kecuali beranda; (b) halaman malas: penanda `.memuat-halaman` (`role=status`) menempati **area konten** sementara kepala, menu, dan kaki halaman tetap ada, lalu digantikan isi halaman setelah modulnya siap (janji lazy dikendalikan tes, bukan bergantung timing) |
+| `docs/jalankan-smoke-ui.sh pengaturan` (Chrome sungguhan) | **12/12 lulus · exit 0** |
+| `docs/jalankan-smoke-ui.sh susun` (editor kuis, semua halaman malas) | **44/44 lulus · exit 0** |
+| `docs/jalankan-smoke-ui.sh slice04` (layar pengerjaan `/kerjakan` + hasil `/hasil`, keduanya kini malas) | **18/18 lulus · exit 0** — timer, autosave, kumpul, skor, tolak jawaban sesudah kumpul semuanya tetap benar |
+| `docs/jalankan-smoke-ui.sh nav` (responsif 390 px & 1280 px, menu → halaman malas) | **14/14 lulus · exit 0** |
+| `docs/jalankan-smoke-ui.sh kuis-materi` (editor materi + pemutar materi, dua halaman malas terberat: 30,84 kB & 16,28 kB) | **48/48 lulus · exit 0** |
+| `docs/jalankan-smoke-ui.sh slice07` (Monitor Ulangan + presence/SSE) | **21/21 lulus · exit 0** |
+
+Backend, realtime, dan basis data **tidak disentuh** putaran ini, jadi Pest/Pint/Redis tidak dijalankan ulang.
+
+### A.69.5 Berkas
+
+- **Baru (produk):** `frontend/src/halaman.js`, `frontend/src/shared/ui/MemuatHalaman.jsx`.
+- **Diubah (produk):** `frontend/src/App.jsx`, `frontend/src/shared/layout/KerangkaUmum.jsx`,
+  `frontend/src/shared/layout/KerangkaAuth.jsx`, `frontend/src/theme/theme.css`.
+- **Baru (uji):** `frontend/src/__tests__/halaman.test.js`.
+- **Diubah (uji):** `frontend/src/__tests__/shared/layout/kerangkaUmum.test.jsx`.
+- **Baru (harness):** `docs/ukur-bundel-peramban.mjs` — mengukur di peramban sungguhan berkas JS mana yang
+  benar-benar diminta (`Network` CDP), beserta resep menjalankannya di kepala berkas. Butuh
+  `npm run build` + `vite preview` + Chrome ber-CDP; backend tidak perlu karena halaman yang diukur
+  (beranda tamu dan halaman auth) tampil tanpa sesi.
+- **Diubah (docs):** `docs/penjelasan-fitur.md` (bagian **22** baru), `docs/laporan-pengujian.md` (entri ini),
+  `docs/handoff-sesi.md` (bagian 13).
+
+### A.69.6 Batasan jujur
+
+- **Angka bundel awal terbukti dua kali, tetapi tetap ada batasnya.** Keluaran `npm run build` dan pengukuran
+  `Network` CDP di Chrome cocok (6 berkas / 555,30 kB), tetapi pengukuran peramban itu dilakukan pada rute
+  **tanpa sesi** (beranda tamu, `/daftar`, `/lupa-sandi`) dan **tanpa backend** — jadi ia membuktikan
+  “awalnya hanya 6 berkas dan sisanya menyusul per halaman”, bukan menyebut waktu muat atau byte terkompresi
+  (angka gzip 176,35 kB tetap dari Vite). Jalur ber-sesi (panel samping guru, halaman kuis) tidak diukur
+  byte-nya, hanya dibuktikan tetap berfungsi oleh empat harness smoke di A.69.4.
+- **Belum ada harness peramban khusus rute malas.** Yang membuktikan di peramban adalah empat harness yang sudah
+  ada (`pengaturan`, `susun`, `slice04`, `nav`) — jadi terbukti halaman malas tetap terbuka dan berfungsi, tetapi
+  tidak ada satu pun yang mengukur “potongan mana yang diunduh kapan” atau kegagalan unduhan satu potongan.
+- **Jeda 150 ms penanda tunggu tidak diperiksa secara visual** (tidak ada pembanding tangkapan layar), hanya
+  ditetapkan lewat CSS dan alasannya.
+- **Belum ada kontrol negatif** untuk tes baru (tidak ada salinan tes yang dijalankan di atas kode lama untuk
+  membuktikan tesnya bergigit).
+- **Dua potongan vendor tetap besar dan tetap ikut di awal** karena memang selalu dipakai: `react-dom` + react +
+  zustand (328,98 kB) dan `axios` + `react-router` (209,84 kB). Itu batas teknis tumpukan yang dipilih, bukan sisa
+  kode halaman.
+- **Pramuat hanya untuk tautan menu panel samping.** Halaman auth (selain “Masuk”) dan rute berparameter
+  (`/kuis/:slug`, `/kerjakan/:id`) tidak dipramuat karena jalurnya baru diketahui saat diklik — halaman ini muncul
+  dengan penanda tunggu sejenak, bukan seketika.
+
+## A.70 — Patch kinerja & rekam diri dari luar repo (13 Oktober 2026)
+
+### A.70.1 Permintaan & asal berkas
+
+**“Cek file patch ini apakah relevan, jika ya apply.”** Berkasnya dua: `backend.patch` (8 berkas) dan
+`frontend.patch` (1 berkas), datang dari luar repo sebagai `files (68).zip`. Sesuai aturan AGENT.md
+(“pekerjaan luar repo wajib dicatat tempatnya dan tidak boleh dijadikan bukti tanpa diverifikasi ulang di repo
+ini”), isinya **diperiksa satu per satu lebih dulu**, lalu diterapkan dan diverifikasi ulang di sini — bukan
+dipercaya apa adanya.
+
+Relevan, karena:
+
+- kesembilan berkas tujuannya ada di repo ini dan cocok konteksnya (`git apply --check` bersih, tanpa konflik);
+- tiap hunk menunjuk masalah yang bisa dibaca di kode: soal hidup dimuat dua kali per permintaan, empat kueri
+  hitung soal di jalur mulai, satu `SELECT` + satu `argon2id` per baris CSV, dan `snapshot_soal` (JSON berisi
+  seluruh soal **beserta kunci**) ikut ditarik monitor/ekspor walau tidak pernah dibaca;
+- klaim di komentar patch diperiksa terhadap kenyataan kode, termasuk daftar kolom `KOLOM_RINGAN` yang
+  dibandingkan dengan seluruh kolom tabel `attempts` di migrasi (lengkap, hanya `snapshot_soal` yang dibuang)
+  dan satu-satunya pembaca kolom itu di seluruh `backend/app` (hanya `AttemptService`).
+
+### A.70.2 Yang diubah
+
+**Backend — kueri berulang (5 berkas produk):**
+
+- **`AttemptService` + `AttemptController`** — `soalHidup()` yang dulu `private` kini dipakai ulang: controller
+  memuatnya **sekali** lalu memberikannya ke `payloadSoal()` + `versiSoal()` (dulu dua kueri identik per
+  permintaan, di jalur yang ditekan serempak sekelas saat ulangan mulai). Kolom yang diambil juga dipersempit ke
+  yang benar-benar dibaca pemanggil (`id`, `konten`, `updated_at`).
+- **`AttemptService::mulai()`** — soal kuis dimuat sekali untuk hitungan, `skor_maksimal`, dan snapshot (dulu
+  empat kueri terpisah).
+- **`ImporMuridService`** — email akun non-murid dimuat **sekali per berkas** (dulu satu `SELECT` per baris CSV),
+  dan murid tanpa `kata_sandi` berbagi **satu** hash acak per impor (dulu `argon2id` dihitung per baris; ratusan
+  murid = lambat/timeout). Plaintext tetap dibuang — tak ada yang tahu kata sandi hasilnya.
+
+**Backend — kueri berat yang tak perlu (2 berkas) + 2 pengetatan:**
+
+- **`Attempt::scopeTanpaSnapshot()` (baru)** + dipakai di **`MonitorService`** dan **`EksporNilaiService`**: dua
+  jalur itu berhenti menarik `snapshot_soal`. Daftar kolomnya eksplisit, jadi **setiap migrasi yang menambah
+  kolom `attempts` wajib menambahkan kolomnya ke `KOLOM_RINGAN`** (dijaga komentar di model).
+- **`PenilaiAiService::antre()`** memakai `->afterCommit()`: `antre()` dipanggil dari dalam transaksi `tutup()`,
+  dan tanpa ini worker bisa membaca attempt **sebelum** commit sehingga `kandidat()` kosong dan saran AI hilang
+  diam-diam.
+- **`config/queue.php`** — `retry_after` koneksi `database` 90 → **180** detik (memakai `env()` yang sama, jadi
+  `.env` bisa menimpanya).
+
+**Frontend — dua cacat rekam diri (`UnggahLampiran.jsx`):**
+
+1. **Durasi selalu salah.** `onstop` disusun sekali saat tombol ditekan, jadi membaca `detikRekam` dari state di
+   dalamnya memberikan nilai basi — rekaman 3 atau 60 detik terkirim sebagai **0 detik**. Nilainya kini dibaca
+   dari ref (`durasiRekam`) yang diperbarui timer tiap detik.
+2. **Keluar dari soal saat merekam tidak dibersihkan.** Dulu perekam dan kamera/mikrofon tetap hidup dan
+   potongan rekaman yang ditinggalkan ikut terunggah. Kini `useEffect` pembersih menandai batal, menghentikan
+   perekam, mematikan tiap jalur media, dan `onstop` membuang potongannya tanpa mengunggah.
+
+### A.70.3 Angka (diukur, bukan kesan)
+
+| Yang diukur | Sebelum | Sesudah | Cara |
+| --- | --- | --- | --- |
+| Kueri untuk `payloadSoal` + `versiSoal` (attempt berjalan, 10 soal) | **2 kueri** | **1 kueri** | tes Pest sementara dengan `DB::listen`, dijalankan lalu **dihapus** lagi |
+| Durasi rekaman yang dikirim | **0 detik** (3 dtk maupun 60 dtk) | **3** dan **60** detik | tes baru `unggahLampiranRekam.test.jsx` |
+
+Tidak diukur (dan tidak diklaim) putaran ini: pengurangan kueri impor CSV, monitor, dan ekspor — ketiganya
+terbukti **benar** lewat suite yang hijau, bukan lewat hitungan kueri pada data besar.
+
+### A.70.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `git apply --check -p1` (kedua patch) | **bersih**, tanpa konflik; diterapkan dengan `git apply` dan hanya satu berkas yang perlu ditata ulang Pint |
+| `./vendor/bin/pint app/Sections/Attempt/Services/AttemptService.php` | **1 gaya diperbaiki** — `?\Illuminate\Support\Collection` ditulis penuh di tanda tangan; Pint menambahkan `use Illuminate\Support\Collection;` |
+| `./verify.sh` (**akhir putaran**) | **SEMUA HIJAU (exit 0)** — Pest **357 lulus (3356 asersi)** · Redis wajib **9/65** · Pint bersih · checkJs exit 0 · ESLint 0 error · Vitest **81 berkas / 763 tes** · realtime lulus |
+| `npx vitest run src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx` (sesudah) | **3 lulus** — durasi 3 detik terkirim apa adanya, keluar soal = jalur video & audio dihentikan dan **tidak ada unggahan**, batas 60 detik mengirim **60** |
+| **Kontrol negatif**: tes yang sama dijalankan atas kode **sebelum** patch | **3/3 MERAH** — `expected +0 to be 3` · jalur kamera `not called` · `expected +0 to be 60`; sesudah dipulihkan 3/3 hijau |
+| Tes Pest sementara pengukur kueri (lalu dihapus) | **`tanpa-ulang=2 q · dengan-ulang=1 q`**, 1 lulus |
+
+Backend dan frontend **disentuh** putaran ini, jadi seluruh isi `./verify.sh` dijalankan (bukan hanya sisi yang
+berubah). Harness GUI tidak dijalankan ulang: tidak ada berkas tampilan/harness yang berubah, dan rekam diri
+butuh kamera sungguhan (lihat batasan di bawah).
+
+### A.70.5 Berkas
+
+- **Diubah (backend):** `app/Sections/Attempt/Services/AttemptService.php`,
+  `app/Sections/Attempt/Http/Controllers/AttemptController.php`, `app/Sections/Attempt/Models/Attempt.php`,
+  `app/Sections/Presence/Services/MonitorService.php`, `app/Sections/Report/Services/EksporNilaiService.php`,
+  `app/Sections/School/Services/ImporMuridService.php`, `app/Sections/Scoring/Services/PenilaiAiService.php`,
+  `config/queue.php`.
+- **Diubah (frontend):** `frontend/src/sections/attempt/UnggahLampiran.jsx`.
+- **Baru (uji):** `frontend/src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx` (205 baris, 3 tes).
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 14).
+- **Commit:** `b1025b4` (rekam diri + tes) dan `90512a2` (kueri backend). Belum di-push.
+
+### A.70.6 Batasan jujur
+
+- **Patch ini datang dari luar repo.** Tempat asalnya dicatat di sini; seluruh isinya diperiksa baris per baris
+  sebelum diterapkan dan diverifikasi ulang di repo ini, jadi klaim di dalamnya tidak berdiri sebagai bukti.
+- **Perbaikan N+1 impor/monitor/ekspor hanya terbukti benar, bukan terbukti hemat** — tidak ada pengukuran
+  jumlah kueri atau waktu pada berkas CSV besar / kelas besar. Yang diukur hanya jalur query payload+versi.
+- **Rekam diri diuji di jsdom dengan `MediaRecorder` palsu**, bukan di peramban sungguhan dengan kamera: yang
+  dibuktikan adalah logika durasi dan pembersihan, bukan kualitas berkas rekaman. Tidak ada harness GUI untuk
+  kamera (perlu izin perangkat) dan itu memang belum dibuat.
+- **`KOLOM_RINGAN` harus disiplin dirawat:** migrasi baru yang menambah kolom `attempts` wajib memperbarui daftar
+  itu, atau akses kolom baru di monitor/ekspor akan melempar `MissingAttributeException` (di non-produksi).
+- **`retry_after` hanya naik untuk koneksi `database`** (yang dipakai `.env`); opsi Redis/beanstalk tetap 90 detik.
+  Kenaikannya juga menunda percobaan ulang pekerjaan yang benar-benar gagal, jadi ini tukar-menukar yang sadar.
+- **Belum di-push.** `origin/main` masih tertinggal 5 commit; pekerjaan besar A.61–A.69 (65 entri) juga masih
+  menumpuk di working tree dan belum ikut dikomit putaran ini.
