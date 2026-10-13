@@ -752,3 +752,23 @@ kalau ingin alur penuhnya.
 Cara mengulang: `docs/jalankan-smoke-ui.sh mapel` · `… avatar` · `… auth` · `… murid` (regresi), lalu
 `./verify.sh`. Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.64**. Sisa yang masih gelap: mode
 `hasil` pada `layar`, dan moderasi avatar pada antrean panjang.
+
+## 9. A.65 — pita palet panel samping tidak putus (13 Oktober 2026)
+
+Permintaan: *"panjangkan warna palet yang sidebar, jangan putus."* Terukur dan memang nyata: panel 260 px
+hanya berwarna sepanjang isi menunya (736 px). Di `/murid` tepi kiri berwarna sampai y=805 sementara kolom
+konten berakhir di y=4391 — **3.586 px tepi kiri kosong**, dan `elementFromPoint(8, 898)` mengembalikan
+`DIV.kerangka-badan`. Halaman pendek pun bersisa 95 px (`/beranda`).
+
+Perbaikan: satu berkas CSS, tiga suntingan di `frontend/src/theme/theme.css` — `.kerangka-badan-menu` jadi
+`align-items: stretch` + `min-height: calc(100vh - var(--tinggi-kepala))`, dan `.papan-nav` jadi
+`align-self: stretch`. Kebijakan 12 Okt (tanpa gulir sendiri, panel ikut tergulir) **tidak** diubah; yang
+memanjang hanya latarnya, dan isi menu tetap menempel di atas.
+
+Bukti: harness baru `docs/smoke-ui-palet-sidebar.mjs` **58/58** (5 halaman guru × terang & gelap, 1440×900),
+selisih pita vs kolom **0 px** di semua pengukuran, warna piksel sama dengan `var(--panel)` di kedua tema.
+Regresi: `sidebar` 9/9 · `nav` 14/14 · `mobile` 16/16 (1 dilewati dengan sadar) · `./verify.sh`
+**SEMUA HIJAU**. Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.65**.
+
+Cara mengulang: `docs/jalankan-smoke-ui.sh palet-sidebar`. Belum diukur: peran murid/tamu (harness masuk
+sebagai guru) dan lebar < 992 px (panelnya memang digantikan laci, diuji oleh `mobile`).

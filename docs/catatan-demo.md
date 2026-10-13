@@ -57,6 +57,7 @@ docs/jalankan-smoke-ui.sh slice06       # koreksi manual dua kolom + token
 docs/jalankan-smoke-ui.sh slice07      # Monitor Ulangan + anti-cheat
 docs/jalankan-smoke-ui.sh murid         # pencarian murid yang menyaring di server
 docs/jalankan-smoke-ui.sh setelan-sesi   # panel setelan sesi + tautan siswa (dibagikan ke kelas)
+docs/jalankan-smoke-ui.sh palet-sidebar  # pita warna panel samping sampai dasar kolom konten (terang & gelap)
 docs/jalankan-smoke-materi.sh           # pemutar materi + kuis sisipan
 docs/jalankan-smoke-perjalanan.sh       # peta perjalanan bertema + kenaikan pos (tiga latar)
 ```
@@ -78,6 +79,7 @@ done
 docs/jalankan-smoke-ui.sh mobile          # emulasi perangkat ponsel (A.44)
 docs/jalankan-smoke-ui.sh murid           # pencarian murid (A.51)
 docs/jalankan-smoke-ui.sh setelan-sesi     # ringkasan setelan sesi + tautan siswa (A.59)
+docs/jalankan-smoke-ui.sh palet-sidebar   # pita warna panel samping (A.65)
 docs/jalankan-smoke-perjalanan.sh
 docs/jalankan-smoke-materi.sh
 ```

@@ -2089,10 +2089,13 @@ a {
 /* Panel samping menempati 260 px di kiri pada layar ≥ lg; di bawah itu menu
  * pindah ke laci sehingga konten memakai lebar penuh.
  *
- * Pada layar ≥ lg panel menjadi kolom flex yang terkunci di layar: tingginya
- * selalu setinggi jendela dikurangi kepala lengket, jadi menu tidak ikut
- * tergulir walau kontennya panjang. Panel sengaja menempel rata ke tepi kiri
- * (tanpa jarak, tanpa sudut membulat) — hanya padding dalam yang tersisa. */
+ * Pada layar ≥ lg panel menemani halaman, bukan terkunci di layar: ia ikut
+ * tergulir (tanpa gulir sendiri) dan tingginya diregangkan mengikuti tinggi
+ * barisnya — lantainya setinggi jendela dikurangi kepala, langit-langitnya
+ * mengikuti konten. Jadi pita warnanya menutupi tepi kiri dari bawah kepala
+ * sampai dasar kolom konten, di halaman pendek maupun panjang. Panel sengaja
+ * menempel rata ke tepi kiri (tanpa jarak, tanpa sudut membulat) — hanya padding
+ * dalam yang tersisa. */
 .kerangka-badan {
   flex: 1 1 auto;
   min-height: 0;
@@ -2108,9 +2111,14 @@ a {
   .kerangka-badan-menu {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    /* `stretch`, bukan `flex-start` (13 Okt 2026): panel samping ikut setinggi
+     * barisnya supaya pita warnanya tidak putus di tengah halaman. Lantai tinggi
+     * baris = jendela − kepala, jadi di halaman pendek pun pitanya sampai dasar
+     * layar; di halaman panjang barisnya tumbuh mengikuti konten dan pitanya ikut. */
+    align-items: stretch;
     gap: 0;
     width: 100%;
+    min-height: calc(100vh - var(--tinggi-kepala));
   }
 
   /* Konten mengisi sisa lebar; jarak dari panel diatur di sini supaya panelnya
@@ -2138,16 +2146,22 @@ a {
 
 @media (min-width: 992px) {
   .papan-nav {
-    /* Panel tidak dikunci setinggi jendela lagi (12 Okt 2026): tingginya
-     * mengikuti isi menu dan ikut tergulir bersama halaman, sehingga TIDAK ada
-     * scrollbar di dalam panel. Cara lama (`position: sticky` + `height:
-     * 100vh − kepala` + `overflow-y: auto`) memang membuat menu selalu terlihat,
-     * tapi memaksa panel menggulir sendiri begitu jendela lebih pendek dari
-     * daftar menu (kelebihan 84 px di 1366×720, 184 px di 1024×620) — dan
-     * pemilik produk memilih menu yang ikut halaman ketimbang scrollbar itu. */
+    /* Panel tidak dikunci setinggi jendela lagi (12 Okt 2026): tidak ada
+     * scrollbar di dalamnya dan menu ikut tergulir bersama halaman. Cara lama
+     * (`position: sticky` + `height: 100vh − kepala` + `overflow-y: auto`) memang
+     * membuat menu selalu terlihat, tapi memaksa panel menggulir sendiri begitu
+     * jendela lebih pendek dari daftar menu (kelebihan 84 px di 1366×720, 184 px
+     * di 1024×620) — dan pemilik produk memilih menu yang ikut halaman ketimbang
+     * scrollbar itu.
+     *
+     * Penggantinya BUKAN tinggi otomatis sepanjang isi menu: panel diregangkan
+     * (`align-self: stretch`) mengikuti tinggi barisnya, jadi warnanya menutupi
+     * tepi kiri sampai bawah kolom konten (13 Okt 2026: "panjangkan warna palet
+     * yang sidebar, jangan putus"). Yang memanjang hanya latarnya — isi menu
+     * tetap menempel di atas karena kolom flex-nya rata-atas. */
     flex: 0 0 260px;
     width: 260px;
-    align-self: flex-start;
+    align-self: stretch;
     overflow: visible;
     /* Menempel rata ke tepi layar: tanpa sudut membulat dan tanpa bayangan
      * melayang. Padding dalam tetap ada agar teks menu tidak menyentuh tepi. */

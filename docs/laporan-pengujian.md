@@ -5570,3 +5570,79 @@ Catatan throttle jujur: sesi `auth` sesekali menabrak batas masuk per menit saat
   saklar produksi yang dilonggarkan untuk lulus.
 - **Halaman moderasi tidak diuji pada antrean yang panjang** (puluhan avatar terlapor sekaligus); yang
   dibuktikan adalah satu avatar per keputusan (pulihkan & hapus).
+
+## A.65 — Pita palet panel samping tidak putus lagi (13 Oktober 2026)
+
+Permintaan pemilik produk: *"panjangkan warna palet yang sidebar, jangan putus."*
+
+Keadaannya memang rusak, dan ini pertama kalinya terukur: panel samping selebar 260 px hanya berwarna
+sepanjang **isi menunya** (736 px), lalu berhenti. Di `/murid` tepi kiri berwarna sampai y=805, sedangkan
+kolom konten berakhir di y=4391 — **3.586 px tepi kiri kosong**, dan `document.elementFromPoint(8, 898)`
+mengembalikan `DIV.kerangka-badan`, bukan panelnya. Setelah halaman digulir 600 px, hanya irisan atas jendela
+yang masih berwarna. Di halaman pendek pun ada sisa: `/beranda` panel berhenti di y=805 sedangkan halamannya
+900 px — **95 px tepi kiri kosong di dasar layar**.
+
+Sebabnya dua baris: pada ≥992 px `.kerangka-badan-menu` memakai `align-items: flex-start` dan `.papan-nav`
+`align-self: flex-start` — panel sengaja tidak diregangkan (sisa kebijakan 12 Okt "tingginya mengikuti isi
+menu"), padahal yang diminta adalah sebaliknya: latarnya yang memanjang, bukan isinya.
+
+### A.65.1 Yang diubah (3 suntingan di satu berkas CSS)
+
+| Sebelum | Sesudah |
+| --- | --- |
+| `.kerangka-badan-menu { align-items: flex-start; }` | `align-items: stretch` + `min-height: calc(100vh - var(--tinggi-kepala))` — lantai tinggi baris = jendela − kepala |
+| `.papan-nav { align-self: flex-start; }` | `align-self: stretch` — panel ikut setinggi barisnya |
+| Komentar bagian masih menyebut panel "terkunci di layar setinggi jendela" (sisa kebijakan lama) | Komentar ditulis ulang: ikut tergulir, tanpa gulir sendiri, tingginya diregangkan mengikuti baris |
+
+Yang **tidak** berubah: tetap tanpa gulir sendiri, tetap ikut tergulir bersama halaman, tetap menempel rata ke
+tepi kiri (radius 0, tanpa bayangan), lebar tetap 260 px, dan **isi menu tetap menempel di atas** — yang
+memanjang hanya latarnya (di `/murid` jarak tautan terakhir → dasar panel 3.610 px).
+
+### A.65.2 Bukti (dijalankan, bukan klaim)
+
+Harness baru `docs/smoke-ui-palet-sidebar.mjs`, **58/58 lulus**, dijalankan lewat
+`docs/jalankan-smoke-ui.sh palet-sidebar`. Lima halaman guru (panjang isi berbeda, termasuk yang lebih pendek
+dari jendela) × dua tema, jendela 1440×900:
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| Pita menutupi sampai dasar kolom kiri | selisih **0 px** di kesepuluh pengukuran (mis. `/murid` nav 4.322 px bawah 4.391 ; `/kuis` 19.231/19.300 ; `/beranda` 832/901) — sebelumnya −95 s/d −18.495 px |
+| Tepi kiri berwarna panel di lima titik jendela | sepuluh pengukuran × lima titik, semuanya `panel` (sebelumnya titik terbawah = `DIV.kerangka-badan`) |
+| Sama setelah digulir 600 px | lima titik tetap `panel` (sebelumnya hanya irisan teratas) |
+| Warnanya benar-benar `var(--panel)` | `#1a2f65 → rgb(26, 47, 101)` (terang) dan `#14214a → rgb(20, 33, 74)` (gelap), sama di elemen maupun di kelima titik piksel |
+| Tetap tanpa gulir sendiri | `isi == muat`, `overflowY: visible` di semua pengukuran |
+
+Regresi sesudah perubahan CSS: `sidebar` **9/9** (termasuk "panel tidak bergulir sendiri" di 1440×900 dan
+1280×640, serta "panel ikut tergulir bersama halaman": top 69 → −431 pada gulirY 500) · `nav` **14/14** ·
+`mobile` **16/16** (1 dilewati dengan sadar: tidak ada kuis terbit di DB dev).
+
+`./verify.sh`: **SEMUA HIJAU** — Pest 344/3290, Redis wajib 9/65, Pint, checkJs, ESLint 0 error,
+Vitest 76 berkas/731 tes, realtime.
+
+**Cacat harness yang ketahuan dan diperbaiki sendiri** (dicatat supaya tidak terbaca sebagai kegagalan produk):
+(1) fungsi pengukur tidak dipanggil (`ukur` alih-alih `ukur()`) sehingga semua angka `undefined`; (2) titik ukur
+teratas `y=4` ternyata mengukur **kepala lengket** yang menutupi panel setelah digulir — kini titik pertama
+dimulai di bawah kepala. Dua kesalahan lain saat menulis ulang harness (emulasi jendela 1440×900 hilang, dan
+tema awal peramban headless ternyata gelap) sempat memunculkan 46 merah palsu; keduanya diperbaiki dengan
+memasang ulang `setDeviceMetricsOverride` dan menetapkan `data-bs-theme` eksplisit per lintasan.
+
+### A.65.3 Berkas
+
+- **Diubah (produk):** `frontend/src/theme/theme.css` — komentar bagian kerangka badan, `.kerangka-badan-menu`,
+  `.papan-nav`.
+- **Baru (harness):** `docs/smoke-ui-palet-sidebar.mjs` (58 pemeriksaan, dua tema).
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 9),
+  `docs/catatan-demo.md` (daftar perintah harness).
+
+### A.65.4 Batasan jujur
+
+- **Hanya peran guru yang diukur di sini.** Panel 260 px itu memang milik guru/admin; menu murid dan tamu
+  memakai CSS yang sama tetapi tidak diukur ulang pada putaran ini (harness ini masuk sebagai
+  `admin@sekolah.test`).
+- **Regangan hanya berlaku ≥992 px.** Di bawah itu panelnya digantikan laci; lebar ponsel diuji `mobile`
+  (16/16), bukan harness ini.
+- **Tingginya "ikut kolom konten", bukan "selalu setinggi jendela".** Di halaman pendek barisnya diberi lantai
+  setinggi jendela dikurangi kepala, jadi pitanya sampai dasar layar — itu keputusan desain yang diukur, bukan
+  kebetulan.
+- **Tidak ada pengukuran kontras baru.** Yang dibuktikan adalah nilai warnanya sama dengan `var(--panel)`
+  tema yang berlaku; kontras teks di atas panel tetap dijaga tes tema yang sudah ada.
