@@ -124,6 +124,7 @@ class EksporNilaiService
     private function baris(Kuis $kuis, Collection $soal): array
     {
         $attempts = Attempt::query()
+            ->tanpaSnapshot()
             ->where('quiz_id', $kuis->getKey())
             ->where('jenis', JenisAttempt::Ulangan->value)
             ->where('asli', true)

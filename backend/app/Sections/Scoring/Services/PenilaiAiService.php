@@ -113,7 +113,9 @@ final class PenilaiAiService
         $jumlah = count($this->kandidat($attempt));
 
         if ($jumlah > 0) {
-            NilaiAiAttempt::dispatch((int) $attempt->getKey());
+            // afterCommit: `antre()` dipanggil dari dalam transaksi `tutup()`; tanpa ini worker
+            // bisa membaca attempt sebelum commit dan `kandidat()` kosong (saran AI hilang diam-diam).
+            NilaiAiAttempt::dispatch((int) $attempt->getKey())->afterCommit();
         }
 
         return $jumlah;

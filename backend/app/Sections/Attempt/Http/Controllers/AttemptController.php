@@ -177,8 +177,10 @@ class AttemptController extends Controller
         ?DenyutProteksiService $denyut = null,
     ): AttemptResource {
         $resource = new AttemptResource($attempt);
-        $resource->soal = $service->payloadSoal($attempt);
-        $resource->versiSoal = $service->versiSoal($attempt);
+        // Soal hidup dimuat sekali untuk payload + versi (dulu dua query identik per request).
+        $hidup = $service->soalHidup($attempt);
+        $resource->soal = $service->payloadSoal($attempt, $hidup);
+        $resource->versiSoal = $service->versiSoal($attempt, $hidup);
         $resource->jawaban = $service->payloadJawaban($attempt);
         $resource->tim = $this->timMurid($attempt, $request);
 

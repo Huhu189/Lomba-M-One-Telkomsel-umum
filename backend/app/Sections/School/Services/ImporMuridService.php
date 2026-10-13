@@ -88,6 +88,20 @@ class ImporMuridService
             ->get()
             ->keyBy(fn (Murid $murid): string => (string) $murid->nis);
 
+        // Email akun non-murid dimuat SEKALI (dulu satu SELECT per baris CSV).
+        $akunBukanMurid = User::query()
+            ->where(static fn ($q) => $q->whereNull('role')->orWhere('role', '!=', 'murid'))
+            ->pluck('email')
+            ->mapWithKeys(static fn ($email): array => [mb_strtolower((string) $email) => true])
+            ->all();
+
+        // Murid tanpa kata_sandi di CSV berbagi SATU hash acak per impor (plaintext dibuang,
+        // tak ada yang tahu). Dulu argon2id dihitung per baris: ratusan murid = timeout.
+        $hashAcak = null;
+        $ambilHashAcak = static function () use (&$hashAcak): string {
+            return $hashAcak ??= Hash::make(Str::password(32));
+        };
+
         $galat = [];
         $sukses = 0;
         $total = 0;
@@ -106,6 +120,8 @@ class ImporMuridService
                 $mapKolom,
                 $kelasMap,
                 $muridPerNis,
+                $akunBukanMurid,
+                $ambilHashAcak,
                 $sekolahId,
                 &$galat,
                 &$sukses,
@@ -121,7 +137,7 @@ class ImporMuridService
 
                     $baris = $this->barisDariRecord($record, $mapKolom);
 
-                    $pesan = $this->validasiBaris($baris, $kelasMap, $muridPerNis, $nisTerpakai, $emailTerpakai);
+                    $pesan = $this->validasiBaris($baris, $kelasMap, $muridPerNis, $nisTerpakai, $emailTerpakai, $akunBukanMurid);
 
                     if ($pesan !== null) {
                         $galat[] = ['baris' => $nomorBaris, 'pesan' => $pesan];
@@ -142,13 +158,13 @@ class ImporMuridService
                     $batch[] = $baris;
 
                     if (count($batch) >= self::UKURAN_BATCH) {
-                        $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
+                        $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap, $ambilHashAcak);
                         $batch = [];
                     }
                 }
 
                 if ($batch !== []) {
-                    $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap);
+                    $sukses += $this->prosesBatch($batch, $sekolahId, $kelasMap, $ambilHashAcak);
                     $batch = [];
                 }
             });
@@ -286,6 +302,7 @@ class ImporMuridService
         Collection $muridPerNis,
         array $nisTerpakai,
         array $emailTerpakai,
+        array $akunBukanMurid,
     ): ?string {
         // Byte non-UTF-8 (encoding berkas aneh) dilaporkan per baris, bukan
         // dijadikan 500 yang menggulung seluruh impor tanpa keterangan (Q-17).
@@ -316,9 +333,7 @@ class ImporMuridService
             return 'Kelas "'.$baris['kelas'].'" tidak ditemukan.';
         }
 
-        $userAda = User::query()->where('email', $baris['email'])->first(['id', 'role']);
-
-        if ($userAda !== null && $userAda->role !== 'murid') {
+        if (isset($akunBukanMurid[mb_strtolower($baris['email'])])) {
             return 'Email sudah dipakai akun non-murid.';
         }
 
@@ -347,11 +362,11 @@ class ImporMuridService
      * @param  list<array{nama: string, email: string, kelas: string, nis: string|null, nisn: string|null, kata_sandi: string|null}>  $batch
      * @param  Collection<string, Kelas>  $kelasMap
      */
-    private function prosesBatch(array $batch, int $sekolahId, Collection $kelasMap): int
+    private function prosesBatch(array $batch, int $sekolahId, Collection $kelasMap, \Closure $ambilHashAcak): int
     {
         $jumlah = 0;
 
-        DB::transaction(function () use ($batch, $sekolahId, $kelasMap, &$jumlah): void {
+        DB::transaction(function () use ($batch, $sekolahId, $kelasMap, $ambilHashAcak, &$jumlah): void {
             $emails = array_column($batch, 'email');
             $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
 
@@ -362,7 +377,7 @@ class ImporMuridService
                     $user = User::query()->create([
                         'name' => $baris['nama'],
                         'email' => $baris['email'],
-                        'password' => Hash::make($baris['kata_sandi'] ?? Str::password(16)),
+                        'password' => $baris['kata_sandi'] !== null ? Hash::make($baris['kata_sandi']) : $ambilHashAcak(),
                         'status' => UserStatus::Aktif->value,
                     ]);
                     // email_verified_at tidak mass-assignable; admin yang mengimpor = terverifikasi.

@@ -49,6 +49,7 @@ class MonitorService
         $ringkasanKecurangan = $this->kecurangan->ringkasan($kuis);
 
         $attempt = Attempt::query()
+            ->tanpaSnapshot()
             ->where('quiz_id', $kuisId)
             ->with(['murid.user'])
             ->orderBy('attempt_no')

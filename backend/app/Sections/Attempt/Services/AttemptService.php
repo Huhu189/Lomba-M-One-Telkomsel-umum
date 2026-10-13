@@ -27,6 +27,7 @@ use App\Sections\Settings\Services\PengaturanService;
 use App\Sections\Tamu\Services\TamuService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -92,7 +93,11 @@ class AttemptService
             throw ValidationException::withMessages(['kuis' => 'Kuis ini bukan untuk kelasmu.']);
         }
 
-        if ($kuis->soal()->count() === 0) {
+        // Soal dimuat SEKALI: dipakai untuk hitungan, skor maksimal, dan snapshot
+        // (dulu 4 query terpisah di jalur yang ditekan serempak sekelas).
+        $soalKuis = $kuis->relationLoaded('soal') ? $kuis->soal : $kuis->soal()->get();
+
+        if ($soalKuis->isEmpty()) {
             throw ValidationException::withMessages(['kuis' => 'Kuis ini belum punya soal.']);
         }
 
@@ -193,13 +198,13 @@ class AttemptService
                 'mulai_at' => $sekarang,
                 'deadline_at' => $this->deadlineAttempt($kuis, $sekarang),
                 'terlambat' => false,
-                'jumlah_soal' => $kuis->soal()->count(),
+                'jumlah_soal' => $soalKuis->count(),
                 'jumlah_benar' => 0,
-                'skor_maksimal' => (float) $kuis->soal()->sum('skor'),
+                'skor_maksimal' => (float) $soalKuis->sum('skor'),
                 // Soal dibekukan di sini: apa pun yang guru ubah di bank soal
                 // sesudahnya tidak mengubah apa yang dibaca dan dinilai attempt
                 // ini (Q-09).
-                'snapshot_soal' => $this->snapshotSoal($kuis),
+                'snapshot_soal' => $this->snapshotSoal($kuis, $soalKuis),
             ]);
         } catch (UniqueConstraintViolationException) {
             // Dua permintaan "Mulai" yang datang bersamaan (dobel klik, dua tab,
@@ -659,9 +664,9 @@ class AttemptService
      *
      * @return array{acak_soal: bool, acak_opsi: bool, soal: array<int, array<string, mixed>>}
      */
-    private function snapshotSoal(Kuis $kuis): array
+    private function snapshotSoal(Kuis $kuis, ?Collection $soal = null): array
     {
-        $soal = $kuis->relationLoaded('soal') ? $kuis->soal : $kuis->soal()->get();
+        $soal ??= $kuis->relationLoaded('soal') ? $kuis->soal : $kuis->soal()->get();
 
         return [
             'acak_soal' => (bool) $kuis->acak_soal,
@@ -724,10 +729,10 @@ class AttemptService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function payloadSoal(Attempt $attempt): array
+    public function payloadSoal(Attempt $attempt, ?array $hidup = null): array
     {
         $payload = [];
-        $hidup = $this->soalHidup($attempt);
+        $hidup ??= $this->soalHidup($attempt);
 
         foreach ($this->soalTerurut($attempt) as $nomor => $soal) {
             // Attempt yang MASIH berjalan membaca ISINYA dari baris soal yang
@@ -849,7 +854,7 @@ class AttemptService
      *
      * @return array<int, Soal>
      */
-    private function soalHidup(Attempt $attempt): array
+    public function soalHidup(Attempt $attempt): array
     {
         if (! $attempt->berjalan()) {
             return [];
@@ -863,7 +868,8 @@ class AttemptService
 
         $peta = [];
 
-        foreach (Soal::query()->whereIn('id', $id)->get() as $satu) {
+        // Hanya kolom yang dibaca pemanggil (konten + updated_at): kunci/pembahasan tidak ikut dimuat.
+        foreach (Soal::query()->whereIn('id', $id)->get(['id', 'konten', 'updated_at']) as $satu) {
             $peta[(int) $satu->getKey()] = $satu;
         }
 
@@ -886,10 +892,10 @@ class AttemptService
      *
      * @return array{versi: string, diubah_at: string|null, jumlah_soal: int}
      */
-    public function versiSoal(Attempt $attempt): array
+    public function versiSoal(Attempt $attempt, ?array $hidup = null): array
     {
         $id = array_map(static fn (Soal $soal): int => (int) $soal->getKey(), $this->soalTerurut($attempt));
-        $hidup = $this->soalHidup($attempt);
+        $hidup ??= $this->soalHidup($attempt);
 
         $jejak = [];
         $terbaru = null;

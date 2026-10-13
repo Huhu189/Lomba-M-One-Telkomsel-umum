@@ -48,6 +48,24 @@ class Attempt extends Model
         'snapshot_soal' => 'array',
     ];
 
+    /**
+     * Semua kolom KECUALI `snapshot_soal` (salinan seluruh soal + kunci, berat).
+     * Dipakai daftar/laporan/monitor yang tidak membaca isi soal.
+     * Mengakses `snapshot_soal` dari hasil scope ini melempar MissingAttributeException di non-produksi.
+     */
+    public const KOLOM_RINGAN = [
+        'id', 'school_id', 'quiz_id', 'student_id', 'team_id', 'jenis', 'attempt_no', 'asli',
+        'status', 'aktif', 'seed', 'mulai_at', 'deadline_at', 'dikumpulkan_at', 'terlambat',
+        'jumlah_soal', 'skor', 'skor_maksimal', 'jumlah_benar', 'idempotency_key',
+        'created_at', 'updated_at',
+    ];
+
+    /** @param  Builder<Attempt>  $query */
+    public function scopeTanpaSnapshot(Builder $query): void
+    {
+        $query->select(self::KOLOM_RINGAN);
+    }
+
     /** @return BelongsTo<Sekolah, $this> */
     public function sekolah(): BelongsTo
     {
