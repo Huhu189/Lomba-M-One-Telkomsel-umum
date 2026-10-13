@@ -672,22 +672,6 @@ export function IkonTipeTekaSilangMini(props) {
   )
 }
 
-/**
- * Ikon ukuran tulisan — dua huruf A yang berbeda tinggi (kiri besar, kanan
- * kecil). Dipakai tombol "Ukuran tulisan: Normal/Besar" di bilah atas.
- * @param {PropsIkon} props
- */
-export function IkonHuruf(props) {
-  return (
-    <KerangkaIkon {...props}>
-      <path d="M3 19 8 7l5 12" />
-      <path d="M4.8 15h6.4" />
-      <path d="M14.5 19 18 10.5 21.5 19" />
-      <path d="M15.7 16.5h4.6" />
-    </KerangkaIkon>
-  )
-}
-
 /** Peta nama ikon untuk demo dan pemakaian dinamis. */
 /** Ikon kaca pembesar (pencarian data induk). @param {PropsIkon} props */
 export function IkonCari(props) {
@@ -699,7 +683,23 @@ export function IkonCari(props) {
   )
 }
 
+/**
+ * Ikon tautan (dua mata rantai saling mengait) — dipakai tombol "Buat tautan
+ * siswa" di langkah tinjau editor kuis, supaya tombolnya terbaca sebagai
+ * "menghasilkan tautan", bukan "mengirim".
+ * @param {PropsIkon} props
+ */
+export function IkonTautan(props) {
+  return (
+    <KerangkaIkon {...props}>
+      <path d="M10 13a5 5 0 0 0 7.1.5l2.4-2.4a5 5 0 0 0-7.1-7.1L11 5.4" />
+      <path d="M14 11a5 5 0 0 0-7.1-.5L4.5 12.9a5 5 0 0 0 7.1 7.1l1.4-1.4" />
+    </KerangkaIkon>
+  )
+}
+
 export const daftarIkon = {
+  tautan: IkonTautan,
   rumah: IkonRumah,
   cari: IkonCari,
   lembarSoal: IkonLembarSoal,
@@ -737,5 +737,4 @@ export const daftarIkon = {
   grafik: IkonGrafik,
   putar: IkonPutar,
   jeda: IkonJeda,
-  huruf: IkonHuruf,
 }

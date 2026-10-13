@@ -11,8 +11,7 @@
  * Setiap menu punya ikon sendiri: Kuis memakai ikon lembar soal, Bank Soal
  * memakai ikon papan, jadi keduanya tidak lagi tampak sama.
  *
- * Bilah atas juga membawa dua preferensi tampilan milik pengguna: ukuran
- * tulisan (Normal/Besar, papan putaran 3) dan tema terang/gelap.
+ * Bilah atas juga membawa preferensi tampilan milik pengguna: tema terang/gelap.
  */
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
@@ -41,7 +40,6 @@ import { Tombol, TombolTaut } from '../ui/Tombol.jsx'
 import { tampilkanToast } from '../ui/toast.jsx'
 import Merek from './Merek.jsx'
 import TombolTema from './TombolTema.jsx'
-import TombolUkuran from './TombolUkuran.jsx'
 
 /**
  * Huruf awal nama untuk avatar.
@@ -255,7 +253,6 @@ export default function KerangkaUmum() {
           )}
 
           <div className="d-flex gap-2 align-items-center">
-            <TombolUkuran />
             <TombolTema />
           </div>
 

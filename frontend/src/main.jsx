@@ -7,12 +7,11 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import './theme/theme.css'
 import App from './App.jsx'
 import { klienQuery } from './shared/store/klienQuery.js'
-import { mulaiTema, mulaiUkuran } from './shared/store/tema.js'
+import { mulaiTema } from './shared/store/tema.js'
 
 // Pasang preferensi tampilan sebelum render pertama agar tidak berkedip
-// (terang → gelap, tulisan kecil → besar).
+// (terang → gelap).
 mulaiTema()
-mulaiUkuran()
 
 const container = document.getElementById('root')
 if (!container) {
