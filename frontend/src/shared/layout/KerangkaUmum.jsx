@@ -12,8 +12,14 @@
  * memakai ikon papan, jadi keduanya tidak lagi tampak sama.
  *
  * Bilah atas juga membawa preferensi tampilan milik pengguna: tema terang/gelap.
+ *
+ * Isi halaman datang dari rute malas (`src/halaman.js`), jadi `<Outlet />`
+ * dibungkus `Suspense`: penandanya hanya menempati area konten, sedangkan menu,
+ * bilah atas, dan kaki halaman tetap di tempatnya — tidak ada layar kosong.
+ * Tautan menu memulai unduhan modul halamannya saat disorot/difokus, supaya
+ * klik pertama tidak perlu menunggu.
  */
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -34,8 +40,10 @@ import {
   IkonGear,
 } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
+import { pramuatHalaman } from '../../halaman.js'
 import { useAuthStore } from '../../sections/auth/authStore.js'
 import { ambilHealth } from '../api/health.js'
+import MemuatHalaman from '../ui/MemuatHalaman.jsx'
 import { Tombol, TombolTaut } from '../ui/Tombol.jsx'
 import { tampilkanToast } from '../ui/toast.jsx'
 import Merek from './Merek.jsx'
@@ -80,7 +88,16 @@ function StatusSistem() {
  */
 function TautBagian({ to, ikon: Ikon, children, className = 'papan-nav-taut', onClick }) {
   return (
-    <NavLink className={className} to={to} onClick={onClick}>
+    <NavLink
+      className={className}
+      to={to}
+      onClick={onClick}
+      // Sorot/fokus = niat membuka. Modul halaman itu diunduh lebih awal,
+      // sehingga halaman malas tetap terbuka seketika saat diklik (dan
+      // papan sentuh memicu `mouseenter` sebelum kliknya).
+      onMouseEnter={() => pramuatHalaman(to)}
+      onFocus={() => pramuatHalaman(to)}
+    >
       <Ikon size={20} />
       <span>{children}</span>
     </NavLink>
@@ -119,7 +136,9 @@ const GRUP_GURU = /** @type {GrupMenu[]} */ ([
     item: [
       { to: RUTE.materi, ikon: IkonBuku, label: 'Materi' },
       { to: RUTE.avatar, ikon: IkonPerisai, label: 'Moderasi Avatar' },
-      { to: RUTE.pengaturan, ikon: IkonGear, label: 'Pengaturan' },
+      // Halaman akun: nama, kata sandi, tampilan. Setelan ulangan ada di tiap
+      // kuis, jadi menunya tidak lagi bernama "Pengaturan".
+      { to: RUTE.pengaturan, ikon: IkonGear, label: 'Akun' },
     ],
   },
 ])
@@ -151,6 +170,8 @@ const GRUP_MURID = /** @type {GrupMenu[]} */ ([
       { to: RUTE.kuis, ikon: IkonLembarSoal, label: 'Ulangan Saya' },
       { to: RUTE.progresTema, ikon: IkonGrafik, label: 'Progres Tema' },
       { to: RUTE.badge, ikon: IkonBintang, label: 'Lencana' },
+      // Murid juga punya akun sendiri (nama, kata sandi, tema).
+      { to: RUTE.pengaturan, ikon: IkonGear, label: 'Akun' },
     ],
   },
 ])
@@ -281,7 +302,9 @@ export default function KerangkaUmum() {
         <div className="kerangka-isi">
           <main id="konten" className="badan-app" tabIndex={-1}>
             <div className="container">
-              <Outlet />
+              <Suspense fallback={<MemuatHalaman />}>
+                <Outlet />
+              </Suspense>
             </div>
           </main>
 

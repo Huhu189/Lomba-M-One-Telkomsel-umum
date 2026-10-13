@@ -3,6 +3,12 @@
  * - KerangkaAuth: halaman masuk/daftar/dll (panel + formulir).
  * - KerangkaUmum: beranda, data induk, dan halaman lain (header + footer).
  * Sesi dipulihkan saat dimuat agar refresh tidak "mengeluarkan" pengguna.
+ *
+ * Halaman dimuat malas per rute (`React.lazy`, lihat `halaman.js`) supaya
+ * aplikasi tidak mengunduh seluruh kode sekaligus. Yang statis hanya kerangka,
+ * beranda, halaman masuk, dan 404 — halaman lain baru diunduh saat dibuka, dan
+ * `Suspense`-nya dipasang di dalam kerangka (lihat `KerangkaUmum`/
+ * `KerangkaAuth`) supaya menu dan kaki halaman tetap tampil selama menunggu.
  */
 import { useEffect } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
@@ -10,37 +16,42 @@ import { ToastHost, tampilkanToast } from './shared/ui/toast.jsx'
 import KerangkaAuth from './shared/layout/KerangkaAuth.jsx'
 import KerangkaUmum from './shared/layout/KerangkaUmum.jsx'
 import { RUTE } from './routes.js'
+// Statis (selalu ada di bundel awal): kerangka ulangan, halaman pertama yang
+// dilihat semua orang, pintu masuk, dan 404.
 import Beranda from './sections/home/Beranda.jsx'
 import HalamanTidakDitemukan from './sections/home/HalamanTidakDitemukan.jsx'
 import HalamanMasuk from './sections/auth/HalamanMasuk.jsx'
-import HalamanDaftar from './sections/auth/HalamanDaftar.jsx'
-import HalamanLupaSandi from './sections/auth/HalamanLupaSandi.jsx'
-import HalamanAturUlangSandi from './sections/auth/HalamanAturUlangSandi.jsx'
-import HalamanVerifikasiEmail from './sections/auth/HalamanVerifikasiEmail.jsx'
-import HalamanPerluVerifikasi from './sections/auth/HalamanPerluVerifikasi.jsx'
-import HalamanKelas from './sections/school/HalamanKelas.jsx'
-import HalamanBankSoal from './sections/question/HalamanBankSoal.jsx'
-import HalamanTag from './sections/question/HalamanTag.jsx'
-import HalamanKuisDetail from './sections/quiz/HalamanKuisDetail.jsx'
-import PilihHalamanKuis from './sections/quiz/PilihHalamanKuis.jsx'
 import BatasGalatUlangan from './sections/attempt/BatasGalatUlangan.jsx'
-import HalamanKerjakan from './sections/attempt/HalamanKerjakan.jsx'
-import HalamanHasil from './sections/attempt/HalamanHasil.jsx'
-import HalamanMapel from './sections/school/HalamanMapel.jsx'
-import HalamanMurid from './sections/school/HalamanMurid.jsx'
-import HalamanImporMurid from './sections/school/HalamanImporMurid.jsx'
-import HalamanPengaturan from './sections/settings/HalamanPengaturan.jsx'
-import HalamanPeringkat from './sections/report/HalamanPeringkat.jsx'
-import HalamanLaporan from './sections/report/HalamanLaporan.jsx'
-import HalamanBadge from './sections/report/HalamanBadge.jsx'
-import HalamanProgresTema from './sections/report/HalamanProgresTema.jsx'
-import HalamanKoreksi from './sections/scoring/HalamanKoreksi.jsx'
-import HalamanTim from './sections/attempt/HalamanTim.jsx'
-import HalamanMonitor from './sections/cheat/HalamanMonitor.jsx'
-import HalamanLayar from './sections/presence/HalamanLayar.jsx'
-import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
-import EditorMateri from './sections/material/EditorMateri.jsx'
-import PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'
+// Malas: tiap halaman jadi berkas terpisah, diunduh saat rutenya dibuka.
+import {
+  EditorMateri,
+  HalamanAkun,
+  HalamanAturUlangSandi,
+  HalamanBadge,
+  HalamanBankSoal,
+  HalamanDaftar,
+  HalamanHasil,
+  HalamanImporMurid,
+  HalamanKelas,
+  HalamanKerjakan,
+  HalamanKoreksi,
+  HalamanKuisDetail,
+  HalamanLaporan,
+  HalamanLayar,
+  HalamanLupaSandi,
+  HalamanMapel,
+  HalamanMonitor,
+  HalamanMurid,
+  HalamanPeringkat,
+  HalamanPerluVerifikasi,
+  HalamanProgresTema,
+  HalamanTag,
+  HalamanTim,
+  HalamanVerifikasiEmail,
+  PilihHalamanAvatar,
+  PilihHalamanKuis,
+  PilihHalamanMateri,
+} from './halaman.js'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
 import { tujuanLanjut } from './sections/quiz/setelanSesi.js'
 
@@ -154,7 +165,6 @@ export default function App() {
             <Route path={RUTE.mapel} element={<HalamanMapel />} />
             <Route path={RUTE.murid} element={<HalamanMurid />} />
             <Route path={RUTE.imporMurid} element={<HalamanImporMurid />} />
-            <Route path={RUTE.pengaturan} element={<HalamanPengaturan />} />
             <Route path={RUTE.bankSoal} element={<HalamanBankSoal />} />
             <Route path={RUTE.tag} element={<HalamanTag />} />
 
@@ -173,6 +183,10 @@ export default function App() {
 
           {/* Kuis (slice 03) — guru mengelola, murid melihat daftar ulangannya. */}
           <Route element={<HanyaMasuk />}>
+            {/* Setelan akun sendiri: milik SEMUA pengguna, jadi tidak lagi di
+                gerbang guru. Setelan per ulangan ada di halaman detail kuis. */}
+            <Route path={RUTE.pengaturan} element={<HalamanAkun />} />
+
             <Route path={RUTE.kuis} element={<PilihHalamanKuis />} />
             <Route path={RUTE.kuisDetail} element={<HalamanKuisDetail />} />
 

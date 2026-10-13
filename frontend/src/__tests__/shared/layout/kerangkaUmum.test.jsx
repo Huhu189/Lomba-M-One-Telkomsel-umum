@@ -4,11 +4,13 @@
  * tombol itu, dan setiap tautan bagian membawa ikon (bukan hanya teks).
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { act } from 'react'
+import { act, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import KerangkaUmum from '../../../shared/layout/KerangkaUmum.jsx'
+import { pemuatHalaman } from '../../../halaman.js'
+import { RUTE } from '../../../routes.js'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 import { klienQuery } from '../../../shared/store/klienQuery.js'
 
@@ -80,7 +82,11 @@ describe('KerangkaUmum — navigasi hamburger', () => {
     const laci = cari('#laci-navigasi')
     expect(laci).not.toBeNull()
     expect(laci?.textContent).toContain('Bank Soal')
-    expect(laci?.textContent).toContain('Pengaturan')
+    // Menu akun: halaman /pengaturan kini berisi setelan akun sendiri, jadi
+    // namanya "Akun" — bukan lagi "Pengaturan" (setelan ulangan pindah ke
+    // halaman kuis masing-masing).
+    expect(laci?.textContent).toContain('Akun')
+    expect(laci?.querySelector('a[href="/pengaturan"]')).not.toBeNull()
     // Tombol berubah menjadi penutup.
     expect(cari('button[aria-label="Tutup menu"]')).not.toBeNull()
   })
@@ -94,12 +100,14 @@ describe('KerangkaUmum — navigasi hamburger', () => {
     expect(taut?.textContent).toContain('Kelas')
   })
 
-  it('murid memakai menunya sendiri (Ulangan Saya)', () => {
+  it('murid memakai menunya sendiri, termasuk akun pribadinya', () => {
     pasang({ ...akun, role: 'murid', name: 'Murid A' })
 
     const nav = cari('nav.papan-nav')
     expect(nav?.textContent).toContain('Ulangan Saya')
     expect(nav?.textContent).not.toContain('Bank Soal')
+    // Setelan akun milik semua pengguna, bukan hanya guru.
+    expect(nav?.querySelector('a[href="/pengaturan"]')).not.toBeNull()
   })
 
   it('menu guru dikelompokkan, bukan sembilan pil datar (temuan 07)', () => {
@@ -133,5 +141,80 @@ describe('KerangkaUmum — navigasi hamburger', () => {
 
     expect(cari('button[aria-label="Buka menu"]')).toBeNull()
     expect(cari('#laci-navigasi')).toBeNull()
+  })
+
+  it('setiap tautan menu punya modul halaman yang bisa dipramuat', () => {
+    pasang(akun)
+
+    const taut = [...(cari('nav.papan-nav')?.querySelectorAll('a[href]') ?? [])]
+    expect(taut.length).toBeGreaterThan(5)
+
+    for (const a of taut) {
+      const jalur = a.getAttribute('href') || ''
+      // Beranda sengaja ikut bundel awal, jadi tidak perlu pemuat sendiri.
+      if (jalur === RUTE.beranda) continue
+      expect(typeof pemuatHalaman(jalur), `pemuat untuk ${jalur}`).toBe('function')
+    }
+  })
+})
+
+describe('KerangkaUmum — rute malas', () => {
+  /**
+   * Pasang halaman `React.lazy` sebagai isi rute, dengan janjinya kita kendalikan
+   * sendiri supaya urutannya pasti: penanda memuat dulu, isi halaman setelah
+   * modulnya benar-benar siap (bukan bergantung timing impor sungguhan).
+   */
+  function pasangMalas() {
+    /** @type {{ selesai: () => Promise<void> }} */
+    const kendali = { selesai: async () => {} }
+    /** @type {(nilai: { default: import('react').ComponentType }) => void} */
+    let selesaikan = () => {}
+
+    const Malas = lazy(
+      () =>
+        new Promise((/** @type {(nilai: { default: import('react').ComponentType }) => void} */ resolve) => {
+          selesaikan = resolve
+        }),
+    )
+
+    useAuthStore.setState({ user: akun })
+    act(() => {
+      root.render(
+        <QueryClientProvider client={klienQuery}>
+          <MemoryRouter initialEntries={['/uji']}>
+            <Routes>
+              <Route element={<KerangkaUmum />}>
+                <Route path="/uji" element={<Malas />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+    })
+
+    kendali.selesai = async () => {
+      await act(async () => {
+        selesaikan({ default: () => <p>Isi halaman uji</p> })
+      })
+    }
+    return kendali
+  }
+
+  it('penanda memuat hanya menempati area konten, kerangka tetap utuh', async () => {
+    const kendali = pasangMalas()
+
+    const penanda = cari('.memuat-halaman')
+    expect(penanda).not.toBeNull()
+    expect(penanda?.getAttribute('role')).toBe('status')
+    // Menu, kepala, dan kaki halaman tidak ikut hilang saat halaman diunduh.
+    expect(cari('header.kepala-app')).not.toBeNull()
+    expect(cari('nav.papan-nav')).not.toBeNull()
+    expect(cari('footer.kaki-app')).not.toBeNull()
+    expect(cari('#konten')?.textContent).not.toContain('Isi halaman uji')
+
+    await kendali.selesai()
+
+    expect(cari('.memuat-halaman')).toBeNull()
+    expect(cari('#konten')?.textContent).toContain('Isi halaman uji')
   })
 })

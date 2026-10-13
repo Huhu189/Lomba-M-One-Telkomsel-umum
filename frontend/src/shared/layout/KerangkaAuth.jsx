@@ -1,10 +1,15 @@
 /**
  * Kerangka halaman auth: panel navy (merek, nilai jual) + area formulir.
  * Di HP panel menyusut jadi pita atas dan kartu formulir menimpanya sedikit.
+ *
+ * Formulirnya dimuat malas (`src/halaman.js`), jadi `<Outlet />` dibungkus
+ * `Suspense` — panel merek sudah tampil lebih dulu, bukan layar kosong.
  */
+import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { IkonJam, IkonPerisai, IkonBintang } from '../../icons.jsx'
 import { HiasanLatar } from '../ui/Maskot.jsx'
+import MemuatHalaman from '../ui/MemuatHalaman.jsx'
 import Merek from './Merek.jsx'
 import TombolTema from './TombolTema.jsx'
 
@@ -57,7 +62,9 @@ export default function KerangkaAuth() {
       </div>
 
       <main id="konten" className="auth-isi" tabIndex={-1}>
-        <Outlet />
+        <Suspense fallback={<MemuatHalaman />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
