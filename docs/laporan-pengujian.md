@@ -5724,3 +5724,76 @@ Sesudah diperbaiki, pemeriksaan itu benar-benar berjalan dan lulus dengan angka 
   cakupan "GUI".
 - **Yang tidak diukur ulang:** peran murid/tamu pada halaman guru (hanya sebagian harness yang masuk sebagai
   murid), dan perangkat sentuh nyata.
+
+## A.67 — Audit pemeriksaan mati di seluruh harness GUI (13 Oktober 2026)
+
+Lanjutan A.66: setelah ditemukan dua cacat alat ukur di `smoke-ui-mobile.mjs` (status `'terbit'` yang tidak
+ada di API + amplop `d.data` pada larik telanjang), pola kerusakan yang sama dicari ke **seluruh** harness GUI
+(`docs/*.mjs`, 33 berkas + `audit-ui.mjs`).
+
+### A.67.1 Empat pola yang dicari
+
+| # | Pola | Mengapa berbahaya |
+| --- | --- | --- |
+| 1 | String status dibandingkan dengan nilai yang tidak ada di enum backend | penyaring selalu kosong → pemeriksaan dilewati |
+| 2 | Amplop jawaban ditebak salah (larik telanjang vs `{ data: [...] }` vs paginasi) | pembacaan kosong → "tidak ada data" palsu |
+| 3 | Pemeriksaan **negatif** ("tidak ada X") dengan cadangan `?? []` | bukti hilang ⇒ `every`/`length === 0` bernilai benar ⇒ **lulus tanpa bukti** |
+| 4 | Objek penjaga yang bisa `null` (`m?.x ?? []`) pada pemeriksaan negatif | sama seperti #3: panel/halaman tidak ada ⇒ justru lulus |
+
+Untuk pola #2, seluruh `paginate(` di `backend/app` dihitung: **hanya dua** endpoint yang berpaginasi —
+`/v1/soal` (`SoalController`) dan `/v1/murid` (`MuridController`). Jadi setiap pembacaan `.isi?.data` hanya sah
+pada dua jalur itu; dipakai di `/v1/kuis` (larik telanjang), `.data` **selalu** kosong.
+
+### A.67.2 Hasil pemeriksaan berkas per berkas
+
+| Berkas | Temuan | Tindakan |
+| --- | --- | --- |
+| `smoke-ui-mobile.mjs` | #1 + #2 (status `'terbit'`, `d.data`) — bagian "layar kuis di ponsel" **mati** | sudah diperbaiki di A.66 |
+| `smoke-ui-slice07.mjs` | #3 — `(audit.isi ?? []).every(...)` lulus pada jawaban tak terpakai (isi `null`) atau larik kosong | **diperkuat**: wajib `status === 200`, benar-benar larik, dan jumlah "menunggu" **turun tepat satu** |
+| `smoke-ui-kuis-materi.mjs` | #4 — tiga negasi `(m?.… ?? []).length === 0` lulus saat `__ukur()` mengembalikan `null`; dua negasi lain memakai `nilai.x ?? []` (kunci ukur bisa hilang) | **ditutup**: `m` yang tidak terukur = GAGAL, daftar ukur wajib ada (`Array.isArray`) |
+| `audit-ui.mjs` | jatuh ke `idKuis = 1` bila daftar kuis kosong — terlihat "BERSIH" tanpa jejak halaman mana yang diaudit | **diperjelas**: mencetak `kuis uji: #248 (“Smoke layar 130244”)` |
+| `smoke-ui-luring.mjs` | status `'terkirim'`/`'lokal'` | **sah** — konstanta antrean luring di `frontend/src/sections/attempt/riwayatJawaban.js` |
+| `smoke-ui-slice06.mjs` | status `'perlu_tinjau'`, `'dinilai'` | **sah** — ada di enum backend |
+| `smoke-ui-slice05.mjs` | negasi `(mati.isi?.peringkat ?? []).length === 0` | **aman** — dijaga `status === 200` + `tampil === false` + `total === 1` pada objek yang sama |
+| `smoke-ui-kelas.mjs` | negasi "0 permintaan" (`permintaan.length === 0`) | **aman** — ada kontrol positif di berkas yang sama (`hitung('/v1/sesi')`/`hitung('/v1/auth/saya')` harus tepat 1, sehingga perekamnya terbukti hidup) |
+| `smoke-ui-auth.mjs`, `slice04/05/06/07`, `layar`, `luring`, `impor-murid`, `kuis-materi`, `materi`, `perjalanan`, `avatar` | 10 pembacaan daftar murid | **benar** — semuanya membaca `?? .data` pada `/v1/murid` (paginasi) atau dijaga `Array.isArray` |
+| `slice03` | `d.meta?.total` pada `/v1/soal` | **benar** — `/v1/soal` memang berpaginasi |
+
+### A.67.3 Kontrol negatif (A/B) — membuktikan pemeriksaan yang diperkuat benar-benar bergigi
+
+Dua salinan `smoke-ui-slice07.mjs` di `/tmp` diberi **respons tak terpakai yang sama** untuk
+`kejadian?status=menunggu` (isi `null`, seperti saat badan jawaban bukan JSON); satu memakai klaim lama, satu
+klaim baru:
+
+| Varian | Hasil | Artinya |
+| --- | --- | --- |
+| klaim lama `(audit.isi ?? []).every(...)` | **21/21 lulus · exit 0** | 21/21 saat buktinya **tidak ada** — buta |
+| klaim baru (200 + larik + jumlah turun 1) | **20/21 · exit 1** · `GAGAL · catatan yang ditinjau keluar dari antrean menunggu · status 200 · menunggu 1 → bukan larik` | menangkap jawaban yang tidak terpakai |
+
+(Proses kontrol sempat gagal dua kali karena `${jalur}` disisipkan **tanpa** `JSON.stringify` sehingga menjadi
+literal regex di halaman — kesalahan alat kontrol, bukan produk; varian final memakai `JSON.stringify(jalur)`.)
+
+### A.67.4 Bukti sesudah perbaikan (dijalankan ulang)
+
+| Perintah | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh slice07` | **21/21 lulus · exit 0** — baris baru berbunyi `LULUS · catatan yang ditinjau keluar dari antrean menunggu · status 200 · menunggu 1 → 0` |
+| `docs/jalankan-smoke-ui.sh kuis-materi` | **48/48 lulus · exit 0** — lima negasi kini mencetak buktinya (`[]`, `bisu (muted)`) dan akan GAGAL bila panel tidak terukur |
+| `node docs/audit-ui.mjs kuis` (saringan, Chrome + layanan hidup) | **exit 0 · semua halaman `kuis` BERSIH · ringkasan `{}`**, plus baris baru `kuis uji: #248 (“Smoke layar 130244”)` |
+
+### A.67.5 Berkas
+
+- **Diubah (nol berkas produk):** `docs/smoke-ui-slice07.mjs`, `docs/smoke-ui-kuis-materi.mjs`, `docs/audit-ui.mjs`.
+- **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 11 + tabel status).
+
+### A.67.6 Batasan jujur
+
+- **Audit ini berpola, bukan bedah baris-per-baris seluruh 33 harness.** Yang dicari adalah empat pola yang
+  sudah terbukti mematikan pemeriksaan; klaim "harness lain bersih" berlaku untuk pola-pola itu.
+- **`audit-ui.mjs` tidak dijalankan penuh lagi** sesudah perubahan (yang berubah hanya satu baris `console.log`
+  di luar loop halaman); yang dijalankan adalah saringan `kuis` sebagai bukti jalur itu dieksekusi. Hasil audit
+  penuh 44 halaman (`{}` di terang & gelap) berasal dari berkas sebelum perubahan itu.
+- **Tiga negasi `kuis-materi` tetap tidak bisa mendeteksi "panel ada tapi salah panel"** — yang dijamin
+  sekarang hanyalah: panel tidak terukur = GAGAL, dan daftar ukurnya benar-benar ada.
+- **`./verify.sh` tidak dijalankan ulang di putaran ini** karena tidak ada berkas produk yang tersentuh
+  (hanya harness/dokumentasi, yang tidak masuk cakupan `verify.sh`).

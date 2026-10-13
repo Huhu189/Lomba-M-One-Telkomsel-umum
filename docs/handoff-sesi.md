@@ -87,6 +87,9 @@ Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), san
   halaman bersih di terang & gelap; lihat tabel bagian 1 dan `laporan-pengujian.md` A.66 — jangan diulang tanpa
   perubahan kode.
 
+**A.67** (13 Okt 2026, audit pemeriksaan mati di harness GUI): `slice07` 21/21 · `kuis-materi` 48/48 ·
+  `audit-ui kuis` bersih — sesudah tiga pemeriksaan negatif diperkuat; kontrol negatif A/B ada di A.67.3.
+
 **A.60** (sesudah beranda berikon + Monitor Ulangan + Pengaturan per ulangan + sisa temuan
   audit): `./verify.sh` **SEMUA HIJAU** — Pest 342 (3251 asersi) · Redis wajib 9 · Pint 354 berkas · checkJs ·
 ESLint 0 error · Vitest **75 berkas/727 tes** · realtime 20/20; lalu `docs/jalankan-smoke-ui.sh pengaturan`
@@ -276,6 +279,7 @@ dan tiga sisa temuan audit ditutup — dua di antaranya ternyata cacat alat ukur
 
 | Perintah | Hasil |
 | --- | --- |
+| **Audit pemeriksaan mati harness GUI (**A.67**, 13 Okt 2026)** — `slice07`, `kuis-materi`, `audit-ui` | `slice07` **21/21** · `kuis-materi` **48/48** · `audit-ui kuis` **BERSIH (`{}`)** — semuanya exit 0. Kontrol negatif A/B: klaim lama **21/21 lulus** atas respons tak terpakai (buta) vs klaim baru **20/21 · exit 1**. Rincian: `laporan-pengujian.md` **A.67** |
 | **Sapuan GUI fitur rawan (**A.66**, 13 Okt 2026)** — 30 harness lewat `docs/jalankan-smoke-ui.sh` + `node docs/audit-ui.mjs` (terang & `--gelap`) | **777 pemeriksaan LULUS, semuanya exit 0**; audit **44/44 halaman bersih di kedua tema** (cacat `{}`); sesudahnya `./verify.sh` **SEMUA HIJAU** (Pest 344/3290 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error · Vitest 76/731 · realtime). Dua pemeriksaan mati di `docs/smoke-ui-mobile.mjs` ditemukan & dihidupkan. Rincian: `laporan-pengujian.md` **A.66** |
 | `./verify.sh` (root) (**A.55**, sesudah semua suntingan putaran ini) | **SEMUA HIJAU (exit 0)** — Pest, Pint, `npm run check`, ESLint, Vitest, dan realtime (20 tes) semuanya lulus |
 | `docs/jalankan-smoke-ui.sh kuis-materi` (**A.55**, Chrome + layanan hidup) | **48/48 lulus, exit 0** — panel kuis tampil di bawah video (hp, `posisi: bawah`, panel 274×567 untuk isi 565 px, gulir dalam panel 0) dan di sampingnya di laptop tata horizontal (panel 280×567 vs bingkai 220×124); gulir mendatar halaman 0 px; kontrol negatif: CSS lama **27/42** (panel `274×123` menumpuk bingkai `274×154`, +55 px mendatar) |
@@ -799,3 +803,23 @@ dengan `MAIL_MAILER=log` — kalau tidak, langkah lewat email dicetak `DILEWATI`
 
 Belum diukur pada putaran ini: perangkat sentuh fisik, jalur penjelasan *media* di pemutar materi, dan
 `docs/smoke-http-fitur.mjs` (243 pemeriksaan HTTP, bukan GUI).
+
+## 11. A.67 — audit pemeriksaan mati di seluruh harness GUI (13 Oktober 2026)
+
+Lanjutan A.66. Empat pola kerusakan dicari ke semua harness: (1) string status yang tidak ada di enum backend,
+(2) amplop jawaban salah (larik telanjang vs `{data}` vs paginasi), (3) pemeriksaan negatif ber-cadangan
+`?? []`, (4) objek penjaga yang bisa `null` pada pemeriksaan negatif. Fakta kunci untuk pola (2): **hanya dua**
+endpoint berpaginasi di seluruh `backend/app` — `/v1/soal` dan `/v1/murid` (`grep -rn "paginate(" backend/app`).
+
+Temuan & tindakan: `smoke-ui-slice07.mjs` negasi "catatan keluar dari antrean menunggu" kini wajib
+`status === 200` + larik sungguhan + jumlah menunggu **turun tepat satu**; `smoke-ui-kuis-materi.mjs` lima
+negasi (`m?.… ?? []`, `nilai.… ?? []`) kini GAGAL bila panel tak terukur / daftar ukur hilang;
+`audit-ui.mjs` mencetak kuis yang diaudit (`kuis uji: #248 (“Smoke layar 130244”)`) supaya jaring pengaman
+`?? 1` tidak lagi tak terlihat. Yang diperiksa dan dinyatakan **sah**: `'lokal'/'terkirim'` (`luring`,
+konstanta di `riwayatJawaban.js`), `'perlu_tinjau'/'dinilai'` (`slice06`), negasi `slice05` (dijaga field lain),
+negasi "0 permintaan" `kelas` (ada kontrol positif), dan 10 pembacaan `/v1/murid` di seluruh harness.
+
+Bukti sesudah perbaikan: `docs/jalankan-smoke-ui.sh slice07` **21/21** · `… kuis-materi` **48/48** ·
+`node docs/audit-ui.mjs kuis` **BERSIH `{}`** — semuanya exit 0. Kontrol negatif A/B (dua salinan di `/tmp`
+dengan respons tak terpakai yang sama): klaim lama **21/21 lulus** (buta) vs klaim baru **20/21 · exit 1**.
+Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.67**.

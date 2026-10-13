@@ -486,7 +486,13 @@ async function main() {
 
       info(`blok kuis biasa [${namaVp}]`, nilai)
       catat(`blok kuis biasa tampil lengkap [${namaVp}]`, adaSoal && nilai.tombolKirimAda, `soal ${nilai.soalTerlihat} · tombol ${nilai.tombolKirimH}px`)
-      catat(`blok kuis biasa: tombol & isian >= 44px [${namaVp}]`, (nilai.tombolKecil ?? []).length === 0, JSON.stringify(nilai.tombolKecil ?? []))
+      // Pemeriksaan negatif ("tidak ada yang < 44 px") hanya bergigi kalau daftar
+      // ukurannya BENAR-BENAR ada; `?? []` membuat kunci yang hilang lulus diam.
+      catat(
+        `blok kuis biasa: tombol & isian >= 44px [${namaVp}]`,
+        Array.isArray(nilai.tombolKecil) && nilai.tombolKecil.length === 0,
+        Array.isArray(nilai.tombolKecil) ? JSON.stringify(nilai.tombolKecil) : 'daftar ukur tidak ada (kunci hilang)',
+      )
       catat(
         `blok kuis biasa: halaman tidak bergeser mendatar [${namaVp}]`,
         nilai.overflowHalaman === 0,
@@ -494,8 +500,8 @@ async function main() {
       )
       catat(
         `blok kuis biasa: tidak ada media bersuara yang diputar [${namaVp}]`,
-        (nilai.mediaBersuara ?? []).length === 0,
-        JSON.stringify(nilai.mediaBersuara ?? []),
+        Array.isArray(nilai.mediaBersuara) && nilai.mediaBersuara.length === 0,
+        Array.isArray(nilai.mediaBersuara) ? JSON.stringify(nilai.mediaBersuara) : 'daftar ukur tidak ada (kunci hilang)',
       )
 
       // --- Bagian 2: kuis sisipan di dalam video ---
@@ -551,8 +557,20 @@ async function main() {
           m !== null && m.terlihatTanpaGulir === true,
           `jarak tombol dari atas panel ${m?.jarakTombolKirim}px`,
         )
-        catat(`panel kuis ${nama}: tidak ada teks keluar panel [${namaVp}]`, (m?.keluarPanel ?? []).length === 0, JSON.stringify(m?.keluarPanel ?? []))
-        catat(`panel kuis ${nama}: tombol & isian >= 44px [${namaVp}]`, (m?.tombolKecil ?? []).length === 0, JSON.stringify(m?.tombolKecil ?? []))
+        // `__ukur()` mengembalikan `null` bila panel/bingkai tidak ketemu. Dulu tiga
+        // pemeriksaan negatif di bawah ini memakai `m?.x ?? []` sehingga justru LULUS
+        // saat panelnya tidak ada ("tidak ada teks keluar panel" — memang, panelnya
+        // tidak ada). Sekarang panel yang tidak terukur = GAGAL, bukan lulus.
+        catat(
+          `panel kuis ${nama}: tidak ada teks keluar panel [${namaVp}]`,
+          m !== null && Array.isArray(m.keluarPanel) && m.keluarPanel.length === 0,
+          m === null ? 'panel tidak terukur' : JSON.stringify(m.keluarPanel ?? []),
+        )
+        catat(
+          `panel kuis ${nama}: tombol & isian >= 44px [${namaVp}]`,
+          m !== null && Array.isArray(m.tombolKecil) && m.tombolKecil.length === 0,
+          m === null ? 'panel tidak terukur' : JSON.stringify(m.tombolKecil ?? []),
+        )
         catat(
           `panel kuis ${nama}: halaman tidak bergeser mendatar [${namaVp}]`,
           (m?.overflowHalaman ?? 0) === 0,
@@ -560,8 +578,8 @@ async function main() {
         )
         catat(
           `panel kuis ${nama}: video yang diputar dalam keadaan bisu [${namaVp}]`,
-          (m?.mediaBersuara ?? []).length === 0,
-          (m?.mediaBersuara ?? []).length === 0 ? 'bisu (muted)' : JSON.stringify(m.mediaBersuara),
+          m !== null && Array.isArray(m.mediaBersuara) && m.mediaBersuara.length === 0,
+          m === null ? 'panel tidak terukur' : (m.mediaBersuara ?? []).length === 0 ? 'bisu (muted)' : JSON.stringify(m.mediaBersuara),
         )
 
         // Jawab (lewati) supaya kuis berikutnya bisa diuji di halaman yang sama.

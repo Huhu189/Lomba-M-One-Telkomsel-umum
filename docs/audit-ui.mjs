@@ -349,6 +349,13 @@ async function main() {
   const daftarKuis = await apiJson('/v1/kuis')
   const kuis = (Array.isArray(daftarKuis) ? daftarKuis : daftarKuis?.data ?? [])[0]
   const idKuis = kuis?.id ?? 1
+  // Cetak kuis mana yang dipakai: `?? 1` adalah jaring pengaman, dan tanpa baris ini
+  // halaman kuis yang ternyata 404 (karena daftarnya kosong) akan tetap terlihat
+  // "BERSIH" di ringkasan tanpa jejak bahwa halamannya bukan halaman kuis yang benar.
+  console.log(
+    `kuis uji: #${idKuis}` +
+      (kuis ? ` (“${kuis.judul}”)` : ' — TIDAK ADA kuis di daftar guru: jatuh ke id 1, halaman kuis bisa jadi 404'),
+  )
   await periksa('Kelas', '/kelas')
   await periksa('Mapel', '/mapel')
   await periksa('Murid', '/murid')

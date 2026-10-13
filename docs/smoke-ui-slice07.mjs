@@ -355,9 +355,20 @@ async function main() {
       catat('guru menandai catatan "tidak valid" lewat DOM', berubah && jadiTidakValid)
 
       const audit = await apiJson(`/v1/kuis/${idKuisUji}/kejadian?status=menunggu`)
+      // Pemeriksaan ini NEGATIF (membuktikan sesuatu SUDAH TIDAK ada), jadi ia paling
+      // rawan lulus tanpa bukti: dulu cukup `(audit.isi ?? []).every(...)`, sehingga
+      // jawaban yang tidak terpakai — isi `null` karena badannya bukan JSON, atau
+      // larik kosong karena penyaring statusnya salah — sama-sama bernilai `true`.
+      // Sekarang jawabannya wajib 200 + benar-benar larik, dan jumlah antrean
+      // "menunggu" harus TURUN tepat satu dari daftar awal (bukti, bukan asumsi).
+      const menungguAwal = (kejadianAwal.isi ?? []).filter((satu) => satu.review_status === 'menunggu').length
+      const menungguAkhir = Array.isArray(audit.isi) ? audit.isi.length : null
       catat(
         'catatan yang ditinjau keluar dari antrean menunggu',
-        (audit.isi ?? []).every((satu) => satu.id !== catatanMenunggu.id),
+        audit.status === 200 &&
+          menungguAkhir === menungguAwal - 1 &&
+          audit.isi.every((satu) => satu.id !== catatanMenunggu.id),
+        `status ${audit.status} · menunggu ${menungguAwal} → ${menungguAkhir ?? 'bukan larik'}`,
       )
     }
   } finally {
