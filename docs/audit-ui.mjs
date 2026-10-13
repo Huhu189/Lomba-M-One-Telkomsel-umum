@@ -363,7 +363,9 @@ async function main() {
   await periksa('Bank soal', '/bank-soal')
   await periksa('Tag', '/tag')
   await periksa('Kuis', '/kuis')
-  await periksa('Pengaturan', '/pengaturan')
+  // Halaman akun sendiri (dulu "Pengaturan"): setelan ulangan sudah pindah ke
+  // tiap kuis, jadi nama menunya mengikuti isinya.
+  await periksa('Akun', '/pengaturan')
   await periksa('Detail kuis', `/kuis/${idKuis}`)
   await periksa('Laporan kuis', `/kuis/${idKuis}/laporan`)
   await periksa('Koreksi kuis', `/kuis/${idKuis}/koreksi`)

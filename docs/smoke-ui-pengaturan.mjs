@@ -1,11 +1,17 @@
-// Smoke UI halaman Pengaturan (CDP): skala **per ulangan** (bukan per akun),
-// saklar anti-cheat per jenis tampil, bisa dinyalakan/dimatikan, dan tombol
-// "Nyalakan/Matikan semua" tersedia per kelompok.
+// Smoke UI halaman Pengaturan (CDP) — DIPERSEMPIT 13 Oktober 2026.
 //
-// Sejak 12 Oktober 2026 halaman ini tidak lagi menawarkan lapis sekolah/kelas:
-// yang diperiksa di sini adalah daftar ulangan sebagai satu-satunya lingkup, dan
-// saklar yang diuji dikembalikan ke keadaan semula di akhir — jadi basis data
-// dev tidak berubah.
+// Halaman /pengaturan sekarang berisi **setelan akun sendiri** (nama, kata
+// sandi, tema, penunjuk avatar) dan TIDAK lagi berisi setelan ulangan. Setelan
+// ulangan (anti-cheat, percobaan ulang, peringkat, layar guru) menyatu dengan
+// kuisnya: guru membukanya di halaman detail/kelola kuis, tanpa memilih ulangan
+// lebih dulu dari daftar.
+//
+// Karena itu harness ini memeriksa tiga hal:
+//   1. /pengaturan memang halaman akun — ada isian nama + sandi, dan TIDAK ada
+//      satu pun saklar ulangan (kalau ada, artinya pemindahan belum terjadi).
+//   2. Halaman detail kuis memuat panel "Setelan ulangan" untuk kuis itu.
+//   3. Saklar di panel itu masih bisa diubah dan nilainya kembali seperti semula
+//      di akhir uji — jadi basis data dev tidak berubah.
 //
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
@@ -75,74 +81,124 @@ async function main() {
     })()`)
     catat('login guru', masuk === 200, `status ${masuk}`)
 
+    // --- 1. Halaman akun ---
     await send('Page.navigate', { url: `${APP}/pengaturan` }, sessionId)
-    await sleep(4000)
+    await sleep(3500)
 
-    // Lingkup halaman: hanya ulangan. Lapis "Sekolah"/"Kelas" tidak boleh ada
-    // lagi di pemilih, karena halaman ini memang bukan setelan akun.
-    const lingkup = await evalJs(`(() => {
-      const pilih = document.querySelector('#lingkup-pengaturan')
-      if (!pilih) return null
+    const akun = await evalJs(`(() => {
+      const isian = (pemilih) => document.querySelector(pemilih)
+      const saklar = document.querySelectorAll('input[role="switch"]').length
+      const pilih = document.querySelector('select')
       return {
-        label: document.querySelector('label[for="lingkup-pengaturan"]')?.innerText?.trim() ?? '',
-        opsi: [...pilih.options].map((o) => o.textContent.trim()).filter((t) => t !== ''),
-        nilai: pilih.value,
-        judul: document.querySelector('h1')?.innerText?.trim() ?? '',
-      }
-    })()`)
-
-    const adaLapisAkun = (lingkup?.opsi ?? []).some(
-      (t) => t.toLowerCase().includes('sekolah') || t.toLowerCase().includes('kelas'),
-    )
-    catat(
-      'lingkup pengaturan hanya per ulangan (tanpa lapis sekolah/kelas)',
-      lingkup !== null && lingkup.opsi.length > 0 && !adaLapisAkun && lingkup.nilai.startsWith('kuis:'),
-      lingkup === null ? 'pemilih tidak ditemukan' : `${lingkup.label}: ${lingkup.opsi.length} opsi · terpilih=${lingkup.nilai}`,
-    )
-
-    const ringkas = await evalJs(`(() => {
-      const bagian = ${kelompokAntiCheat}
-      if (!bagian) return null
-      return {
-        judul: bagian.querySelector('h2')?.innerText?.replace(/\\\\s+/g, ' ') ?? '',
-        saklar: bagian.querySelectorAll('input[role="switch"]').length,
-        tombol: [...bagian.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => t.startsWith('Nyalakan') || t.startsWith('Matikan')),
-        label: [...bagian.querySelectorAll('.form-check-label')].map((l) => l.textContent.trim()).slice(0, 3),
+        judul: (document.querySelector('h1') ?? ({ innerText: '' })).innerText.trim(),
+        nama: isian('input[autocomplete="name"]')?.value ?? null,
+        email: isian('#akun-email')?.value ?? null,
+        emailTerbaca: isian('#akun-email')?.readOnly ?? null,
+        sandiSekarang: Boolean(isian('input[autocomplete="current-password"]')),
+        sandiBaru: document.querySelectorAll('input[autocomplete="new-password"]').length,
+        saklar,
+        adaPemilih: Boolean(pilih),
+        teks: (document.body.innerText ?? '').replace(/\\s+/g, ' ').slice(0, 400),
       }
     })()`)
 
     catat(
-      'kelompok anti-cheat tampil dengan saklar per jenis + tombol massal',
-      ringkas !== null && ringkas.saklar >= 10 && ringkas.tombol.length === 2,
-      ringkas === null ? 'kelompok tidak ditemukan' : `${ringkas.saklar} saklar · ${ringkas.tombol.join(', ')} · ${ringkas.judul}`,
+      '/pengaturan = halaman akun (nama + email terbaca + kata sandi)',
+      akun.nama !== null && akun.nama !== '' && akun.emailTerbaca === true && akun.sandiSekarang && akun.sandiBaru === 2,
+      `judul="${akun.judul}" · nama="${akun.nama}" · email="${akun.email}"`,
     )
 
-    // Saklar sungguhan: pilih satu saklar anti-cheat yang **tidak dikunci**, ubah,
-    // lalu kembalikan ke nilai semula — jadi uji ini tidak mengandaikan bawaan
-    // tertentu (nilai ulangan bisa berbeda-beda).
-    const saklarUji = `(() => {
-      const bagian = ${kelompokAntiCheat}
-      if (!bagian) return null
-      return [...bagian.querySelectorAll('input[role="switch"]')].find((el) => !el.disabled) ?? null
-    })()`
+    catat(
+      'tidak ada satu pun saklar ulangan di halaman akun',
+      akun.saklar === 0 && akun.adaPemilih === false,
+      `${akun.saklar} saklar · pemilih lingkup=${akun.adaPemilih}`,
+    )
 
-    const sebelum = await evalJs(`${saklarUji}?.checked ?? null`)
-    catat('ada saklar anti-cheat yang bisa diubah (tidak dikunci sekolah)', typeof sebelum === 'boolean', `checked=${sebelum}`)
+    catat(
+      'halaman akun menunjuk ke setelan ulangan per-kuis',
+      akun.teks.includes('per ulangan') || akun.teks.includes('Setelan ulangan'),
+      '',
+    )
 
-    const ubah = (nilai) => evalJs(`(async () => {
-      const el = ${saklarUji}
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set
-      setter.call(el, ${nilai})
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-      await new Promise((r) => setTimeout(r, 1800))
-      return el.checked
-    })()`)
+    // --- 2. Panel setelan ulangan di halaman kuis ---
+    //
+    // Alamatnya **slug** (`/kuis/unu5k`), bukan id berurutan: inilah alamat yang
+    // dipakai aplikasi dan dibagikan guru, sekaligus yang tidak bisa disisir
+    // orang lain (`/kuis/191` membuat id kuis mana pun bisa ditebak). Daftar
+    // kuis dari server memang hanya memuat kuis milik guru yang masuk.
+    const kuis = await evalJs(`fetch('/api/v1/kuis', { credentials: 'include', headers: { Accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((d) => { const s = (Array.isArray(d) ? d : d.data ?? [])[0]; return s ? { id: s.id, slug: s.slug, judul: s.judul } : null })`)
+    catat('ada kuis milik guru untuk diuji', kuis !== null, kuis ? `kuis #${kuis.id} (${kuis.slug})` : '')
 
-    const sesudahUbah = await ubah(!sebelum)
-    catat('saklar bisa diubah dan tersimpan', sesudahUbah === !sebelum, `dari=${sebelum} ke=${sesudahUbah}`)
+    if (kuis !== null) {
+      catat('alamat kuis memakai slug, bukan id berurutan', typeof kuis.slug === 'string' && kuis.slug.length > 0, `slug=${kuis.slug}`)
 
-    const sesudahKembali = await ubah(sebelum)
-    catat('saklar dikembalikan ke nilai semula', sesudahKembali === sebelum, `checked=${sesudahKembali}`)
+      await send('Page.navigate', { url: `${APP}/kuis/${kuis.slug}` }, sessionId)
+      await sleep(4000)
+
+      const judulDiHalaman = await evalJs(`(document.querySelector('h1') ?? ({ innerText: '' })).innerText.trim()`)
+      catat(
+        `slug membuka kuis yang benar (${kuis.slug})`,
+        judulDiHalaman.includes(kuis.judul),
+        `h1="${judulDiHalaman}" · diharapkan memuat "${kuis.judul}"`,
+      )
+
+      const panel = await evalJs(`(() => {
+        const bagian = ${kelompokAntiCheat}
+        const setelan = [...document.querySelectorAll('section')].find((s) =>
+          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
+        )
+        return {
+          adaSetelan: Boolean(setelan),
+          pemilihDiHalaman: Boolean(document.querySelector('select#lingkup-pengaturan')),
+          saklar: setelan ? setelan.querySelectorAll('input[role="switch"]').length : 0,
+          tombol: setelan
+            ? [...setelan.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => t.startsWith('Nyalakan') || t.startsWith('Matikan'))
+            : [],
+        }
+      })()`)
+
+      catat(
+        'halaman detail kuis memuat panel "Setelan ulangan" untuk kuis ini',
+        panel.adaSetelan && panel.pemilihDiHalaman === false,
+        `pemilih lama=${panel.pemilihDiHalaman}`,
+      )
+
+      catat(
+        'panel memuat saklar per jenis + tombol massal',
+        panel.saklar >= 10 && panel.tombol.length >= 2,
+        `${panel.saklar} saklar · ${panel.tombol.join(', ')}`,
+      )
+
+      // --- 3. Saklar sungguhan: ubah lalu kembalikan (basis data dev utuh) ---
+      const saklarUji = `(() => {
+        const bagian = ${kelompokAntiCheat}
+        if (!bagian) return null
+        return [...bagian.querySelectorAll('input[role="switch"]')].find((el) => !el.disabled) ?? null
+      })()`
+
+      const sebelum = await evalJs(`${saklarUji}?.checked ?? null`)
+      catat('ada saklar yang bisa diubah (tidak dikunci sekolah)', typeof sebelum === 'boolean', `checked=${sebelum}`)
+
+      if (typeof sebelum === 'boolean') {
+        // Klik SUNGGUHAN pada kotak centangnya (React membaca perubahan dari
+        // event `click`, dan `el.click()` sekaligus menjalankan perilaku bawaan
+        // kotak centang) — bukan menyetel `checked` lalu menembak `change`.
+        const ubah = (nilai) => evalJs(`(async () => {
+          const el = ${saklarUji}
+          if (el.checked !== ${nilai}) el.click()
+          await new Promise((r) => setTimeout(r, 1800))
+          return el.checked
+        })()`)
+
+        const sesudahUbah = await ubah(!sebelum)
+        catat('saklar bisa diubah dan tersimpan', sesudahUbah === !sebelum, `dari=${sebelum} ke=${sesudahUbah}`)
+
+        const sesudahKembali = await ubah(sebelum)
+        catat('saklar dikembalikan ke nilai semula', sesudahKembali === sebelum, `checked=${sesudahKembali}`)
+      }
+    }
   } finally {
     const gagal = hasil.filter((satu) => !satu.lolos)
     console.log(`\n${hasil.length - gagal.length}/${hasil.length} pemeriksaan lulus.`)

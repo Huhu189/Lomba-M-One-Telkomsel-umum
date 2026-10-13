@@ -1,11 +1,16 @@
 /**
- * Detail kuis (slice 03). Guru melihat kunci + pembahasan; murid hanya
- * melihat soal — server memang tidak pernah mengirimkan kuncinya.
+ * Detail kuis (slice 03) sekaligus tempat mengelola satu ulangan.
+ *
+ * Guru melihat kunci + pembahasan dan **setelan ulangan kuis ini** (proteksi,
+ * percobaan ulang, peringkat, layar guru) langsung di halaman ini — tidak lagi
+ * lewat halaman /pengaturan dengan memilih ulangan dulu. Murid hanya melihat
+ * soal: server memang tidak pernah mengirimkan kuncinya.
  */
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import {
   RUTE,
+  kunciKuisSah,
   ruteKerjakanKuis,
   ruteKoreksiKuis,
   ruteTimKuis,
@@ -18,20 +23,21 @@ import { useAuthStore } from '../auth/authStore.js'
 import { IkonPanahKiri } from '../../icons.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
+import PanelSetelanUlangan from './PanelSetelanUlangan.jsx'
 import { ambilKuisDetail } from './api.js'
 import { urlEksporNilai } from '../report/api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
 
 export default function HalamanKuisDetail() {
-  const { id } = useParams()
-  const nomor = Number(id)
+  const { slug } = useParams()
+  const kunci = kunciKuisSah(slug)
   const user = useAuthStore((s) => s.user)
   const sebagaiGuru = user?.role === 'guru' || user?.role === 'admin'
 
   const kuis = useQuery({
-    queryKey: ['kuis', nomor, sebagaiGuru ? 'guru' : 'murid'],
-    queryFn: () => ambilKuisDetail(nomor),
-    enabled: Number.isInteger(nomor) && nomor > 0,
+    queryKey: ['kuis', kunci, sebagaiGuru ? 'guru' : 'murid'],
+    queryFn: () => ambilKuisDetail(kunci),
+    enabled: kunci !== '',
   })
 
   const data = kuis.data
@@ -82,29 +88,44 @@ export default function HalamanKuisDetail() {
                 </div>
               )}
 
-              <div className="d-flex flex-wrap gap-2 my-3">
-                <TombolTaut varian="tepi" to={rutePeringkat(data.id)}>Peringkat</TombolTaut>
+              <div className="d-flex flex-wrap gap-2 my-3">                  <TombolTaut varian="tepi" to={rutePeringkat(data.slug)}>Peringkat</TombolTaut>
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteLaporanKuis(data.id)}>Laporan per tema</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteLaporanKuis(data.slug)}>Laporan per tema</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <a className="btn btn-tepi btn-sedang" href={urlEksporNilai(data.id)}>
+                  <a className="btn btn-tepi btn-sedang" href={urlEksporNilai(data.slug)}>
                     Unduh nilai (CSV)
                   </a>
                 )}
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteKoreksiKuis(data.id)}>Koreksi manual</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteKoreksiKuis(data.slug)}>Koreksi manual</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteMonitorKuis(data.id)}>Monitor Ulangan</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteMonitorKuis(data.slug)}>Monitor Ulangan</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteTimKuis(data.id)}>Kelola tim</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteTimKuis(data.slug)}>Kelola tim</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteLayarKuis(data.id)}>Layar kelas</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteLayarKuis(data.slug)}>Layar kelas</TombolTaut>
                 )}
               </div>
+
+              {sebagaiGuru && (
+                <section className="kartu-soft p-4 mt-4" aria-labelledby="judul-setelan-ulangan">
+                  <h2 id="judul-setelan-ulangan" className="judul-bagian">
+                    Setelan ulangan
+                  </h2>
+                  <p className="teks-lembut small">
+                    Aturan yang berlaku untuk <strong>{data.judul}</strong>: proteksi anti-cheat,
+                    batas percobaan, peringkat, layar guru, sampai data minimum laporan. Aturan
+                    sekolah dan kelas tetap berlaku di atasnya, dan bila sekolah mengunci sebuah
+                    setelan, nilai sekolah yang menang — saklarnya ditandai “dikunci sekolah”.
+                  </p>
+
+                  <PanelSetelanUlangan kuisId={data.id} />
+                </section>
+              )}
 
               {/* Murid tidak menerima daftar soal sebelum mengerjakan (K-02):
                   isi ulangan hanya keluar lewat attempt yang sudah dimulai. */}

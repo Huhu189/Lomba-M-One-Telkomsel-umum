@@ -184,6 +184,14 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Ganti kata sandi sendiri (halaman akun). Batasnya per AKUN (bukan per IP:
+        // satu sekolah berbagi satu alamat) dan sengaja ketat — satu orang memang
+        // hanya mengganti sandinya sesekali, sedangkan penebakan sandi lama dari
+        // sesi yang tertinggal di komputer lab justru butuh banyak percobaan.
+        RateLimiter::for('sandi', function (Request $request) {
+            return Limit::perMinute(6)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
+
         // Klik tautan dari email: sudah dijaga tanda tangan + masa berlaku, jadi batasnya
         // longgar. Satu kelas yang mendaftar serentak lewat NAT sekolah (satu IP) tidak
         // boleh kena 429 hanya karena menekan tautan di waktu yang sama.

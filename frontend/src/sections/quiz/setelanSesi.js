@@ -154,6 +154,10 @@ export function ringkasSetelan(resolusi) {
  * Tautan yang dibagikan guru ke siswa: halaman detail kuis **di dalam
  * aplikasi**, bukan tautan bertoken.
  *
+ * Alamatnya memakai **slug** kuis (mis. `/kuis/unu5k`), bukan id berurutan:
+ * tautan yang dibagikan ke grup kelas tidak boleh jadi pintu menebak kuis lain.
+ * Angka tetap diterima supaya tautan lama yang sudah tersebar tidak mati.
+ *
  * Satu tautan ini bekerja untuk dua jenis pengunjung, dan itu disengaja:
  *
  * 1. **murid yang sudah punya akun** — membuka detail kuis, lalu menekan
@@ -167,17 +171,24 @@ export function ringkasSetelan(resolusi) {
  * sehingga setelah masuk (lewat akun **atau** lewat pintu tamu) ia kembali ke
  * kuis ini — itulah yang membuat tautannya "kompatibel" dengan mode tamu.
  *
- * @param {number|string} kuisId
+ * @param {unknown} kunci slug kuis (angka lama masih diterima); nilai lain ditolak
  * @param {string} asal contoh: `window.location.origin`
- * @returns {string} string kosong bila id tidak masuk akal (pemanggil tidak menampilkan apa pun)
+ * @returns {string} string kosong bila kunci tidak masuk akal (pemanggil tidak menampilkan apa pun)
  */
-export function tautanSiswa(kuisId, asal) {
-  const id = Number(kuisId)
+export function tautanSiswa(kunci, asal) {
+  const bersih = String(kunci ?? '').trim()
 
-  if (!Number.isInteger(id) || id <= 0) return ''
+  // Hanya dua bentuk yang diterima: slug baru (harus punya huruf, minimal 4
+  // karakter) atau id angka lama. Nilai lain — termasuk "0", "-3", spasi, dan
+  // yang berisi garis miring — ditolak sebelum sempat disambung ke alamat,
+  // supaya tautan yang dibagikan guru tidak bisa menunjuk jalur lain.
+  const angkaLama = /^[1-9][0-9]{0,9}$/.test(bersih)
+  const slugBaru = /^[A-Za-z0-9_-]{4,32}$/.test(bersih) && /[A-Za-z]/.test(bersih)
+
+  if (!angkaLama && !slugBaru) return ''
   if (typeof asal !== 'string' || asal.trim() === '') return ''
 
-  return `${asal.trim().replace(/\/+$/, '')}/kuis/${id}`
+  return `${asal.trim().replace(/\/+$/, '')}/kuis/${encodeURIComponent(bersih)}`
 }
 
 /**

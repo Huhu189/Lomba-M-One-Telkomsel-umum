@@ -6,6 +6,7 @@ use App\Sections\Attempt\Http\Controllers\AttemptController;
 use App\Sections\Attempt\Http\Controllers\BerkasJawabanController;
 use App\Sections\Attempt\Http\Controllers\TimController;
 use App\Sections\Attempt\Http\Controllers\UnggahanJawabanController;
+use App\Sections\Auth\Http\Controllers\AkunController;
 use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
@@ -99,6 +100,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/kirim-ulang-verifikasi', [AuthController::class, 'kirimUlangVerifikasi'])
             ->middleware('throttle:verifikasi')
             ->name('auth.kirim-ulang-verifikasi');
+
+        // Setelan akun sendiri (nama + kata sandi). Ganti sandi dibatasi throttle
+        // `sandi`: menebak sandi lama dari sesi yang tertinggal di komputer bersama
+        // tidak boleh bisa dicoba tanpa batas.
+        Route::put('/akun', [AkunController::class, 'perbarui'])->name('akun.perbarui');
+        Route::put('/akun/sandi', [AkunController::class, 'gantiSandi'])
+            ->middleware('throttle:sandi')
+            ->name('akun.sandi');
 
         // Sekolah (satu baris).
         Route::get('/sekolah', [SekolahController::class, 'show'])->name('sekolah.show');

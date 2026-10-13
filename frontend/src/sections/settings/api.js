@@ -1,8 +1,16 @@
 /**
- * API pengaturan tiga lapis (slice 02) — data eksternal divalidasi Zod.
+ * API pengaturan (slice 02) dan setelan akun sendiri.
+ *
+ * Dua hal berbeda tinggal di berkas ini:
+ * - `/v1/pengaturan` — pengaturan tiga lapis (sekolah → kelas → kuis) untuk
+ *   proteksi/waktu/penilaian. Sejak 13 Oktober 2026 setelan itu disetel di
+ *   tiap kuis (halaman detail kuis), bukan lagi di halaman /pengaturan.
+ * - `/v1/akun` — setelan akun pengguna yang sedang masuk (nama, kata sandi),
+ *   satu-satunya isi halaman /pengaturan sekarang.
  */
 import { z } from 'zod'
 import { client, ambilCsrfCookie } from '../../shared/api/client.js'
+import { skemaUser } from '../auth/api.js'
 
 /** Nilai pengaturan dapat berupa boolean atau bilangan bulat. */
 export const skemaNilaiPengaturan = z.object({
@@ -65,4 +73,41 @@ export async function simpanPengaturan(muatan) {
   await ambilCsrfCookie()
   const respons = await client.put('/v1/pengaturan', muatan)
   return skemaResolusiPengaturan.parse(respons.data)
+}
+
+/**
+ * Ubah nama tampilan akun sendiri; server mengembalikan user yang sudah
+ * diperbarui (nama di kepala aplikasi ikut berubah tanpa muat ulang).
+ * @param {string} nama
+ * @returns {Promise<z.infer<typeof skemaUser>>}
+ */
+export async function simpanNamaAkun(nama) {
+  await ambilCsrfCookie()
+  const respons = await client.put('/v1/akun', { name: nama })
+  return skemaUser.parse(respons.data)
+}
+
+/** Respon ganti kata sandi sendiri (pesan + user yang sudah diperbarui). */
+export const skemaResponSandi = z.object({
+  message: z.string(),
+  user: skemaUser,
+})
+
+/**
+ * Ganti kata sandi sendiri. Sandi lama wajib dikirim: server menolak perubahan
+ * tanpa bukti pemilik akun, jadi sesi yang tertinggal di komputer bersama tidak
+ * bisa dipakai untuk mengunci pemiliknya keluar.
+ *
+ * @param {{ sandiSekarang: string, sandiBaru: string }} data
+ * @returns {Promise<z.infer<typeof skemaResponSandi>>}
+ */
+export async function gantiSandiAkun({ sandiSekarang, sandiBaru }) {
+  await ambilCsrfCookie()
+  const respons = await client.put('/v1/akun/sandi', {
+    sandi_sekarang: sandiSekarang,
+    password: sandiBaru,
+    password_confirmation: sandiBaru,
+  })
+
+  return skemaResponSandi.parse(respons.data)
 }

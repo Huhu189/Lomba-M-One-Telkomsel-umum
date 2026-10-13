@@ -148,16 +148,37 @@ describe('ringkasSetelan', () => {
 })
 
 describe('tautanSiswa', () => {
-  it('membentuk tautan detail kuis di dalam aplikasi', () => {
+  it('membentuk tautan detail kuis memakai slug, bukan id berurutan', () => {
+    expect(tautanSiswa('unu5k', 'http://localhost:5173')).toBe('http://localhost:5173/kuis/unu5k')
+    expect(tautanSiswa('unu5k', 'https://ulangan.sekolah.id/')).toBe(
+      'https://ulangan.sekolah.id/kuis/unu5k',
+    )
+    expect(tautanSiswa('09ozbxxr', 'http://localhost:5173')).toBe('http://localhost:5173/kuis/09ozbxxr')
+  })
+
+  it('tautan angka lama tetap dibentuk supaya tidak mati', () => {
     expect(tautanSiswa(12, 'http://localhost:5173')).toBe('http://localhost:5173/kuis/12')
     expect(tautanSiswa('12', 'https://ulangan.sekolah.id/')).toBe('https://ulangan.sekolah.id/kuis/12')
   })
 
-  it('id atau asal yang tidak masuk akal menghasilkan string kosong', () => {
+  it('kunci atau asal yang tidak masuk akal menghasilkan string kosong', () => {
+    expect(tautanSiswa('', 'http://localhost:5173')).toBe('')
+    expect(tautanSiswa(null, 'http://localhost:5173')).toBe('')
+    expect(tautanSiswa(undefined, 'http://localhost:5173')).toBe('')
+    // "0" bukan id kuis yang ada, dan bukan slug: harus ditolak, bukan jadi /kuis/0.
     expect(tautanSiswa(0, 'http://localhost:5173')).toBe('')
+    expect(tautanSiswa('0', 'http://localhost:5173')).toBe('')
     expect(tautanSiswa(-3, 'http://localhost:5173')).toBe('')
     expect(tautanSiswa('dua belas', 'http://localhost:5173')).toBe('')
-    expect(tautanSiswa(12, '')).toBe('')
+    // Angka panjang tetap dianggap id lama (cadangan), bukan ditolak.
+    expect(tautanSiswa('12345678', 'http://localhost:5173')).toBe('http://localhost:5173/kuis/12345678')
+    expect(tautanSiswa('12', '')).toBe('')
+  })
+
+  it('kunci yang mengandung jalur tambahan tidak pernah disambung', () => {
+    for (const aneh of ['../admin', 'a/b', 'a b', 'unu5k?x=1', 'unu5k#frag', 'http://jahat.test']) {
+      expect(tautanSiswa(aneh, 'http://localhost:5173')).toBe('')
+    }
   })
 })
 

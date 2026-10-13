@@ -5,6 +5,8 @@ import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from '../.
 /** Kuis draf versi guru (tanpa soal karena daftar tidak memuatnya). */
 const kuisGuru = {
   id: 4,
+  // Alamat kuis berupa slug acak, bukan id berurutan.
+  slug: 'unu5k',
   judul: 'Ulangan Matematika',
   deskripsi: null,
   status: 'draf',
@@ -26,7 +28,15 @@ describe('skema kuis', () => {
   it('menerima kuis guru tanpa daftar soal', () => {
     const kuis = skemaKuis.parse(kuisGuru)
     expect(kuis.jumlah_soal).toBe(4)
+    expect(kuis.slug).toBe('unu5k')
     expect(kuis.soal).toBeUndefined()
+  })
+
+  it('menolak kuis tanpa slug: tautan kuis akan rusak diam-diam', () => {
+    const { slug, ...tanpaSlug } = kuisGuru
+
+    expect(() => skemaKuis.parse(tanpaSlug)).toThrow()
+    expect(slug).toBe('unu5k')
   })
 
   it('menerima detail kuis murid dengan soal tanpa kunci', () => {
