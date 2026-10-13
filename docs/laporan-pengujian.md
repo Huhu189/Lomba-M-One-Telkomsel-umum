@@ -6267,8 +6267,9 @@ enam commit bertema mengikuti gaya judul yang ada.
 - **Harness GUI tidak dijalankan ulang** karena tidak ada isi berkas aplikasi yang berubah sejak A.69 (yang
 sudah membuktikan `pengaturan` 12/12, `susun` 44/44, `slice04` 18/18, `nav` 14/14, `kuis-materi` 48/48, dan
 `slice07` 21/21).
-- **Belum di-push.** `origin/main` kini tertinggal **16 commit** (A.65–A.67 + A.70–A.72); push adalah langkah
-yang diminta terpisah dan belum dilakukan.
+- **Belum di-push.** `origin/main` masih tertinggal seluruh commit A.65–A.72 (`git rev-list --count
+origin/main..HEAD`; **17** saat entri ini ditulis, sebelum commit dokumentasi ini). Push adalah langkah yang
+diminta terpisah dan belum dilakukan.
 
 ### A.72.5 Berkas
 
