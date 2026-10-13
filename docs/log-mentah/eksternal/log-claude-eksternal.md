@@ -812,3 +812,15 @@ Dua file sudah terkirim: tema.css dan desain-putaran3.zip.
 tema.css berisi token (satu variabel ukuran, terang/gelap, jarak, tinggi tombol) dan komponen bersama. Zip berisi semua layar dan canvas.json. File support.js sengaja tidak ikut karena itu milik kanvas.
 
 Di dalam folder ada dua file yang belum pernah saya sebut sebelumnya: Materi-Editor.dc.html dan Materi-Editor-HP.dc.html. Saya tidak membuat atau memeriksanya di sesi ini, jadi isinya belum saya lihat. Anggap itu belum diperiksa sebelum kamu pakai.
+
+sudo apt update && sudo apt install -y nginx mysql-server redis-server supervisor git unzip curl \
+  certbot python3-certbot-nginx build-essential libcurl4-openssl-dev libssl-dev libpcre2-dev
+sudo apt install -y php8.3-cli php8.3-fpm php8.3-dev php8.3-mysql php8.3-sqlite3 php8.3-redis \
+  php8.3-gd php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip php8.3-bcmath php8.3-intl
+# Node 22 LTS
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
+# Composer
+curl -sS https://getcomposer.org/installer | php && sudo mv composer.phar /usr/local/bin/composer
+# Swoole (slice 10)
+sudo pecl install swoole && echo "extension=swoole.so" | sudo tee /etc/php/8.3/mods-available/swoole.ini \
+  && sudo phpenmod swoole

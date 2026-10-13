@@ -1083,3 +1083,46 @@ sendirian belum bisa dijalankan (ia menghapus `HalamanPengaturan.jsx` yang masih
 itu) dan `d60cc1e` yang menutupnya. Yang diverifikasi hijau adalah pohon terakhir, bukan tiap titik tengah.
 
 **Sisa:** `git push` (16 commit tertinggal). Rincian: `docs/laporan-pengujian.md` **A.72**.
+
+## 17. A.75 — beranda admin jadi monitor sekolah + wewenang admin atas akun guru/murid (14 Oktober 2026)
+
+**Permintaan:** bagian kedua pesan panjang pemilik produk (lihat A.73): admin sekolah butuh **monitor skala
+sekolah** dan **wewenang mengubah email/sandi murid & guru**. Keputusan yang sudah dikunci di A.73: monitor
+**menempel di beranda admin** (bukan rute baru) dan guru **tidak** ikut mendapat wewenang itu — mengganti
+email/menyetel sandi akun orang lain adalah cara mengambil alih akun, sedangkan guru tetap boleh mengelola
+**data** murid (`MuridPolicy`), bukan kredensialnya.
+
+**Yang dikerjakan:**
+
+- **Section backend baru `App\Sections\Admin`** — `MonitorSekolahService` (satu panggilan `GET
+  /v1/admin/monitor` mengisi seluruh beranda: 8 kartu angka, keadaan kelas, kuis berjalan, 8 baris audit;
+  semuanya kueri agregat, bukan per baris) dan `AkunSekolahService` (daftar akun berpaginasi + tiga mutasi:
+  ubah email · setel sandi · ubah status).
+- **Pagar mutasi sensitif (AGENT.md #6) dipakai utuh**: policy `AkunSekolahPolicy` (admin saja; tidak bisa
+  akun sendiri, tidak bisa admin lain, akun tamu ditolak) + alasan tertulis min 10 karakter + token konfirmasi
+  sekali pakai bertujuan baru `kelola_akun` (token koreksi nilai tidak bisa dipakai di sini, dan sebaliknya) +
+  audit append-only. Email baru **langsung terverifikasi**; setel sandi & penangguhan **mengakhiri seluruh sesi
+  akun itu**; sandi baru tidak pernah muncul di respons maupun audit; status hanya `aktif`/`suspended`.
+- **Frontend baru `src/sections/admin/`** — `api.js` (Zod + `paramAkun()` yang tidak mengirim saringan kosong),
+  dua modul hitungan murni (`dasborAdmin.js`, `akunSekolah.js`), `BerandaAdmin.jsx`, `HalamanAkunSekolah.jsx`
+  (panel dua langkah: minta token → simpan).
+- **Penyambungan**: rute `/admin/akun` + penjaga `HanyaAdmin` di `App.jsx`, halaman malas + masuk peta pramuat,
+  grup menu **Admin sekolah** di `KerangkaUmum.jsx`, dan beranda `Beranda.jsx` me-render `BerandaAdmin` untuk
+  peran `admin` (dimuat malas — bundel awal tidak tumbuh; dibuktikan lewat `npm run build`).
+
+**Bukti:** `./verify.sh` **SEMUA HIJAU** (Pest **372 lulus / 3459 asersi** · Redis wajib · Pint bersih ·
+checkJs · ESLint 0 error · Vitest **86 berkas / 814 tes** · realtime 20 lulus). Tes baru:
+`AdminSekolahTest.php` 15 tes (termasuk token sekali pakai dipakai ulang/untuk sasaran lain → 422, token tujuan
+lain ditolak, sesi akun lain tidak tersentuh, sandi tidak bocor ke audit) dan lima berkas Vitest
+(`dasborAdmin` 19 · `akunSekolah` 17 · `api` 6 · `halamanAkunSekolah` 4 jsdom · `berandaAdmin` 4 jsdom — dua
+terakhir membuktikan tombol Simpan mati tanpa token dan hidup setelah token terbit, serta dasbor menampilkan
+angka server apa adanya). `halaman.test.js` diperluas untuk halaman admin.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:** `AkunSekolahService::TUJUAN_TOKEN` (`kelola_akun`) harus
+berbeda dari tujuan koreksi nilai — kalau disamakan, token koreksi bisa mengubah kredensial akun. Angka
+"online" di dasbor **perkiraan** (jendela 10 menit dari tabel `sessions`, bukan bukti kehadiran) dan dasbor
+menyegarkan diri tiap 30 detik, bukan real-time.
+
+**Sisa:** belum dikomit; belum ada harness peramban (`docs/smoke-ui-*.mjs`) untuk panel admin, jadi bukti
+tampilannya baru sebatas komponen (Vitest jsdom) + potongan bundel (`npm run build`) — bukan layar 390 px/
+1280 px. Rincian lengkap: `docs/laporan-pengujian.md` **A.75**.

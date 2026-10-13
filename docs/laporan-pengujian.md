@@ -6484,3 +6484,133 @@ pagar yang buta.
   `docs/handoff-sesi.md`.
 - **Tidak dikomit (sengaja):** tes Vitest CSS-teks yang sempat dibuat — alasannya di A.74.4.
 - **`vite.config.js` dikembalikan** ke keadaan semula (percobaan `test.css: true` tidak jadi dipakai).
+
+## A.75 — Beranda admin jadi monitor sekolah + wewenang admin atas akun guru/murid (14 Oktober 2026)
+
+### A.75.1 Permintaan
+
+Bagian kedua pesan panjang pemilik produk (lihat A.73.1): admin sekolah butuh **monitor skala sekolah** dan
+**wewenang mengubah email/sandi murid & guru**. Dua keputusan sudah dikunci di A.73: monitornya **menempel di
+beranda admin** (bukan rute baru), dan guru **tidak** ikut mendapat wewenang itu.
+
+Alasan guru dikecualikan: mengganti email atau menyetel ulang sandi akun orang lain adalah cara mengambil alih
+akun. Guru tetap boleh mengelola **data** murid di kelasnya (`MuridPolicy`), tetapi bukan **kredensialnya**.
+
+### A.75.2 Yang dibangun
+
+**Backend — section baru `App\Sections\Admin`:**
+
+- **`MonitorSekolahController` + `MonitorSekolahService`** — satu panggilan `GET /v1/admin/monitor` mengisi
+  seluruh beranda admin: 8 kartu angka tetap, ringkasan murid/guru, keadaan tiap kelas, ringkasan kuis, daftar
+  ulangan berjalan (dengan `slug` supaya bisa ditautkan ke Monitor Ulangan tanpa memanggil ulang daftar kuis),
+  dan 8 baris audit terbaru. Semua hitungannya kueri agregat, bukan satu kueri per baris — jumlah murid satu
+  sekolah bisa ribuan.
+  - "Online" dibaca dari tabel `sessions` dengan jendela 10 menit (`MENIT_ONLINE`) dan dikirim sebagai
+    `menit_online` supaya tidak dibaca sebagai bukti kehadiran. Driver sesi non-database ⇒ 0, bukan galat.
+  - Dari `properties` audit hanya `alasan` yang dikirim ke klien; isi mentahnya (mis. kunci jawaban pada
+    koreksi) tidak ikut berjalan hanya karena tersimpan di tabel yang sama.
+- **`AkunSekolahController` + `AkunSekolahService`** — daftar akun berpaginasi (`filter[role]`,
+  `filter[status]`, `filter[cari]` lewat spatie/laravel-query-builder, pola yang sama dengan daftar murid) dan
+  tiga mutasi. Ketiganya mengikuti pagar mutasi sensitif (AGENT.md prinsip keamanan #6): sesi + policy +
+  alasan tertulis (min 10 karakter) + token konfirmasi sekali pakai + audit append-only.
+  - Token memakai `TokenKonfirmasiService` dengan **tujuan baru** `kelola_akun` dan payload hanya
+    `sasaran_id` — token koreksi nilai tidak bisa dipakai di sini (dan sebaliknya). Diuji dua arah.
+  - Email baru **langsung ditandai terverifikasi**: kalau tidak, akun itu ditolak di semua jalur masuk sampai
+    tautan yang tidak pernah sampai diklik — persis masalah yang ingin diselesaikan jalur ini.
+  - Setel sandi mengakhiri **seluruh sesi** akun itu dan mengacak ulang `remember_token`; sandi baru tidak
+    muncul di respons **maupun** di audit.
+  - Penangguhan juga mengakhiri sesi seketika, jadi berlaku sekarang, bukan saat muat ulang berikutnya.
+  - Status yang boleh diset hanya `aktif` dan `suspended`. `dihapus` ditolak: menghapus akun dari satu tombol
+    akan ikut menghapus profil dan nilai murid. `pending` juga tidak bisa dipaksakan admin.
+- **`AkunSekolahPolicy`** — hanya peran `admin`; admin tidak bisa menyentuh **akunnya sendiri** (supaya tidak
+  ada jalan menangguhkan diri lalu terkunci di luar) maupun **admin lain** (itu perebutan kendali, bukan
+  pengelolaan sekolah); akun siswa tamu ditolak **di policy**, bukan sekadar disembunyikan dari daftar.
+- **`AkunSekolahResource`** — tanpa kolom sensitif (`password`, `remember_token`, `email_verified_at` mentah;
+  klien hanya perlu tahu terverifikasi atau belum). `terakhir_aktif` dibaca lewat `getAttributes()` supaya
+  tetap aman ketika sub-kueri sesi tidak ikut dipilih (`Model::shouldBeStrict` melempar kalau diakses sebagai
+  properti biasa).
+- Empat request class (alasan min 10 · email rfc · sandi min 10 + konfirmasi · `status` in:aktif,suspended),
+  enum `AksiAkun`, rute `admin/*` di dalam grup yang sudah ada, dan `RateLimiter` baru `kelola-akun`
+  (30/menit **per akun admin**, bukan per IP sekolah — satu sekolah satu alamat).
+- `UserFactory::admin()` untuk uji.
+
+**Frontend — section baru `src/sections/admin/`:**
+
+- **`api.js`** — Zod untuk setiap respons (termasuk kolom yang boleh tidak ada dari `whenLoaded`), dan
+  `paramAkun()` yang **tidak** mengirim saringan kosong serta memotong spasi kata kunci. Tanpa itu
+  `filter[role]=` akan memperlakukan saringan kosong sebagai penyaring sungguhan (daftar tampak kosong padahal
+  ada) dan tiap ketikan baru membuat alamat kueri berbeda sehingga cache pecah.
+- **`dasborAdmin.js` + `akunSekolah.js`** — seluruh perhitungan murni: urut kelas, ringkas kapasitas, badge
+  status, daftar "perlu perhatian", status tujuan tombol, dan aturan "boleh minta token"/"boleh simpan".
+- **`BerandaAdmin.jsx`** — dasbor; **`HalamanAkunSekolah.jsx`** — daftar + panel dua langkah.
+- Rute `/admin/akun` (`RUTE.adminAkun`) dengan penjaga **`HanyaAdmin`** di `App.jsx`; halaman dimuat malas dan
+  masuk peta pramuat menu.
+- **`KerangkaUmum.jsx`** — grup menu **Admin sekolah** (Dasbor Sekolah, Kelola Akun) di atas seluruh menu guru,
+  hanya untuk peran `admin`.
+- **`Beranda.jsx`** — peran `admin` me-render `BerandaAdmin` (dimuat malas supaya bundel awal tidak ikut
+  tumbuh); guru dan murid tidak berubah.
+
+### A.75.3 Bukti (dijalankan, bukan klaim)
+
+`./verify.sh` **SEMUA HIJAU** (exit 0):
+
+| Langkah | Hasil |
+| --- | --- |
+| Backend Pest | **372 lulus / 3459 asersi** (dari 357; +15 tes `AdminSekolahTest`) |
+| Backend Redis wajib | lulus |
+| Backend Pint | bersih (373 berkas) |
+| Frontend checkJs | bersih |
+| Frontend ESLint | **0 error** (2 warning lama di `HalamanDaftar`/`HalamanAturUlangSandi`, tidak tersentuh) |
+| Frontend Vitest | **86 berkas / 814 tes** (dari 81/763) |
+| Realtime `node --test` | 20 lulus / 0 gagal |
+
+Uji baru menjaga pagar, bukan hanya jalur bahagia:
+
+- **`backend/tests/Feature/AdminSekolahTest.php` (15 tes)** — guru & murid 403; daftar memuat guru+murid tetapi
+  bukan admin dan bukan siswa tamu; saringan peran/status/pencarian (+ `%` tidak bocor jadi wildcard); email
+  lewat token sekali pakai (token dipakai ulang → 422 · token milik akun lain → 422 · email yang sudah dipakai
+  → 422); alasan wajib ≥10 karakter di **setiap** langkah; setel sandi mengakhiri sesi akun itu tetapi **tidak**
+  sesi orang lain, dan sandi lama/baru tidak muncul di audit; penangguhan berlaku seketika lalu bisa diaktifkan
+  kembali; status di luar aktif/ditangguhkan ditolak; admin tidak bisa menyentuh dirinya sendiri dan admin lain;
+  akun tamu ditolak; **token tujuan lain ditolak**.
+- **Frontend** — `dasborAdmin.test.js` (19), `akunSekolah.test.js` (17), `api.test.js` (6),
+  `halamanAkunSekolah.test.jsx` (4, jsdom), dan `berandaAdmin.test.jsx` (4, jsdom). Dua yang terakhir menguji
+  lewat jalur yang benar-benar dipakai admin: tombol **Simpan** di panel kelola akun mati tanpa token dan hidup
+  setelah token terbit (muatannya berisi alasan + token + email yang sudah dipotong spasinya), dan dasbor
+  beranda menampilkan angka yang dikirim server apa adanya — termasuk mengurutkan "perlu perhatian" dan
+  mengatakannya apa adanya ketika sekolah sedang tenang.
+- **`halaman.test.js` diperluas** — `HalamanAkunSekolah` wajib `React.lazy`, `RUTE.adminAkun` wajib ada di peta
+  pramuat dan tidak tertukar dengan pemuat halaman lain.
+- **`npm run build`** ikut diperiksa: `BerandaAdmin` dan `HalamanAkunSekolah` keluar sebagai potongan sendiri
+  (7,90 kB / 11,99 kB) dan `index-*.js` tidak tumbuh karena keduanya.
+
+### A.75.4 Batasan jujur
+
+- **Belum ada harness peramban untuk panel admin.** Bukti UI-nya Vitest + `npm run build`, jadi yang terbukti
+  adalah komponen dan potongan bundelnya — **bukan** tampilannya di layar 390 px/1280 px. `docs/smoke-ui-*.mjs`
+  belum punya pemeriksaan admin.
+- **Percabangan peran di `Beranda.jsx` (admin → `BerandaAdmin`) belum diuji langsung.** `BerandaAdmin` sendiri
+  sudah diuji render (`berandaAdmin.test.jsx`), dan perhitungan murninya di `dasborAdmin.test.js`.
+- **"Online" adalah perkiraan**, bukan kehadiran: guru yang meninggalkan tab terbuka tetap terhitung online
+  selama sesinya berdenyut.
+- **Dasbor tidak real-time.** Halaman menyegarkan diri tiap 30 detik di klien; tidak ada denyut/push.
+- **`terakhir_aktif` hanya ada pada driver sesi `database`.** Pada driver lain kolomnya `null` dan ditampilkan
+  "—", bukan diisi dari sumber lain.
+- **Belum dikomit.** Seluruh pekerjaan masih di working tree.
+
+### A.75.5 Berkas
+
+- **Backend baru (12):** `app/Sections/Admin/Enums/AksiAkun.php` · `.../Policies/AkunSekolahPolicy.php` ·
+  `.../Services/{AkunSekolahService,MonitorSekolahService}.php` ·
+  `.../Http/Controllers/{AkunSekolahController,MonitorSekolahController}.php` ·
+  `.../Http/Requests/{MintaTokenAkunRequest,SetelSandiAkunRequest,UbahEmailAkunRequest,UbahStatusAkunRequest}.php` ·
+  `.../Http/Resources/AkunSekolahResource.php` · `tests/Feature/AdminSekolahTest.php`.
+- **Backend diubah:** `routes/api.php` (grup `admin/*`) · `app/Providers/AppServiceProvider.php`
+  (policy `User` + limiter `kelola-akun`) · `database/factories/UserFactory.php` (`admin()`).
+- **Frontend baru (5 + 5 tes):** `src/sections/admin/{api.js,dasborAdmin.js,akunSekolah.js,BerandaAdmin.jsx,
+  HalamanAkunSekolah.jsx}` · `src/__tests__/sections/admin/{api,dasborAdmin,akunSekolah}.test.js` +
+  `{halamanAkunSekolah,berandaAdmin}.test.jsx`.
+- **Frontend diubah:** `src/routes.js` · `src/halaman.js` · `src/App.jsx` (penjaga `HanyaAdmin`) ·
+  `src/shared/layout/KerangkaUmum.jsx` (`GRUP_ADMIN`) · `src/sections/home/Beranda.jsx` ·
+  `src/__tests__/halaman.test.js`.
+- **Dokumen:** `docs/laporan-pengujian.md` · `docs/handoff-sesi.md`.
