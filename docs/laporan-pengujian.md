@@ -4868,3 +4868,455 @@ tata letaknya:
 - **Angka yang diukur berasal dari dua ukuran viewport** (390×844 ponsel, 1366×900 laptop) dengan berkas
   video uji di DB dev; lebar layar lain tidak diperiksa.
 - Emulasi ponsel tetap emulasi: bukti ini dari Chrome headless + CDP, bukan dari perangkat fisik.
+
+---
+
+## A.58 Tombol Ukuran Tulisan Dibuang (12 Oktober 2026)
+
+Permintaan pemilik produk, singkat: **"buang button resize teks"** — setelah ditanya, yang dimaksud adalah
+tombol **Ukuran tulisan: Normal/Besar** di **bilah atas** (fitur A.49). Saya tidak langsung menghapus satu
+tombol saja: karena tombol itu **satu-satunya** jalan masuk ke fiturnya, membuangnya saja akan meninggalkan
+mesin mati — atribut `data-ukuran` di `<html>`, kunci `localStorage: ukuran-ulangan`, skala `--s: 1,12`,
+ikon huruf, dan satu berkas tes yang menguji tombol yang sudah tidak ada. Jadi seluruh fiturnya dibuang,
+dan yang tinggal di `theme.css` hanya token skala tunggal `--s: 1` (tempat tunggal bila suatu saat skala lain
+dibutuhkan lagi), dengan komentar yang menyebut riwayatnya apa adanya.
+
+### A.58.1 Apa yang berubah
+
+| Bagian | Sebelum (A.49) | Sesudah (A.58) |
+| --- | --- | --- |
+| Bilah atas halaman guru | tombol tema + **tombol ukuran** | tombol tema saja |
+| Halaman masuk | tombol tema + **tombol ukuran** (panel + pojok kanan atas) | tombol tema saja di keduanya |
+| `<html>` | `data-ukuran="normal\|besar"` | atribut itu tidak pernah dipasang |
+| `localStorage` | `ukuran-ulangan` dibaca & ditulis | kunci itu tidak dibaca lagi (kalau masih ada, tidak berefek) |
+| `theme.css` | `--s: 1` + `:root[data-ukuran='besar'] { --s: 1.12 }` | `--s: 1` saja |
+| `icons.jsx` | `IkonHuruf` + `daftarIkon.huruf` | keduanya dibuang (tidak ada pemakai lain) |
+
+### A.58.2 Bukti
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh bilah-atas` (**baru**, Chrome + layanan hidup) | **10/10 lulus, exit 0** — di `/masuk` dan `/kelas`: 0 tombol berlabel "Ukuran tulisan", `data-ukuran` **null**, tombol tema masih ada di panel **dan** pojok kanan atas, isi halaman tetap ter-render; menu di bilah atas tersisa `Keluar · Ganti ke mode terang · Buka menu`; kunci lama `ukuran-ulangan=besar` ditulis lalu halaman dimuat ulang → atribut tetap null dan ukuran huruf `<html>` **16px → 16px** |
+| `./verify.sh` (root, sesudah semua suntingan putaran ini) | **SEMUA HIJAU (exit 0)** — Pest **340 lulus (3242 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint **PASS 354 berkas**, `npm run check`, ESLint **0 error** (2 peringatan lama `react-hooks/incompatible-library`), Vitest **74 berkas / 713 tes**, realtime **20/20** |
+| `docs/jalankan-smoke-ui.sh mobile` (**A.58**, regresi bilah atas di 8 halaman guru beremulasi ponsel) | **16/16 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh nav` (**A.58**, regresi navbar 390 px & 1280 px) | **14/14 lulus, exit 0** |
+| `npx vitest run` (frontend) | **74 berkas / 713 tes lulus** — turun tepat 4 tes & 1 berkas dari A.55 (**75/717**) karena `theme/ukuran.test.jsx` pensiun bersama fiturnya; tidak ada tes lain yang merah |
+
+Pemeriksaan pertama dijalankan sebagai skrip sekali pakai, lalu **diangkat jadi harness tetap**
+`docs/smoke-ui-bilah-atas.mjs` supaya klaim "tombolnya hilang" bisa dijalankan ulang siapa pun — dan baris
+kedua tabel di atas adalah hasil menjalankannya lewat runner resmi, bukan hasil skrip sementara.
+
+### A.58.3 Berkas
+
+- **Dihapus:** `frontend/src/shared/layout/TombolUkuran.jsx`,
+  `frontend/src/__tests__/theme/ukuran.test.jsx`, `docs/smoke-ui-ukuran.mjs`.
+- **Baru:** `docs/smoke-ui-bilah-atas.mjs`.
+- **Diubah:** `frontend/src/shared/layout/KerangkaUmum.jsx` (impor + pemakaian + docstring bilah atas),
+  `frontend/src/shared/layout/KerangkaAuth.jsx` (dua pemakaian), `frontend/src/shared/store/tema.js`
+  (kunci/`skemaUkuran`/`bacaUkuranAwal`/`terapkanUkuran`/`ubahUkuran`/`mulaiUkuran` dibuang),
+  `frontend/src/main.jsx` (`mulaiUkuran()` tidak dipanggil lagi), `frontend/src/icons.jsx`,
+  `frontend/src/theme/theme.css`, `docs/penjelasan-fitur.md` (bagian 13 ditulis ulang),
+  `docs/catatan-demo.md` & `docs/handoff-sesi.md` (perintah `ukuran` dibuang, A.49 ditandai dibatalkan),
+  `docs/rencana-desain-putaran3.md` (baris A.49 jadi "dibatalkan"), `docs/laporan-pengujian.md` (entri ini),
+  dan dua ekspor Word yang ikut disegarkan (`docs/word/penjelasan-fitur.docx`,
+  `docs/word/laporan-pengujian.docx`).
+
+### A.58.4 Batasan jujur
+
+- **Pemeriksaan A.49 ikut pensiun.** `docs/smoke-ui-ukuran.mjs` (11 pemeriksaan) dan 4 tes
+  `theme/ukuran.test.jsx` dihapus karena menguji UI yang sudah tidak ada; yang menggantikannya adalah
+  `smoke-ui-bilah-atas.mjs` — ia menjaga **ketiadaan** fitur itu, bukan menguji ulang ukuran tulisan.
+- **Kunci `ukuran-ulangan` di perangkat lama tidak dibersihkan.** Kode tidak lagi membacanya, jadi tidak ada
+  efek apa pun (dibuktikan harness: tetap 16px). Saya sengaja **tidak** menambah kode pembersih hanya untuk
+  satu kunci mati.
+- **Dokumen Word disegarkan sebagian, dengan sadar.** `docs/word/penjelasan-fitur.docx` dan
+  `docs/word/laporan-pengujian.docx` dikonversi ulang dengan `python3 docs/export_docx.py` (pandoc tidak ada
+  di mesin ini). **`docs/export-word.sh` utuh tidak dijalankan** karena langkah pertamanya mengekspor log
+  mentah sesi (±54 MB ter-gzip, di atas ambang peringatan GitHub 50 MB) — dan memasukkan log mentah masih
+  ditahan atas keputusan pemilik produk; `docs/word/log-mentah.docx` karena itu tertinggal di 10 Okt.
+- **Angka bilah atas diukur di Chrome headless + CDP** pada `localhost:5173` (proxy Vite ke backend 8000),
+  bukan di perangkat fisik; dua viewport yang dipakai adalah bawaan harness (ponsel 390×844, laptop
+  1366×900).
+
+---
+
+## A.59 Ringkasan Setelan Sesi + Tautan Siswa di Langkah 3 Editor Kuis (12 Oktober 2026)
+
+Permintaan pemilik produk, apa adanya (salah ketik dibiarkan, supaya jelas apa yang diminta): *"ingat pada
+/kusi pengaturan nya ada ya buat berskala form yang di nyalakan anti cheat apa saja di session itu, mode
+ofline di pakai? dll baut dalam skala form itu dan buat lebih ringkas dan juga tombol tobmol nya dan baut aagr
+spawn link nya untuk di abgikan siswa"*.
+
+Tiga hal saya tanyakan lebih dulu daripada menebak, dan jawabannya yang menentukan arah kerja:
+
+1. **tempatnya** — bukan di daftar `/kuis`, bukan di `/pengaturan`, melainkan **langkah 3 editor kuis**
+   (“Tinjau dan publikasi”), tepat sebelum guru menekan Publikasikan;
+2. **tautan siswa** — tautan **di dalam aplikasi**, dan harus **kompatibel bila guru mengaktifkan izin siswa
+   tamu** (mode tamu tanpa akun);
+3. **mode luring** — **tidak perlu ada keterangannya** di form itu: *"biarkan bekerja saja"*.
+
+### A.59.1 Apa yang dibuat
+
+**Panel “Setelan sesi ini” (ringkas, tiga baris)** di langkah 3, diisi dari `GET /v1/pengaturan?kuis_id=`
+(resolusi tiga lapis yang sudah ada, hanya guru/admin):
+
+| Baris | Isi |
+| --- | --- |
+| Proteksi | jumlah saklar anti-cheat yang menyala + namanya; **kalau saklar induk mati, dikatakan terus terang “tidak ada proteksi yang dipasang”** walaupun saklar rinci menyala |
+| Siswa tamu | boleh ikut tanpa akun atau tidak, beserta lapis penentunya (kuis ini / kelas / sekolah, dari kolom `sumber`) |
+| Aturan lain | ulangan ulang, peringkat, mode tim, layar guru, rekam diri — nyala/mati dalam satu baris teks |
+
+**Tombol “Buat tautan siswa”** (ikon tautan baru) menghasilkan kotak tautan `…/kuis/<id>` + tombol
+**Salin tautan** (papan klip, dengan jatuh-baik yang jujur bila peramban menolak) + catatan jujur yang
+muncul sesuai keadaan: kuis masih draf (tautan baru hidup setelah diterbitkan) dan/atau pintu tamu terbuka.
+
+**Tautan itu kompatibel dengan mode tamu — dan itu diuji, bukan diklaim.** Dua hal yang dibuat untuk itu:
+
+- `/kuis/<id>` memang halaman yang boleh dibuka akun tamu: `KuisPolicy::view` memakai `izinkan_tamu`
+  ketimbang “kelasmu” untuk akun tamu (`TamuService::izinkanKuis`), sudah ada sejak slice tamu;
+- **jalur pulang setelah masuk (`state.lanjut`)**: router mengantar pengunjung tanpa sesi ke halaman masuk
+  sambil membawa tujuan asalnya, lalu mengembalikannya ke sana setelah masuk — lewat akun **maupun** lewat
+  pintu tamu. Nilai itu divalidasi `tujuanLanjut()` (hanya jalur internal, menolak `//host`, `\`, dan skema
+  lain) supaya tidak jadi redirect terbuka.
+
+Aturan ringkasannya ditaruh sebagai logika murni di `frontend/src/sections/quiz/setelanSesi.js` (tanpa DOM)
+supaya bisa diuji tanpa peramban: **17 tes** menutup saklar induk mati, payload API yang rusak, kelompok
+pengaturan yang bukan proteksi, ambang bilangan bulat yang bukan saklar, dan pagar `tujuanLanjut`.
+
+### A.59.2 Bukti
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh setelan-sesi` (**baru**, Chrome + layanan hidup) | **23/23 lulus, exit 0** — lihat rincian di bawah |
+| `./verify.sh` (root, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest **340 lulus (3242 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint **PASS 354 berkas**, `npm run check`, ESLint **0 error** (2 peringatan lama), Vitest **75 berkas / 730 tes**, realtime **20/20** |
+| `docs/jalankan-smoke-ui.sh mobile` (**A.59**, regresi layar ponsel) | **16/16 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh kuis-manual` (**A.59**, regresi alur kuis manual) | **13/13 lulus, exit 0** |
+| `npx vitest run` (frontend) | **75 berkas / 730 tes lulus** — naik 1 berkas & 17 tes dari A.58 (74/713), semuanya dari `setelanSesi.test.js` |
+
+Rincian harness baru — semuanya diukur di peramban, bukan dibaca dari berkas sumber:
+
+```
+✅ tanpa sesi: diarahkan ke halaman masuk — path=/masuk
+✅ tanpa sesi: tujuan asal dibawa (state.lanjut) — lanjut=/kuis
+✅ setelah masuk (formulir sungguhan): kembali ke halaman asal (/kuis)
+✅ pintu tamu lapis sekolah dibuka untuk uji — status=200 · semula=false
+✅ tamu: formulir "ikut sebagai siswa tamu" tampil
+✅ tamu: mendarat di tujuan tautan (/avatar), bukan tujuan bawaan tamu (/kuis)
+✅ langkah 3: panel "Setelan sesi ini" tampil (3 baris ringkas + tombol "Buat tautan siswa")
+✅ tautan = alamat aplikasi + /kuis/220
+✅ panel: 2 proteksi aktif sama dengan resolusi server (setelan uji: anti_cheat + block_paste + block_tab_switch)
+✅ panel: baris siswa tamu sama dengan resolusi server (tamu=true · sumber=kuis)
+✅ panel: catatan draf + catatan pintu tamu muncul apa adanya
+✅ tombol "Salin tautan" mengisi klip papan (dibaca kembali = tautan)
+✅ kuis uji dihapus kembali — status=200
+✅ pintu tamu lapis sekolah dimatikan lagi sesudah uji — semula=false · sekarang=false
+```
+
+Yang membuat pemeriksaan panel kuat: angka di layar dibandingkan dengan **resolusi server dihitung ulang
+oleh modul aplikasi yang sama** (`ringkasSetelan` diimpor harness dari `sections/quiz/setelanSesi.js`),
+bukan dengan angka yang ditulis di harness. Jadi bila ringkasan di layar menyimpang dari aturan produk,
+harness-nya merah.
+
+### A.59.3 Berkas
+
+- **Baru:** `frontend/src/sections/quiz/setelanSesi.js` (logika murni),
+  `frontend/src/__tests__/sections/quiz/setelanSesi.test.js` (17 tes), `docs/smoke-ui-setelan-sesi.mjs`.
+- **Diubah:** `frontend/src/sections/quiz/HalamanKuis.jsx` (panel + tombol + kueri resolusi + catatan),
+  `frontend/src/App.jsx` (`KeMasuk` + jalur pulang `state.lanjut` divalidasi `tujuanLanjut`),
+  `frontend/src/icons.jsx` (ikon `IkonTautan` + entri `daftarIkon`), `docs/penjelasan-fitur.md` (bagian 5
+  ditambah “Melihat akibatnya sebelum kuis diterbitkan”), `docs/catatan-demo.md`,
+  `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (entri ini), dua ekspor Word.
+
+### A.59.4 Batasan jujur
+
+- **Panel itu hanya membaca.** Mengubah saklar tetap di halaman Pengaturan (tautan ke sana disediakan bila
+  resolusinya gagal dimuat) — halaman editor tidak menambah jalur tulis baru, jadi tidak ada risiko guru
+  mengubah pengaturan kelas/sekolah tanpa sadar dari tempat yang salah.
+- **Mode luring tidak ditampilkan** karena itu keputusan pemilik produk (*"biarkan bekerja saja"*). Jadi
+  panel ini **tidak** memberi tahu bahwa jawaban ditahan lokal saat jaringan putus — perilaku luring sendiri
+  tidak berubah (lihat `sections/attempt/luring.js`).
+- **Saklar induk anti-cheat tetap ditampilkan sebagai mati walau saklar rinci menyala** — itu memang perilaku
+  sistemnya (tanpa induk, tidak ada sensor yang dipasang), dan panel menyebutnya apa adanya.
+- **Baris `settings` sisa dari kuis uji tidak bisa dihapus lewat API** (tidak ada endpoint hapus pengaturan).
+  Harness mengembalikan nilainya ke bawaan sebelum menghapus kuisnya, sehingga baris sisa itu tidak bisa
+  terpakai lagi — sama seperti peninggalan putaran-putaran sebelumnya (mis. kuis 158–194). Pintu tamu lapis
+  **sekolah** selalu dimatikan lagi di akhir uji karena satu saklar itu membuka semua kuis terbit untuk tamu.
+- **Perubahan perilaku kecil yang disengaja:** halaman yang butuh sesi kini **kembali ke halaman asal**
+  setelah masuk, bukan selalu ke beranda. Untuk siswa tamu, bila tidak ada tujuan asal, tetap ke daftar
+  ulangan tamu (perilaku lama).
+- **Angka diukur di Chrome headless + CDP** pada `localhost:5173` (proxy Vite ke backend 8000). Tautan yang
+  diuji memakai alamat pengembangan; di produksi tautannya mengikuti alamat yang sedang dibuka
+  (`window.location.origin`), bukan alamat dev.
+
+---
+
+## A.60 Aksi Beranda Jadi Tombol Ikon, Monitor Ulangan, Pengaturan per Ulangan, dan Sisa Temuan Audit (12 Oktober 2026)
+
+Empat permintaan pemilik produk dikerjakan dalam satu putaran, masing-masing dengan perubahan
+sekecil yang bisa menjelaskan dirinya sendiri, lalu ditutup dengan membereskan **tiga temuan audit
+tampilan yang masih terbuka sejak A.55** (bagian 0.5 handoff). Satu utang lama ikut dibayar di
+putaran yang sama: impor murid yang menolak berkas guru hanya karena **judul kolomnya** berbeda.
+
+### A.60.1 Impor murid menerima judul kolom yang lazim di berkas guru
+
+Berkas buatan guru hampir tidak pernah memakai judul persis template: Excel menulis **„Nama Lengkap”**,
+Google Sheets „Nama Murid”, dan email sering ditulis **„E-mail”**. Dulu semuanya berhenti di `422`
+*„Kolom wajib tidak ditemukan: nama”* padahal isi berkasnya sudah benar — guru disalahkan atas nama
+kolom, bukan atas isinya.
+
+`ImporMuridService` kini mengenali kolom wajib (`nama`, `email`, `kelas`), kolom opsional (`nis`,
+`nisn`, `kata_sandi`), dan peta alias (`nama lengkap`/`nama murid`/`nama siswa` → `nama`;
+`e-mail`/`email murid`/`email siswa` → `email`; `nama kelas` → `kelas`; `nomor induk siswa` → `nis`;
+`nomor induk siswa nasional` → `nisn`; `password`/`sandi` → `kata_sandi`).
+
+Aturan pemetaannya sengaja **dua tahap**: nama resmi diperiksa lebih dulu untuk semua kolom, baru
+alias dipakai — dan hanya untuk kolom yang belum ketemu. Berkas yang memuat „Nama Lengkap” *dan*
+„nama” sekaligus karena itu memakai kolom **`nama`**, bukan kolom terakhir yang kebetulan dibaca.
+Dua tes baru menutup keduanya (berkas ber-alias penuh, dan tabrakan resmi-vs-alias).
+
+### A.60.2 Beranda: aksi jadwal jadi tombol ikon 44 px
+
+Tombol „Pantau / Lanjutkan / Lihat detail” di daftar jadwal beranda dulu tombol bertulisan yang
+memakan satu baris penuh per kartu. Sekarang satu tombol ikon persegi 44 px (`TombolTautIkon` baru
+di `shared/ui/Tombol.jsx`, pasangan tautan dari `TombolIkon` yang sudah ada): **mata** untuk
+„Pantau” (kuis sedang berjalan), **pensil** untuk „Lanjutkan menyusun”, **lembar soal** untuk
+„Lihat detail”.
+
+Ikon saja tidak boleh jadi teka-teki: `label` wajib dan berisi objeknya — `aria-label` **sekaligus**
+tooltip berbunyi „Pantau: Ulangan Operasi Hitung”, dan teks yang sama disimpan sebagai
+`<span class="sr-saja">` supaya pembaca layar tetap membacanya utuh.
+
+### A.60.3 „Live Monitor” menjadi „Monitor Ulangan”, lencana jalur data dibuang
+
+Halaman **Monitor Ulangan** tidak lagi memajang jargon teknis. Empat tempat diganti nama (judul
+halaman, jejak kepala halaman, tombol di detail kuis, tombol di halaman layar kelas) dan **lencana
+„Langsung (SSE)” / „Polling 5 detik” di kepala halaman Monitor dibuang** — yang penting bagi guru
+adalah papan pantauannya, bukan cara datanya datang; kanal SSE-nya sendiri tetap bekerja seperti
+semula (dibuktikan smoke slice 07, termasuk pemeriksaan yang menuntut jargon itu **tidak** kembali).
+Komentar kode di `sections/cheat`, `sections/presence`, `shared/api/realtime.js`, dan `routes.js` ikut
+memakai nama baru supaya kode dan layar tidak menyebut dua nama untuk satu halaman.
+
+**Yang sengaja TIDAK diubah:** lencana „Langsung (SSE)” / „Polling 5 detik” di halaman **layar kelas**
+(`HalamanLayar.jsx`) tetap ada — di sana lencana itu menjawab pertanyaan yang memang milik halaman itu
+(„apakah siaran saya sedang hidup?”), bukan jargon yang bocor. Permintaan pemilik produk juga spesifik
+menyebut papan pantau guru.
+
+Kartu ringkas Monitor (`px-3 py-2`) juga berganti ke `p-3` supaya isinya tidak lagi mepet garis tepi.
+
+### A.60.4 Halaman Pengaturan diskalakan **per ulangan**, bukan per akun
+
+Permintaan pemilik produk apa adanya: *„pidnahkan /pengaturan ke scale nay per ulangan/form bukan
+perakun”*. Karena satu instalasi = satu sekolah, lapis „sekolah” dulu terasa seperti setelan akun.
+
+Sekarang `lingkup.js` hanya menyusun **satu daftar: ulangan milik guru** (`kuis:<id>`), dan
+`HalamanPengaturan.jsx` hanya punya satu pemilih („Ulangan yang diatur”). Lapis sekolah dan kelas
+**tetap berlaku di server** dan tetap bisa mengunci sebuah nilai; halaman ini menampilkan akibatnya
+(„dikunci sekolah”) tanpa lagi menjadi tempat menyetelnya — saklar yang dikunci tampil mati, dan
+tombol massal melewatinya sambil melaporkan berapa yang dilewati. Keputusan siapa yang boleh
+menyentuh lapis mana tetap di server (K-05), jadi guru lain tidak bisa membuka ulangan bukan miliknya.
+Uji logika murninya ikut dipersempit: 9 tes tiga-lapis → **6 tes satu-lapis** (`kuis:<id>` sah,
+`sekolah`/`kelas:7`/`kuis:0`/`kuis:abc` ditolak alih-alih ditebak).
+
+### A.60.5 Tiga temuan audit tampilan ditutup (dan dua di antaranya cacat alat, bukan cacat layar)
+
+Audit A.55 menyisakan tiga baris: (1) *KONTRAS 2.77* pada `span.sr-saja`, (2) satu tautan setinggi
+**19 px** di *Koreksi kuis*, (3) `422` di konsol saat membuka *Kerjakan kuis*. Semuanya selesai,
+dengan pemisahan jujur antara cacat layar dan cacat alat ukur:
+
+| Temuan | Sifatnya | Yang dikerjakan |
+| --- | --- | --- |
+| KONTRAS 2.77 pada `span.sr-saja` (±600 hitungan di 12 halaman) | **cacat alat**: teks hanya-pembaca-layar dipotong 1×1 px, jadi kontrasnya tak pernah dilihat manusia | `audit-ui.mjs` melewati elemen di dalam `.sr-saja` pada pemeriksaan kontras — sama seperti yang sudah dilakukan pemeriksaan target-sentuh dan nama-aksesibel |
+| tautan jejak **19 px** di Koreksi kuis | **cacat layar (nyata)**: pautan sebaris di kepala halaman jadi sasaran terkecil di halaman guru | `.kepala-halaman-jejak a` di `theme.css`: kotak sentuh dinaikkan ke **44 px** dengan `min-height`, kelebihan tingginya ditarik kembali `margin-block` negatif — jadi **tata letak tidak bergeser** (dibuktikan A/B di bawah) |
+| `422` di konsol saat membuka Kerjakan kuis | **bukan cacat**: server memang menolak memulai kuis yang jadwalnya sudah lewat, dan halaman menampilkannya sebagai banner rapi | `audit-ui.mjs` kini memprioritaskan ulangan yang `sedang_berjalan`, dan bila tidak ada, halaman tetap diperiksa dalam keadaan banner dengan galat `/mulai` yang disengaja **disaring** (cacat lain tetap dilaporkan) + satu baris `CATATAN` dicetak terang-terangan |
+
+Bukti tata letak tidak bergeser (diukur lewat CDP di 390×844, halaman Koreksi vs Monitor sebagai acuan):
+
+```
+/kuis/191/koreksi SESUDAH {kotakTarget: 94×44 · kotakJejak: 22 · h1Atas: 152}
+/kuis/191/koreksi SEBELUM  h1Atas 152      ← aturan 44 px dimatikan sementara lewat <style>
+/kuis/191/monitor SESUDAH {kotakTarget: 366×22 · kotakJejak: 22 · h1Atas: 127}   (jejak teks, acuan)
+```
+
+Tinggi baris jejak tetap **22 px** di kedua halaman dan posisi judul (`h1Atas`) **identik** dengan
+keadaan sebelum aturan dinyalakan — yang berubah hanya kotak sentuhnya.
+
+### A.60.6 Bukti (dijalankan, bukan klaim)
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `./verify.sh` (root, sesudah semua suntingan) | **SEMUA HIJAU (exit 0)** — Pest **342 lulus (3251 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint **PASS 354 berkas**, `npm run check`, ESLint **0 error** (2 peringatan lama), Vitest **75 berkas / 727 tes**, realtime **20/20** |
+| `node docs/audit-ui.mjs` (guru+murid × hp 390 px + laptop 1366 px, 34 halaman) | **seluruh halaman BERSIH; ringkasan cacat `{}`** (sebelumnya `{kontras: 606, targetKecil: 2, galatKonsol: 2}`) |
+| `docs/jalankan-smoke-ui.sh pengaturan` (**A.60**, skala per ulangan) | **6/6 lulus, exit 0** — termasuk „lingkup pengaturan hanya per ulangan (tanpa lapis sekolah/kelas)” dengan **120 opsi ulangan** |
+| `docs/jalankan-smoke-ui.sh slice07` (**A.60**, nama + jargon monitor) | **21/21 lulus, exit 0** — termasuk „halaman Monitor Ulangan tampil dengan baris murid” dan „monitor tidak memakai jargon jalur data di layar guru” |
+| `docs/jalankan-smoke-ui.sh slice06` (**A.60**, halaman Koreksi setelah aturan 44 px) | **28/28 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh slice04` (**A.60**, jalur soal penuh di halaman pengerjaan) | **18/18 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh mobile` (**A.60**, regresi layar ponsel 390 px) | **16/16 lulus, exit 0** |
+| `docs/jalankan-smoke-ui.sh nav` (**A.60**, regresi navbar 390 px & 1280 px) | **14/14 lulus, exit 0** |
+| `npx vitest run` (frontend) | **75 berkas / 727 tes lulus** — turun 3 tes dari A.59 (730) karena uji lingkup sekolah/kelas pensiun bersama lapisnya (9 → 6 tes) |
+
+### A.60.7 Berkas
+
+- **Diubah (backend):** `backend/app/Sections/School/Services/ImporMuridService.php`,
+  `backend/tests/Feature/ImporMuridTest.php` (+2 tes).
+- **Diubah (frontend):** `frontend/src/shared/ui/Tombol.jsx` (`TombolTautIkon`),
+  `frontend/src/sections/home/Beranda.jsx` (aksi jadwal jadi ikon + label objek),
+  `frontend/src/sections/cheat/HalamanMonitor.jsx` (nama, lencana dibuang, `p-3`),
+  `frontend/src/sections/quiz/HalamanKuisDetail.jsx` & `frontend/src/sections/presence/HalamanLayar.jsx`
+  (label tombol „Monitor Ulangan”), `frontend/src/sections/settings/HalamanPengaturan.jsx` +
+  `frontend/src/sections/settings/lingkup.js` (satu lingkup: ulangan),
+  `frontend/src/__tests__/sections/settings/lingkup.test.js` (6 tes),
+  `frontend/src/theme/theme.css` (`.kepala-halaman-jejak a`).
+- **Diubah (harness/docs):** `docs/audit-ui.mjs` (lewati `.sr-saja`, pilih ulangan yang sedang
+  berjalan, saring 422 `/mulai`, label „Monitor Ulangan”), `docs/smoke-ui-pengaturan.mjs`,
+  `docs/smoke-ui-slice07.mjs`, `docs/penjelasan-fitur.md`, `docs/catatan-demo.md`,
+  `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (entri ini).
+
+### A.60.8 Batasan jujur
+
+- **Halaman pengerjaan tidak diperiksa penuh oleh `audit-ui.mjs` di mesin ini.** Akun murid uji
+  (`smoke.murid@sekolah.test`) tidak punya ulangan yang jadwalnya sedang berjalan, jadi yang diaudit
+  adalah **keadaan banner** „belum bisa dibuka” (bukan layar soal). Jalur soal penuh tetap dijaga
+  smoke lain: `docs/jalankan-smoke-ui.sh slice04` **18/18** dan `… kuis-materi` dijalankan di
+  putaran-putaran sebelumnya. Audit tidak mengubah jadwal kuis untuk memaksa halaman terbuka karena
+  janjinya adalah „tidak mengubah data”.
+- **Galat `/mulai` disaring, bukan dibuang diam-diam.** Penyaringan berlaku **hanya** untuk URL
+  `/api/v1/kuis/<id>/mulai` pada halaman pengerjaan, dan hanya saat tidak ada ulangan yang sedang
+  berjalan; baris `CATATAN` mencetak alasannya, dan cacat konsol lain di halaman itu tetap merah.
+- **Keluarkan `1lh` punya cadangan, bukan jaminan.** `margin-block: calc((44px - 1lh) / -2)` didahului
+  `margin-block: -11px` untuk peramban yang belum mengenal satuan `lh`; angka 11 px dihitung dari
+  tinggi baris jejak **22 px** pada satu-satunya skala tulisan sekarang (`--s: 1`, A.58). Kalau skala
+  itu dihidupkan kembali, cadangannya perlu ikut ditinjau.
+- **Kotak sentuh 44 px itu menjulur ke atas dan ke bawah baris teksnya** (±11 px). Bagian bawah
+  menumpuk tepi atas area `<h1>` yang tidak bisa diklik, jadi tidak ada aksi yang salah terpicu —
+  tetapi letaknya memang lebih tinggi daripada teks yang terlihat, dan itu disengaja demi
+  mempertahankan tata letak.
+- **Angka diukur di Chrome headless + CDP**, bukan perangkat fisik; dua viewport yang dipakai adalah
+  bawaan harness (ponsel 390×844, laptop 1366×900).
+
+## A.61 — Soal boleh diperbaiki di tengah ulangan (13 Oktober 2026)
+
+### A.61.1 Kebijakan yang berubah
+
+Permintaan pemilik produk: *"soal boleh diubah di tengah-tengah quiz namun langsung ada informasi dan di
+refresh (pastikan sistem backup jawaban sudah ada) … sidebar harap flex agar tidak ada scrollbar … saat
+proses pembuatan susun soal buat spesifik per soalnya, jangan dipaksa semua dalam isian."*
+
+| Dulu | Sekarang |
+| --- | --- |
+| Soal yang dipakai kuis **sedang berjalan** tidak bisa diubah sama sekali (server menolak 422). | **Isi soal boleh diperbaiki** (teks, opsi, media) walau ulangannya sedang jalan. |
+| — | **Kunci jawaban, skor, dan jenis soal tetap ditolak** selama kuis berjalan: penilaian attempt yang sedang berjalan memakai ketiganya. |
+| Murid yang sedang mengerjakan tetap membaca soal versi lama sampai gurunya mengumpulkan. | Murid **diberi tahu** ("Guru memperbarui soal") lalu payload soal **dimuat ulang** tanpa reload halaman; **jawaban yang sudah diketik tetap utuh**. |
+| Editor soal: pemilih jenis soal ada di **bawah** formulir, di dalam kartu lipat. | Jenis soal dipilih **pertama (langkah 1)** — isian di bawahnya hanya yang khusus tipe itu. |
+| Kunci jawaban hanya terbaca dari radio tiap opsi. | Ada **ringkasan "Kunci jawaban soal ini" di bawah soal** (satu kalimat untuk seluruh soal). |
+| Panel "Susunan kuis" menaruh total di kepala panel. | Total ("X soal · Y poin") ada di **bawah daftar** susunan sebagai hasil akhir. |
+
+### A.61.2 Cara kerjanya (tanpa mengubah aturan "do not trust client")
+
+- **Cap versi isi soal** dihitung server dari daftar soal attempt (`AttemptService::versiSoal()`): satu hash
+  kecil berisi *id soal + skor + isi + kunci*, dan id yang sudah hilang ditulis `hilang` supaya penghapusan
+  pun terdeteksi. Cap ini ikut di payload attempt (`versi_soal`, `soal_diubah_at`) dan tersedia lewat
+  `GET /v1/attempt/{attempt}/versi-soal` sehingga klien tidak perlu memuat seluruh soal berkali-kali.
+- **Layar pengerjaan** memeriksa cap tiap **20 detik** (dan begitu murid kembali ke tab — `focus` /
+  `visibilitychange`); tab yang sedang tersembunyi tidak ditanyai. Kalau capnya berubah: spanduk
+  "Guru memperbarui soal" muncul **dan** payload dimuat ulang lewat jalur yang sama dengan tombol
+  lanjut attempt (`POST /kuis/{kuis}/mulai` — server mengembalikan attempt yang sama, bukan attempt baru).
+- **Jawaban tidak hilang** karena jawaban tidak pernah bergantung pada payload soal: jawaban hidup di state
+  `perubahan` + cadangan perangkat (`simpananJawaban`, Zustand persist). Inilah "sistem backup jawaban"
+  yang diminta — dan ia sudah ada sejak slice 04, jadi kebijakan baru tidak menambah risiko baru.
+- **Fail-open**: pemeriksaan versi yang gagal (jaringan/5xx/401) hanya didiamkan; ulangan tidak terganggu.
+- Server tetap penentu: kunci/skor/tipe ditolak 422 di `SoalService::perbarui()` lewat
+  `pastikanPerubahanAmanSaatBerjalan()`, dan kunci lama wajib tetap "masuk" ke isi baru (dijaga registry
+  tipe soal) supaya penilaian attempt berjalan tidak kehilangan acuannya.
+
+### A.61.3 Bukti (dijalankan, bukan klaim)
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `./verify.sh` (root, seluruh pagar mutu) | **SEMUA HIJAU (exit 0)** — Pest **344 lulus (3290 asersi)**, Redis wajib **9 lulus (65 asersi)**, Pint **354 berkas bersih**, checkJs, ESLint **0 error** (2 peringatan lama), Vitest **75 berkas / 727 tes**, realtime **20/20** |
+| `./vendor/bin/pest tests/Feature/AttemptTest.php tests/Feature/BankSoalTest.php` | **39 lulus (334 asersi)** — termasuk "saat kuis berjalan, isi soal boleh diperbaiki tetapi kunci, skor, dan jenis soal tidak" |
+| `npm run check` (tsc, checkJs strict) | **exit 0** |
+| `npx eslint` (berkas yang disunting) | **0 error** |
+| `npx vitest run` (frontend) | **75 berkas / 727 tes lulus** |
+| `docs/jalankan-smoke-ui.sh soal-berubah` (**harness baru**, browser sungguhan) | **19/19 lulus, exit 0** — guru memperbaiki isi soal saat ulangan jalan; cap versi berubah; murid melihat spanduk "Guru memperbarui soal", teks baru, **dan radio jawabannya tetap tercentang**; editor mengunci skor + menjelaskan aturan; server menolak skor & kunci (422) |
+| `docs/jalankan-smoke-ui.sh kuis-manual` (**diperbarui** ke kebijakan baru) | **15/15 lulus, exit 0** — termasuk "pemilih jenis soal ada di ATAS formulir", "kunci jawaban dirangkum di bawah soal", dan "total susunan (soal · poin) ada di bawah daftar soal" |
+| `docs/jalankan-smoke-ui.sh sidebar` (regresi permintaan "tanpa scrollbar") | **9/9 lulus, exit 0** — `overflowY: visible`, `isi == muat` di 1440×900 dan 1280×640 |
+
+### A.61.4 Berkas
+
+- **Diubah (frontend):** `sections/attempt/HalamanKerjakan.jsx` (penjaga versi + spanduk),
+  `sections/attempt/api.js` (`versi_soal`, `soal_diubah_at`, `ambilVersiSoal`),
+  `sections/question/api.js` (`terkunci`), `sections/question/EditorSoal.jsx` (spanduk aturan, skor/tipe/aktif
+  terkunci saat kuis berjalan, pemilih jenis jadi langkah 1, ringkasan kunci di bawah soal),
+  `sections/quiz/HalamanKuis.jsx` (pengingat kebijakan baru + total susunan di bawah),
+  `theme/theme.css` (`.ringkas-kunci-soal`, `.ringkas-susunan-akhir`).
+- **Diubah (harness/docs):** `docs/smoke-ui-kuis-manual.mjs` (tiga pemeriksaan baru + urutan langkah),
+  `docs/catatan-demo.md`, `docs/laporan-pengujian.md` (entri ini).
+- **Baru (harness):** `docs/smoke-ui-soal-berubah.mjs`.
+
+### A.61.5 Batasan jujur
+
+- **Penundaan sampai ~20 detik adalah disengaja.** Bukti murid "langsung" melihat versi baru diuji dengan
+  mensimulasikan murid kembali ke tab (`focus`), yang memang jalur cepatnya. Kalau murid membiarkan tabnya
+  terbuka terus, spanduknya muncul paling lama 20 detik setelah guru menekan Simpan — itu harga dari tidak
+  memuat ulang payload tiap beberapa detik di jaringan sekolah.
+- **Kunci jawaban masih diisi lewat radio/tombol per opsi.** Yang ditambahkan adalah **kesimpulannya** di
+  bawah soal; isian kuncinya tidak dipindah karena tiap tipe soal punya bentuk kunci yang berbeda (pasangan,
+  urutan, peta sel). A.61.1 memuat tafsir ini secara terbuka — kalau pemilik produk memaksudkan hal lain,
+  yang perlu diganti hanya letak ringkasannya, bukan mekanisme versi.
+- **Tabrakan dua proses** (guru menyimpan tepat saat murid mengirim jawaban) tidak diuji di browser:
+  yang dibuktikan adalah versioning, sandi jawaban, dan penolakan kunci/skor. Penolakan 422 pada kunci/skor
+  sudah dijaga uji backend, bukan uji balapan waktu.
+
+---
+
+## A.62 — Kartu pertanyaan: pilihan PG di editor, di bawah pertanyaan (13 Oktober 2026)
+
+### A.62.1 Permintaan
+
+Pemilik produk: pilihan jawaban PG ditaruh **langsung di dalam editor di bawah pertanyaannya** —
+"buat seperti ini cuman beda style nya saja" (rujukan: tangkapan layar kartu pertanyaan ala Google Forms).
+Boleh dirombak asal pembuatan soal lebih mudah.
+
+### A.62.2 Yang diubah
+
+- Kartu **2. Tulis soalnya** kini dibuka oleh **pertanyaan di paling atas**, dengan **Poin** di kanan
+  atasnya; isian **Skor** pindah dari kartu pengaturan ke sini (jadi "Poin").
+- **Pilihan ganda & pilihan ganda kompleks**: tiap pilihan menjadi **baris penuh** (`.baris-opsi`) dengan
+  **lingkaran kunci (radio/centang) di kiri** (`.pilih-opsi`) — sekali klik menandai jawaban benar.
+  Pilihan yang menjadi kunci ditandai garis aksen + latar hangat, bukan warna saja.
+- **Mapel & tag** pindah ke kartu **3. Pengaturan soal** supaya alur menulis soal (pertanyaan → pilihan →
+  kunci) tidak terputus.
+- **Pemilih jenis soal dilipat jadi satu chip** (`<details class="pemilih-jenis">`, tertutup secara
+  bawaan). 22 petak berikon tidak lagi mendorong pertanyaan & pilihannya ke bawah; menekan chip membuka
+  petaknya, dan memilih satu petak menutupnya lagi. Selama kuis berjalan (jenis terkunci) chip tetap
+  tampil tanpa tombol ganti.
+- Ringkasan kunci tetap di **bawah soal** (`.ringkas-kunci-soal`), dengan petunjuk singkat khusus tipe PG.
+
+### A.62.3 Bukti (dijalankan, bukan klaim)
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `./verify.sh` (root, seluruh pagar mutu) | **SEMUA HIJAU (exit 0)** — Pest **344 lulus (3290 asersi)**, Redis wajib hijau, Pint bersih, checkJs, ESLint **0 error**, Vitest **76 berkas / 730 tes**, realtime **20/20** |
+| `php artisan test` (backend) | **344 lulus (3290 asersi)** |
+| `npm run check` (tsc, checkJs strict) | **exit 0** |
+| `npx eslint` (berkas yang disunting) | **0 error** |
+| `npx vitest run src/__tests__/sections/question/editorSoal.test.jsx` (baru) | **4 lulus** — pertanyaan mendahului baris pilihan; radio kunci `#kunci-A`/`#kunci-B` ada; Poin mendahului pilihan; mapel berada **setelah** pilihan (kartu pengaturan); pemilih jenis berupa `<details>` tertutup (chip) dan jenis tetap di atas formulir; ringkasan kunci berada di bawah pilihan |
+
+### A.62.4 Berkas
+
+- **Diubah (frontend):** `sections/question/EditorSoal.jsx` (kartu pertanyaan: pertanyaan + poin di atas,
+  baris opsi berlingkaran kiri, mapel/tag pindah ke pengaturan, pemilih jenis dilipat jadi chip),
+  `theme/theme.css` (`.baris-opsi`, `.pilih-opsi`, `.poin-soal`, `.soal-teks-utama`, penanda `<details>`
+  pemilih jenis, varian padat ≥992px).
+- **Baru (uji):** `src/__tests__/sections/question/editorSoal.test.jsx`.
+- **Diubah (docs):** `docs/penjelasan-fitur.md`, `docs/laporan-pengujian.md` (entri ini).
+
+### A.62.5 Batasan jujur
+
+- **Bukan salinan mentah papan Google Forms.** Menurut instruksi "beda style", bentuknya memakai bahasa
+  visual aplikasi (kartu `.kartu-soft`, ikon `.petak-tipe`, warna token tema) — bukan warna/huruf papan.
+- **Fitur papan yang sengaja tidak diambil:** pegangan geser antar-soal, tombol lampiran (paperclip) per
+  opsi, dan deret tombol aksi di kaki kartu (Insert/Save/Duplicate/Delete). Aksi Simpan/Batal tetap di
+  sisi kanan (`.sisi-lengket`) supaya tidak ada dua tombol simpan.
+- **Jenis soal tetap dipilih lebih dulu** (kartu 1), sesuai keputusan 12 Oktober 2026 — bukan dipindah ke
+  bawah pertanyaan seperti di papan.

@@ -27,13 +27,13 @@ tabel token (Normal vs Besar). Keduanya disalin apa adanya sebagai daftar periks
 
 ---
 
-## 2. Sudah selesai pada putaran ini (A.49)
+## 2. Sudah selesai pada putaran ini (A.49) — lalu dibatalkan pada A.58
 
 | Perubahan | Status | Bukti |
 | --- | --- | --- |
-| Ukuran tulisan Normal/Besar lewat **satu variabel `--s`** | **sudah** | `docs/smoke-ui-ukuran.mjs` — 11 pemeriksaan lulus di Chrome |
-| Tombol ukuran tersimpan di browser, terpasang sebelum render pertama | **sudah** | `frontend/src/__tests__/theme/ukuran.test.jsx` |
-| Judul Bootstrap ikut membesar 12% (bukan 9%) | **sudah** | harness: 28,004 px → 31,3645 px |
+| Ukuran tulisan Normal/Besar lewat **satu variabel `--s`** | **dibuang (A.58)** | dulu `docs/smoke-ui-ukuran.mjs` 11/11; sekarang tanpa tombol, tanpa `data-ukuran` |
+| Tombol ukuran tersimpan di browser, terpasang sebelum render pertama | **dibuang (A.58)** | dulu `frontend/src/__tests__/theme/ukuran.test.jsx` |
+| Judul Bootstrap ikut membesar 12% (bukan 9%) | **tidak berlaku lagi** | tak ada lagi skala kedua; `--s` tetap 1 |
 
 Sisa papan belum dikerjakan. Daftarnya di bawah, berurut dari yang paling terasa.
 
@@ -45,7 +45,7 @@ Sisa papan belum dikerjakan. Daftarnya di bawah, berurut dari yang paling terasa
 
 | # | Papan meminta | Keadaan sekarang | Catatan |
 | --- | --- | --- | --- |
-| 1 | **Panel "Tampilan"**: satu tombol membuka panel berisi *Warna layar* (terang/gelap) **dan** *Ukuran tulisan* (Normal/Besar), dengan tombol batal | dua tombol ikon berdampingan (tema ▪ ukuran) | A.49 sengaja belum menggabungkan. Butuh panel buka-tutup: tutup dengan Escape, klik di luar, dan fokus kembali ke tombolnya |
+| 1 | **Panel "Tampilan"**: satu tombol membuka panel berisi *Warna layar* (terang/gelap) **dan** *Ukuran tulisan* (Normal/Besar), dengan tombol batal | hanya tombol tema; **tombol ukuran sudah dibuang (A.58)** atas permintaan pemilik produk | Kalau panel ini nanti dikerjakan, isinya tinggal warna terang/gelap — atau ukuran tulisan harus ditambahkan ulang lebih dulu |
 | 2 | Kata-kata papan per layar (mis. *"Keluar sementara"*, *"Periksa dan kumpulkan"*, *"Ini contoh"*, *"Sisa waktumu"*, *"Nilai kamu"*) | **tidak ada satu pun** string itu di `frontend/src` (grep) | Aplikasi memakai istilahnya sendiri, dan di beberapa tempat itu **sengaja** (A.47 memilih kata "keluar" alih-alih kalimat panjang). Jadi ini keputusan pemilik produk, bukan penggantian otomatis |
 | 3 | Panel token (tabel Normal vs Besar, pratinjau soal, palet) | tidak ada di aplikasi | Menurut `Main` papan ini sendiri menggantikan "papan dokumentasi panjang"; di aplikasi padanannya halaman pengaturan gaya, bukan layar murid |
 
@@ -83,10 +83,10 @@ diusulkan lagi tanpa alasan baru:
 
 | Tahap | Isi | Ukuran | Bukti yang dijalankan |
 | --- | --- | --- | --- |
-| ~~0~~ | ~~fondasi `--s` + tombol ukuran~~ | **selesai (A.49)** | 1 berkas Vitest + 1 harness |
-| 1 | Panel **"Tampilan"** menyatukan warna + ukuran; dua tombol lama dilebur | sedang | 1 berkas Vitest (jsdom, buka/tutup/Escape) + 1 harness (klik sungguhan) |
+| ~~0~~ | ~~fondasi `--s` + tombol ukuran~~ | **dibatalkan (A.58)** | tombol ukuran dibuang; `--s: 1` tetap ada sebagai token skala |
+| 1 | Panel **"Tampilan"** menyatukan warna + ukuran; dua tombol lama dilebur | sedang | 1 berkas Vitest (jsdom, buka/tutup/Escape) + 1 harness (klik sungguhan) — **ukurannya harus dibuat dulu** |
 | 2 | Audit kata layar-per-layar terhadap 7 papan, lalu **satu daftar usulan kata** untuk disetujui pemilik produk (tidak mengubah apa pun tanpa persetujuan) | kecil | cukup grep + dokumen; tanpa menjalankan Chrome |
-| 3 | Periksa **tata letak pada mode Besar** di halaman padat (Kelas, Murid, Editor Materi): tidak boleh ada gulir mendatar; baris tabel tetap terbaca | sedang | 1 harness (mode Besar, 3 halaman) |
+| ~~3~~ | ~~Periksa **tata letak pada mode Besar** di halaman padat~~ | **tidak berlaku (A.58)** | mode Besar tidak ada lagi |
 | 4 | Sisa bentuk papan yang belum dicocokkan (kartu elemen editor, dialog kumpul, tabel induk) | besar | 1 harness per layar, dijalankan **hanya** setelah tahap 1–3 hijau |
 
 **Aturan menjalankan uji (permintaan pemilik produk, 12 Oktober 2026): jangan banyak-banyak.** Satu putaran

@@ -54,9 +54,9 @@ manual dan tidak ada port yang diperebutkan:
 docs/jalankan-smoke-ui.sh tamu          # mode tamu: nama → kode perangkat → Keluar → akun baru
 docs/jalankan-smoke-ui.sh mobile        # mode perangkat ponsel (emulasi Chrome 412×915): tata letak, target sentuh, laci
 docs/jalankan-smoke-ui.sh slice06       # koreksi manual dua kolom + token
-docs/jalankan-smoke-ui.sh slice07      # Live Monitor + anti-cheat
-docs/jalankan-smoke-ui.sh ukuran        # ukuran tulisan Normal ↔ Besar (satu variabel --s)
+docs/jalankan-smoke-ui.sh slice07      # Monitor Ulangan + anti-cheat
 docs/jalankan-smoke-ui.sh murid         # pencarian murid yang menyaring di server
+docs/jalankan-smoke-ui.sh setelan-sesi   # panel setelan sesi + tautan siswa (dibagikan ke kelas)
 docs/jalankan-smoke-materi.sh           # pemutar materi + kuis sisipan
 docs/jalankan-smoke-perjalanan.sh       # peta perjalanan bertema + kenaikan pos (tiga latar)
 ```
@@ -76,8 +76,8 @@ for s in tamu slice03 slice04 slice05 slice06 slice07 susun kuis-manual nav luri
   bash docs/jalankan-smoke-ui.sh "$s" || echo "GAGAL: $s"
 done
 docs/jalankan-smoke-ui.sh mobile          # emulasi perangkat ponsel (A.44)
-docs/jalankan-smoke-ui.sh ukuran          # ukuran tulisan (A.49)
 docs/jalankan-smoke-ui.sh murid           # pencarian murid (A.51)
+docs/jalankan-smoke-ui.sh setelan-sesi     # ringkasan setelan sesi + tautan siswa (A.59)
 docs/jalankan-smoke-perjalanan.sh
 docs/jalankan-smoke-materi.sh
 ```
@@ -95,7 +95,7 @@ Sapu itu belum pernah diulang utuh sesudah A.44; yang dijalankan ulang di A.50/A
 - **Slice 04**: kerjakan kuis penuh sampai hasil (pengacakan, autosave, submit idempoten, deadline).
 - **Slice 05**: retry, ranking, badge, remedial, laporan per tag.
 - **Slice 06**: koreksi manual isian/uraian dengan token konfirmasi.
-- **Slice 07**: Live Monitor SSE + presence + proteksi anti-cheat aktif.
+- **Slice 07**: Monitor Ulangan (SSE) + presence + proteksi anti-cheat aktif.
 - **Slice 08**: unggah materi, avatar + laporan (layar guru ke murid belum).
 - **Slice 09**: upload jawaban (gambar/rekam/file), saran penilaian AI, mode tim.
 - **Slice 10**: ekspor nilai CSV; cache L1, Octane Swoole, dan demo dari link deploy VPS masih terbuka.
@@ -160,7 +160,7 @@ kuis draf **Latihan Operasi Hitung (draf)**, dan kuis terbit **Ulangan Operasi H
 4. **Kuis**: buka **Kuis** → isi formulir (judul, mapel, kelas, durasi, jadwal mulai/selesai, acak soal/opsi) → **Buat kuis** (status **Draf**).
    - **Susun soal** → centang soal dari bank soal, atur urutan dengan ↑/↓ → **Simpan susunan**;
    - **Terbitkan** → bila soal/jadwal belum lengkap, muncul pesan galat yang jelas; bila lengkap, lencana berubah menjadi **Sedang berjalan / Belum dimulai / Selesai** sesuai jadwal;
-   - soal yang dipakai kuis yang sedang berjalan tidak bisa diubah/dihapus (server menolak dengan pesan "soal terkunci") — tunjukkan lewat Bank Soal.
+   - **soal yang dipakai kuis yang sedang berjalan masih boleh diperbaiki isinya** (salah ketik, opsi yang membingungkan, gambar salah pasang): buka **Bank Soal** → **Ubah soal** — editor menampilkan spanduk "Kuis yang memakai soal ini sedang berjalan" dan mengunci **skor**, **jenis soal**, serta **kunci jawaban** (server menolak dengan pesan jelas). Murid yang sedang mengerjakan langsung melihat versi barunya: layar pengerjaan memeriksa cap versi isi soal tiap 20 detik, lalu menampilkan pemberitahuan **"Guru memperbarui soal"** dan memuat ulang soalnya — **jawaban yang sudah diketik tidak hilang**. Soal yang sedang dipakai kuis berjalan juga belum bisa dihapus/nonaktif.
 5. **Sisi murid**: masuk sebagai murid kelas tersebut → menu **Ulangan Saya** → kuis terbit muncul dengan status dan jumlah soal → **Lihat soal** menampilkan soal **tanpa kunci jawaban dan tanpa pembahasan** (server tidak pernah mengirimkannya). Kuis draf dan kuis kelas lain tidak muncul.
 
 ### Bukti lewat browser sungguhan
@@ -319,18 +319,20 @@ Yang bisa ditunjukkan saat demo:
 
 ---
 
-## Demo Slice 07 — Anti-cheat, Presence, dan Live Monitor
+## Demo Slice 07 — Anti-cheat, Presence, dan Monitor Ulangan
 
 Prinsip yang ditunjukkan: **bukti, bukan vonis**, dan **fail-open** — proteksi yang rusak tidak boleh
 menggagalkan ulangan. Semua proteksi **mati secara bawaan**.
 
 ### Langkah demo (guru) — menyalakan pengaman
 
-1. Buka `/pengaturan`, lihat kelompok **Anti-cheat**: saklar induk beserta saklar rincinya (blokir tempel,
+1. Buka `/pengaturan`, pilih **ulangan** yang mau diatur (halaman ini berskala per ulangan, bukan per
+   akun), lalu lihat kelompok **Anti-cheat**: saklar induk beserta saklar rincinya (blokir tempel,
    blokir seleksi teks, catat pindah tab, kunci layar, deteksi alat pengembang, sembunyikan saat dicetak,
    dan **preset ujian** yang menyalakan sekelompok sekaligus).
 2. Nyalakan **Aktifkan anti-cheat**, lalu **Blokir tempel (paste) jawaban** dan **Catat pindah tab /
-jendela**. Bisa diatur per sekolah, per kelas, atau per kuis (kuis menang).
+jendela**. Nilai ini tersimpan untuk ulangan itu; aturan sekolah atau kelas tetap berlaku di atasnya dan
+   boleh menguncinya (yang tampak sebagai "dikunci sekolah").
 
 ### Langkah demo (murid) — pengaman yang terbuka, bukan jebakan
 
@@ -343,12 +345,13 @@ jendela**. Bisa diatur per sekolah, per kelas, atau per kuis (kuis menang).
 
 ### Langkah demo (guru) — Live Monitor
 
-6. Dari detail kuis tekan **Live Monitor** (`/kuis/:id/monitor`). Tampak siapa yang sedang mengerjakan,
+6. Dari detail kuis tekan **Monitor Ulangan** (`/kuis/:id/monitor`). Tampak siapa yang sedang mengerjakan,
    **progres** per murid, dan status kehadiran: **Hadir** dihitung dari aktivitas normal murid (memuat
    ulangan, menyimpan jawaban) sehingga tidak ada detak jantung terus-menerus dan hemat kuota.
-7. Perhatikan lencana koneksi di kanan atas: **Langsung (SSE)** bila service realtime hidup, atau
-   **Polling 5 detik** bila tidak. Keduanya menampilkan data yang sama — itulah fail-open yang bisa
-   ditunjukkan dengan mematikan service Node di tengah demo (layar tetap berisi).
+7. Sejak 12 Oktober 2026 layar guru **tidak lagi memajang lencana jalur data** ("Langsung (SSE)" /
+   "Polling 5 detik") — yang tampak hanya papan pantauannya. Fail-open-nya tetap sama dan tetap bisa
+   ditunjukkan dengan mematikan service Node di tengah demo: data menyusul lewat pembaruan berkala dan
+   layar tetap berisi, tanpa jargon teknis muncul di layar guru.
 8. Panel **Catatan kejadian** menampilkan kategori, **skor risiko**, waktu server vs waktu perangkat, dan
    keterangan "dihitung server" untuk kejadian yang tidak datang dari perangkat murid.
 9. Tekan **Valid** / **Tidak valid** pada satu catatan -> status berubah, catatan keluar dari antrean, dan

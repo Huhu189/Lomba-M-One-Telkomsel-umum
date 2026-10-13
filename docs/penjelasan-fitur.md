@@ -54,12 +54,15 @@ dinilai otomatis (objektif) atau menunggu koreksi guru (isian singkat, uraian, t
 lalu guru mengoreksi manual lewat token konfirmasi sekali pakai yang tercatat di audit.
 Pengoreksian bahasa oleh AI menyusul di slice 09.
 
-Catatan tampilan: editor soal memakai tiga kartu bernomor — **1. Tulis soalnya → 2. Pengaturan soal →
-3. Pilih jenis soal** — dengan daftar periksa **Kelengkapan** di sisi kanan bersama pratinjau (cermin
-aturan server, jadi tombol simpan baru hidup saat soal benar-benar lengkap). Pemilih jenis berada di
-**paling bawah** dan bisa dilipat: semua 22 jenis tampil sekaligus sebagai **petak berikon** (ikonnya
-menggambarkan bentuk soalnya), ringkasannya tetap memperlihatkan jenis yang sedang aktif walau lipatan
-ditutup, dan menekan satu petak langsung menggantinya tanpa daftar turun. Kuis disusun
+Catatan tampilan: editor soal adalah **kartu pertanyaan** — pertanyaan di **paling atas** dengan **Poin**
+di kanan atasnya, dan jawaban menempel **langsung di bawah pertanyaan**: pilihan ganda tampil sebagai
+baris penuh dengan **lingkaran kunci di kiri** (sekali klik menandai jawaban benar, ringkasan kunci muncul
+di bawahnya). **Jenis soal dipilih lebih dulu** di kartu **1. Pilih jenis soal** — semua 22 jenis tampil
+sekaligus sebagai **petak berikon** (ikonnya menggambarkan bentuk soalnya) yang bisa dilipat, ringkasannya
+tetap memperlihatkan jenis yang sedang aktif walau lipatan ditutup — lalu **2. Tulis soalnya** dan
+**3. Pengaturan soal** (mapel, tag, pembahasan, media/MathML, aktif). Daftar periksa **Kelengkapan** di sisi
+kanan bersama pratinjau (cermin aturan server, jadi tombol simpan baru hidup saat soal benar-benar
+lengkap). Kuis disusun
 lewat tiga langkah — info & jadwal, susun soal, lalu tinjau dan publikasikan — supaya guru tidak
 menerbitkan kuis setengah jadi. Di layar murid, tiap jenis soal menampilkan **bahan yang memang dibutuhkan**
 untuk menjawabnya (pilihan ganda: opsinya; menjodohkan/hubung kata: dua kolomnya; mengurutkan: itemnya;
@@ -114,20 +117,36 @@ Aturan aplikasi yang bisa diatur di tingga lapis: sekolah, kelas, lalu kuis. Mis
 ### Cara kerjanya
 Kuis yang lebih spesifik menang dibanding kelas, kelas menang dibanding sekolah — kecuali sekolah mengunci aturan tertentu (locked), dan kunci itu tidak bisa dibongkar di bawahnya. Contoh: sekolah menetapkan retry maksimal 2 dan menguncinya; guru kelas 4 boleh menyalakan ranking untuk kuis pecahan saja, tapi tidak bisa melonggarkan batas retry.
 
-Lapis sekolah dan kelas menetapkan aturan untuk **seluruh sekolah**, jadi hanya admin yang boleh
-mengubahnya. Guru mengatur **per kuis miliknya sendiri** — di halaman Pengaturan ia memilih kuisnya,
-lalu menyalakan proteksi atau aturan yang relevan untuk ulangan itu.
+Halaman **Pengaturan** kini diskalakan **per ulangan**, bukan per akun: yang dipilih di sana adalah
+ulangannya (bukan sekolah/akun), lalu guru menyalakan proteksi atau aturan yang relevan untuk ulangan
+itu. Sejak 12 Oktober 2026 pemilih lapis sekolah/kelas di halaman itu **dibuang** karena satu instalasi
+= satu sekolah, sehingga lapis "sekolah" terasa seperti setelan akun, bukan setelan ulangan.
+
+Lapis sekolah dan kelas **tetap berlaku di server** dan tetap bisa mengunci sebuah nilai; halaman
+Pengaturan hanya menampilkan akibatnya ("dikunci sekolah") tanpa lagi menjadi tempat menyetelnya —
+jadi tidak ada lagi tombol yang bilangan hasilnya sama untuk semua ulangan.
 
 ### Mengapa aman
 Perubahan pengaturan lewat server, dengan izin dan pencatatan. Perangkat murid tidak bisa mengubah
 aturan ulangan yang sedang berjalan, dan tidak bisa membaca daftar proteksi yang dipasang guru —
 saklar yang mengikatnya dikirim satu per satu lewat data ulangan, bukan sebagai peta lengkap.
 
-### Manfaat untuk anak SD dan guru
-Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil pada ulangannya sendiri. Anak SD di semua kelas mendapat aturan yang konsisten.
+### Melihat akibatnya sebelum kuis diterbitkan
+Di langkah terakhir penyusunan kuis (“Tinjau dan publikasi”) ada panel **Setelan sesi ini** yang meringkas — dalam tiga baris — apa yang benar-benar berlaku untuk kuis itu setelah digabung dengan pengaturan kelas dan sekolah:
 
-Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07). Saklar anti-cheat juga memakai mekanisme
-yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik.
+1. **Proteksi**: berapa saklar anti-kecurangan yang menyala dan nama-namanya. Kalau saklar induk anti-cheat mati, panelnya berkata terus terang bahwa **tidak ada proteksi yang dipasang** — walau saklar rinci pernah dinyalakan — supaya guru tidak menyangka ulangannya diawasi padahal tidak.
+2. **Siswa tamu**: boleh ikut tanpa akun atau tidak, beserta lapis mana yang menentukannya (kuis ini, kelas, atau sekolah).
+3. **Aturan lain**: ulangan ulang, peringkat, mode tim, layar guru, dan rekam diri — nyala atau mati.
+
+Di panel yang sama ada tombol **Buat tautan siswa** yang menghasilkan satu tautan `/kuis/<id>` untuk dibagikan (WhatsApp, papan tulis, grup kelas). Tautan itu bekerja untuk dua jenis pengunjung: murid yang sudah punya akun langsung menekan “Kerjakan sekarang”, sedangkan siswa tamu bisa masuk lewat pintu tamu bila guru membuka `izinkan_tamu` untuk kuis itu. Murid yang belum masuk akan diantar ke halaman masuk **sambil membawa tujuan asalnya**, sehingga setelah masuk (dengan akun maupun sebagai tamu) ia langsung mendarat di kuis itu — bukan dilempar ke beranda. Tombol “Salin tautan” menyalinnya ke papan klip; kalau peramban menolak, tautannya tetap tampil di kotak untuk disalin manual.
+
+### Manfaat untuk anak SD dan guru
+Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil pada ulangannya sendiri. Anak SD di semua kelas mendapat aturan yang konsisten. Guru juga tidak perlu membuka halaman Pengaturan untuk tahu “sebenarnya ulanganku diawasi apa saja?”, dan tidak perlu mengetik ulang alamat kuis saat membagikannya ke kelas.
+
+Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07; ringkasan sesi + tautan siswa ditambahkan 12 Oktober 2026, serta halaman Pengaturan dipersempit ke skala per ulangan di putaran yang sama). Saklar anti-cheat juga memakai mekanisme
+yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik. Yang jujur belum ada: lapis sekolah/kelas
+sekarang **hanya bisa dibaca** lewat halaman ini (nilainya diatur dari API/seed dan tetap mengunci), belum ada
+halaman admin khusus untuknya.
 
 ---
 
@@ -187,13 +206,13 @@ adalah guru memilih apa yang tampil di perangkat murid, bukan aplikasi menebak p
 
 ---
 
-## 7. Anti-kecurangan, presence, dan Live Monitor
+## 7. Anti-kecurangan, presence, dan Monitor Ulangan
 
 ### Apa ini
 Tiga hal sekaligus: penghalang sederhana saat ulangan (anti-paste, anti-pindah tab, dan lainnya), cara tahu murid mana yang perangkatnya hidup tapi diam saja, dan layar pemantauan guru secara langsung.
 
 ### Cara kerjanya
-Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Di server, kehadiran satu kelas disimpan sebagai satu hash Redis per kuis, sehingga setiap request murid hanya menulis satu medan miliknya sendiri — biayanya tidak tumbuh seiring jumlah anak di kelas, dan dua anak yang menyimpan jawaban bersamaan tidak saling menimpa. Live Monitor menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang.
+Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Di server, kehadiran satu kelas disimpan sebagai satu hash Redis per kuis, sehingga setiap request murid hanya menulis satu medan miliknya sendiri — biayanya tidak tumbuh seiring jumlah anak di kelas, dan dua anak yang menyimpan jawaban bersamaan tidak saling menimpa. Monitor Ulangan (dulu bernama "Live Monitor") menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang. Nama dan lencana jalur datanya diganti 12 Oktober 2026: layar guru tidak lagi memajang jargon teknis ("Langsung (SSE)" / "Polling 5 detik") karena yang penting bagi guru adalah papan pantauannya, bukan cara datanya datang; koneksi langsungnya tetap bekerja seperti semula.
 
 ### Mengapa aman
 Kami jujur: **deteksi di browser bisa diakali**, dan aplikasi ini tidak pernah mengklaim "tahan 100%". Karena itu catatannya berfungsi sebagai bahan tinjauan guru (valid / tidak valid / menunggu), bukan vonis. Kalau perlindungannya error, ulangan **tetap jalan** (fail-open) — proteksi tidak boleh mengorbankan ujian.
@@ -203,9 +222,9 @@ Guru kelas 6 saat ulangan ulang semester tidak lagi berjalan bolak-balik: dari s
 
 Sejak 12 Oktober 2026 (putaran A.53) ada satu pengaman lagi yang **sengaja tidak** ikut preset "ujian": **deteksi tamper halaman**. Kalau guru menyalakannya sendiri, aplikasi memeriksa empat hal — sumber yang dimuat dari skema extension peramban, fungsi proteksi yang diganti (dibandingkan dengan sidik jari yang diambil saat ulangan dimulai), overlay asing yang menutupi area ulangan, dan elemen penanda yang dihapus pihak lain. Overlay asing dirapikan (dihapus) dan layar dikaburkan sebentar, lalu semuanya dicatat (`dom_injection` / `extension_detected`). Kenapa tidak ikut preset: pemindai ini menyentuh DOM dan rawan salah tuduh, jadi guru harus menyalakannya dengan sadar.
 
-Sejak putaran **A.54** sisi server ikut membuktikan sensornya **masih hidup**. Selama proteksi menyala, aplikasi di perangkat murid mengirim **denyut** kecil tiap 30 detik yang membawa **nonce** dari server; server merotasi nonce itu setiap kali. Kalau denyutnya berhenti lebih dari ~100 detik padahal ulangannya masih berjalan, server mencatat `tamper_suspected` (skor risiko 9) — muncul di Live Monitor guru sebagai bahan tinjauan. Nonce membuat liveness tidak bisa dipalsukan dengan memutar ulang kiriman lama.
+Sejak putaran **A.54** sisi server ikut membuktikan sensornya **masih hidup**. Selama proteksi menyala, aplikasi di perangkat murid mengirim **denyut** kecil tiap 30 detik yang membawa **nonce** dari server; server merotasi nonce itu setiap kali. Kalau denyutnya berhenti lebih dari ~100 detik padahal ulangannya masih berjalan, server mencatat `tamper_suspected` (skor risiko 9) — muncul di Monitor Ulangan guru sebagai bahan tinjauan. Nonce membuat liveness tidak bisa dipalsukan dengan memutar ulang kiriman lama.
 
-Status: **sudah bisa dipakai** (slice 07 + deteksi tamper 2B–2C di A.53 + sisi server 2D di A.54). Semua pengaman mati secara bawaan dan baru bekerja bila guru menyalakannya. Guru bisa meninjau tiap catatan (valid / tidak valid) langsung dari Live Monitor. Yang belum ada dan kami sebutkan apa adanya: **ambang denyut masih nilai tetap** (30 detik / ~100 detik, belum bisa diatur guru — jeda jaringan yang panjang bisa membuat murid jujur tercatat, karena itu catatannya tetap bahan tinjauan, bukan vonis), deteksi keluar layar penuh, dan pemanggilan Zoom/Meet untuk verifikasi — ketiganya ditunda, bukan disembunyikan.
+Status: **sudah bisa dipakai** (slice 07 + deteksi tamper 2B–2C di A.53 + sisi server 2D di A.54). Semua pengaman mati secara bawaan dan baru bekerja bila guru menyalakannya. Guru bisa meninjau tiap catatan (valid / tidak valid) langsung dari Monitor Ulangan. Yang belum ada dan kami sebutkan apa adanya: **ambang denyut masih nilai tetap** (30 detik / ~100 detik, belum bisa diatur guru — jeda jaringan yang panjang bisa membuat murid jujur tercatat, karena itu catatannya tetap bahan tinjauan, bukan vonis), deteksi keluar layar penuh, dan pemanggilan Zoom/Meet untuk verifikasi — ketiganya ditunda, bukan disembunyikan.
 
 ---
 
@@ -348,12 +367,13 @@ nilai satu kelas lintas kuis.
 ### Apa ini
 Tombol terang/gelap untuk kenyamanan mata, terutama saat belajar malam atau ruang kelas bercahaya rendah.
 
-Sejak 12 Oktober 2026 (putaran A.49) ada juga tombol **ukuran tulisan: Normal/Besar**. "Besar" membesarkan
-seluruh tulisan, jarak, dan tinggi kepala sekitar 12% — sekali tekan, tanpa menu — karena murid SD yang
-pertama kali memegang aplikasi ini kadang duduk jauh dari layar atau belum lancar membaca huruf kecil.
-Pilihannya diingat di perangkat itu sendiri (sama seperti tema terang/gelap), jadi tidak perlu diatur ulang
-tiap masuk. Yang **tidak** ikut membesar: garis bingkai, sudut kartu, dan bayangan — supaya tata letaknya
-tetap rapi walau isinya lebih besar.
+Dulu (putaran A.49, 12 Oktober 2026) di sebelah tombol tema ada juga tombol **ukuran tulisan: Normal/Besar**
+yang membesarkan seluruh tulisan ±12%. **Tombol itu dibuang pada 12 Oktober 2026 (A.58)** atas permintaan
+pemilik produk: bilah atas jadi lebih ringkas, dan ukuran tulisan kembali seragam untuk semua orang. Sisa
+mesin ukurannya — atribut `data-ukuran`, penyimpanan `ukuran-ulangan`, ikon huruf, dan skala kedua — ikut
+dibuang supaya tidak ada kode mati; yang tinggal hanya satu variabel `--s` bernilai 1 di `theme.css` sebagai
+tempat tunggal bila suatu saat skala lain dibutuhkan lagi. Kalau di perangkat guru/murid masih tersimpan
+pilihan lama, tidak ada efeknya — hanya kunci localStorage yang tidak lagi dibaca.
 
 ### Cara kerjanya
 Pilihan disimpan di perangkat murid/guru dan diterapkan **sebelum** halaman tampil, sehingga tidak ada
@@ -410,7 +430,7 @@ konten**: pengumuman singkat, satu soal yang sedang dibahas, atau instruksi sete
 Layar kelas punya empat keadaan: **kosong** (perangkat murid kembali ke tampilan ulangan biasa),
 **pengumuman** (mis. "sisa waktu 10 menit"), **sorot satu soal** (soal itu tampil utuh di perangkat
 murid), dan **instruksi setelah ulangan**. Guru memilih keadaan lewat halaman `Layar kelas` di detail
-kuis, dan setiap perubahan disiarkan lewat kanal kuis yang sama dengan Live Monitor (Nginx/Redis/pub-sub
+kuis, dan setiap perubahan disiarkan lewat kanal kuis yang sama dengan Monitor Ulangan (Nginx/Redis/pub-sub
 → service Node → SSE ke browser). Perangkat murid menyambung dengan **tiket sekali pakai** yang hanya
 berlaku untuk kuis kelasnya; kalau sambungan langsung gagal (service realtime mati, kantor/sekolah
 memblokir), perangkat murid **tetap** menyusul lewat pembaruan berkala 5 detik. Setiap perubahan menaikkan
