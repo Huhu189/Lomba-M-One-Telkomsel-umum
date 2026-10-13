@@ -5320,3 +5320,52 @@ Boleh dirombak asal pembuatan soal lebih mudah.
   sisi kanan (`.sisi-lengket`) supaya tidak ada dua tombol simpan.
 - **Jenis soal tetap dipilih lebih dulu** (kartu 1), sesuai keputusan 12 Oktober 2026 — bukan dipindah ke
   bawah pertanyaan seperti di papan.
+
+### A.62.6 Sapu GUI penuh 24 harness, dan harness `susun` yang tertinggal (13 Oktober 2026)
+
+Sesudah seluruh putaran A.58–A.62 dikomit, seluruh harness GUI yang ada dijalankan ulang di atas satu
+local yang hidup (backend :8000, vite :5173, realtime :4000, Chrome :9333 milik runner) untuk memastikan
+"SEMUA HIJAU" di laporan ini masih benar pada kode yang baru dikomit — bukan hanya pada saat putarannya
+ditulis.
+
+| Harness | Hasil |
+| --- | --- |
+| `bilah-atas` · `setelan-sesi` · `soal-berubah` (harness baru A.58/A.59/A.61) | **10/10 · 23/23 · 19/19**, exit 0 |
+| `susun` · `kuis-manual` · `sidebar` (harness yang berubah) | **44/44 · 15/15 · 9/9**, exit 0 |
+| `pengaturan` · `slice07` · `slice06` · `slice04` | **6/6 · 21/21 · 28/28 · 18/18**, exit 0 |
+| `mobile` · `nav` · `kelas` · `murid` | **16/16 · 14/14 · 17/17 · 18/18**, exit 0 |
+| `tamu` · `luring` · `slice03` · `slice05` | **9/9 · 22/22 · 9/9 · 20/20**, exit 0 |
+| `materi` · `editor` · `kuis-materi` · `durasi-klip` · `perjalanan` | **27/27 · 32/32 · 48/48 · 19/19 · 69/69**, exit 0 |
+| `cdp` (peninjau, bukan penghitung) | exit 0 |
+
+Jumlahnya **513 pemeriksaan lulus, 0 gagal** di 23 harness berhitung, semuanya exit 0.
+
+**Tiga pemeriksaan `susun` MERAH pada jalan pertama (39/42) — dan penyebabnya bukan kode produk.**
+Semuanya harapan yang tertinggal dari kebijakan lama:
+
+1. `editor: kartu bernomor baru tampil` dan 2. `editor: pemilih jenis soal di paling bawah (kartu ke-3)` —
+   harness masih menuntut susunan `1. Tulis soalnya · 3. Pilih jenis soal`, padahal sejak 12 Oktober 2026
+   (dan dikunci lagi di A.61/A.62) **jenis soal dipilih lebih dulu**: kartu 1 = pemilih jenis, kartu 2 =
+   penulisan soal, kartu 3 = pengaturan. Yang benar sekarang adalah `editor.urutan[0]`.
+3. `langkah 3: semua butir lengkap setelah formulir diisi` — butir kelengkapan dibaca dengan selektor
+   `.baris-ringkas .badge-status`, dan sejak A.59 langkah 3 juga memuat panel "Setelan sesi ini" yang
+   memakai kelas baris yang sama dengan label yang memang bukan Lengkap/Belum ("Proteksi mati", "Siswa
+   tamu tidak boleh", "Aturan lain"). Kelas bersama, bukan kelengkapan yang kurang: 8 butir pertama tetap
+   semua `Lengkap`. Selectornya disempitkan ke daftar milik `section[aria-labelledby="langkah-3"]`.
+
+Sekalian, pemeriksaan chip diperkuat supaya menguji **perilaku** A.62 dan bukan hanya nama tag: chip
+`<details>` harus **tertutup bawaan**, **terbuka saat ringkasannya ditekan**, dan **menutup lagi setelah
+satu petak dipilih** (perilaku `jenisRef.current.open = false` di `EditorSoal.jsx`). Harness naik dari 42
+ke **44 pemeriksaan**; dijalankan ulang **44/44 lulus, exit 0**.
+
+| Yang dijalankan | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh susun` (sebelum perbaikan) | **39/42 · 3 gagal**, exit 1 — tiga harapan lama di atas |
+| `docs/jalankan-smoke-ui.sh susun` (sesudah perbaikan) | **44/44 lulus**, exit 0 |
+
+Batasan jujur: angka diukur di Chrome headless + CDP, bukan perangkat fisik; sapu ini **tidak**
+mengulang `./verify.sh` karena tidak ada kode produk yang berubah (hanya harness). Satu anomali yang tidak
+bisa direproduksi: pada satu kali dijalankan berantai, runner melaporkan exit 1 untuk `cdp` padahal barisnya
+sendiri berbunyi "hasil smoke cdp: 0" dan tidak ada satu pun baris `GAGAL`; tiga kali dijalankan ulang
+(sendiri dan berantai sesudah `perjalanan`) exit 0. `cdp` memang peninjau (menuangkan isi halaman), bukan
+harness berhitung.

@@ -210,7 +210,14 @@ async function main() {
   await sleep(2200)
 
   const langkah3 = await evalJs(`(() => {
-    const butir = [...document.querySelectorAll('.baris-ringkas .badge-status')].map((b) => b.textContent.trim())
+    // Butir kelengkapan dibaca dari daftar MILIK langkah 3 saja: sejak A.59
+    // langkah 3 juga memuat panel "Setelan sesi ini" yang memakai kelas baris
+    // yang sama (.baris-ringkas + .badge-status) dengan label yang bukan
+    // Lengkap/Belum ("Proteksi mati", "Siswa tamu tidak boleh", "Aturan lain").
+    // Tanpa penyempitan ini, pemeriksaan di bawah merah padahal kelengkapannya
+    // lengkap — kelas bersama, bukan cacat produk.
+    const daftarKelengkapan = document.querySelector('section[aria-labelledby="langkah-3"] > ul')
+    const butir = [...(daftarKelengkapan?.querySelectorAll('.badge-status') ?? [])].map((b) => b.textContent.trim())
     const ringkas = [...document.querySelectorAll('.petak-ringkas')].map((e) => e.textContent.trim())
     const publikasi = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Publikasikan kuis'))
     return {
@@ -272,6 +279,7 @@ async function main() {
       petakIkon: petak.length > 0 && petak.every((b) => b.querySelector('svg') !== null),
       atas: petak.length > 0 ? petak[0].closest('[role="radiogroup"]')?.getAttribute('aria-label') ?? null : null,
       lipat: document.querySelector('.pemilih-jenis')?.tagName ?? null,
+      terbukaAwal: document.querySelector('.pemilih-jenis')?.open ?? null,
       urutan: [...document.querySelectorAll('.col-lg-8 section')].map((s) => s.querySelector('h2')?.textContent.trim() ?? ''),
       sisiLengket: sisi ? getComputedStyle(sisi).position : null,
       adaPratinjau: [...document.querySelectorAll('h2')].some((h) => h.textContent.includes('Pratinjau')),
@@ -279,9 +287,19 @@ async function main() {
     }
   })()`)
   cek('editor: h1 berubah jadi "Tambah soal"', editor.h1.toLowerCase().includes('tambah soal'), editor.h1)
-  cek('editor: kartu bernomor baru tampil', ['1. Tulis soalnya', '2. Pengaturan soal', '3. Pilih jenis soal'].every((t) => editor.judul.includes(t)), editor.judul.join(' | '))
-  cek('editor: pemilih jenis soal di paling bawah (kartu ke-3)', editor.urutan[2] === '3. Pilih jenis soal', editor.urutan.join(' | '))
-  cek('editor: pemilih jenis soal bisa dibuka-tutup', editor.lipat === 'DETAILS', `tag=${editor.lipat}`)
+  // Urutan kartu mengikuti kebijakan 12 Oktober 2026 (dikunci lagi di A.62):
+  // jenis soal dipilih DULU, jadi kartu 1 = pemilih jenis, kartu 2 = penulisan
+  // soal, kartu 3 = pengaturan (mapel & tag).
+  cek('editor: kartu bernomor tampil (jenis · tulis · pengaturan)', ['1. Pilih jenis soal', '2. Tulis soalnya', '3. Pengaturan soal'].every((t) => editor.judul.includes(t)), editor.judul.join(' | '))
+  cek('editor: pemilih jenis soal di kartu PERTAMA (pilih tipe dulu)', editor.urutan[0] === '1. Pilih jenis soal', editor.urutan.join(' | '))
+  // A.62 melipat 22 petak jadi chip <details> yang tertutup bawaan supaya
+  // pertanyaan & pilihannya tidak terdorong ke bawah.
+  cek('editor: pemilih jenis soal berupa chip <details> tertutup bawaan', editor.lipat === 'DETAILS' && editor.terbukaAwal === false, `tag=${editor.lipat} terbuka=${editor.terbukaAwal}`)
+
+  await evalJs(`document.querySelector('.pemilih-jenis > summary').click()`)
+  await sleep(300)
+  const chipTerbuka = await evalJs(`document.querySelector('.pemilih-jenis')?.open ?? null`)
+  cek('editor: chip pemilih jenis terbuka saat ditekan', chipTerbuka === true, `terbuka=${chipTerbuka}`)
   cek('editor: petak jenis soal berperan radio & berikon', editor.petak === 22 && editor.petakPeran === 'radio' && editor.petakIkon && editor.atas === 'Jenis soal', `petak=${editor.petak} peran=${editor.petakPeran} ikon=${editor.petakIkon}`)
   cek('editor: sisi kanan berisi pratinjau + kelengkapan', editor.adaPratinjau && editor.adaKelengkapan, '')
   cek('editor: sisi kanan lengket di layar lebar', editor.sisiLengket === 'sticky', `posisi=${editor.sisiLengket}`)
@@ -294,11 +312,13 @@ async function main() {
     return {
       aktif: aktif.map((b) => b.textContent.trim()),
       adaJawabanBaku: Boolean(document.querySelector('#soal-ambang-isian')),
+      chipTerbuka: document.querySelector('.pemilih-jenis')?.open ?? null,
       butir: [...document.querySelectorAll('#soal-kelengkapan ~ ul .badge-status')].map((b) => b.textContent.trim()),
     }
   })()`)
   cek('editor: petak aktif tunggal setelah ganti jenis', setelahGanti.aktif.length === 1 && setelahGanti.aktif[0].includes('Isian singkat'), setelahGanti.aktif.join(','))
   cek('editor: bidang isian singkat muncul', setelahGanti.adaJawabanBaku === true, '')
+  cek('editor: memilih satu petak menutup chip lagi', setelahGanti.chipTerbuka === false, `terbuka=${setelahGanti.chipTerbuka}`)
   cek('editor: butir kelengkapan menandai yang belum diisi', setelahGanti.butir.includes('Belum') && setelahGanti.butir.includes('Lengkap'), setelahGanti.butir.join(','))
 
   // Simpan tombol mati selama wajib belum terisi.
