@@ -29,6 +29,14 @@ export const skemaSoal = z.object({
   pembahasan: z.string().nullable(),
   skor: z.number(),
   aktif: z.boolean(),
+  /**
+   * Dipakai kuis yang sedang berjalan (12 Okt 2026)?
+   *
+   * Sejak 12 Oktober 2026 isi soal MASIH boleh diperbaiki saat ulangan jalan,
+   * tetapi kunci jawaban, skor, dan jenis soalnya tidak — editor memakainya
+   * untuk menjelaskan aturannya sebelum guru menekan Simpan.
+   */
+  terkunci: z.boolean().optional(),
   mapel_nama: z.string().optional(),
   tag_nama: z.string().nullable().optional(),
 })

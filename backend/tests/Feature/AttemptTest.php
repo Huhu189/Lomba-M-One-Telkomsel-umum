@@ -148,6 +148,116 @@ it('mulai dua kali mengembalikan attempt yang sama (satu attempt aktif)', functi
         ->and(Attempt::query()->count())->toBe(1);
 });
 
+it('murid melihat perbaikan ISI soal di tengah ulangan, sementara kunci lamanya tetap yang dinilai', function (): void {
+    // Kebijakan 12 Oktober 2026: guru boleh memperbaiki isi soal saat ulangan
+    // sudah berjalan (salah ketik, opsi membingungkan), tapi kunci & skor tetap
+    // beku — jadi nilai yang sudah/tengah dikerjakan tidak berubah aturannya.
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+    $soalId = (int) collect($hasil['soal'])->firstWhere('tipe', 'pilihan_ganda')['id'];
+
+    $sebelum = $this->getJson("/api/v1/attempt/{$hasil['attempt']}")->assertOk();
+    $versiSebelum = $sebelum->json('versi_soal');
+    $teksSebelum = $sebelum->json('soal.0.konten.teks');
+
+    expect($versiSebelum)->toBeString();
+
+    // Guru memperbaiki tulisan + label opsi (kunci 'B' tetap, skor tetap 5).
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/soal/{$soalId}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => [
+            'teks' => 'Berapa hasil dari 2 + 3? (tulis satuannya juga)',
+            'opsi' => [
+                ['id' => 'A', 'teks' => '4 satuan'],
+                ['id' => 'B', 'teks' => '5 satuan'],
+                ['id' => 'C', 'teks' => '6 satuan'],
+            ],
+        ],
+        'kunci' => ['jawaban' => 'B'],
+        'skor' => 5,
+    ])->assertOk();
+
+    // Murid memuat ulang payload: tulisan barunya terpakai, cap versinya berubah
+    // (itulah yang membuat layar murid bisa memberi tahu "soal diperbarui").
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $sesudah = $this->getJson("/api/v1/attempt/{$hasil['attempt']}")->assertOk();
+
+    expect($sesudah->json('soal.0.konten.teks'))->toBe('Berapa hasil dari 2 + 3? (tulis satuannya juga)')
+        ->and($sesudah->json('soal.0.konten.opsi.1.teks'))->toBe('5 satuan')
+        ->and($sesudah->json('versi_soal'))->not->toBe($versiSebelum)
+        ->and($sesudah->json('soal.0.skor'))->toEqual(5.0)
+        ->and($teksSebelum)->not->toBe($sesudah->json('soal.0.konten.teks'));
+
+    // Endpoint cap versi menjawab hash yang sama seperti payload attempt.
+    $this->getJson("/api/v1/attempt/{$hasil['attempt']}/versi-soal")
+        ->assertOk()
+        ->assertJsonPath('versi_soal', $sesudah->json('versi_soal'))
+        ->assertJsonPath('jumlah_soal', 2);
+
+    // Murid menjawab menurut kunci yang berlaku (B) → tetap dinilai benar dengan
+    // skor lama, walau tulisannya sudah diperbaiki guru di tengah jalan.
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/jawab", [
+        'question_id' => $soalId,
+        'jawaban' => 'B',
+    ])->assertOk();
+
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/kumpulkan", ['idempotency_key' => 'kunci-isi-soal-1'])
+        ->assertOk()
+        ->assertJsonPath('skor', 5)
+        ->assertJsonPath('jumlah_benar', 1);
+});
+
+it('attempt yang sudah selesai tetap memakai isi beku, bukan tulisan baru dari bank soal', function (): void {
+    $kuis = siapkanKuis($this);
+    $hasil = mulaiUlangan($this, $kuis);
+    $soalId = (int) collect($hasil['soal'])->firstWhere('tipe', 'pilihan_ganda')['id'];
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+    $this->postJson("/api/v1/attempt/{$hasil['attempt']}/kumpulkan", ['idempotency_key' => 'kunci-isi-soal-2'])
+        ->assertOk();
+
+    // Ulangan selesai → guru bebas memperbaiki isi DAN kuncinya.
+    // Yang membuka kunci adalah JADWAL ulangan yang berakhir — bukan status satu
+    // attempt: murid lain bisa saja masih mengerjakan soal yang sama.
+    $kuis->forceFill(['selesai_at' => Carbon::now()->subMinute()])->save();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+    $this->putJson("/api/v1/soal/{$soalId}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => [
+            'teks' => 'Tulisan yang baru (setelah ulangan selesai)',
+            'opsi' => [
+                ['id' => 'A', 'teks' => '4'],
+                ['id' => 'B', 'teks' => '5'],
+                ['id' => 'C', 'teks' => '6'],
+            ],
+        ],
+        'kunci' => ['jawaban' => 'C'],
+        'skor' => 5,
+    ])->assertOk();
+
+    // Riwayat tidak ikut berubah: attempt yang sudah dikumpulkan dilayani dari
+    // snapshot beku, jadi tulisan baru dari bank soal tidak masuk ke lembar yang
+    // sudah dinilai (dan halaman hasil memakai jalur yang sama).
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $payload = $this->getJson("/api/v1/attempt/{$hasil['attempt']}")->assertOk();
+    $soalLama = collect($payload->json('soal'))->firstWhere('id', $soalId);
+
+    expect($soalLama)->not->toBeNull()
+        ->and($soalLama['konten']['teks'])->not->toBe('Tulisan yang baru (setelah ulangan selesai)');
+});
+
 it('urutan soal dan opsi stabil untuk seed yang sama dan opsi tetap permutasi', function (): void {
     $kuis = siapkanKuis($this, ['acak_soal' => true, 'acak_opsi' => true]);
     $hasil = mulaiUlangan($this, $kuis);

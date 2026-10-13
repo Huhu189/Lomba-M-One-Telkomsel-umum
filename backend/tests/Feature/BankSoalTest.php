@@ -246,38 +246,97 @@ it('publikasi kuis ditolak bila belum lengkap', function (): void {
         ->assertJsonPath('jumlah_soal', 1);
 });
 
-it('soal terkunci saat kuis pemakainya sedang berjalan', function (): void {
+it('saat kuis berjalan, isi soal boleh diperbaiki tetapi kunci, skor, dan jenisnya tidak', function (): void {
     Sanctum::actingAs($this->guru);
 
-    $soalTerpakai = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
+    $soalTerpakai = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create(['skor' => 5]);
     $soalBebas = Soal::factory()->untukSekolah($this->sekolah, $this->mapel)->milik($this->guru)->create();
 
     $kuis = Kuis::factory()->untukSekolah($this->sekolah, $this->mapel, $this->kelas)->milik($this->guru)->berjalan()->create();
     $kuis->soal()->attach($soalTerpakai->id, ['urutan' => 1]);
 
+    // Isi soal dibuka sejak 12 Oktober 2026: guru menemukan salah ketik saat
+    // ulangan sudah jalan dan murid melihat perbaikannya.
+    $kontenBaru = [
+        'teks' => 'Berapa hasil dari 2 + 3? Tulis satuannya juga.',
+        'opsi' => [
+            ['id' => 'A', 'teks' => '4 satuan'],
+            ['id' => 'B', 'teks' => '5 satuan'],
+            ['id' => 'C', 'teks' => '6 satuan'],
+        ],
+    ];
+
     $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
         'subject_id' => $this->mapel->id,
         'tipe' => 'pilihan_ganda',
-        'konten' => kontenPilihanGanda(),
-        'kunci' => ['jawaban' => 'A'],
-    ])->assertStatus(422)->assertJsonValidationErrors(['soal']);
+        'konten' => $kontenBaru,
+        'kunci' => ['jawaban' => 'B'],
+        'skor' => 5,
+    ])->assertOk()
+        ->assertJsonPath('konten.teks', 'Berapa hasil dari 2 + 3? Tulis satuannya juga.')
+        ->assertJsonPath('terkunci', true);
 
+    // Kunci jawaban tetap terkunci: nilai yang sudah masuk dihitung dengan kunci lama.
+    $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => $kontenBaru,
+        'kunci' => ['jawaban' => 'A'],
+    ])->assertStatus(422)->assertJsonValidationErrors(['kunci']);
+
+    // Skor juga: mengubahnya di tengah ulangan mengubah nilai yang sudah terkumpul.
+    $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => $kontenBaru,
+        'kunci' => ['jawaban' => 'B'],
+        'skor' => 9,
+    ])->assertStatus(422)->assertJsonValidationErrors(['skor']);
+
+    // Jenis soal juga: penilainya berbeda, jadi murid akan dinilai dengan aturan lain.
+    $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'benar_salah',
+        'konten' => ['teks' => '2 + 3 = 5.'],
+        'kunci' => ['benar' => true],
+    ])->assertStatus(422)->assertJsonValidationErrors(['tipe']);
+
+    // Opsi yang menjadi kunci tidak boleh hilang dari isi baru.
+    $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => ['teks' => 'Berapa hasil 2 + 3?', 'opsi' => [['id' => 'A', 'teks' => '4']]],
+        'kunci' => ['jawaban' => 'B'],
+    ])->assertStatus(422)->assertJsonValidationErrors(['konten']);
+
+    // Menghapus soal tetap ditolak (FK jawaban ikut terhapus) ...
     $this->deleteJson("/api/v1/soal/{$soalTerpakai->id}")
         ->assertStatus(422)->assertJsonValidationErrors(['soal']);
 
-    // Susunan soal kuis yang sedang berjalan juga tidak boleh diubah.
+    // ... begitu pula menyusun ulang daftar soal kuis yang sedang berjalan.
     $this->putJson("/api/v1/kuis/{$kuis->id}/soal", ['soal' => [$soalBebas->id]])
         ->assertStatus(422)->assertJsonValidationErrors(['soal']);
 
-    // Soal yang tidak dipakai kuis berjalan tetap bisa diubah.
+    // Soal yang tidak dipakai kuis berjalan tetap bebas — kuncinya pun boleh berubah.
     $this->putJson("/api/v1/soal/{$soalBebas->id}", [
         'subject_id' => $this->mapel->id,
         'tipe' => 'benar_salah',
         'konten' => ['teks' => '1 + 1 = 2.'],
         'kunci' => ['benar' => true],
-    ])->assertOk()->assertJsonPath('tipe', 'benar_salah');
+    ])->assertOk()->assertJsonPath('tipe', 'benar_salah')->assertJsonPath('terkunci', false);
 
-    expect($soalTerpakai->refresh()->kunci)->toBe(['jawaban' => 'B']);
+    expect($soalTerpakai->refresh()->kunci)->toBe(['jawaban' => 'B'])
+        ->and($soalTerpakai->konten['teks'])->toBe('Berapa hasil dari 2 + 3? Tulis satuannya juga.');
+
+    // Setelah ulangannya selesai, kuncinya boleh diperbaiki lagi.
+    $kuis->forceFill(['selesai_at' => now()->subMinute()])->save();
+
+    $this->putJson("/api/v1/soal/{$soalTerpakai->id}", [
+        'subject_id' => $this->mapel->id,
+        'tipe' => 'pilihan_ganda',
+        'konten' => $kontenBaru,
+        'kunci' => ['jawaban' => 'A'],
+    ])->assertOk()->assertJsonPath('terkunci', false);
 });
 
 it('murid melihat kuis terbit kelasnya tanpa kunci jawaban', function (): void {

@@ -34,7 +34,14 @@ import UnggahLampiran from './UnggahLampiran.jsx'
 import PanelLayarMurid from '../presence/PanelLayarMurid.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, ruteHasil } from '../../routes.js'
-import { kirimJawaban, kirimKejadian, kumpulkanAttempt, kunciIdempotensiBaru, mulaiKuis } from './api.js'
+import {
+  ambilVersiSoal,
+  kirimJawaban,
+  kirimKejadian,
+  kumpulkanAttempt,
+  kunciIdempotensiBaru,
+  mulaiKuis,
+} from './api.js'
 import { formatSisa, hitungSisaAman, jamKlien, offsetAttemptMs, tingkatWaktu } from './hitungMundur.js'
 import {
   adaSisa,
@@ -74,6 +81,15 @@ const JEDA_KIRIM = 800
 const JEDA_ULANG = 5000
 /** Ambang peringatan waktu (detik). */
 const AMBANG_PERINGATAN = 300
+/**
+ * Jeda pemeriksaan cap versi isi soal (ms).
+ *
+ * Sejak 12 Oktober 2026 guru boleh memperbaiki soal di tengah ulangan. Capnya
+ * satu hash kecil, jadi bertanya tiap 20 detik jauh lebih murah daripada
+ * memuat ulang seluruh payload soal; pemeriksaan juga diulang begitu murid
+ * kembali ke tab (lihat efek penjaga versi).
+ */
+const JEDA_CEK_VERSI_MS = 20_000
 /** Berapa kali antrean dicoba dikirim sebelum mengumpulkan (jaringan sekolah bisa putus sesaat). */
 const PERCOBAAN_SEBELUM_KUMPUL = 3
 /** Jeda antar percobaan kirim sebelum mengumpulkan (ms). */
@@ -238,6 +254,8 @@ export default function HalamanKerjakan() {
   const [autoMandek, setAutoMandek] = useState(false)
   // Papan 4: satu soal per layar, dengan penanda ragu dan ringkasan sebelum kumpul.
   const [soalAktif, setSoalAktif] = useState(0)
+  // Guru baru saja memperbaiki soal di tengah ulangan → beri tahu murid sekali.
+  const [soalDiperbarui, setSoalDiperbarui] = useState(false)
   const [ragu, setRagu] = useState(/** @type {Record<string, boolean>} */ ({}))
   const [dialogKumpul, setDialogKumpul] = useState(false)
   const [jaringan, setJaringan] = useState(() =>
@@ -289,6 +307,60 @@ export default function HalamanKerjakan() {
     aktif: berjalan,
     saatNonceKedaluwarsa: nonceDenyutKedaluwarsa,
   })
+
+  /**
+   * Penjaga versi isi soal (12 Okt 2026).
+   *
+   * Guru boleh memperbaiki soal di tengah ulangan; layar ini menanyakan cap
+   * versinya secara berkala (dan tiap murid kembali ke tab), lalu:
+   *   1. memberi tahu murid bahwa soalnya baru saja diperbaiki, dan
+   *   2. memuat ulang payload attempt supaya tulisan/opsi terbaru benar-benar
+   *      tampil — bukan versi lama yang sudah ia baca.
+   *
+   * Jawaban TIDAK hilang: jawaban ada di state `perubahan` dan cadangan
+   * perangkat (simpananJawaban), dan `mulaiKuis` melanjutkan attempt yang sama
+   * (server mengembalikan attempt berjalan, bukan attempt baru).
+   *
+   * Fail-open: pemeriksaan gagal (jaringan/5xx) hanya didiamkan — tidak pernah
+   * mengganggu ulangan.
+   */
+  const versiSoal = attempt?.versi_soal ?? null
+
+  useEffect(() => {
+    if (!berjalan || attempt === undefined) return undefined
+
+    const idAttempt = attempt.id
+    let batal = false
+
+    async function periksaVersi() {
+      // Tab tersembunyi: murid tidak sedang melihat soal, jadi tidak ada yang
+      // perlu diberi tahu — dan tidak ada permintaan yang terbuang.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+
+      try {
+        const cap = await ambilVersiSoal(idAttempt)
+
+        if (batal || cap.versi_soal === versiSoal) return
+
+        setSoalDiperbarui(true)
+        void refetchMulai()
+      } catch {
+        // diamkan: penjaga versi bukan hal yang boleh mengganggu ulangan
+      }
+    }
+
+    const id = window.setInterval(() => void periksaVersi(), JEDA_CEK_VERSI_MS)
+
+    window.addEventListener('visibilitychange', periksaVersi)
+    window.addEventListener('focus', periksaVersi)
+
+    return () => {
+      batal = true
+      window.clearInterval(id)
+      window.removeEventListener('visibilitychange', periksaVersi)
+      window.removeEventListener('focus', periksaVersi)
+    }
+  }, [berjalan, attempt, versiSoal, refetchMulai])
 
   // Proteksi ulangan: dipasang hanya saat attempt berjalan dan ada saklar menyala.
   const { daftarSaklar, jumlahKejadian, kabur, kunciDetik } = useExamSecurity({
@@ -796,6 +868,19 @@ export default function HalamanKerjakan() {
               Server belum bisa dihubungi, jadi soal dibaca dari salinan terakhir di perangkat ini.
               Semuanya disamakan dengan server begitu koneksi kembali.
             </p>
+          </Banner>
+        )}
+
+        {soalDiperbarui && (
+          <Banner jenis="info" judul="Guru memperbarui soal">
+            <p className="mb-3">
+              Isi soal di ulangan ini baru saja diperbaiki gurumu, jadi soalnya sudah dimuat
+              ulang. Jawabanmu tetap tersimpan dan tidak ikut berubah — periksa lagi bagian yang
+              baru diperbaiki sebelum mengumpulkan.
+            </p>
+            <Tombol varian="tepi" ukuran="sedang" onClick={() => setSoalDiperbarui(false)}>
+              Mengerti
+            </Tombol>
           </Banner>
         )}
 

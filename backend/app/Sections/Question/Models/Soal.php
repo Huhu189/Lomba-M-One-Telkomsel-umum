@@ -11,6 +11,7 @@ use App\Sections\School\Models\Mapel;
 use App\Sections\School\Models\Sekolah;
 use Database\Factories\SoalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -88,16 +89,32 @@ class Soal extends Model
      */
     public function terkunci(): bool
     {
-        $sekarang = Carbon::now();
-
         return $this->kuis()
-            ->where('status', StatusKuis::Publikasi->value)
-            ->whereNotNull('mulai_at')
-            ->where('mulai_at', '<=', $sekarang)
-            ->where(static function ($query) use ($sekarang): void {
-                $query->whereNull('selesai_at')->orWhere('selesai_at', '>=', $sekarang);
+            ->where(static function (Builder $query): void {
+                self::batasanKuisBerjalan($query);
             })
             ->exists();
+    }
+
+    /**
+     * Batasan \"kuis yang sedang berjalan\".
+     *
+     * Dipakai bersama oleh {@see terkunci()} dan `withExists` di daftar bank soal:
+     * halaman berisi 50 soal tidak boleh menembak satu kueri per baris, tetapi
+     * kedua tempat itu juga tidak boleh punya aturan yang berbeda.
+     *
+     * @param  Builder<Kuis>  $query
+     */
+    public static function batasanKuisBerjalan(Builder $query): void
+    {
+        $sekarang = Carbon::now();
+
+        $query->where('status', StatusKuis::Publikasi->value)
+            ->whereNotNull('mulai_at')
+            ->where('mulai_at', '<=', $sekarang)
+            ->where(static function (Builder $lanjut) use ($sekarang): void {
+                $lanjut->whereNull('selesai_at')->orWhere('selesai_at', '>=', $sekarang);
+            });
     }
 
     /**

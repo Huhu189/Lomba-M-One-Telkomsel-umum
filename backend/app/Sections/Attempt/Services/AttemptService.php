@@ -727,9 +727,16 @@ class AttemptService
     public function payloadSoal(Attempt $attempt): array
     {
         $payload = [];
+        $hidup = $this->soalHidup($attempt);
 
         foreach ($this->soalTerurut($attempt) as $nomor => $soal) {
-            $konten = $soal->kontenSebagaiArray();
+            // Attempt yang MASIH berjalan membaca ISINYA dari baris soal yang
+            // hidup (12 Okt 2026): guru boleh memperbaiki tulisan/opsi/gambar di
+            // tengah ulangan, dan murid melihat perbaikan itu begitu payload
+            // dimuat ulang — versinya diberitahukan lewat AttemptResource supaya
+            // murid tidak menunggu tanpa kabar. Kunci dan skor tetap dari
+            // snapshot, jadi penilaian tidak pernah berubah oleh editan isi.
+            $konten = ($hidup[(int) $soal->getKey()] ?? $soal)->kontenSebagaiArray();
             $tipe = $soal->tipeAman();
 
             /** @var array<string, mixed> $bersih */
@@ -830,6 +837,83 @@ class AttemptService
         }
 
         return $payload;
+    }
+
+    /**
+     * Soal hidup (dari bank soal) untuk attempt yang masih berjalan.
+     *
+     * Diambil sekali per permintaan (satu kueri untuk semua soal attempt), dan
+     * dikosongkan untuk attempt yang sudah selesai: riwayat dinilai dari snapshot
+     * beku, jadi tulisan yang sudah dinilai tidak boleh ikut berubah di halaman
+     * hasil.
+     *
+     * @return array<int, Soal>
+     */
+    private function soalHidup(Attempt $attempt): array
+    {
+        if (! $attempt->berjalan()) {
+            return [];
+        }
+
+        $id = array_map(static fn (Soal $soal): int => (int) $soal->getKey(), $this->soalTerurut($attempt));
+
+        if ($id === []) {
+            return [];
+        }
+
+        $peta = [];
+
+        foreach (Soal::query()->whereIn('id', $id)->get() as $satu) {
+            $peta[(int) $satu->getKey()] = $satu;
+        }
+
+        return $peta;
+    }
+
+    /**
+     * Cap versi isi soal untuk satu attempt — dipakai layar murid.
+     *
+     * Capnya berubah begitu guru memperbaiki isi salah satu soal yang dikerjakan
+     * murid itu. Halaman pengerjaan membandingkannya berkala lalu memberi tahu
+     * murid + memuat ulang payload; jawabannya sendiri tetap aman karena sudah
+     * tersimpan di server dan bercadangan di perangkat.
+     *
+     * Jejaknya = id soal **dalam urutan attempt** (stabil antar-permintaan) +
+     * sidik jari **isinya**, bukan `updated_at`: dua suntingan dalam satu detik
+     * yang sama akan tampak "tidak berubah" kalau memakai cap waktu, dan cap
+     * waktu kolom juga berubah karena sebab lain (menyentuh kolom lain). Soal yang
+     * sudah tidak ada ditulis `hilang` supaya penghapusan pun terdeteksi.
+     *
+     * @return array{versi: string, diubah_at: string|null, jumlah_soal: int}
+     */
+    public function versiSoal(Attempt $attempt): array
+    {
+        $id = array_map(static fn (Soal $soal): int => (int) $soal->getKey(), $this->soalTerurut($attempt));
+        $hidup = $this->soalHidup($attempt);
+
+        $jejak = [];
+        $terbaru = null;
+
+        foreach ($id as $satu) {
+            $soal = $hidup[$satu] ?? null;
+            $sidik = $soal === null
+                ? 'hilang'
+                : sha1((string) json_encode($soal->kontenSebagaiArray()));
+
+            $jejak[] = $satu.':'.$sidik;
+
+            $waktu = $soal?->updated_at;
+
+            if ($waktu !== null && ($terbaru === null || $waktu->greaterThan($terbaru))) {
+                $terbaru = $waktu;
+            }
+        }
+
+        return [
+            'versi' => sha1(implode('|', $jejak)),
+            'diubah_at' => $terbaru?->toIso8601String(),
+            'jumlah_soal' => count($id),
+        ];
     }
 
     /**

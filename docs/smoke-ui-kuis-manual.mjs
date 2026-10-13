@@ -148,7 +148,7 @@ async function main() {
     await evalJs(`__alat.klikTeks('Buat soal baru')`)
     await sleep(900)
     const editorTerbuka = await evalJs(
-      `__alat.ada('1. Tulis soalnya') && document.querySelector('#soal-teks') !== null`,
+      `__alat.ada('2. Tulis soalnya') && document.querySelector('#soal-teks') !== null`,
     )
     catat('editor soal terbuka di dalam kuis (tanpa halaman bank soal)', editorTerbuka)
 
@@ -189,14 +189,26 @@ async function main() {
       await evalJs(`document.querySelector('#soal-teks').value === ''`),
     )
 
-    // Pemilih jenis soal wajib berada di bawah formulir penulisan soal.
-    const jenisDiBawah = await evalJs(`(function () {
-      const jenis = document.querySelector('#soal-judul-3')?.closest('section')
+    // Kebijakan 12 Oktober 2026: jenis soal dipilih DULU (langkah 1), bukan di
+    // bawah formulir — begitu tipe dipilih, isian di bawahnya hanya yang khusus
+    // tipe itu ("spesifik per soal, jangan dipaksa semua dalam isian").
+    const jenisDiAtas = await evalJs(`(function () {
+      const jenis = document.querySelector('#soal-judul-1')?.closest('section')
       const tulis = document.querySelector('#soal-teks')?.closest('section')
       if (!jenis || !tulis) return null
-      return !!(tulis.compareDocumentPosition(jenis) & Node.DOCUMENT_POSITION_FOLLOWING)
+      return !!(jenis.compareDocumentPosition(tulis) & Node.DOCUMENT_POSITION_FOLLOWING)
     })()`)
-    catat('pemilih jenis soal ada di bawah formulir', jenisDiBawah === true)
+    catat('pemilih jenis soal ada di ATAS formulir (pilih tipe dulu)', jenisDiAtas === true)
+
+    // Kesimpulan kunci wajib berada di BAWAH soal, bukan hanya tersebar di radio
+    // tiap opsi (permintaan pemilik produk, 12 Oktober 2026).
+    const kunciDiBawah = await evalJs(`(function () {
+      const ringkas = document.querySelector('.ringkas-kunci-soal')
+      const tulis = document.querySelector('#soal-teks')
+      if (!ringkas || !tulis) return null
+      return !!(tulis.compareDocumentPosition(ringkas) & Node.DOCUMENT_POSITION_FOLLOWING)
+    })()`)
+    catat('kunci jawaban dirangkum di bawah soal', kunciDiBawah === true)
 
     await evalJs(`__alat.klikTeks('Kembali ke susunan')`)
     await sleep(1200)
@@ -206,6 +218,17 @@ async function main() {
       susunan.includes('1 soal') && susunan.includes('Berapa hasil 2 + 3?'),
       susunan.slice(0, 160),
     )
+
+    // Hasil akhir susunan (total soal + poin) wajib berada di BAWAH daftar soal
+    // (12 Oktober 2026), bukan di kepala panel atau menempel di tiap baris.
+    const totalDiBawah = await evalJs(`(function () {
+      const total = document.querySelector('.ringkas-susunan-akhir')
+      const daftar = document.querySelector('.ringkas-susunan-akhir')?.closest('div')?.querySelector('ol')
+      if (!total || !daftar) return null
+      const urut = !!(daftar.compareDocumentPosition(total) & Node.DOCUMENT_POSITION_FOLLOWING)
+      return urut && total.textContent.includes('1 soal')
+    })()`)
+    catat('total susunan (soal · poin) ada di bawah daftar soal', totalDiBawah === true)
 
     const kuisSetelahSoal = await evalJs(
       `fetch('/api/v1/kuis/${kuis.id}', { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json()).then((k) => ({ subject_id: k.subject_id }))`,

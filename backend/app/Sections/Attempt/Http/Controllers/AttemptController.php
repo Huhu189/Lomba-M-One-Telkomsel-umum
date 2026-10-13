@@ -128,6 +128,29 @@ class AttemptController extends Controller
     }
 
     /**
+     * Cap versi isi soal untuk layar pengerjaan (kebijakan 12 Oktober 2026).
+     *
+     * Halaman murid memanggil ini berkala selama ulangannya berjalan: jawabannya
+     * kecil (satu hash), jadi murid bisa diberi tahu “guru memperbarui soal”
+     * tanpa memuat seluruh payload soal berkali-kali. Bila capnya berubah, klien
+     * memuat ulang payload (soal versi baru) sambil mempertahankan jawaban.
+     */
+    public function versiSoal(Attempt $attempt, AttemptService $service): JsonResponse
+    {
+        $this->authorize('view', $attempt);
+
+        // Nama kolomnya sengaja sama dengan payload attempt (`versi_soal`), jadi
+        // klien bisa membandingkan kedua sumber itu apa adanya.
+        $versi = $service->versiSoal($attempt);
+
+        return response()->json([
+            'versi_soal' => $versi['versi'],
+            'soal_diubah_at' => $versi['diubah_at'],
+            'jumlah_soal' => $versi['jumlah_soal'],
+        ]);
+    }
+
+    /**
      * Hasil ulangan (murid: miliknya sendiri; guru: untuk ditinjau).
      */
     public function hasil(Attempt $attempt, AttemptService $service): AttemptHasilResource
@@ -155,6 +178,7 @@ class AttemptController extends Controller
     ): AttemptResource {
         $resource = new AttemptResource($attempt);
         $resource->soal = $service->payloadSoal($attempt);
+        $resource->versiSoal = $service->versiSoal($attempt);
         $resource->jawaban = $service->payloadJawaban($attempt);
         $resource->tim = $this->timMurid($attempt, $request);
 

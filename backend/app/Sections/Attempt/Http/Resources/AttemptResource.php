@@ -64,6 +64,15 @@ class AttemptResource extends JsonResource
     public ?array $tim = null;
 
     /**
+     * Cap versi isi soal (12 Okt 2026): berubah begitu guru memperbaiki isi soal
+     * yang dikerjakan murid ini. Layar pengerjaan membandingkannya berkala, lalu
+     * memberi tahu murid dan memuat ulang payload — jawabannya tetap aman.
+     *
+     * @var array{versi: string, diubah_at: string|null, jumlah_soal: int}|null
+     */
+    public ?array $versiSoal = null;
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -92,6 +101,8 @@ class AttemptResource extends JsonResource
             'jumlah_benar' => $this->jumlah_benar,
             'dikumpulkan_at' => $this->dikumpulkan_at?->toIso8601String(),
             'soal' => $this->soal,
+            'versi_soal' => $this->versiSoal['versi'] ?? null,
+            'soal_diubah_at' => $this->versiSoal['diubah_at'] ?? null,
             'jawaban' => $this->jawaban,
             'tim' => $this->tim,
             // Dipaksa jadi objek JSON: peta kosong di PHP akan menjadi `[]`,

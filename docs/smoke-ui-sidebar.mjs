@@ -1,6 +1,10 @@
-// Smoke UI panel samping guru (CDP): panel harus terkunci di layar — setinggi
-// jendela dikurangi kepala, menempel rata ke tepi kiri tanpa padding/sudut, dan
-// tetap di tempatnya saat halaman digulir.
+// Smoke UI panel samping guru (CDP): panel menempel rata ke tepi kiri tanpa
+// padding/sudut, lebarnya 260 px, dan — sejak 12 Oktober 2026 — **tidak**
+// bergulir di dalam dirinya sendiri: tingginya mengikuti isi menu dan ikut
+// tergulir bersama halaman (permintaan pemilik produk: "sidebar harap flex atau
+// apa agar tidak ada scrollbar"). Dua jendela diuji: 1440×900 (muat) dan
+// 1280×640 (daftar menu lebih tinggi dari jendela) — di keduanya panel tidak
+// boleh punya scrollbar sendiri.
 //
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
@@ -106,24 +110,57 @@ async function main() {
       catat('panel samping ada di layar ≥ lg', false, 'nav.papan-nav tidak ditemukan')
     } else {
       catat('panel samping menempel rata ke tepi kiri (tanpa padding luar)', awal.left === 0, `left=${awal.left}`)
-      catat('panel setinggi jendela dikurangi kepala', awal.height === awal.jendela.tinggi - 68, `tinggi=${awal.height} (jendela ${awal.jendela.tinggi})`)
       catat('panel bersudut datar (tanpa radius/bayangan melayang)', awal.borderRadius === '0px' && awal.boxShadow === 'none', `radius=${awal.borderRadius} shadow=${awal.boxShadow}`)
       catat('panel tetap punya lebar 260 px', awal.lebar === 260, `lebar=${awal.lebar}`)
       catat('konten tidak menempel ke panel', awal.jarakKeKonten > 0, `jarak=${awal.jarakKeKonten} px`)
 
-      // Gulir 500 px: panel yang benar tidak ikut naik.
-      const setelahGulir = await evalJs(`${ukur}(500)`)
-      // Kalau panel ikut tergulir, posisinya akan naik 500 px (jadi negatif) —
-      // bukan tetap di ambang 68 px di bawah kepala.
-      catat(
-        'panel terkunci saat halaman digulir',
-        setelahGulir !== null &&
-          setelahGulir.jendela.gulirY >= 400 &&
-          Math.abs(setelahGulir.top - 68) <= 2,
-        setelahGulir === null
-          ? 'panel hilang'
-          : `top ${awal.top} → ${setelahGulir.top}, gulirY=${setelahGulir.jendela.gulirY}`,
-      )
+      // Inti kebijakan baru: panel tidak punya gulir sendiri. Diukur di dua
+      // jendela, termasuk 1280×640 yang daftar menunya lebih tinggi dari jendela.
+      for (const [lebar, tinggi] of [
+        [1440, 900],
+        [1280, 640],
+      ]) {
+        await send('Emulation.setDeviceMetricsOverride', { width: lebar, height: tinggi, deviceScaleFactor: 1, mobile: false }, sessionId)
+        await sleep(600)
+        const kotak = await evalJs(`(() => {
+          const nav = document.querySelector('nav.papan-nav')
+          if (!nav) return null
+          const gaya = getComputedStyle(nav)
+          return {
+            overflowY: gaya.overflowY,
+            isi: nav.scrollHeight,
+            muat: nav.clientHeight,
+            tinggi: Math.round(nav.getBoundingClientRect().height),
+            top: Math.round(nav.getBoundingClientRect().top),
+            jendela: window.innerHeight,
+          }
+        })()`)
+
+        if (kotak === null) {
+          catat(`panel samping ada di ${lebar}×${tinggi}`, false, 'nav.papan-nav tidak ditemukan')
+          continue
+        }
+
+        catat(
+          `panel tidak bergulir sendiri (${lebar}×${tinggi})`,
+          kotak.isi <= kotak.muat + 1 && kotak.overflowY !== 'auto' && kotak.overflowY !== 'scroll',
+          `isi=${kotak.isi} muat=${kotak.muat} overflowY=${kotak.overflowY} tinggi=${kotak.tinggi} (jendela ${kotak.jendela})`,
+        )
+
+        // Gulir 500 px: panel yang ikut halaman akan naik hampir sebanyak itu.
+        const setelahGulir = await evalJs(`${ukur}(500)`)
+        catat(
+          `panel ikut tergulir bersama halaman (${lebar}×${tinggi})`,
+          setelahGulir !== null &&
+            setelahGulir.jendela.gulirY >= 400 &&
+            Math.abs(setelahGulir.top - (kotak.top - setelahGulir.jendela.gulirY)) <= 3,
+          setelahGulir === null
+            ? 'panel hilang'
+            : `top ${kotak.top} → ${setelahGulir.top}, gulirY=${setelahGulir.jendela.gulirY}`,
+        )
+        await evalJs('window.scrollTo(0, 0)')
+        await sleep(200)
+      }
     }
   } finally {
     const gagal = hasil.filter((satu) => !satu.lolos)

@@ -197,6 +197,9 @@ Route::prefix('v1')->group(function (): void {
         // Pengerjaan kuis (slice 04): mulai, autosave jawaban, kumpulkan, hasil.
         Route::post('/kuis/{kuis}/mulai', [AttemptController::class, 'mulai'])->name('attempt.mulai');
         Route::get('/attempt/{attempt}', [AttemptController::class, 'show'])->name('attempt.show');
+        // Cap versi isi soal: dipakai halaman pengerjaan untuk tahu kapan guru
+        // memperbaiki soal di tengah ulangan (12 Okt 2026).
+        Route::get('/attempt/{attempt}/versi-soal', [AttemptController::class, 'versiSoal'])->name('attempt.versi_soal');
         Route::post('/attempt/{attempt}/jawab', [AttemptController::class, 'jawab'])->name('attempt.jawab');
         Route::post('/attempt/{attempt}/kumpulkan', [AttemptController::class, 'kumpulkan'])->name('attempt.kumpulkan');
         Route::get('/attempt/{attempt}/hasil', [AttemptController::class, 'hasil'])->name('attempt.hasil');

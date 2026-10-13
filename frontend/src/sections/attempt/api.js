@@ -45,6 +45,11 @@ export const skemaAttempt = z.object({
   jumlah_benar: z.number(),
   dikumpulkan_at: z.string().nullable(),
   soal: z.array(skemaSoalKerjakan),
+  // Cap versi isi soal (12 Okt 2026): berubah begitu guru memperbaiki soal yang
+  // sedang dikerjakan murid. Layar pengerjaan membandingkannya berkala, lalu
+  // memberi tahu murid dan memuat ulang payload — jawabannya tetap aman.
+  versi_soal: z.string().nullable().optional(),
+  soal_diubah_at: z.string().nullable().optional(),
   jawaban: z.array(skemaJawabanTersimpan),
   // Ringkasan tim untuk mode kelompok (slice 09-C); null pada ulangan individu.
   tim: z
@@ -136,6 +141,26 @@ export async function mulaiKuis(kuisId) {
   await ambilCsrfCookie()
   const respons = await client.post(`/v1/kuis/${kuisId}/mulai`)
   return skemaAttempt.parse(respons.data)
+}
+
+/**
+ * Cap versi isi soal — SATU hash kecil, jadi layar pengerjaan bisa bertanya
+ * berkala tanpa memuat seluruh payload soal. Nama kolomnya sengaja sama dengan
+ * payload attempt (`versi_soal`) supaya keduanya bisa dibandingkan apa adanya.
+ *
+ * @param {number} attemptId
+ * @returns {Promise<{ versi_soal: string, soal_diubah_at: string|null, jumlah_soal: number }>}
+ */
+export async function ambilVersiSoal(attemptId) {
+  const respons = await client.get(`/v1/attempt/${attemptId}/versi-soal`)
+
+  return z
+    .object({
+      versi_soal: z.string(),
+      soal_diubah_at: z.string().nullable(),
+      jumlah_soal: z.number(),
+    })
+    .parse(respons.data)
 }
 
 /**

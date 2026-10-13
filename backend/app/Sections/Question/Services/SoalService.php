@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Sections\Attempt\Models\Jawaban;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
+use App\Sections\Question\Registry\RegistryTipeSoal;
 use App\Sections\School\Models\Sekolah;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
@@ -32,20 +33,43 @@ class SoalService
     }
 
     /**
+     * Simpan perubahan soal.
+     *
+     * **Kebijakan 12 Oktober 2026** (permintaan pemilik produk: *"soal boleh
+     * diubah di tengah-tengah quiz"*): soal yang dipakai kuis **sedang berjalan**
+     * tetap boleh diperbaiki **isinya** — guru sering menemukan salah ketik, opsi
+     * yang membingungkan, atau gambar yang salah pasang saat ulangan sudah jalan.
+     *
+     * Yang **tidak** boleh berubah di tengah ulangan adalah **kunci jawaban,
+     * skor, dan jenis soal**: ketiganya menentukan penilaian, dan mengubahnya
+     * berarti menilai murid dengan aturan yang belum pernah ia lihat — nilai yang
+     * sudah masuk jadi tidak bisa dipertanggungjawabkan. Opsi/kata yang menjadi
+     * kunci juga tidak boleh dihapus dari isi (dijaga registry tipe soal), karena
+     * penilaian attempt yang sedang berjalan kehilangan acuannya.
+     *
      * @param  array<string, mixed>  $data
      */
     public function perbarui(Soal $soal, array $data): Soal
     {
-        $this->pastikanTidakTerkunci($soal);
+        $data = $this->rapikan($data);
 
-        $soal->fill($this->rapikan($data))->save();
+        if ($soal->terkunci()) {
+            $this->pastikanPerubahanAmanSaatBerjalan($soal, $data);
+        }
+
+        $soal->fill($data)->save();
 
         return $soal->refresh();
     }
 
+    /**
+     * Menghapus soal tetap terkunci selama kuis pemakainya berjalan: FK `answers`
+     * memakai `cascadeOnDelete`, jadi soal yang hilang ikut menghapus jawaban
+     * murid yang sedang mengerjakan (lihat {@see pastikanBelumDijawab}).
+     */
     public function hapus(Soal $soal): void
     {
-        $this->pastikanTidakTerkunci($soal);
+        $this->pastikanTidakDipakaiKuisBerjalan($soal);
         $this->pastikanBelumDijawab($soal);
 
         $soal->delete();
@@ -75,19 +99,74 @@ class SoalService
     }
 
     /**
-     * Soal tidak boleh diubah/dihapus saat kuis pemakainya sedang berjalan.
+     * Soal tidak boleh dihapus saat kuis pemakainya sedang berjalan.
      *
      * @throws ValidationException
      */
-    public function pastikanTidakTerkunci(Soal $soal): void
+    public function pastikanTidakDipakaiKuisBerjalan(Soal $soal): void
     {
         if (! $soal->terkunci()) {
             return;
         }
 
         throw ValidationException::withMessages([
-            'soal' => 'Soal tidak bisa diubah karena dipakai kuis yang sedang berjalan.',
+            'soal' => 'Soal tidak bisa dihapus karena dipakai kuis yang sedang berjalan. Kalau soal ini memang tidak dipakai, nonaktifkan saja setelah ulangannya selesai.',
         ]);
+    }
+
+    /**
+     * Aturan "hanya isi" saat kuis sedang berjalan (lihat {@see perbarui}).
+     *
+     * @param  array<string, mixed>  $data  data yang sudah dirapikan
+     *
+     * @throws ValidationException
+     */
+    private function pastikanPerubahanAmanSaatBerjalan(Soal $soal, array $data): void
+    {
+        // Jenis soal diperiksa paling dulu: mengubahnya selalu ikut mengubah
+        // kunci, dan pesan "jenis soal" lebih tepat daripada "kunci jawaban".
+        $tipeBaru = $data['tipe'] ?? null;
+        $nilaiTipeBaru = $tipeBaru instanceof TipeSoal ? $tipeBaru->value : (is_string($tipeBaru) ? $tipeBaru : null);
+
+        if ($nilaiTipeBaru !== null && $nilaiTipeBaru !== $soal->tipeAman()?->value) {
+            throw ValidationException::withMessages([
+                'tipe' => 'Jenis soal tidak bisa diubah saat kuis sedang berjalan.',
+            ]);
+        }
+
+        if (array_key_exists('kunci', $data) && $data['kunci'] != $soal->kunciSebagaiArray()) {
+            throw ValidationException::withMessages([
+                'kunci' => 'Kunci jawaban tidak bisa diubah saat kuis sedang berjalan. Tulisan dan opsi soal boleh diperbaiki; kunci baru berlaku untuk ulangan berikutnya.',
+            ]);
+        }
+
+        if (array_key_exists('skor', $data) && (int) $data['skor'] !== (int) $soal->skor) {
+            throw ValidationException::withMessages([
+                'skor' => 'Skor soal tidak bisa diubah saat kuis sedang berjalan, karena nilai murid yang sudah masuk dihitung dengan skor lama.',
+            ]);
+        }
+
+        // Kunci lama harus tetap "masuk" ke isi baru: opsi/kata yang menjadi kunci
+        // tidak boleh hilang, kalau tidak penilaian attempt yang sedang berjalan
+        // kehilangan acuannya. Pemeriksaannya milik registry tipe soal, jadi semua
+        // jenis soal memakai aturan yang sama seperti saat menyimpan biasa.
+        $tipe = $soal->tipeAman();
+
+        if ($tipe === null) {
+            return;
+        }
+
+        $kontenBaru = $data['konten'] ?? null;
+        $galat = RegistryTipeSoal::penangan($tipe)->validasiKunci(
+            is_array($kontenBaru) ? $kontenBaru : $soal->kontenSebagaiArray(),
+            $soal->kunciSebagaiArray(),
+        );
+
+        if ($galat !== []) {
+            throw ValidationException::withMessages([
+                'konten' => 'Kuis sedang berjalan, jadi bagian yang menjadi kunci jawaban tidak boleh dihapus: '.implode(' ', $galat),
+            ]);
+        }
     }
 
     /**

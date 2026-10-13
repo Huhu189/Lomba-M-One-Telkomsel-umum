@@ -10,6 +10,7 @@ use App\Sections\Question\Http\Resources\SoalResource;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Question\Services\SoalService;
 use App\Sections\School\Services\SekolahService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -46,6 +47,12 @@ class SoalController extends Controller
             ->allowedSorts('created_at', 'skor')
             ->defaultSort('-created_at')
             ->with(['mapel', 'tag'])
+            // "Sedang dipakai kuis berjalan?" dihitung sekali untuk seluruh
+            // halaman (bukan satu kueri per baris) — editor memakainya untuk
+            // menjelaskan aturan "hanya isi yang boleh diperbaiki".
+            ->withExists(['kuis as dipakai_kuis_berjalan' => static function (Builder $query): void {
+                Soal::batasanKuisBerjalan($query);
+            }])
             ->paginate(perPage: 50, page: max(1, $request->integer('page', 1)));
 
         return SoalResource::collection($daftar);
