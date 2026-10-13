@@ -65,14 +65,15 @@ git status --short && git diff --stat
 git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 ```
 
-Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.71**):
+Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.73**):
 
 - **`HEAD`** = commit terakhir (pakai `git log --oneline -1`). Sesi ini berisi **A.70** (patch kinerja + rekam
-  diri), **A.71** (log mentah + perapian `docs/`), dan **A.72** (A.61–A.69 dikomit) — `git log --oneline
-  6811c2c..HEAD` untuk daftarnya.
-- **`origin/main = 93f66ed`** → **belum ada satu pun commit sesi ini yang di-push** (`git rev-list --count
-  origin/main..HEAD` **16** saat ditulis, sebelum commit catatan ini — angka pastinya ambil dari perintah itu).
-  Repo online belum memuat A.65, A.66, A.67, dan seluruh A.68–A.72; **push dulu sebelum menutup sesi**.
+  diri), **A.71** (log mentah + perapian `docs/`), **A.72** (A.61–A.69 dikomit), dan **A.73** (latar tema
+  Luar Angkasa & Harta Karun dirombak total) — `git log --oneline 6811c2c..HEAD` untuk daftarnya.
+- **Push sesi ini SUDAH dilakukan:** 18 commit (A.65–A.72) terkirim ke `origin/main` → `fea68b8`, diperiksa
+  terhadap server lewat `git ls-remote origin refs/heads/main` (cocok dengan `git rev-parse HEAD` saat itu).
+  Yang **belum** di-push sekarang hanyalah commit A.73 ke atasnya (`git rev-list --count origin/main..HEAD`
+  — angka pastinya ambil dari perintah itu, jangan ditulis tetap di sini).
 - **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
   dalam enam commit bertema: slug kuis (backend), slug di seluruh layar + pil saring, bank soal bertahap,
   halaman akun + setelan per kuis, bundel per halaman, dan penjelasan fitur. Daftar lengkap ada di
@@ -104,6 +105,15 @@ jalankan nyala+harnes **di dalam satu perintah**.
 Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), sandi `Passw0rd!Aman`.
 
 ### 0.4 Sudah terverifikasi (jangan diulang tanpa perubahan kode)
+
+**A.73** (13 Okt 2026, latar tema dirombak total + aset CC0) — `pulau.svg` dan `angkasa.svg` **diganti seluruhnya**
+  (bukan disetel): 196 bentuk/83 warna dan 164 bentuk/78 warna, rasio tetap 16:9, rute pos tidak digeser, id
+  pendaratan tetap lengkap. Lima ikon CC0 Wikimedia Commons (roket, bintang, Mars, peti harta karun, karang)
+  disisipkan dengan koordinat yang didatar-kan — berkas akhir **nol `transform`**. `npx vitest run
+  src/__tests__/theme` **23/23 lulus**; harness peramban `docs/jalankan-smoke-perjalanan.sh` **69/69 lulus**,
+  termasuk "gambar berisi detail, bukan bidang polos" (angkasa **1158 warna** · pulau **1432 warna** · petak
+  polos **0/40**), kecerahan sesudah dirender (angkasa rata **63** · pulau rata **176**), dan tiap pos berdiri di
+  benda (selisih 79 dan 50). Rincian: A.73.
 
 **A.72** (13 Okt 2026, pekerjaan yang menumpuk dikomit) — working tree **BERSIH** sesudah enam commit bertema
   (slug backend `1a2db5f` · slug di layar + pil saring `9192eaf` · bank soal bertahap `7e2001c` · halaman akun +

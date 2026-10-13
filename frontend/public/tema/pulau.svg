@@ -2,375 +2,342 @@
 <!--
   "Pelayaran Harta Karun" — latar peta perjalanan tema Harta Karun di Pulau.
 
-  Dibuat untuk proyek ini (karya sendiri) dan dilepas ke domain publik / CC0,
-  jadi boleh dipakai, diubah, dan disebarkan tanpa izin tambahan — lihat
-  LISENSI.md di folder ini. Seluruhnya digambar di sini: tidak ada berkas
-  unduhan, jadi tidak bergantung jaringan dan tidak ada asal-usul yang perlu
-  ditelusuri.
+  Dirombak ulang total (bukan disetel sedikit): langit siang bergradien, matahari
+  bersinar, awan, pulau jauh di cakrawala, laut berlapis tiga (jauh, tengah,
+  ombak), pantai berpasir diagonal, rimba kelapa bertingkat dengan enam pohon
+  kelapa, tanjung batu yang memuat goa harta karun, dermaga kayu, perahu layar,
+  dan karang berwarna di laut.
+
+  Tiga benda CC0 dari luar repo (diunduh ulang, koordinatnya didatar-kan supaya
+  tidak ada transform di berkas ini — sumber, pembuat, dan lisensinya di
+  LISENSI.md): peti harta karun di mulut goa, dan karang di laut. Pohon kelapa,
+  dermaga, perahu, pantai, dan tanjung digambar di sini (karya sendiri, CC0).
 
   Bentuknya mengikuti rute pos tema ini (`RUTE_TEMA.pulau` di
   `frontend/src/sections/material/perjalanan.js`): tiap pos berdiri DI ATAS
   sesuatu yang digambar di sini, bukan di ruang kosong. Karena itu tiap tempat
   yang diinjak pos diberi `id` supaya bisa diperiksa mesin:
 
-  - `dermaga`  (px 40–330 × 700–862)    → pos "Dermaga"          (8%, 84%)  = (128,756)
-  - `perahu`   (px 330–566 × 466–706)   → pos "Perahu Layar"     (26%, 74%) = (416,666)
-  - `karang`   (px 612–876 × 588–704)   → pos "Karang"           (46%, 72%) = (736,648)
-  - `pantai`   (bidang pasir, sisi atas ≈ (620,540)→(900,486)→(1640,556))
+  - `dermaga`  (px 40–332 × 686–806)     → pos "Dermaga"          (8%, 84%)  = (128,756)
+  - `perahu`   (px 336–566 × 462–716)    → pos "Perahu Layar"     (26%, 74%) = (416,666)
+  - `karang`   (px 652–882 × 552–726)    → pos "Karang"           (46%, 72%) = (736,648)
+  - `pantai`   (bidang pasir, sisi atas melewati (992,528))
                                         → pos "Pantai Berpasir"  (62%, 62%) = (992,558)
-  - `hutan`    (bidang bukit hijau)     → pos "Hutan Kelapa"     (74%, 50%) = (1184,450)
-  - `goa`      (px 1150–1430 × 292–508) → pos "Goa Harta Karun"  (80%, 41%) = (1280,369)
+  - `hutan`    (bidang rimba + teras + kelapa, px 840–1660 × 396–980)
+                                        → pos "Hutan Kelapa"     (74%, 50%) = (1184,450)
+  - `goa`      (tanjung batu + mulut goa + peti, px 1130–1450 × 224–560)
+                                        → pos "Goa Harta Karun"  (80%, 41%) = (1280,369)
 
-  Isinya sengaja lebih rimbun daripada sekadar "langit + laut + bukit": ada
-  matahari berikut sinarnya, tiga gugus awan, pulau jauh di cakrawala, laguna
-  dangkal di tepi pulau, ombak yang bergaris, hutan kelapa, goa berpapan kayu
-  dengan peti emasnya, dermaga berikut perahunya, karang berbuih, botol pesan,
-  ikan melompat, camar, kerang, dan jejak kaki di pasir — supaya peta tidak
-  terasa kosong di layar besar.
+  Latar ini **terang** supaya jalur pekat peta dan tenda pos di atasnya tetap
+  terbaca; pagar mutunya ada di `frontend/src/__tests__/theme/latarTema.test.js`
+  (rata-rata kecerahan berbobot luas, dan luas bidang gelap tidak lebih dari
+  seperempat kanvas).
 
-  Aturan bentuknya dikunci `frontend/src/__tests__/theme/latarTema.test.js`
-  (gambar rata ala buku cerita, tanpa `<image>` raster, tanpa `<text>`, tanpa
-  `<filter>`, ukuran dijaga, latarnya terang, dan — yang paling penting — tidak
-  ada pos yang berdiri di langit/laut kosong).
-
-  Atribut width/height dijaga 1600x900 (aturan di LISENSI.md); viewBox 16:9
-  supaya panggung peta tidak memotong apa pun.
-
-  Catatan pemeliharaan: pagar `id` di atas diurai regex `<g id="…">` yang
-  BERHENTI di `</g>` pertama, jadi tiap grup ber-id tidak boleh berisi grup
-  bersarang — sebuah benda = satu grup datar.
+  Catatan bentuk: sisi miring pantai, rimba, dan tanjung sengaja dijaga di bawah
+  55° — bekas berkas unduhan lama terbaca seperti tebing justru karena sisinya
+  tegak. Atribut width/height dijaga 1600x900 dan viewBox 16:9 (aturan di
+  LISENSI.md), karena panggung peta 16:9 dipotong `object-fit: cover`.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
   <defs>
     <linearGradient id="langit-pulau" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#8fd6f2"/>
-      <stop offset="46%" stop-color="#c6eaf9"/>
-      <stop offset="78%" stop-color="#e9f4f6"/>
-      <stop offset="100%" stop-color="#ffe7be"/>
+      <stop offset="0%" stop-color="#6fc0ee"/>
+      <stop offset="58%" stop-color="#bfe9ff"/>
+      <stop offset="100%" stop-color="#f7fdff"/>
+    </linearGradient>
+    <linearGradient id="laut-jauh-pulau" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ad3ef"/>
+      <stop offset="100%" stop-color="#43a8d2"/>
     </linearGradient>
     <linearGradient id="laut-pulau" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#8fd9ec"/>
-      <stop offset="42%" stop-color="#49a8cb"/>
-      <stop offset="100%" stop-color="#2b7ca8"/>
+      <stop offset="0%" stop-color="#46acd8"/>
+      <stop offset="100%" stop-color="#2b86b4"/>
     </linearGradient>
-    <linearGradient id="laguna-pulau" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0%" stop-color="#a9efe0"/>
-      <stop offset="100%" stop-color="#4fc3bb"/>
+    <linearGradient id="pasir-pulau" x1="0.2" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#fdf5d6"/>
+      <stop offset="100%" stop-color="#eedcac"/>
     </linearGradient>
-    <linearGradient id="pasir-pulau" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fdf2d2"/>
-      <stop offset="55%" stop-color="#f4e2b4"/>
-      <stop offset="100%" stop-color="#e2cb95"/>
-    </linearGradient>
-    <linearGradient id="bukit-pulau" x1="0" y1="0" x2="0.2" y2="1">
-      <stop offset="0%" stop-color="#86cfa0"/>
-      <stop offset="55%" stop-color="#57a877"/>
-      <stop offset="100%" stop-color="#3c8a5c"/>
-    </linearGradient>
-    <linearGradient id="rimba-pulau" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6cbd8b"/>
-      <stop offset="100%" stop-color="#347a51"/>
-    </linearGradient>
-    <linearGradient id="karang-pulau" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0%" stop-color="#dfe8ee"/>
-      <stop offset="100%" stop-color="#9aabb8"/>
-    </linearGradient>
-    <linearGradient id="kayu-pulau" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#c39154"/>
-      <stop offset="100%" stop-color="#9a6a38"/>
+    <linearGradient id="hutan-pulau" x1="0.2" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#5fc07d"/>
+      <stop offset="60%" stop-color="#47a765"/>
+      <stop offset="100%" stop-color="#358a52"/>
     </linearGradient>
     <radialGradient id="cahaya-pulau" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#fff6cf" stop-opacity="0.95"/>
-      <stop offset="55%" stop-color="#fff2c0" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#fff2c0" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="gelombang-pulau" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#fff8d0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#fff8d0" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- LANGIT: bagian terbesar bingkai, dari biru siang ke kuning senja. -->
+  <!-- Langit siang + matahari bersinar. -->
   <rect x="-40" y="-40" width="1680" height="980" fill="url(#langit-pulau)"/>
+  <circle cx="1348" cy="150" r="186" fill="url(#cahaya-pulau)"/>
+  <g fill="none" stroke="#ffd76a" stroke-width="10" stroke-linecap="round">
+    <path d="M1348 36 L1348 8"/>
+    <path d="M1420 78 L1448 50"/>
+    <path d="M1462 150 L1490 150"/>
+    <path d="M1420 222 L1448 250"/>
+    <path d="M1348 264 L1348 292"/>
+    <path d="M1276 222 L1248 250"/>
+    <path d="M1234 150 L1206 150"/>
+    <path d="M1276 78 L1248 50"/>
+  </g>
+  <circle cx="1348" cy="150" r="90" fill="#ffe9a3" stroke="#ffc94d" stroke-width="7"/>
 
-  <!-- MATAHARI + sinarnya: sumber terang bingkai ini. -->
-  <circle cx="1190" cy="144" r="232" fill="url(#cahaya-pulau)"/>
-  <circle cx="1190" cy="144" r="64" fill="#fff8d8" stroke="#f0c552" stroke-width="6"/>
-  <g stroke="#ffe9a8" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.85">
-    <path d="M1190 34 L1190 6"/>
-    <path d="M1190 254 L1190 282"/>
-    <path d="M1082 144 L1054 144"/>
-    <path d="M1298 144 L1326 144"/>
-    <path d="M1114 68 L1094 48"/>
-    <path d="M1266 68 L1286 48"/>
-    <path d="M1114 220 L1094 240"/>
-    <path d="M1266 220 L1286 240"/>
+  <!-- Awan bertingkat. -->
+  <g fill="#ffffff">
+    <ellipse cx="300" cy="152" rx="132" ry="40"/>
+    <ellipse cx="228" cy="128" rx="76" ry="28"/>
+    <ellipse cx="374" cy="132" rx="68" ry="24"/>
+    <ellipse cx="700" cy="98" rx="96" ry="30"/>
+    <ellipse cx="640" cy="78" rx="58" ry="20"/>
+    <ellipse cx="768" cy="82" rx="52" ry="18"/>
+  </g>
+  <g fill="#eaf6ff">
+    <ellipse cx="1062" cy="182" rx="86" ry="26"/>
+    <ellipse cx="1006" cy="164" rx="50" ry="18"/>
+    <ellipse cx="560" cy="206" rx="70" ry="20"/>
   </g>
 
-  <!-- AWAN KAPAS: tiga gugus, masing-masing dengan bayangan lembutnya. -->
+  <!-- Pulau jauh di cakrawala + perahu kecil. -->
+  <path fill="#b7e0f2" d="M120 436 C 168 404 236 398 292 420 C 336 438 380 430 420 436 L420 452 L120 452 Z"/>
+  <path fill="#a9d8ee" d="M1150 432 C 1206 400 1276 396 1330 418 C 1372 434 1414 428 1450 434 L1450 450 L1150 450 Z"/>
+  <path fill="#cfe8f5" d="M866 428 C 882 444 906 444 922 428 Z"/>
+  <path fill="none" stroke="#bcd9ea" stroke-width="3" d="M894 428 L894 404"/>
+
+  <!-- Laut jauh, lalu laut tengah. -->
+  <path fill="url(#laut-jauh-pulau)" d="M-40 440 C 140 434 320 438 520 440 C 720 442 900 438 1100 440 C 1300 442 1480 438 1640 440 L1640 980 L-40 980 Z"/>
+  <path fill="url(#laut-pulau)" d="M-40 476 C 120 468 260 478 400 476 C 560 474 700 482 860 478 C 1020 474 1180 482 1340 476 C 1460 472 1560 476 1640 474 L1640 980 L-40 980 Z"/>
+
+  <!-- Ombak, kilau, dan pantulan matahari. -->
+  <g fill="none" stroke="#eafaff" stroke-width="5" stroke-linecap="round">
+    <path d="M120 520 C 152 512 184 512 216 520"/>
+    <path d="M300 552 C 336 544 372 544 408 552"/>
+    <path d="M120 610 C 156 602 192 602 228 610"/>
+    <path d="M280 664 C 314 656 348 656 382 664"/>
+    <path d="M180 730 C 214 722 248 722 282 730"/>
+    <path d="M420 566 C 452 558 484 558 516 566"/>
+    <path d="M64 846 C 100 838 136 838 172 846"/>
+    <path d="M320 792 C 356 784 392 784 428 792"/>
+  </g>
+  <g fill="#ffffff" opacity="0.5">
+    <ellipse cx="1258" cy="522" rx="26" ry="6"/>
+    <ellipse cx="1306" cy="548" rx="34" ry="7"/>
+    <ellipse cx="1244" cy="574" rx="22" ry="5"/>
+    <ellipse cx="1312" cy="600" rx="28" ry="6"/>
+    <ellipse cx="1268" cy="626" rx="20" ry="5"/>
+  </g>
+
+  <!-- Pantai berpasir: garis pantainya diagonal ke kanan atas. -->
+  <path id="pantai" fill="url(#pasir-pulau)" d="M-40 950 C 200 938 400 922 560 908 C 620 900 700 866 780 812 C 840 770 900 712 960 646 C 1000 600 1024 552 1060 528 C 1180 512 1330 498 1460 486 C 1530 480 1590 476 1640 472 L1640 980 L-40 980 Z"/>
+  <path fill="#ffffff" opacity="0.4" d="M-40 934 C 200 922 400 906 560 892 C 620 884 700 850 780 796 C 840 754 900 696 960 630 L980 640 C 920 712 858 772 796 816 C 716 872 636 906 566 914 C 402 928 204 944 -40 956 Z"/>
+  <g fill="#e2c98f" opacity="0.6">
+    <ellipse cx="1120" cy="600" rx="46" ry="10"/>
+    <ellipse cx="1210" cy="582" rx="38" ry="9"/>
+    <ellipse cx="1300" cy="564" rx="42" ry="9"/>
+    <ellipse cx="1392" cy="548" rx="34" ry="8"/>
+  </g>
   <g>
-    <ellipse cx="286" cy="132" rx="146" ry="40" fill="#ffffff"/>
-    <ellipse cx="196" cy="104" rx="86" ry="30" fill="#ffffff"/>
-    <ellipse cx="386" cy="106" rx="70" ry="25" fill="#ffffff"/>
-    <ellipse cx="292" cy="158" rx="112" ry="20" fill="#dceff9"/>
-    <ellipse cx="770" cy="92" rx="104" ry="28" fill="#ffffff"/>
-    <ellipse cx="846" cy="72" rx="60" ry="20" fill="#ffffff"/>
-    <ellipse cx="700" cy="72" rx="52" ry="18" fill="#ffffff"/>
-    <ellipse cx="778" cy="110" rx="80" ry="14" fill="#dceff9"/>
-    <ellipse cx="1470" cy="200" rx="76" ry="22" fill="#ffffff"/>
-    <ellipse cx="1418" cy="184" rx="44" ry="15" fill="#ffffff"/>
-    <ellipse cx="1472" cy="214" rx="58" ry="11" fill="#dceff9"/>
-    <ellipse cx="1004" cy="238" rx="48" ry="14" fill="#ffffff"/>
+    <ellipse cx="960" cy="700" rx="12" ry="9" fill="#ffd9e8"/>
+    <path fill="#ffe9b0" d="M1150 668 C 1164 654 1188 656 1194 672 C 1200 688 1180 700 1162 696 C 1146 692 1140 678 1150 668 Z"/>
+    <path fill="#ff9a5c" d="M1284 648 L1298 674 L1270 674 Z"/>
+    <path fill="#ff9a5c" d="M1298 674 L1326 674 L1312 700 Z"/>
+    <circle cx="1064" cy="742" r="9" fill="#f6dfa8"/>
+    <circle cx="1330" cy="612" r="8" fill="#f6dfa8"/>
+    <g fill="#ddc089" opacity="0.75">
+      <ellipse cx="1180" cy="742" rx="18" ry="8"/>
+      <ellipse cx="1230" cy="762" rx="18" ry="8"/>
+      <ellipse cx="1282" cy="786" rx="18" ry="8"/>
+    </g>
   </g>
 
-  <!-- PULAU JAUH: cakrawala tidak kosong. -->
-  <path fill="#c3e0ee" d="M360 470 C 420 442 470 434 520 448 C 566 460 606 468 656 470 L360 470 Z"/>
-  <path fill="#a8cde0" d="M392 470 C 430 452 462 448 500 458 C 534 466 566 470 604 470 L392 470 Z"/>
-  <path fill="#cde7f2" d="M980 470 C 1024 452 1064 446 1104 456 C 1146 466 1186 470 1236 470 L980 470 Z"/>
-  <path fill="#e9f5fa" opacity="0.75" d="M-40 462 C 240 452 520 458 800 464 C 1080 470 1360 462 1640 468 L1640 486 L-40 486 Z"/>
+  <!-- Bukit rimba paling belakang (kedalaman). -->
+  <path fill="#7fc79b" d="M980 980 C 1020 880 1092 806 1172 766 C 1252 728 1340 706 1430 698 L1660 690 L1660 980 Z"/>
 
-  <!-- LAUT: sisi atas 52% tinggi bingkai (470 px). -->
-  <path fill="url(#laut-pulau)" d="M-40 470 C 180 462 400 468 620 470 C 880 472 1160 466 1640 472 L1640 940 L-40 940 Z"/>
-
-  <!-- Ombak: goresan tipis, bukan bidang — laut tidak boleh terlihat seperti kaca. -->
-  <g stroke="#eafaff" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.62">
-    <path d="M110 540 C 190 532 270 548 350 540"/>
-    <path d="M470 566 C 540 558 610 574 680 566"/>
-    <path d="M880 552 C 950 544 1020 560 1090 552"/>
-    <path d="M1320 566 C 1390 558 1460 574 1540 566"/>
-    <path d="M150 660 C 230 652 310 668 390 660"/>
-    <path d="M560 712 C 630 704 700 720 770 712"/>
-    <path d="M1180 690 C 1250 682 1320 698 1390 690"/>
-    <path d="M300 792 C 380 784 460 800 540 792"/>
-    <path d="M860 840 C 940 832 1020 848 1100 840"/>
-    <path d="M1240 812 C 1320 804 1400 820 1480 812"/>
+  <!-- Rimba kelapa: lereng, teras, pohon, dan semak. -->
+  <g id="hutan">
+    <path fill="url(#hutan-pulau)" d="M880 980 C 940 906 1000 840 1060 770 C 1120 700 1180 620 1240 540 C 1290 480 1350 440 1430 420 C 1520 396 1600 384 1660 378 L1660 980 Z"/>
+    <path fill="#8ed3a8" opacity="0.5" d="M1188 522 C 1240 464 1300 430 1380 412 L1392 434 C 1316 452 1258 486 1210 542 Z"/>
+    <path fill="#3f8f58" d="M1044 470 C 1096 448 1172 438 1240 436 L1332 432 L1348 486 C 1276 502 1156 508 1060 500 Z"/>
+    <path fill="#6ba87e" d="M1064 500 C 1132 490 1244 486 1332 474 L1338 486 C 1248 500 1136 506 1068 512 Z"/>
+<!-- pohon kelapa: batang, pelepah, kelapa (koordinat absolut, tanpa transform) -->
+<!-- pohon kelapa di (902,664), skala 0.82 -->
+<path fill="#9a6b34" d="M894.6 664.0 C 896.3 616.4 902.8 575.4 909.4 539.4 L929.9 544.3 C 918.4 578.7 911.8 618.1 911.0 664.0 Z"/>
+<path fill="#a87a41" d="M899.5 664.0 C 900.4 621.4 905.3 583.6 910.2 542.6 L916.8 545.9 C 911.8 585.3 908.6 623.0 906.9 664.0 Z"/>
+<path fill="#2f8f57" d="M915.1 539.4 C 943.0 524.6 979.1 519.7 1003.7 534.4 C 975.8 545.9 941.4 547.6 915.1 547.6 Z"/>
+<path fill="#45a86a" d="M915.1 539.4 C 936.4 511.5 964.3 493.4 993.8 491.8 C 974.2 514.8 947.9 527.9 918.4 536.1 Z"/>
+<path fill="#3a9a5f" d="M915.1 539.4 C 888.9 524.6 854.4 521.3 829.8 536.1 C 856.1 547.6 890.5 549.2 915.1 549.2 Z"/>
+<path fill="#54b47a" d="M915.1 539.4 C 893.8 509.8 867.6 491.8 839.7 488.5 C 857.7 513.1 884.0 526.2 913.5 534.4 Z"/>
+<path fill="#2b8350" d="M915.1 539.4 C 928.2 557.4 939.7 578.7 936.4 598.4 C 920.0 582.0 910.2 562.3 908.6 542.6 Z"/>
+<circle cx="910.2" cy="549.2" r="5.7" fill="#7d5228"/>
+<circle cx="920.0" cy="552.5" r="4.9" fill="#6f4820"/>
+<!-- pohon kelapa di (1006,596), skala 1.0 -->
+<path fill="#9a6b34" d="M997.0 596.0 C 999.0 538.0 1007.0 488.0 1015.0 444.0 L1040.0 450.0 C 1026.0 492.0 1018.0 540.0 1017.0 596.0 Z"/>
+<path fill="#a87a41" d="M1003.0 596.0 C 1004.0 544.0 1010.0 498.0 1016.0 448.0 L1024.0 452.0 C 1018.0 500.0 1014.0 546.0 1012.0 596.0 Z"/>
+<path fill="#2f8f57" d="M1022.0 444.0 C 1056.0 426.0 1100.0 420.0 1130.0 438.0 C 1096.0 452.0 1054.0 454.0 1022.0 454.0 Z"/>
+<path fill="#45a86a" d="M1022.0 444.0 C 1048.0 410.0 1082.0 388.0 1118.0 386.0 C 1094.0 414.0 1062.0 430.0 1026.0 440.0 Z"/>
+<path fill="#3a9a5f" d="M1022.0 444.0 C 990.0 426.0 948.0 422.0 918.0 440.0 C 950.0 454.0 992.0 456.0 1022.0 456.0 Z"/>
+<path fill="#54b47a" d="M1022.0 444.0 C 996.0 408.0 964.0 386.0 930.0 382.0 C 952.0 412.0 984.0 428.0 1020.0 438.0 Z"/>
+<path fill="#2b8350" d="M1022.0 444.0 C 1038.0 466.0 1052.0 492.0 1048.0 516.0 C 1028.0 496.0 1016.0 472.0 1014.0 448.0 Z"/>
+<circle cx="1016.0" cy="456.0" r="7.0" fill="#7d5228"/>
+<circle cx="1028.0" cy="460.0" r="6.0" fill="#6f4820"/>
+<!-- pohon kelapa di (1120,548), skala 0.88 -->
+<path fill="#9a6b34" d="M1112.1 548.0 C 1113.8 497.0 1120.9 453.0 1127.9 414.2 L1149.9 419.5 C 1137.6 456.5 1130.6 498.7 1129.7 548.0 Z"/>
+<path fill="#a87a41" d="M1117.4 548.0 C 1118.2 502.2 1123.5 461.8 1128.8 417.8 L1135.8 421.3 C 1130.6 463.5 1127.0 504.0 1125.3 548.0 Z"/>
+<path fill="#2f8f57" d="M1134.1 414.2 C 1164.0 398.4 1202.7 393.1 1229.1 409.0 C 1199.2 421.3 1162.2 423.0 1134.1 423.0 Z"/>
+<path fill="#45a86a" d="M1134.1 414.2 C 1157.0 384.3 1186.9 365.0 1218.6 363.2 C 1197.4 387.8 1169.3 401.9 1137.6 410.7 Z"/>
+<path fill="#3a9a5f" d="M1134.1 414.2 C 1105.9 398.4 1069.0 394.9 1042.6 410.7 C 1070.7 423.0 1107.7 424.8 1134.1 424.8 Z"/>
+<path fill="#54b47a" d="M1134.1 414.2 C 1111.2 382.6 1083.0 363.2 1053.1 359.7 C 1072.5 386.1 1100.6 400.2 1132.3 409.0 Z"/>
+<path fill="#2b8350" d="M1134.1 414.2 C 1148.2 433.6 1160.5 456.5 1157.0 477.6 C 1139.4 460.0 1128.8 438.9 1127.0 417.8 Z"/>
+<circle cx="1128.8" cy="424.8" r="6.2" fill="#7d5228"/>
+<circle cx="1139.4" cy="428.3" r="5.3" fill="#6f4820"/>
+<!-- pohon kelapa di (1248,506), skala 1.06 -->
+<path fill="#9a6b34" d="M1238.5 506.0 C 1240.6 444.5 1249.1 391.5 1257.5 344.9 L1284.0 351.2 C 1269.2 395.8 1260.7 446.6 1259.7 506.0 Z"/>
+<path fill="#a87a41" d="M1244.8 506.0 C 1245.9 450.9 1252.2 402.1 1258.6 349.1 L1267.1 353.4 C 1260.7 404.2 1256.5 453.0 1254.4 506.0 Z"/>
+<path fill="#2f8f57" d="M1265.0 344.9 C 1301.0 325.8 1347.6 319.4 1379.4 338.5 C 1343.4 353.4 1298.9 355.5 1265.0 355.5 Z"/>
+<path fill="#45a86a" d="M1265.0 344.9 C 1292.5 308.8 1328.6 285.5 1366.7 283.4 C 1341.3 313.1 1307.4 330.0 1269.2 340.6 Z"/>
+<path fill="#3a9a5f" d="M1265.0 344.9 C 1231.0 325.8 1186.5 321.6 1154.7 340.6 C 1188.6 355.5 1233.2 357.6 1265.0 357.6 Z"/>
+<path fill="#54b47a" d="M1265.0 344.9 C 1237.4 306.7 1203.5 283.4 1167.4 279.2 C 1190.8 311.0 1224.7 327.9 1262.8 338.5 Z"/>
+<path fill="#2b8350" d="M1265.0 344.9 C 1281.9 368.2 1296.8 395.8 1292.5 421.2 C 1271.3 400.0 1258.6 374.6 1256.5 349.1 Z"/>
+<circle cx="1258.6" cy="357.6" r="7.4" fill="#7d5228"/>
+<circle cx="1271.3" cy="361.8" r="6.4" fill="#6f4820"/>
+<!-- pohon kelapa di (1372,474), skala 0.78 -->
+<path fill="#9a6b34" d="M1365.0 474.0 C 1366.5 428.8 1372.8 389.8 1379.0 355.4 L1398.5 360.1 C 1387.6 392.9 1381.4 430.3 1380.6 474.0 Z"/>
+<path fill="#a87a41" d="M1369.7 474.0 C 1370.4 433.4 1375.1 397.6 1379.8 358.6 L1386.0 361.7 C 1381.4 399.1 1378.2 435.0 1376.7 474.0 Z"/>
+<path fill="#2f8f57" d="M1384.5 355.4 C 1411.0 341.4 1445.3 336.7 1468.7 350.8 C 1442.2 361.7 1409.4 363.2 1384.5 363.2 Z"/>
+<path fill="#45a86a" d="M1384.5 355.4 C 1404.8 328.9 1431.3 311.8 1459.4 310.2 C 1440.6 332.0 1415.7 344.5 1387.6 352.3 Z"/>
+<path fill="#3a9a5f" d="M1384.5 355.4 C 1359.5 341.4 1326.8 338.3 1303.4 352.3 C 1328.3 363.2 1361.1 364.8 1384.5 364.8 Z"/>
+<path fill="#54b47a" d="M1384.5 355.4 C 1364.2 327.4 1339.2 310.2 1312.7 307.1 C 1329.9 330.5 1354.8 343.0 1382.9 350.8 Z"/>
+<path fill="#2b8350" d="M1384.5 355.4 C 1397.0 372.6 1407.9 392.9 1404.8 411.6 C 1389.2 396.0 1379.8 377.3 1378.2 358.6 Z"/>
+<circle cx="1379.8" cy="364.8" r="5.5" fill="#7d5228"/>
+<circle cx="1389.2" cy="367.9" r="4.7" fill="#6f4820"/>
+<!-- pohon kelapa di (1498,500), skala 0.94 -->
+<path fill="#9a6b34" d="M1489.5 500.0 C 1491.4 445.5 1498.9 398.5 1506.5 357.1 L1530.0 362.8 C 1516.8 402.2 1509.3 447.4 1508.3 500.0 Z"/>
+<path fill="#a87a41" d="M1495.2 500.0 C 1496.1 451.1 1501.8 407.9 1507.4 360.9 L1514.9 364.6 C 1509.3 409.8 1505.5 453.0 1503.6 500.0 Z"/>
+<path fill="#2f8f57" d="M1513.0 357.1 C 1545.0 340.2 1586.4 334.6 1614.6 351.5 C 1582.6 364.6 1543.1 366.5 1513.0 366.5 Z"/>
+<path fill="#45a86a" d="M1513.0 357.1 C 1537.5 325.2 1569.4 304.5 1603.3 302.6 C 1580.7 328.9 1550.6 344.0 1516.8 353.4 Z"/>
+<path fill="#3a9a5f" d="M1513.0 357.1 C 1483.0 340.2 1443.5 336.4 1415.3 353.4 C 1445.4 366.5 1484.8 368.4 1513.0 368.4 Z"/>
+<path fill="#54b47a" d="M1513.0 357.1 C 1488.6 323.3 1458.5 302.6 1426.6 298.8 C 1447.2 327.0 1477.3 342.1 1511.2 351.5 Z"/>
+<path fill="#2b8350" d="M1513.0 357.1 C 1528.1 377.8 1541.2 402.2 1537.5 424.8 C 1518.7 406.0 1507.4 383.4 1505.5 360.9 Z"/>
+<circle cx="1507.4" cy="368.4" r="6.6" fill="#7d5228"/>
+<circle cx="1518.7" cy="372.2" r="5.6" fill="#6f4820"/>
+    <g fill="#49a86a">
+      <circle cx="920" cy="712" r="40"/>
+      <circle cx="892" cy="726" r="26"/>
+      <circle cx="950" cy="726" r="26"/>
+      <circle cx="1420" cy="600" r="46"/>
+      <circle cx="1386" cy="616" r="30"/>
+      <circle cx="1454" cy="616" r="30"/>
+      <circle cx="1560" cy="640" r="38"/>
+      <circle cx="1592" cy="654" r="24"/>
+    </g>
+    <g fill="#2f7d4a">
+      <circle cx="1010" cy="800" r="34"/>
+      <circle cx="1062" cy="822" r="24"/>
+      <circle cx="880" cy="852" r="30"/>
+      <circle cx="930" cy="872" r="22"/>
+    </g>
   </g>
 
-  <!-- LAGUNA DANGKAL: air lebih terang di tepi pulau, tempat ombak pecah. -->
-  <path fill="url(#laguna-pulau)" opacity="0.62" d="M470 560 C 560 546 660 536 760 540 C 880 544 960 566 980 610 C 998 654 940 694 850 706 C 740 720 620 706 540 672 C 480 646 448 604 470 560 Z"/>
-  <path fill="#ffffff" opacity="0.45" d="M462 596 C 560 570 700 560 800 574 C 890 586 952 616 962 648 C 918 620 840 596 760 588 C 656 578 552 584 462 596 Z"/>
-
-  <!-- PANTAI: bidang pasir dari (620,540) naik ke (900,486) lalu turun ke kanan. -->
-  <path id="pantai" fill="url(#pasir-pulau)" d="M612 546 C 700 512 800 486 900 484 C 1010 482 1120 500 1240 518 C 1380 538 1520 552 1640 556 L1640 940 L560 940 Z"/>
-  <!-- Sabuk pasir basah di tepi air. -->
-  <path fill="#fbe2a6" opacity="0.9" d="M614 552 C 706 520 806 494 904 492 C 1012 490 1120 508 1240 526 C 1382 546 1522 560 1640 564 L1640 592 C 1520 586 1380 572 1240 554 C 1120 536 1012 518 906 520 C 808 522 708 548 618 580 Z"/>
-  <!-- Gumuk pasir di sisi kiri pantai. -->
-  <path fill="#fff3d3" opacity="0.75" d="M700 640 C 790 610 900 596 1000 606 C 1100 616 1200 640 1300 664 C 1200 672 1100 656 1000 646 C 900 636 790 646 700 664 Z"/>
-
-  <!-- BUKIT HUTAN KELAPA: sisi atas (880,632) → puncak (1210,372) → turun ke kanan. -->
-  <path id="hutan" fill="url(#bukit-pulau)" d="M880 648 C 930 600 986 520 1050 452 C 1108 392 1178 356 1240 364 C 1310 374 1372 438 1420 512 C 1470 588 1520 632 1640 656 L1640 940 L860 940 Z"/>
-  <path fill="#a5dcb6" opacity="0.55" d="M898 610 C 950 556 1010 486 1068 428 C 1118 378 1170 356 1222 360 C 1174 378 1122 428 1074 486 C 1020 552 962 616 916 676 C 902 660 892 636 898 610 Z"/>
-  <ellipse cx="1406" cy="560" rx="168" ry="124" fill="#2f6f49" opacity="0.3"/>
-  <ellipse cx="1300" cy="636" rx="150" ry="70" fill="#a5dcb6" opacity="0.32"/>
-
-  <!-- RUMPUT, SEMAK, & BATU di lereng bukit. -->
-  <g fill="url(#rimba-pulau)">
-    <ellipse cx="962" cy="612" rx="42" ry="24"/>
-    <ellipse cx="1042" cy="556" rx="36" ry="21"/>
-    <ellipse cx="1120" cy="500" rx="32" ry="19"/>
-    <ellipse cx="1300" cy="438" rx="38" ry="22"/>
-    <ellipse cx="1390" cy="512" rx="34" ry="20"/>
-    <ellipse cx="1462" cy="592" rx="38" ry="22"/>
-    <ellipse cx="1246" cy="470" rx="30" ry="18"/>
-  </g>
-  <g fill="#7a6a58" opacity="0.9">
-    <path d="M1018 640 C 1030 618 1058 616 1068 636 C 1076 652 1056 662 1032 660 C 1016 658 1010 650 1018 640 Z"/>
-    <path d="M1362 646 C 1374 626 1402 626 1412 644 C 1420 660 1400 670 1376 668 C 1360 666 1354 656 1362 646 Z"/>
-  </g>
-
-  <!-- HUTAN KELAPA: enam pohon, tiap pohon punya pelepah yang menghadap berbeda. -->
-  <g>
-    <!-- Pohon 1 (kiri bawah lereng). -->
-    <path fill="#9a6f3d" d="M966 626 C 972 596 974 570 970 542 L986 542 C 990 570 990 598 988 628 Z"/>
-    <path fill="url(#rimba-pulau)" d="M978 540 C 940 512 898 506 866 522 C 896 548 940 554 978 540 Z"/>
-    <path fill="url(#rimba-pulau)" d="M978 540 C 942 528 902 534 878 556 C 910 566 950 560 978 540 Z"/>
-    <path fill="url(#rimba-pulau)" d="M978 540 C 1016 512 1058 506 1090 522 C 1060 548 1016 554 978 540 Z"/>
-    <path fill="url(#rimba-pulau)" d="M978 540 C 1012 526 1052 532 1078 552 C 1046 564 1006 558 978 540 Z"/>
-    <path fill="url(#rimba-pulau)" d="M978 540 C 976 504 992 474 1022 460 C 1030 494 1010 526 978 540 Z"/>
-    <circle cx="962" cy="556" r="8" fill="#6b4a2f"/>
-    <circle cx="994" cy="558" r="8" fill="#6b4a2f"/>
-
-    <!-- Pohon 2 (lereng tengah). -->
-    <path fill="#9a6f3d" d="M1046 552 C 1052 520 1054 494 1050 466 L1066 466 C 1070 494 1070 522 1068 554 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1058 464 C 1020 436 978 430 946 446 C 976 472 1020 478 1058 464 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1058 464 C 1022 452 982 458 958 480 C 990 490 1030 484 1058 464 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1058 464 C 1096 436 1138 430 1170 446 C 1140 472 1096 478 1058 464 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1058 464 C 1092 450 1132 456 1158 476 C 1126 488 1086 482 1058 464 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1058 464 C 1056 428 1072 398 1102 384 C 1110 418 1090 450 1058 464 Z"/>
-    <circle cx="1042" cy="480" r="8" fill="#6b4a2f"/>
-    <circle cx="1074" cy="482" r="8" fill="#6b4a2f"/>
-
-    <!-- Pohon 3 (dekat pos Hutan Kelapa). -->
-    <path fill="#9a6f3d" d="M1168 452 C 1174 420 1176 394 1172 366 L1188 366 C 1192 394 1192 422 1190 454 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1142 336 1100 330 1068 346 C 1098 372 1142 378 1180 364 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1144 352 1104 358 1080 380 C 1112 390 1152 384 1180 364 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1218 336 1260 330 1292 346 C 1262 372 1218 378 1180 364 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1214 350 1254 356 1280 376 C 1248 388 1208 382 1180 364 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1178 328 1194 298 1224 284 C 1232 318 1212 350 1180 364 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1180 364 C 1172 330 1148 306 1116 300 C 1120 336 1146 360 1180 364 Z"/>
-    <circle cx="1164" cy="380" r="8" fill="#6b4a2f"/>
-    <circle cx="1196" cy="382" r="8" fill="#6b4a2f"/>
-
-    <!-- Pohon 4 (punggung bukit). -->
-    <path fill="#9a6f3d" d="M1306 402 C 1312 374 1314 350 1310 324 L1326 324 C 1330 350 1330 378 1328 404 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1318 322 C 1282 296 1242 290 1212 306 C 1240 330 1282 336 1318 322 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1318 322 C 1284 312 1246 318 1224 338 C 1254 348 1292 342 1318 322 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1318 322 C 1354 296 1394 290 1424 306 C 1396 330 1354 336 1318 322 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1318 322 C 1350 310 1388 316 1412 334 C 1382 346 1344 340 1318 322 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1318 322 C 1316 288 1332 260 1360 246 C 1368 278 1348 308 1318 322 Z"/>
-    <circle cx="1302" cy="338" r="8" fill="#6b4a2f"/>
-    <circle cx="1334" cy="340" r="8" fill="#6b4a2f"/>
-
-    <!-- Pohon 5 (lereng kanan). -->
-    <path fill="#9a6f3d" d="M1418 528 C 1424 498 1426 472 1422 446 L1438 446 C 1442 472 1442 500 1440 530 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1430 444 C 1394 418 1354 412 1324 428 C 1352 452 1394 458 1430 444 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1430 444 C 1396 432 1358 438 1336 458 C 1366 468 1404 462 1430 444 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1430 444 C 1466 418 1506 412 1536 428 C 1508 452 1466 458 1430 444 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1430 444 C 1462 432 1500 438 1524 456 C 1494 468 1456 462 1430 444 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1430 444 C 1428 410 1444 382 1472 368 C 1480 400 1460 430 1430 444 Z"/>
-    <circle cx="1414" cy="460" r="8" fill="#6b4a2f"/>
-    <circle cx="1446" cy="462" r="8" fill="#6b4a2f"/>
-
-    <!-- Pohon 6 (kaki bukit kanan, dekat pantai). -->
-    <path fill="#9a6f3d" d="M1244 606 C 1250 578 1252 554 1248 528 L1264 528 C 1268 554 1268 582 1266 608 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1256 526 C 1220 500 1180 494 1150 510 C 1178 534 1220 540 1256 526 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1256 526 C 1222 514 1184 520 1162 540 C 1192 550 1230 544 1256 526 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1256 526 C 1292 500 1332 494 1362 510 C 1334 534 1292 540 1256 526 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1256 526 C 1288 514 1326 520 1350 538 C 1320 550 1282 544 1256 526 Z"/>
-    <path fill="url(#rimba-pulau)" d="M1256 526 C 1254 492 1270 464 1298 450 C 1306 482 1286 512 1256 526 Z"/>
-    <circle cx="1240" cy="542" r="8" fill="#6b4a2f"/>
-    <circle cx="1272" cy="544" r="8" fill="#6b4a2f"/>
-  </g>
-
-  <!-- GOA HARTA KARUN: mulut goa di lereng, berpapan kayu, dengan peti emas. -->
+  <!-- Tanjung batu + mulut goa + peti harta karun. -->
   <g id="goa">
-    <!-- Batuan induk: sisi landai, karena mulut goa digambar sebagai bidang bulat
-         (pagar bentuk menolak bidang path yang sisinya mendekati tegak). -->
-    <path fill="#9c8a72" d="M1128 520 C 1180 452 1268 404 1380 384 C 1472 368 1552 400 1596 456 C 1556 496 1478 520 1382 528 C 1290 536 1196 534 1128 520 Z"/>
-    <path fill="#b7a48a" d="M1150 508 C 1204 450 1286 414 1382 398 C 1308 424 1242 458 1196 512 C 1180 518 1162 516 1150 508 Z"/>
-    <path fill="#7f6f57" d="M1470 402 C 1536 420 1584 448 1614 486 C 1560 500 1498 502 1448 492 C 1492 470 1496 434 1470 402 Z"/>
-    <!-- Mulut goa (gelap; di sini inti tema harta karun). -->
-    <ellipse cx="1296" cy="424" rx="92" ry="82" fill="#3a3128"/>
-    <ellipse cx="1298" cy="432" rx="66" ry="60" fill="#241d17"/>
-    <ellipse cx="1298" cy="466" rx="86" ry="30" fill="#4c4034"/>
-    <!-- Papan & tiang kayu di depan mulut goa (bekas penambang harta). -->
-    <rect x="1212" y="306" width="176" height="20" rx="6" fill="url(#kayu-pulau)"/>
-    <rect x="1224" y="322" width="152" height="16" rx="5" fill="#8f6134"/>
-    <rect x="1226" y="334" width="20" height="168" rx="5" fill="url(#kayu-pulau)"/>
-    <rect x="1354" y="334" width="20" height="168" rx="5" fill="url(#kayu-pulau)"/>
-    <rect x="1246" y="356" width="108" height="12" rx="4" fill="#a97a42"/>
-    <path fill="#f6c453" d="M1390 494 C 1404 476 1432 476 1444 494 C 1454 510 1432 522 1410 522 C 1388 522 1380 508 1390 494 Z"/>
-    <circle cx="1410" cy="498" r="7" fill="#ffe08a"/>
-    <circle cx="1428" cy="504" r="6" fill="#ffe08a"/>
-    <circle cx="1398" cy="510" r="6" fill="#ffe08a"/>
-    <!-- Peti harta di depan papan. -->
-    <rect x="1118" y="502" width="96" height="46" rx="6" fill="#8a5a3b"/>
-    <rect x="1114" y="486" width="104" height="24" rx="9" fill="#b07546"/>
-    <rect x="1154" y="486" width="24" height="46" fill="#f0b64d"/>
-    <rect x="1158" y="500" width="16" height="18" rx="3" fill="#9a6a38"/>
-    <!-- Obor di tiang kiri goa. -->
-    <rect x="1160" y="366" width="12" height="92" rx="4" fill="#7a5230"/>
-    <path fill="#ff9f45" d="M1166 330 C 1178 346 1182 358 1166 368 C 1150 358 1154 346 1166 330 Z"/>
-    <circle cx="1166" cy="348" r="9" fill="#ffe28a"/>
+    <path fill="#9b93a8" d="M1130 432 C 1150 350 1190 280 1260 250 C 1330 222 1402 250 1432 300 C 1452 340 1448 396 1440 432 Z"/>
+    <path fill="#b6aec2" d="M1198 288 C 1246 258 1316 256 1362 286 C 1300 300 1250 312 1198 288 Z"/>
+    <path fill="#7a7387" d="M1150 432 C 1170 372 1200 324 1246 300 C 1300 330 1360 344 1432 336 C 1436 372 1440 406 1440 432 Z"/>
+    <path fill="#2b1d14" d="M1226 432 C 1226 372 1252 332 1292 328 C 1332 324 1356 366 1356 432 Z"/>
+    <path fill="#4a3b2c" d="M1246 356 L1252 386 L1238 388 Z"/>
+    <path fill="#4a3b2c" d="M1330 352 L1336 384 L1322 386 Z"/>
+    <path fill="#3a2c20" d="M1288 432 L1292 398 L1300 398 L1304 432 Z"/>
+    <path fill="#c8c0d2" d="M1226 432 C 1226 372 1252 332 1292 328 L1292 344 C 1262 348 1242 384 1242 432 Z"/>
+    <path fill="#8f8799" d="M1108 440 C 1130 420 1160 412 1186 418 C 1162 432 1134 444 1108 452 Z"/>
+    <path fill="#6f6880" d="M1436 452 C 1452 436 1476 430 1494 436 C 1478 450 1458 458 1436 462 Z"/>
+    <g fill="#ffd166">
+      <circle cx="1204" cy="486" r="13"/>
+      <circle cx="1240" cy="500" r="10"/>
+      <circle cx="1360" cy="492" r="12"/>
+      <circle cx="1396" cy="506" r="9"/>
+      <circle cx="1300" cy="516" r="11"/>
+    </g>
+    <g fill="#e0a83c">
+      <circle cx="1218" cy="500" r="6"/>
+      <circle cx="1344" cy="508" r="6"/>
+      <circle cx="1288" cy="504" r="5"/>
+    </g>
+    <g fill="#fff3c4">
+      <path d="M1156 356 L1164 380 L1188 388 L1164 396 L1156 420 L1148 396 L1124 388 L1148 380 Z"/>
+      <path d="M1412 372 L1418 390 L1436 396 L1418 402 L1412 420 L1406 402 L1388 396 L1406 390 Z"/>
+    </g>
+{{CC0:peti}}
   </g>
 
-  <!-- JALAN SETAPAK & TANDA SILANG di pasir menuju goa. -->
-  <path fill="#e6cf9a" opacity="0.8" d="M700 700 C 780 664 860 630 940 610 C 1020 590 1100 584 1180 592 C 1100 600 1020 610 944 632 C 866 654 786 684 710 716 Z"/>
-  <path fill="#c9533f" d="M972 626 L1040 690 L1028 702 L960 638 Z"/>
-  <path fill="#c9533f" d="M1036 628 L968 692 L980 704 L1048 640 Z"/>
-  <path fill="#a5c9d8" d="M880 704 C 900 692 930 692 948 706 C 926 714 898 714 880 704 Z"/>
-  <rect x="902" y="692" width="10" height="30" rx="4" fill="#a97a42"/>
-  <circle cx="1090" cy="716" r="12" fill="#f2b3c1"/>
-  <path fill="#e88ba3" d="M1090 704 C 1102 712 1106 726 1096 730 C 1086 734 1078 724 1080 712 Z"/>
-
-  <!-- KERANG & JEJAK KAKI di pasir (pantai tidak boleh polos). -->
-  <g fill="#f6d7b4">
-    <path d="M1140 640 C 1152 626 1174 626 1184 640 C 1174 648 1150 648 1140 640 Z"/>
-    <path d="M1300 690 C 1312 676 1334 676 1344 690 C 1334 698 1310 698 1300 690 Z"/>
-    <path d="M1440 628 C 1452 614 1474 614 1484 628 C 1474 636 1450 636 1440 628 Z"/>
-  </g>
-  <g fill="#dfc38a">
-    <ellipse cx="1044" cy="676" rx="14" ry="9"/>
-    <ellipse cx="1078" cy="694" rx="14" ry="9"/>
-    <ellipse cx="1116" cy="712" rx="14" ry="9"/>
-    <ellipse cx="1154" cy="730" rx="14" ry="9"/>
-    <ellipse cx="1196" cy="748" rx="14" ry="9"/>
-  </g>
-
-  <!-- KARANG: batu membulat di air — posisi pos "Karang" berdiri di sini. -->
-  <g id="karang">
-    <path fill="url(#karang-pulau)" d="M620 690 C 632 640 676 616 720 626 C 762 636 776 672 762 700 L640 700 Z"/>
-    <path fill="#8fa1af" d="M664 700 C 668 666 682 640 706 630 C 696 662 690 682 686 700 Z"/>
-    <path fill="url(#karang-pulau)" d="M748 700 C 758 660 796 640 836 650 C 872 660 884 690 872 702 L760 702 Z"/>
-    <path fill="#8fa1af" d="M800 702 C 806 678 818 660 838 652 C 830 676 824 690 820 702 Z"/>
-    <path fill="url(#karang-pulau)" d="M690 706 C 700 686 726 678 748 688 C 764 696 768 708 758 712 L700 712 Z"/>
-    <path fill="#e9f6fb" opacity="0.75" d="M610 700 C 664 720 762 724 878 706 C 794 734 664 732 610 700 Z"/>
-    <path fill="#7fc4b4" d="M626 706 C 640 728 648 748 646 764 C 632 754 622 730 626 706 Z"/>
-    <path fill="#7fc4b4" d="M856 706 C 868 726 874 744 872 760 C 858 750 850 728 856 706 Z"/>
-    <path fill="#ff9f6e" d="M724 726 C 736 718 752 722 758 734 C 762 744 748 750 736 748 C 724 746 718 736 724 726 Z"/>
-  </g>
-
-  <!-- PERAHU LAYAR: pos "Perahu Layar" berdiri di geladak. -->
-  <g id="perahu">
-    <path fill="#ffffff" opacity="0.5" d="M330 700 C 400 726 530 726 580 698 C 520 742 388 742 330 700 Z"/>
-    <path fill="#8f6134" d="M336 632 C 380 674 500 674 556 632 C 540 686 366 690 336 632 Z"/>
-    <path fill="#b07546" d="M348 624 C 392 660 494 660 544 624 L552 634 C 500 674 388 674 340 634 Z"/>
-    <rect x="432" y="470" width="11" height="166" rx="4" fill="#7a5230"/>
-    <path fill="#fdfdfd" d="M428 486 C 492 528 512 586 506 620 L428 620 Z"/>
-    <path fill="#eef6fb" d="M420 496 C 372 542 348 590 350 620 L420 620 Z"/>
-    <path fill="#d9534f" d="M443 470 L500 484 L443 498 Z"/>
-    <path fill="#c9533f" d="M443 498 L486 512 L443 522 Z"/>
-    <path fill="none" stroke="#f6e3c4" stroke-width="4" d="M436 476 C 428 528 424 580 424 622"/>
-    <path fill="none" stroke="#f6e3c4" stroke-width="4" d="M436 476 C 470 520 492 572 498 620"/>
-    <circle cx="470" cy="642" r="9" fill="#f6e3c4"/>
-    <circle cx="508" cy="640" r="9" fill="#f6e3c4"/>
-    <rect x="352" y="606" width="44" height="14" rx="5" fill="#a97a42"/>
-    <rect x="496" y="606" width="44" height="14" rx="5" fill="#a97a42"/>
-  </g>
-
-  <!-- BOTOL PESAN & IKAN MELOMPAT (penanda cerita di air). -->
-  <path fill="#d8ecf4" d="M548 772 C 566 758 600 758 616 772 C 600 786 566 786 548 772 Z"/>
-  <rect x="588" y="764" width="26" height="16" rx="5" fill="#8a5a3b"/>
-  <path fill="#b07546" d="M596 762 C 600 754 612 754 616 762 Z"/>
-  <path fill="#9fd4e6" d="M1008 776 C 1040 750 1080 754 1098 780 C 1072 806 1030 804 1008 776 Z"/>
-  <path fill="#8fc6da" d="M1098 780 L1132 758 L1124 782 L1132 806 Z"/>
-  <circle cx="1032" cy="770" r="6" fill="#2b4a5e"/>
-
-  <!-- CAMAR. -->
-  <g stroke="#4a6f88" stroke-width="5" stroke-linecap="round" fill="none">
-    <path d="M1006 244 C 1016 232 1028 230 1034 242 C 1042 230 1054 232 1064 244"/>
-    <path d="M1088 196 C 1096 186 1106 184 1112 194 C 1118 184 1128 186 1136 194"/>
-    <path d="M846 176 C 854 166 864 164 870 174 C 876 164 886 166 894 174"/>
-    <path d="M448 236 C 456 226 466 224 472 234 C 478 224 488 226 496 234"/>
-  </g>
-
-  <!-- DERMAGA: papan kayu bertumpu di air — pos "Dermaga" berdiri di sini. -->
+  <!-- Dermaga kayu: dek, tiang, tali, dan peti. -->
   <g id="dermaga">
-    <path fill="#e9f6fb" opacity="0.55" d="M40 806 C 120 826 260 826 336 804 C 268 842 108 842 40 806 Z"/>
-    <rect x="76" y="796" width="18" height="62" rx="4" fill="#7a5230"/>
-    <rect x="150" y="802" width="18" height="60" rx="4" fill="#7a5230"/>
-    <rect x="228" y="806" width="18" height="58" rx="4" fill="#7a5230"/>
-    <rect x="300" y="798" width="18" height="62" rx="4" fill="#7a5230"/>
-    <rect x="48" y="726" width="288" height="20" rx="5" fill="url(#kayu-pulau)"/>
-    <rect x="40" y="746" width="288" height="20" rx="5" fill="#8f6134"/>
-    <rect x="48" y="766" width="288" height="20" rx="5" fill="url(#kayu-pulau)"/>
-    <rect x="40" y="786" width="288" height="18" rx="5" fill="#7d5734"/>
-    <rect x="104" y="726" width="12" height="78" fill="#7a5230"/>
-    <rect x="196" y="726" width="12" height="78" fill="#7a5230"/>
-    <rect x="288" y="726" width="12" height="78" fill="#7a5230"/>
-    <path fill="none" stroke="#e5d3ae" stroke-width="5" d="M96 738 C 150 758 210 758 268 736"/>
-    <path fill="none" stroke="#e5d3ae" stroke-width="5" d="M96 778 C 154 798 214 798 272 776"/>
-    <rect x="112" y="686" width="58" height="44" rx="6" fill="#c99a5e"/>
-    <rect x="112" y="700" width="58" height="9" fill="#a97a42"/>
-    <rect x="196" y="694" width="48" height="36" rx="6" fill="#b78a52"/>
-    <ellipse cx="286" cy="688" rx="28" ry="26" fill="#8a5a3b"/>
-    <ellipse cx="286" cy="676" rx="28" ry="14" fill="#a9754a"/>
-    <rect x="258" y="678" width="56" height="7" fill="#5c3f28"/>
-    <rect x="306" y="654" width="12" height="74" rx="4" fill="#7a5230"/>
-    <circle cx="312" cy="644" r="16" fill="#ffe9a8"/>
-    <circle cx="312" cy="644" r="9" fill="#fff8d8"/>
-    <path fill="#b07546" d="M244 812 C 268 796 316 796 340 812 C 316 832 268 832 244 812 Z"/>
-    <rect x="266" y="800" width="52" height="10" rx="4" fill="#c99a5e"/>
-    <path fill="none" stroke="#e5d3ae" stroke-width="4" d="M340 812 C 356 806 368 796 372 784"/>
+    <rect x="60" y="722" width="16" height="84" fill="#7f5228"/>
+    <rect x="140" y="720" width="16" height="86" fill="#7f5228"/>
+    <rect x="220" y="718" width="16" height="88" fill="#7f5228"/>
+    <rect x="300" y="716" width="16" height="90" fill="#7f5228"/>
+    <path fill="#8d5a2c" d="M44 700 L322 694 L332 720 L52 726 Z"/>
+    <path fill="#c98d4e" d="M44 700 L322 694 L324 704 L46 710 Z"/>
+    <g fill="#b5763f">
+      <path d="M52 712 L96 710 L98 722 L54 724 Z"/>
+      <path d="M112 709 L156 707 L158 719 L114 721 Z"/>
+      <path d="M172 706 L216 704 L218 716 L174 718 Z"/>
+      <path d="M232 703 L276 701 L278 713 L234 715 Z"/>
+    </g>
+    <path fill="none" stroke="#e6d3a8" stroke-width="5" d="M76 740 C 108 754 128 754 156 740 C 184 726 204 726 232 740"/>
+    <path fill="none" stroke="#e6d3a8" stroke-width="4" d="M232 740 C 258 752 278 752 302 740"/>
+    <rect x="96" y="664" width="44" height="38" fill="#cf9a55"/>
+    <path fill="none" stroke="#a9773a" stroke-width="4" d="M96 664 L140 702 M140 664 L96 702"/>
+    <rect x="150" y="676" width="36" height="30" fill="#c08b48"/>
+    <path fill="none" stroke="#9a6b34" stroke-width="4" d="M150 676 L186 706 M186 676 L150 706"/>
+    <ellipse cx="256" cy="676" rx="26" ry="12" fill="#b8763f"/>
+    <rect x="238" y="676" width="36" height="26" fill="#b8763f"/>
+    <path fill="none" stroke="#8d5a2c" stroke-width="4" d="M238 688 L274 688"/>
+    <path fill="none" stroke="#7f5228" stroke-width="4" d="M306 690 L306 646"/>
+    <circle cx="306" cy="638" r="13" fill="#ffe08a"/>
+    <path fill="none" stroke="#e6d3a8" stroke-width="3" d="M296 626 C 306 618 316 618 326 626"/>
+  </g>
+
+  <!-- Perahu layar: lambung, tiang, layar, dan bendera. -->
+  <g id="perahu">
+    <path fill="#7fd0ea" opacity="0.45" d="M352 700 C 400 730 514 730 560 706 L556 730 C 508 752 396 750 356 728 Z"/>
+    <path fill="#b5652f" d="M336 664 C 380 700 522 700 566 660 L548 702 C 500 720 396 720 352 700 Z"/>
+    <path fill="#8d4a22" d="M352 700 C 398 718 502 718 546 700 L536 716 C 494 732 400 730 358 712 Z"/>
+    <path fill="none" stroke="#e6d3a8" stroke-width="5" d="M336 664 C 380 692 522 692 566 660"/>
+    <rect x="440" y="462" width="10" height="204" fill="#8a5a2b"/>
+    <path fill="#fffaf0" d="M446 476 C 520 516 566 576 560 630 L446 640 Z"/>
+    <path fill="#ffeccf" d="M436 482 C 372 516 336 572 344 626 L436 634 Z"/>
+    <path fill="#ff6b6b" d="M452 464 L514 480 L452 498 Z"/>
+    <path fill="none" stroke="#8d4a22" stroke-width="4" d="M446 640 C 480 650 520 646 552 636"/>
+  </g>
+
+  <!-- Karang berwarna di laut. -->
+  <g id="karang">
+    <path fill="#8d8ba0" d="M676 726 C 686 692 712 668 744 664 C 776 660 806 678 818 706 C 828 728 820 744 806 750 L688 750 C 676 744 672 736 676 726 Z"/>
+    <path fill="#6f6d85" d="M780 750 C 788 722 812 704 840 704 C 868 704 890 722 896 748 Z"/>
+    <path fill="#a9a6bb" d="M700 700 C 712 682 736 674 758 680 C 776 686 786 700 786 716 C 756 724 722 720 700 700 Z"/>
+    <path fill="#4fb27a" d="M652 750 C 648 716 664 686 688 674 C 680 704 682 728 690 750 Z"/>
+    <path fill="#43a06c" d="M710 750 C 706 722 718 696 740 686 C 732 712 734 732 742 750 Z"/>
+    <path fill="#5cbf86" d="M850 748 C 846 720 858 694 880 684 C 872 710 874 730 882 748 Z"/>
+{{CC0:karang}}
+    <ellipse cx="836" cy="686" rx="34" ry="20" fill="#ffd166"/>
+    <path fill="#ff8f4a" d="M870 686 L900 668 L898 704 Z"/>
+    <circle cx="826" cy="680" r="4" fill="#3a2c20"/>
+    <ellipse cx="742" cy="606" rx="30" ry="18" fill="#ffb3c7"/>
+    <path fill="#ff7a9c" d="M770 606 L798 590 L796 622 Z"/>
+    <circle cx="732" cy="600" r="4" fill="#3a2c20"/>
+    <g fill="#ffffff" opacity="0.6">
+      <circle cx="700" cy="640" r="6"/>
+      <circle cx="684" cy="620" r="4"/>
+      <circle cx="862" cy="628" r="5"/>
+      <circle cx="880" cy="648" r="4"/>
+    </g>
+    <ellipse cx="770" cy="742" rx="118" ry="14" fill="#eafaff" opacity="0.7"/>
+  </g>
+
+  <!-- Burung laut. -->
+  <g fill="none" stroke="#5c7f9e" stroke-width="4" stroke-linecap="round">
+    <path d="M420 268 C 430 256 444 254 452 266 C 460 254 474 256 484 268"/>
+    <path d="M492 226 C 500 216 512 214 518 224 C 526 214 538 216 546 226"/>
+    <path d="M896 246 C 904 236 916 234 924 244 C 932 234 944 236 952 246"/>
   </g>
 </svg>

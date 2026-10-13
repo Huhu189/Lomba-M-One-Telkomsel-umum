@@ -6275,3 +6275,127 @@ diminta terpisah dan belum dilakukan.
 
 Tidak ada berkas baru/diubah. Yang berubah hanyalah **riwayat git**: 63 entri working tree (44 diubah · 3
 dihapus · 18 baru) masuk ke enam commit di A.72.2, dan working tree kini bersih.
+
+## A.73 — Latar tema Luar Angkasa & Harta Karun dirombak total (13 Oktober 2026)
+
+### A.73.1 Permintaan & pembagian putaran
+
+Permintaan pemilik produk datang dalam satu pesan panjang (ejaan aslinya): *"pertama kau rombak yang angkasa
+dan pantai kau rombak sangat jauh rombak boleh apke grfis gratis atau svg elbih amtang namun baung dulu yang
+sekarang lalu yang aspek rasio di baung saja dan ketika ingrin scrool pakai laptop dalam device nya pastiakn
+yang di tuju kuros maka di scroll duluan bukna yang mentok duluan agar labih nyaman di pakai"*, lalu disusul
+satu pesan lagi tentang **admin sekolah** (monitor skala sekolah + wewenang mengubah email/sandi murid-guru) dan
+**fitur guru** (unggah media + tanda sendiri tiap langkah). Empat hal itu dipisah menjadi empat putaran:
+
+| Putaran | Isi |
+| --- | --- |
+| **A.73** (entri ini) | Latar `angkasa.svg` + `pulau.svg` dirombak total, aset CC0 dari internet boleh dipakai, rasio 16:9 dilanjutkan |
+| A.74 | Perilaku gulir: yang ditunjuk kursor digulir lebih dulu, bukan wadah yang sudah mentok |
+| A.75 | Beranda admin jadi monitor sekolah + wewenang admin atas email/sandi murid & guru |
+| A.76 | Guru mengunggah media per langkah materi dan memilih tanda/langkahnya sendiri |
+
+Jawaban pemilik produk atas pertanyaan pilihan sebelum kerja dimulai: **langsung ganti** (tanpa menyimpan
+versi lama berdampingan — riwayat git sudah menyimpannya), **pakai aset CC0 dari internet**, dan monitor admin
+**menempel di beranda admin** (bukan rute baru).
+
+### A.73.2 Yang dirombak
+
+Kedua berkas diganti **seluruhnya**, bukan disetel: komposisi lamanya dibuang dan digambar ulang dari nol.
+
+- **`pulau.svg`** — langit siang bergradien + matahari bersinar (8 berkas sinar), tiga gugus awan, pulau jauh dan
+  perahu kecil di cakrawala, **laut berlapis tiga** (jauh, tengah, ombak) berikut kilau dan pantulan matahari,
+  **pantai berpasir diagonal** dengan kerang/kerang bintang/footprint, bukit rimba bertingkat, **enam pohon
+  kelapa** yang digambar di koordinat absolut (tanpa `transform`), tanjung batu ber-goa dengan **peti harta
+  karun** di mulutnya, **dermaga kayu** (dek berpapan, tiang, tali, peti, tong, lentera), **perahu layar**
+  (lambung, tiang, dua layar, bendera, pantulan), dan **karang berwarna** berikut ikan serta gelembung.
+- **`angkasa.svg`** — langit malam tiga tingkat, pita galaksi menyilang, tiga nebula berwarna, ~60 bintang
+  (sebagian berkilau empat sudut), dua bintang jatuh, satelit kecil, komet, Bumi berawan berikut bayangan
+  malam, sabuk asteroid (10 batu + debu), Saturnus bercincin (**cincin depan digambar terpisah** di atas bola
+  planet, bukan satu elips), Bulan berkawah dengan halo, dan kompleks peluncuran (dermaga, menara, tangki,
+  roket, asap, lampu).
+
+Aturan yang **tidak** berubah — justru inilah yang mengikat gambar baru:
+
+- **Rasio tetap 16:9** (`viewBox="0 0 1600 900"`, `width="1600"`, `height="900"`), seperti diminta; panggung peta
+  dipotong `object-fit: cover`, jadi rasio lain akan memotong puncak/tanjung.
+- **Rute pos tidak digeser.** `RUTE_TEMA.pulau` dan `RUTE_TEMA.angkasa` tetap seperti sebelumnya; yang digambar
+  ulang adalah **benda yang diinjak pos**, dan tiap benda tetap ber-`id` (`dermaga`, `perahu`, `karang`,
+  `pantai`, `hutan`, `goa` / `landasan`, `bumi`, `asteroid`, `saturnus`, `bulan`) sehingga pagar mutu bisa
+  membuktikan pos benar-benar berdiri di atas gambar, bukan di ruang kosong.
+- **Sisi miring dijaga < 55°.** Pagar `latarTema.test.js` menolak "dinding nyaris tegak" yang panjang (bekas
+  keluhan *"tebing"*). Pada percobaan pertama, lereng rimba melanggar aturan ini (132 px ruas nyaris tegak pada
+  bentuk selebar 820 px); lerengnya dibuat ulang lebih landai dan sekarang nol pelanggaran.
+
+### A.73.3 Cara aset CC0 dipakai (bukan sekadar diklaim)
+
+Lima ikon CC0 dari Wikimedia Commons benar-benar disisipkan: **roket**, **bintang**, dan **Mars** di
+`angkasa.svg`; **peti harta karun** dan **karang** di `pulau.svg`. Sumber, pembuat, dan lisensinya ditulis di
+`frontend/public/tema/LISENSI.md` (bagian "Aset CC0 yang dipakai (putaran A.73)").
+
+Alur kerjanya (bisa diulang, bukan langkah rahasia):
+
+1. **Cari & unduh** — kandidat diambil dari Wikimedia Commons (CC0) lewat API `commons.wikimedia.org/w/api.php`,
+   lalu berkasnya diunduh dari `upload.wikimedia.org`.
+2. **Datar-kan koordinat** — skrip kecil (`datar.py`, di luar repo) mengubah `H`/`V`/`S` menjadi `L`/`C` dan
+   **membakar `transform` grup** ke koordinat absolut, lalu memindahkannya ke tempat + ukuran yang diminta.
+   Alasannya teknis: pagar mutu membaca koordinat **mentah** dan hanya mengerti `M`/`L`/`C`/`Z`. Karena itu
+   berkas akhir tidak memuat satu pun `transform` (diperiksa: **0**).
+3. **Timpa warna** ke palet tema masing-masing — tidak ada ikon hitam nyasar di latar siang.
+
+Yang dicari tetapi **tidak dipakai**, supaya tidak diulang tanpa hasil:
+
+- **Adegan utuh dari situs vektor bebas** (publicdomainvectors, freesvg): kandidatnya hanya tersedia sebagai
+  **AI/EPS**, dan unduhan `.svg`-nya gagal dari lingkungan ini (TLS/429). Yang tersedia dari situs-situs itu
+  berupa ikon satu warna, bukan adegan.
+- **Ikon siluet untuk benda utama** (palem, ikan, Venus): hanya siluet satu warna, akan terbaca seperti stempel
+  kalau dipakai sebagai pohon/perahu. Pohon kelapa karena itu digambar di repo; ikon siluet hanya dipakai untuk
+  benda yang memang wajar jadi siluet (roket, peti, karang, bintang, Mars).
+
+### A.73.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/theme` | **23 lulus (3 berkas)** — pagar bentuk + kecerahan + pos mendarat untuk gunung/pulau/angkasa |
+| `bash docs/jalankan-smoke-perjalanan.sh` (peramban sungguhan, Chrome headless CDP) | **69/69 LULUS** |
+
+Angka dari harness peramban itu yang membuat putaran ini bukan sekadar "sudah diganti":
+
+| Pemeriksaan harness | angkasa (baru) | pulau (baru) |
+| --- | --- | --- |
+| Berkas yang termuat | `/tema/angkasa.svg` termuat **true** | `/tema/pulau.svg` termuat **true** |
+| Kecerahan latar sesudah dirender | rata **63** · piksel terang 10,2% (gelap, sesuai tema malam) | rata **176** · piksel terang 34,1% (terang, jalur pekat & tenda terbaca) |
+| "Berisi detail, bukan bidang polos" | **1158 warna berbeda** · petak polos **0/40** | **1432 warna berbeda** · petak polos **0/40** |
+| Pos berdiri di benda, bukan ruang kosong | selisih terkecil **79** vs ruang kosong 7/12/34 | selisih terkecil **50** vs langit 127/200/241 |
+| Jalur peta | versi terang berlaku di langit malam | tetap versi pekat (aturan gelap tidak bocor) |
+
+Pemeriksaan bentuk atas berkas akhir (dijalankan di repo ini, bukan di luar):
+
+| Periksa | `pulau.svg` | `angkasa.svg` |
+| --- | --- | --- |
+| Bentuk (path/circle/ellipse/rect/polygon) | **196** | **164** |
+| Warna hex unik | **83** | **78** |
+| `transform=` · `<image>` · `<text>` · `<filter>` | **0 · 0 · 0 · 0** | **0 · 0 · 0 · 0** |
+| Ukuran · rasio | 21,2 KB · 1600×900 (16:9) | 17,0 KB · 1600×900 (16:9) |
+| Ruas nyaris tegak > 36 px pada bentuk selebar ≥ 800 px | **tidak ada** (diperiksa ulang dengan skrip diagnostik) | **tidak ada** |
+
+### A.73.5 Batasan jujur
+
+- **Saya tidak bisa melihat gambarnya.** Tidak ada mata manusia di putaran ini: yang memutuskan bentuk adalah
+  geometri (kotak batas, kemiringan, kecerahan, warna) dan angka harness peramban (jumlah warna, petak polos,
+  kecerahan, jarak pos ke benda). Karena itu **penilaian "lebih bagus" tetap milik pemilik produk** — yang
+  saya buktikan adalah: bukan bidang polos, cerah/gelapnya sesuai tema, dan tiap pos benar-benar berdiri di
+  benda yang digambar.
+- **Ikon CC0 tetap siluet satu warna** (sifat aslinya). Benda itu saya timpa warna tema, tetapi tetap terbaca
+  sebagai bentuk rata — bukan ilustrasi bercahaya. Sisanya digambar di repo.
+- **Tidak ada versi lama yang disimpan** berdampingan (sesuai pilihan "langsung ganti"): pembanding hanya bisa
+  diambil dari riwayat git.
+- **Rasio 16:9 dipertahankan**, jadi komposisi yang lebih "lebar"-nya (mis. siluet panorama) sengaja tidak
+  dipakai walau mungkin lebih dramatis.
+
+### A.73.6 Berkas
+
+- **Ditulis ulang total:** `frontend/public/tema/pulau.svg`, `frontend/public/tema/angkasa.svg`.
+- **Diubah:** `frontend/public/tema/LISENSI.md` (tabel sumber CC0 baru + angka bentuk terbaru + catatan yang
+  sudah usang diperbarui), `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md`.
+- **Tidak disentuh:** `gunung.svg` dan penggambarnya (`AdeganGunung.jsx`) — di luar permintaan, dan
+  `RUTE_TEMA`/`perjalanan.js` juga tidak diubah (rute pos tetap, yang digambar ulang adalah bendanya).
