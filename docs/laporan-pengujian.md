@@ -6614,3 +6614,131 @@ Uji baru menjaga pagar, bukan hanya jalur bahagia:
   `src/shared/layout/KerangkaUmum.jsx` (`GRUP_ADMIN`) · `src/sections/home/Beranda.jsx` ·
   `src/__tests__/halaman.test.js`.
 - **Dokumen:** `docs/laporan-pengujian.md` · `docs/handoff-sesi.md`.
+
+## A.76 — Kepala sekolah hanya melihat (14 Oktober 2026)
+
+### A.76.1 Permintaan
+
+Kepala sekolah (peran `admin`) berhenti menjadi "guru kedua". Dasbor sekolah dan pengelolaan akun
+guru/murid (A.75) tetap miliknya, tetapi **data akademik tidak lagi ia ubah**: menyusun kuis,
+menambah/mengubah soal, menyusun materi, mengubah data induk, mengoreksi nilai, dan meninjau catatan
+kecurangan semuanya milik guru yang mengerjakan ulangan itu.
+
+Alasannya bukan soal kepercayaan, melainkan soal **jejak**: kalau dua pihak bisa mengubah kunci soal
+atau nilai anak yang sama, tidak ada lagi cara mengetahui siapa yang mengubahnya — dan nilai rapor
+kehilangan dasarnya. Sampai A.75 peran `admin` masih setara guru di hampir semua jalur karena seluruh
+policy memakai satu pemeriksaan yang sama untuk baca **dan** tulis (`isGuru()`).
+
+Tambahan dari pemilik produk pada kesempatan yang sama: **tiga pil tindakan di panel kelola akun**
+(Ubah email · Setel sandi · Status akun) diganti **satu menu "…" berteks** — sama seperti menu baris di
+daftar akun — supaya panelnya tidak terasa seperti formulir tiga halaman sekaligus.
+
+### A.76.2 Yang dibangun
+
+**Satu tempat memutuskan baca vs tulis (`App\Models\User`):**
+
+- `hanyaMelihat()` — peran `admin`.
+- `bolehMengubahAkademik()` — guru yang **bukan** kepala sekolah. Dipakai seluruh policy **tulis**.
+- Kebalikannya dijaga: seluruh policy **baca** tetap memakai `isGuru()`, jadi kepala sekolah tetap
+  membuka daftar, kunci jawaban, laporan per tema, monitor, dan catatan kecurangan — kalau ia buta, ia
+  tidak bisa mengawasi.
+- `bolehKelola($pemilikId)` tidak diubah: admin boleh semua baris (untuk **baca**), guru hanya baris
+  buatannya. Pagar K-04/S-04 (guru lain tidak boleh membaca kunci/nilai guru lain) tetap berdiri.
+
+**Policy tulis yang dialihkan ke `bolehMengubahAkademik()`** — `Attempt`, `Avatar` (moderat/unggah),
+`KejadianKecurangan` (`tinjau` — meninjau bukti = mengubah keputusan), `Materi`, `Soal`, `Tag`,
+`Kuis` (`create`/`update`/`delete`/`publikasi`/`koreksi`), `Kelas`, `Mapel`, `Murid`, `Sekolah`,
+`Pengaturan`. `TinjauKejadianRequest` ikut menanyakan policy yang sama, jadi 403 muncul sebagai
+**penolakan izin**, bukan galat validasi 422 yang menyesatkan.
+
+**Frontend (`shared/akses.js` = cermin keputusan server):**
+
+- `hanyaMelihat(user)`, `useHanyaMelihat()` — satu sumber kebenaran "siapa boleh mengubah", supaya
+  halaman tidak masing-masing menebak dari `user.role`.
+- `CatatanHanyaMelihat` — kalimat kecil di halaman yang tampil tanpa tombol; halaman tanpa tombol
+  tanpa penjelasan terbaca sebagai aplikasi yang rusak.
+- `App.jsx`: penjaga rute dipisah — `HanyaGuru` (baca: kelas, mapel, murid, bank soal, tag, laporan,
+  monitor) · `HanyaGuruMengajar` (tulis: impor murid, koreksi, tim, layar, editor materi) ·
+  `BukanKepalaSekolah` (avatar) · `HanyaAdmin` (panel akun).
+- `KerangkaUmum.jsx`: menu kepala sekolah (`GRUP_ADMIN`) hanya berisi dasbor, kelola akun, dan halaman
+  yang **bisa ia baca** — menu yang menjanjikan hal yang tak bisa dikerjakan lebih buruk daripada menu
+  yang lebih pendek.
+- Tombol yang pasti ditolak **tidak ditampilkan** di: Kelas, Mapel, Murid (tambah/impor/ubah/hapus —
+  ekspor CSV tetap ada karena itu membaca), Bank Soal, Tag Soal, Kuis (buat/ubah/susun/terbitkan/
+  arsipkan/hapus; kepala sekolah mendapat tautan "Lihat detail"), detail kuis (setelan ulangan,
+  koreksi, kelola tim, layar kelas disembunyikan; laporan, monitor, ekspor nilai tetap ada), Materi
+  (form "Materi baru" dan "Buka editor" disembunyikan), dan Monitor Ulangan (tombol Valid/Tidak valid
+  disembunyikan — keputusan atas bukti milik guru pemilik kuis itu).
+- `BerandaAdmin.jsx`: tombol "Buat kuis" dan "Tambah kelas" dihapus/diganti tautan baca — keduanya
+  pasti ditolak setelah pemisahan ini.
+- `HalamanAkunSekolah.jsx`: tiga pil tindakan jadi menu "…" (`role="menu"`, pilihan berteks,
+  `aria-current` pada yang sedang dipilih, ditutup oleh Esc / klik di luar / saat tindakan dipilih),
+  dengan gaya `.menu-aksi-item-aktif` baru di `theme.css`.
+
+### A.76.3 Bukti (dijalankan, bukan klaim)
+
+`./verify.sh` — seluruh langkah dijalankan pada pohon sebelum commit (Redis hidup, `PONG`):
+
+| Langkah | Hasil |
+| --- | --- |
+| Backend Pest | **377 lulus / 3561 asersi** |
+| Backend Redis wajib | **9 lulus / 65 asersi** (tidak ada skip) |
+| Backend Pint | **PASS 374 berkas** |
+| Frontend checkJs | bersih |
+| Frontend ESLint | **0 error** (2 warning lama `watch()` RHF, tidak tersentuh) |
+| Frontend Vitest | **87 berkas / 821 tes** (dari 86/814 di A.75) |
+| Realtime `node --test` | **20 lulus / 0 gagal** |
+| `npm run build` | sukses (`index-*.js` 327,81 kB / gzip 103,58 kB) |
+
+Uji baru menjaga pagar, bukan hanya jalur bahagia:
+
+- **`backend/tests/Feature/KepalaSekolahHanyaMelihatTest.php` (5 tes)** — kepala sekolah ditolak di
+  **seluruh** jalur tulis data akademik (kuis, soal, tag, materi, kelas, mapel, murid, avatar,
+  pengaturan) · ia tetap boleh **membaca** seluruh sekolah · **guru tetap boleh menulis** (403 di atas
+  terbukti bukan karena jalurnya mati, tiap penolakan diimbangi kontrol positif) · kemampuan tulisnya
+  ditolak juga di tingkat policy · dan ia **tidak bisa meninjau** catatan kecurangan (meninjau bukti =
+  mengubah keputusan) walau tetap bisa membacanya. Rinciannya menyebut siapa-siapa saja yang menembak
+  jalur itu.
+- **`frontend/src/__tests__/sections/school/hanyaMelihat.test.jsx` (5 tes, jsdom)** — `hanyaMelihat()`
+  hanya benar untuk `admin`; di halaman **Kelas** dan **Bank soal** kepala sekolah tidak melihat tombol
+  tambah/aksi dan melihat catatan "Hanya melihat.", sedangkan guru tetap melihat semuanya.
+- **`halamanAkunSekolah.test.jsx` (+1 tes, kini 6)** — pil tindakan di panel sudah tidak ada, menu "…"
+  membuka pilihan berteks dengan penanda tindakan aktif, memilih tindakan menutup menu dan mengganti
+  isi panel (judul + isian sandi), dan menunya tertutup oleh Esc maupun klik di luar.
+- **`OtorisasiPemilikTest` / `PengaturanTest`** diperluas: "tidak ada yang boleh mengubah pengaturan
+  lingkup sekolah" (sebelumnya admin termasuk yang boleh) dan pagar kepemilikan guru tetap.
+
+### A.76.4 Batasan jujur
+
+- **Belum ada harness peramban untuk jalur ini.** Bukti tampilannya adalah Vitest (jsdom) + `npm run
+  build`; `docs/smoke-ui-*.mjs` belum punya pemeriksaan kepala sekolah. Jadi yang terbukti adalah
+  komponen dan potongan bundelnya — **bukan** tampilannya di layar 390 px/1280 px.
+- **Penyembunyian tombol di klien adalah kenyamanan, bukan pagar.** Pagar sebenarnya tetap policy
+  server; klien hanya mencegah guru/kepala sekolah menekan tombol yang pasti gagal.
+- **Peran ganda yang dihapus ini sebuah keputusan produk, bukan temuan teknis.** Kalau sekolah kecil
+  memang menghendaki kepala sekolah ikut menyusun ulangan, yang perlu diubah hanya
+  `bolehMengubahAkademik()` dan policy tulisnya — bukan setiap halaman.
+- **"Tiga pil jadi menu …" adalah tafsir atas permintaan lisan pemilik produk** pada sesi yang sama;
+  bila yang dimaksud sebenarnya tiga tombol lain (mis. Batal · Minta token · Simpan di kaki panel),
+  perubahan ini tinggal dibalik tanpa menyentuh pagar izinnya.
+- **Belum ada tes yang membaca ulang CSS-nya** (`menu-aksi-item-aktif`), sama seperti keputusan A.74.
+
+### A.76.5 Berkas
+
+- **Backend diubah (19):** `app/Models/User.php` (`hanyaMelihat`, `bolehMengubahAkademik`) ·
+  `app/Providers/AppServiceProvider.php` (policy `User` + limiter `kelola-akun`) · `database/factories/UserFactory.php`
+  (`admin()`) · `routes/api.php` (grup `admin/*`) · policy tulis: `Attempt`, `Avatar`, `Cheat`
+  (`KejadianKecurangan`) + `Cheat/Http/Requests/TinjauKejadianRequest`, `Material`, `Question`
+  (`Soal`, `Tag`), `Quiz`, `School` (`Kelas`, `Mapel`, `Murid`, `Sekolah`), `Settings` ·
+  `tests/Feature/{KepalaSekolahHanyaMelihatTest.php (baru), AdminSekolahTest.php (baru),
+  OtorisasiPemilikTest.php, PengaturanTest.php}`.
+- **Frontend baru:** `src/shared/akses.js` · `src/shared/ui/CatatanHanyaMelihat.jsx` ·
+  `src/__tests__/sections/school/hanyaMelihat.test.jsx` · `src/sections/admin/*` (5 berkas A.75) ·
+  `src/__tests__/sections/admin/*` (5 berkas A.75).
+- **Frontend diubah:** `App.jsx` · `halaman.js` · `routes.js` · `theme.css` ·
+  `shared/layout/KerangkaUmum.jsx` · `sections/home/Beranda.jsx` · `sections/school/HalamanKelas.jsx`,
+  `HalamanMapel.jsx`, `HalamanMurid.jsx` · `sections/question/HalamanBankSoal.jsx`, `HalamanTag.jsx` ·
+  `sections/quiz/HalamanKuis.jsx`, `HalamanKuisDetail.jsx` · `sections/material/HalamanMateri.jsx` ·
+  `sections/cheat/HalamanMonitor.jsx` · `sections/admin/BerandaAdmin.jsx`, `HalamanAkunSekolah.jsx` ·
+  `__tests__/halaman.test.js`, `__tests__/sections/admin/halamanAkunSekolah.test.jsx`.
+- **Komit:** `a66a06b` (61 berkas) di atas `12b29cf`, sudah **di-push** ke `origin/main`.

@@ -1126,3 +1126,44 @@ menyegarkan diri tiap 30 detik, bukan real-time.
 **Sisa:** belum dikomit; belum ada harness peramban (`docs/smoke-ui-*.mjs`) untuk panel admin, jadi bukti
 tampilannya baru sebatas komponen (Vitest jsdom) + potongan bundel (`npm run build`) — bukan layar 390 px/
 1280 px. Rincian lengkap: `docs/laporan-pengujian.md` **A.75**.
+
+## 18. A.76 — kepala sekolah hanya melihat (14 Oktober 2026)
+
+**Permintaan:** kepala sekolah (peran `admin`) berhenti setara guru. Dasbor sekolah + kelola akun
+guru/murid tetap miliknya (A.75), tetapi **data akademik tidak lagi ia ubah** — kuis, soal, materi,
+data induk, nilai, dan tinjauan kecurangan milik guru yang mengerjakan ulangan itu. Tambahan lisan
+pada kesempatan yang sama: tiga pil tindakan di panel kelola akun diganti satu menu "…" berteks.
+
+**Yang dikerjakan:**
+
+- **Satu tempat memutuskan (`App\Models\User`)** — `hanyaMelihat()` (peran `admin`) dan
+  `bolehMengubahAkademik()` (guru **dan** bukan kepala sekolah). Seluruh policy **tulis** memakainya
+  (Attempt, Avatar, KejadianKecurangan `tinjau`, Materi, Soal, Tag, Kuis `create/update/delete/
+  publikasi/koreksi`, Kelas, Mapel, Murid, Sekolah, Pengaturan); seluruh policy **baca** tetap
+  `isGuru()` supaya kepala sekolah tidak buta. `TinjauKejadianRequest` ikut memakai policy itu, jadi
+  penolakannya 403 izin, bukan 422 validasi.
+- **Frontend** — `shared/akses.js` (+ `useHanyaMelihat`) sebagai cermin keputusan server,
+  `CatatanHanyaMelihat` supaya halaman tanpa tombol tidak terbaca sebagai aplikasi rusak, penjaga rute
+  dipisah di `App.jsx` (`HanyaGuru` baca · `HanyaGuruMengajar` tulis · `BukanKepalaSekolah` avatar ·
+  `HanyaAdmin` panel akun), dan tombol yang pasti ditolak disembunyikan di Kelas, Mapel, Murid
+  (ekspor CSV tetap ada — itu membaca), Bank Soal, Tag, Kuis + detail kuis (setelan/koreksi/tim/layar
+  hilang; laporan, monitor, ekspor nilai tetap ada), Materi, Monitor Ulangan, dan `BerandaAdmin`.
+- **Panel kelola akun** — tiga pil tindakan jadi menu "…" berteks (Esc / klik di luar menutup,
+  tindakan aktif ditandai), gaya baru `.menu-aksi-item-aktif`.
+
+**Bukti:** seluruh langkah `./verify.sh` dijalankan pada pohon sebelum commit — Pest **377/3561** ·
+Redis wajib **9/65** tanpa skip · Pint **PASS 374** · checkJs bersih · ESLint **0 error** · Vitest
+**87 berkas/821 tes** · realtime **20** · `npm run build` sukses. Uji barunya
+`KepalaSekolahHanyaMelihatTest.php` (5), `hanyaMelihat.test.jsx` (5 jsdom),
+`halamanAkunSekolah.test.jsx` (+1), plus `OtorisasiPemilikTest`/`PengaturanTest` yang diperluas.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:** penyembunyian tombol di klien hanya kenyamanan —
+pagar sebenarnya tetap policy server. Kalau suatu saat kepala sekolah perlu ikut menyusun ulangan,
+yang diubah hanya `bolehMengubahAkademik()` + policy tulisnya, bukan setiap halaman. Perubahan "tiga
+pil jadi menu …" adalah tafsir atas permintaan lisan; kalau yang dimaksud tiga tombol lain di kaki
+panel (Batal · Minta token · Simpan), perubahan itu tinggal dibalik tanpa menyentuh izinnya.
+
+**Sisa:** belum ada harness peramban untuk jalur kepala sekolah (`docs/smoke-ui-*.mjs`), jadi bukti
+tampilannya baru Vitest jsdom + bundel. Rincian lengkap: `docs/laporan-pengujian.md` **A.76**.
+
+**Komit:** `a66a06b` (61 berkas, di atas `12b29cf`) sudah di-push ke `origin/main`.
