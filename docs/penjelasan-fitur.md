@@ -117,14 +117,19 @@ Aturan aplikasi yang bisa diatur di tingga lapis: sekolah, kelas, lalu kuis. Mis
 ### Cara kerjanya
 Kuis yang lebih spesifik menang dibanding kelas, kelas menang dibanding sekolah — kecuali sekolah mengunci aturan tertentu (locked), dan kunci itu tidak bisa dibongkar di bawahnya. Contoh: sekolah menetapkan retry maksimal 2 dan menguncinya; guru kelas 4 boleh menyalakan ranking untuk kuis pecahan saja, tapi tidak bisa melonggarkan batas retry.
 
-Halaman **Pengaturan** kini diskalakan **per ulangan**, bukan per akun: yang dipilih di sana adalah
-ulangannya (bukan sekolah/akun), lalu guru menyalakan proteksi atau aturan yang relevan untuk ulangan
-itu. Sejak 12 Oktober 2026 pemilih lapis sekolah/kelas di halaman itu **dibuang** karena satu instalasi
-= satu sekolah, sehingga lapis "sekolah" terasa seperti setelan akun, bukan setelan ulangan.
+Setelan ulangan **menyatu dengan kuisnya**: guru membuka kuisnya (halaman detail/kelola kuis) dan
+menyetel proteksi atau aturan di panel **Setelan ulangan** pada halaman itu. Tidak ada lagi daftar
+ulangan untuk dipilih lebih dulu — jadi tidak ada cara salah memilih ulangan, dan halaman
+**/pengaturan** kembali ke arti namanya: **akun** (nama, kata sandi, tampilan), bukan aturan ulangan.
 
-Lapis sekolah dan kelas **tetap berlaku di server** dan tetap bisa mengunci sebuah nilai; halaman
-Pengaturan hanya menampilkan akibatnya ("dikunci sekolah") tanpa lagi menjadi tempat menyetelnya —
-jadi tidak ada lagi tombol yang bilangan hasilnya sama untuk semua ulangan.
+Riwayat singkat supaya tidak membingungkan pembaca dokumen lama: sampai 11 Oktober 2026 halaman
+Pengaturan menawarkan tiga lapis (sekolah/kelas/kuis); 12 Oktober 2026 pemilih lapis sekolah/kelas
+dibuang; 13 Oktober 2026 pemilih ulangannya juga dibuang karena kuisnya sendiri sudah menjadi
+konteksnya.
+
+Lapis sekolah dan kelas **tetap berlaku di server** dan tetap bisa mengunci sebuah nilai; panel di
+halaman kuis hanya menampilkan akibatnya ("dikunci sekolah") tanpa menjadi tempat menyetelnya — jadi
+tidak ada lagi tombol yang bilangan hasilnya sama untuk semua ulangan.
 
 ### Mengapa aman
 Perubahan pengaturan lewat server, dengan izin dan pencatatan. Perangkat murid tidak bisa mengubah
@@ -143,9 +148,10 @@ Di panel yang sama ada tombol **Buat tautan siswa** yang menghasilkan satu tauta
 ### Manfaat untuk anak SD dan guru
 Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil pada ulangannya sendiri. Anak SD di semua kelas mendapat aturan yang konsisten. Guru juga tidak perlu membuka halaman Pengaturan untuk tahu “sebenarnya ulanganku diawasi apa saja?”, dan tidak perlu mengetik ulang alamat kuis saat membagikannya ke kelas.
 
-Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07; ringkasan sesi + tautan siswa ditambahkan 12 Oktober 2026, serta halaman Pengaturan dipersempit ke skala per ulangan di putaran yang sama). Saklar anti-cheat juga memakai mekanisme
-yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik. Yang jujur belum ada: lapis sekolah/kelas
-sekarang **hanya bisa dibaca** lewat halaman ini (nilainya diatur dari API/seed dan tetap mengunci), belum ada
+Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07; ringkasan sesi + tautan siswa 12 Oktober 2026;
+panelnya pindah ke halaman kuis 13 Oktober 2026). Saklar anti-cheat memakai mekanisme yang sama,
+termasuk preset ujian yang bisa dinyalakan sekali klik. Yang jujur belum ada: lapis sekolah/kelas
+sekarang **hanya bisa dibaca** lewat panel itu (nilainya diatur dari API/seed dan tetap mengunci), belum ada
 halaman admin khusus untuknya.
 
 ---
@@ -385,7 +391,9 @@ Anak yang mengerjakan ulangan di malam hari tidak silau. Yang penting bagi kami:
 salah, peringatan) tetap punya ikon dan kontras yang cukup di kedua mode.
 
 Status: **sudah bisa dipakai** (dibuat bersama tema sejak slice awal, dipakai di seluruh halaman). Pilihan
-mengikuti pengaturan perangkat bila belum pernah diubah di aplikasi.
+mengikuti pengaturan perangkat bila belum pernah diubah di aplikasi. Sejak 13 Oktober 2026 pilihannya juga
+ada di halaman **Akun** (bagian 21) supaya tidak perlu mencari tombol di bilah atas bila guru sedang mengatur
+akunnya.
 
 ---
 
@@ -556,7 +564,7 @@ diam-diam membuka ulangannya untuk orang tanpa akun.
 
 ### Cara kerjanya
 
-1. Guru menyalakan saklar di **Pengaturan → Siswa tamu** pada lingkup kuis miliknya.
+1. Guru menyalakan saklar **Siswa tamu** pada panel *Setelan ulangan* di halaman kuis miliknya.
 2. Halaman masuk menanyakan `GET /v1/tamu`; bila server menjawab boleh, muncul formulir tamu.
 3. Tamu menulis nama → `POST /v1/auth/tamu` membuat (atau memakai kembali) akun tamu, lalu langsung
    membuka sesinya. Nama itu yang tertulis di daftar nilai; **identitas akunnya adalah kode perangkat**
@@ -630,7 +638,114 @@ data masuk, mencari siapa yang datanya salah jadi pekerjaan hitungan detik.
 Status: **sudah bisa dipakai** (putaran A.51 + A.53, diuji 18/18 di Chrome sungguhan). Batasan yang jujur:
 pola pencariannya masih `LIKE %kata%` sehingga belum memanfaatkan indeks — sejak A.53 ada tes regresi pada
 **1.200 murid** yang membuktikan pencariannya benar dan tetap berhalaman pada skala itu, tetapi itu bukan
-uji beban waktu tanggap; dan kotak cari baru ada di halaman **Murid** (Kelas, Mapel, dan Bank Soal belum).
+uji beban waktu tanggap. Sejak 13 Oktober 2026 kotak cari juga ada di halaman **Bank Soal** (dan di panel
+pilih-soal saat menyusun kuis) — keduanya menyaring di server dan memuat hasilnya bertahap; halaman Kelas
+dan Mapel belum punya kotak cari.
+
+---
+
+## 20. Bank soal yang tidak dimuat sekaligus
+
+### Apa ini
+Daftar soal di halaman **Bank Soal** — dan daftar pilih-soal saat guru menyusun kuis — dimuat **20 baris sekali
+kirim**, dengan tombol *Muat 20 soal berikutnya* di bawah daftar dan kotak **Cari soal** di atasnya.
+
+### Cara kerjanya
+Sekolah dengan ratusan soal tidak lagi mengirim seluruh bank dalam satu respons hanya untuk menampilkan dua
+puluh baris pertama: tiap permintaan membawa `per_page=20` dan halaman yang diminta, lalu baris berikutnya
+**ditambahkan** ke bawah daftar (bukan menggantikan). Kotak cari mengirim kata kunci ke server sebagai `q`
+setelah guru berhenti mengetik 300 ms — jadi mencari soal lama tidak berarti membuka halaman satu per satu,
+dan pencariannya berlaku ke **seluruh** bank soal, bukan hanya baris yang kebetulan tampil. Keadaan kosongnya
+menyebut kata kuncinya dan menawarkan *Bersihkan pencarian*.
+
+Satu hal yang ikut dijaga: skor dan status aktif soal yang **sudah dipilih** diingat di sisi klien. Tanpa itu,
+soal pilihan yang tidak ada di halaman yang sedang tampil akan terhitung **0 poin** dan lolos dari pemeriksaan
+"semua soal yang dipilih aktif" — ringkasan langkah terakhir lalu berkata tidak benar.
+
+### Manfaat untuk anak SD dan guru
+Waktu buka halaman Bank Soal dan langkah “Susun soal” tidak lagi tumbuh mengikuti jumlah soal sekolah, dan
+guru tetap bisa menemukan soal semester lalu tanpa menelusuri halaman.
+
+Status: **sudah bisa dipakai** (13 Oktober 2026). Jenis soal di bank soal tetap boleh diperbaiki saat
+ulangannya berjalan; batas 20 barisnya diatur klien (`PER_HALAMAN`), sedangkan server tetap membatasinya di
+100 baris per permintaan.
+
+---
+
+## 21. Akun sendiri: nama, kata sandi, dan tampilan
+
+### Apa ini
+Halaman **/pengaturan** sekarang berisi setelan **akun sendiri**: nama tampilan, kata sandi, tema terang/gelap,
+dan pintasan ke avatar (khusus murid). Halaman ini milik **semua** pengguna — murid, guru, maupun admin — bukan
+hanya guru.
+
+### Cara kerjanya
+- **Nama**: diganti lewat `PUT /v1/akun` dan langsung tampil di kepala aplikasi, laporan, serta daftar nilai.
+- **Email** hanya ditampilkan (tidak bisa diubah): ia alamat verifikasi dan pemulihan akun, jadi perubahannya
+  butuh alur verifikasi tersendiri yang belum ada — server memang menolaknya, bukan sekadar tombolnya dimatikan.
+- **Kata sandi**: wajib menyertakan sandi lama, minimal 10 karakter. Sekali berhasil, `remember_token`
+  diacak ulang dan **sesi di perangkat lain diakhiri** — sedangkan perangkat yang sedang dipakai tetap masuk
+  (kalau ikut dihapus, murid yang baru mengganti sandinya justru terlempar keluar). Jalur ini dibatasi 6
+  percobaan per menit per akun, supaya sesi yang tertinggal di komputer lab tidak bisa dipakai menebak sandi.
+- **Akun siswa tamu** tidak punya sandi (masuknya lewat kode perangkat), jadi halaman ini memberi tahu apa
+  adanya dan menawarkan daftar sebagai murid — bukan menampilkan formulir yang pasti ditolak.
+
+### Manfaat untuk anak SD dan guru
+Guru dan murid sama-sama bisa memperbaiki namanya sendiri (salah ketik saat didaftarkan, atau nama panggilan)
+tanpa menunggu admin, dan siapa pun yang merasa sandinya diketahui orang lain bisa menggantinya dari komputer
+sekolah tanpa perlu akses email.
+
+Status: **sudah bisa dipakai** (13 Oktober 2026). Setelan ulangan (proteksi, percobaan ulang, peringkat)
+tidak ada di halaman ini lagi — ia menyatu dengan tiap kuis (bagian 5). Yang belum ada: halaman ini belum
+menampilkan daftar perangkat/sesi yang sedang masuk.
+
+---
+
+## 22. Bundel yang dipotong per halaman
+
+### Apa ini
+Kode aplikasi tidak lagi dikirim sebagai satu berkas JavaScript raksasa. Setiap halaman jadi **potongannya
+sendiri** yang baru diunduh saat halamannya dibuka (`React.lazy` + `Suspense`); yang ikut terkirim sejak awal
+hanya kerangka aplikasi, **Beranda**, **halaman masuk**, dan **halaman 404**.
+
+### Cara kerjanya
+Daftar pemuat halaman ada di satu berkas, `frontend/src/halaman.js`. Di sana tiap halaman dibungkus
+`React.lazy`, dan peta `pramuat` menghubungkan jalur menu (`/kelas`, `/bank-soal`, `/kuis`, …) dengan modulnya.
+Tautan menu di panel samping **mulai mengunduh modul halamannya begitu disorot atau difokus**
+(`onMouseEnter`/`onFocus`) — jadi bundel awalnya kecil, tetapi perpindahan menu tetap terasa seketika,
+terutama di ponsel yang menyentuh dulu sebelum menekan.
+
+Yang menunggu ditangani `Suspense` yang dipasang **di dalam** kerangka (di area konten), bukan membungkus
+seluruh aplikasi. Akibatnya menu, bilah atas, dan kaki halaman tetap tampil selama modul diunduh — tidak pernah
+ada layar kosong. Penandanya (`MemuatHalaman`) muncul dengan **jeda 150 ms** lalu memudar masuk lewat CSS:
+pada modul yang sudah tersimpan di cache peramban (kasus paling umum saat berpindah halaman) penandanya sama
+sekali tidak terlihat, jadi tidak ada kedipan. Tingginya juga diisi supaya kaki halaman tidak melompat naik-turun.
+
+Angka hasil `npm run build` di mesin pengembangan:
+
+| | Sebelum | Sesudah |
+| --- | --- | --- |
+| JavaScript yang diunduh sebelum halaman tampil | **923,63 kB** (262,06 kB gzip), satu berkas | **555,26 kB** (176,35 kB gzip) — berkas utama + 5 berkas yang di-`modulepreload` `index.html` |
+| Jumlah berkas JS | 1 | 54 (halaman lain menyusul saat dibuka) |
+
+Contoh yang tidak lagi ikut ke setiap pengguna: layar pengerjaan ulangan **41,57 kB** (14,27 kB gzip),
+editor soal **46,52 kB**, editor materi **30,84 kB**, dan renderer soal **31,94 kB**. Murid yang mengerjakan
+ulangan di ponsel kelas tidak lagi mengunduh alat guru, dan guru tidak mengunduh layar ulangan anak.
+
+Angka itu juga diperiksa **di peramban sungguhan** (bangun produksi, `docs/ukur-bundel-peramban.mjs`):
+membuka aplikasi hanya meminta **6 berkas JS (555,30 kB)** — sama persis dengan keenam berkas di `index.html` —
+sedangkan menekan tautan “Daftar” hanya menambah **2 berkas kecil (3,5 kB)** tanpa memuat ulang halaman.
+
+### Manfaat untuk anak SD dan guru
+Halaman pertama muncul lebih cepat di jaringan sekolah yang lambat — sekitar **sepertiga** lebih sedikit data
+yang harus lewat sebelum apa pun terlihat (`262 kB` → `176 kB` gzip). Ini juga menghemat kuota ponsel murid.
+
+Status: **sudah bisa dipakai** (13 Oktober 2026). Yang sengaja tetap di bundel awal: kerangka aplikasi,
+Beranda (halaman pertama semua orang, termasuk tamu), halaman masuk, 404, dan pagar galat ulangan — menunda
+keempatnya hanya menambah satu putaran jaringan di detik-detik pertama tanpa menghemat apa pun yang berarti.
+Halaman auth selain “Masuk” juga malas, tetapi tidak dipramuat karena tidak punya tautan menu yang bisa disorot.
+Dua potongan vendor tetap besar dan tetap ikut di awal karena memang selalu dipakai (`react-dom` + react +
+zustand 328,98 kB; `axios` + `react-router` 209,85 kB) — itu batas tumpukan yang dipilih, bukan sisa kode halaman.
 
 ---
 
