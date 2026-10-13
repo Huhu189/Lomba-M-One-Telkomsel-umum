@@ -1,5 +1,5 @@
 /**
- * Live Monitor guru (slice 07).
+ * Monitor Ulangan guru (slice 07; sebelumnya "Live Monitor").
  *
  * Dua jalur, satu layar:
  * - **polling** selalu jalan (5 detik) — ini yang membuat monitor tidak pernah
@@ -140,12 +140,12 @@ export default function HalamanMonitor() {
   }
 
   if (monitor.isLoading) {
-    return <Skeleton judul baris={5} label="Memuat Live Monitor…" />
+    return <Skeleton judul baris={5} label="Memuat Monitor Ulangan…" />
   }
 
   if (monitor.isError || data === undefined) {
     return (
-      <Banner jenis="salah" judul="Live Monitor belum bisa dibuka">
+      <Banner jenis="salah" judul="Monitor Ulangan belum bisa dibuka">
         <p className="mb-3">Mungkin kuis ini bukan milikmu, atau sesimu sudah berakhir.</p>
         <TombolTaut to={RUTE.kuis} varian="tepi">
           Kembali ke daftar kuis
@@ -154,21 +154,13 @@ export default function HalamanMonitor() {
     )
   }
 
-  const lencanaSse =
-    statusSse === 'hidup'
-      ? { kelas: 'sukses', teks: 'Langsung (SSE)' }
-      : statusSse === 'polling'
-        ? { kelas: 'lembut', teks: 'Polling 5 detik' }
-        : { kelas: 'lembut', teks: 'Menyambung…' }
-
   return (
     <div>
       <HeaderHalaman
-        judul={`${data.kuis.judul} · Live Monitor`}
-        jejak="Kuis / Live Monitor"
+        judul={`${data.kuis.judul} · Monitor Ulangan`}
+        jejak="Kuis / Monitor Ulangan"
         deskripsi={`${data.kuis.kelas_nama ?? '—'} · ${data.jumlah_online} dari ${data.murid.length} murid sedang aktif`}
       >
-        <span className={`badge-status ${lencanaSse.kelas}`}>{lencanaSse.teks}</span>
         <TombolTaut to={ruteKuisDetail(idKuis)} varian="tepi" ukuran="sedang">
           Detail kuis
         </TombolTaut>
@@ -176,7 +168,7 @@ export default function HalamanMonitor() {
 
       <div className="d-flex flex-wrap gap-3 mb-4">
         {ringkasMonitor(data.murid).map((satu) => (
-          <div key={satu.label} className="kartu-soft px-3 py-2">
+          <div key={satu.label} className="kartu-soft p-3">
             <span className="teks-lembut small d-block">{satu.label}</span>
             <strong className="h4 fw-bold mb-0">{satu.nilai}</strong>
           </div>
@@ -197,7 +189,7 @@ export default function HalamanMonitor() {
 
       {data.murid.length === 0 ? (
         <KosongData judul="Belum ada murid yang membuka kuis ini" ikon={IkonPerisai}>
-          Live Monitor akan terisi begitu murid pertama membuka kuis dan mengirim denyut kehadiran.
+          Monitor Ulangan akan terisi begitu murid pertama membuka kuis dan mengirim denyut kehadiran.
         </KosongData>
       ) : (
         <div className="kartu-soft p-0 mb-4">

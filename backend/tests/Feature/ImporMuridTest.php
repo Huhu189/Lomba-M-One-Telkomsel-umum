@@ -175,6 +175,37 @@ it('ekspor CSV mengamankan sel berawalan = + - @', function (): void {
         ->and($isi)->toContain("'@x");
 });
 
+it('impor menerima judul kolom lain yang lazim di berkas guru', function (): void {
+    // Berkas buatan Excel/Google Sheets jarang memakai judul persis template.
+    // Dulu "Nama Lengkap" berhenti di 422 "Kolom wajib tidak ditemukan: nama"
+    // walau isi berkasnya sudah benar.
+    $csv = "Nama Lengkap,E-mail,Nama Kelas,Nomor Induk Siswa\n"
+        ."Ayu Lestari,ayu.alias@murid.test,6A,1001\n"
+        ."Budi Santoso,budi.alias@murid.test,6B,1002\n";
+
+    $this->post('/api/v1/murid/impor', ['file' => buatBerkasCsv($csv)], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('laporan.sukses', 2)
+        ->assertJsonPath('laporan.gagal', 0);
+
+    $ayu = User::query()->where('email', 'ayu.alias@murid.test')->firstOrFail();
+
+    expect($ayu->name)->toBe('Ayu Lestari')
+        ->and($ayu->murid->nis)->toBe('1001')
+        ->and($ayu->murid->kelas->nama)->toBe('6A');
+});
+
+it('judul kolom resmi menang bila berkas memuat nama dan aliasnya sekaligus', function (): void {
+    $csv = "Nama Lengkap,nama,email,kelas\n"
+        ."Julukan,Ani Juariah,ani.alias@murid.test,6A\n";
+
+    $this->post('/api/v1/murid/impor', ['file' => buatBerkasCsv($csv)], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('laporan.sukses', 1);
+
+    expect(User::query()->where('email', 'ani.alias@murid.test')->value('name'))->toBe('Ani Juariah');
+});
+
 it('impor tanpa kolom wajib ditolak 422', function (): void {
     $this->post('/api/v1/murid/impor', [
         'file' => buatBerkasCsv("nama,kelas\nAyu,6A\n"),

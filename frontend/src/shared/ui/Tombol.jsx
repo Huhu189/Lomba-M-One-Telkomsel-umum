@@ -7,6 +7,8 @@
  *
  * `TombolIkon` dipakai untuk kolom aksi tabel: ikon saja, persegi 44 px, dan
  * `label` wajib karena menjadi aria-label ("Hapus kelas 5A", bukan "Hapus").
+ * `TombolTautIkon` adalah pasangan tautannya, untuk aksi yang berpindah halaman
+ * (mis. "Pantau" pada jadwal kuis di beranda).
  */
 import { Link } from 'react-router-dom'
 import { IkonMuatUlang } from '../../icons.jsx'
@@ -113,6 +115,30 @@ export function TombolTaut({
     <Link to={to} className={kelas}>
       {Ikon && <Ikon size={20} />}
       <span>{children}</span>
+    </Link>
+  )
+}
+
+/**
+ * Tautan bergaya tombol ikon persegi 44 px (aksi pindah halaman).
+ *
+ * `label` wajib dan menyebut arti aksinya — ia menjadi aria-label sekaligus
+ * tooltip, supaya ikon saja tetap bisa dipahami tanpa membaca teks tombol.
+ * @param {{
+ *   to: string,
+ *   label: string,
+ *   ikon: import('react').ComponentType<{ size?: number, className?: string }>,
+ *   varian?: 'utama'|'tepi'|'bahaya'|'teks',
+ *   className?: string,
+ * }} props
+ */
+export function TombolTautIkon({ to, label, ikon: Ikon, varian = 'tepi', className = '' }) {
+  const kelas = kelasTombol({ varian, className: `btn-ikon ${className}`.trim() })
+
+  return (
+    <Link to={to} className={kelas} aria-label={label} title={label}>
+      <Ikon size={20} />
+      <span className="sr-saja">{label}</span>
     </Link>
   )
 }

@@ -1,5 +1,5 @@
 /**
- * Perhitungan murni untuk Live Monitor (papan desain 7).
+ * Perhitungan murni untuk Monitor Ulangan (papan desain 7).
  *
  * Dihitung dari snapshot yang benar-benar dikirim server — bukan angka contoh.
  * "Belum mulai" tidak ada di sini karena monitor hanya memuat attempt yang

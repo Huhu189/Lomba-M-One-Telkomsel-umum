@@ -1,5 +1,5 @@
 /**
- * API anti-cheat + Live Monitor (slice 07). Semua respons divalidasi Zod.
+ * API anti-cheat + Monitor Ulangan (slice 07). Semua respons divalidasi Zod.
  * Sesi murni cookie; mutasi memanggil /sanctum/csrf-cookie lebih dulu.
  */
 import { z } from 'zod'
@@ -24,14 +24,14 @@ export const skemaKejadian = z.object({
   reviewed_at: z.string().nullable(),
 })
 
-/** Ringkasan kecurangan satu attempt di Live Monitor. */
+/** Ringkasan kecurangan satu attempt di Monitor Ulangan. */
 export const skemaRingkasKecurangan = z.object({
   jumlah: z.number(),
   skor_tertinggi: z.number(),
   belum_ditinjau: z.number(),
 })
 
-/** Satu baris murid di Live Monitor. */
+/** Satu baris murid di Monitor Ulangan. */
 export const skemaBarisMonitor = z.object({
   attempt_id: z.number(),
   student_id: z.number(),
@@ -48,7 +48,7 @@ export const skemaBarisMonitor = z.object({
   kecurangan: skemaRingkasKecurangan,
 })
 
-/** Snapshot Live Monitor. */
+/** Snapshot Monitor Ulangan. */
 export const skemaMonitor = z.object({
   kuis: z.object({
     id: z.number(),
@@ -76,7 +76,7 @@ export const skemaTiketSse = z.object({
  */
 
 /**
- * Snapshot Live Monitor satu kuis.
+ * Snapshot Monitor Ulangan satu kuis.
  * @param {number} kuisId
  * @returns {Promise<DataMonitor>}
  */
@@ -112,7 +112,7 @@ export async function tinjauKejadian(kejadianId, status, catatan) {
 }
 
 /**
- * Terbitkan ticket SSE sekali pakai untuk Live Monitor.
+ * Terbitkan ticket SSE sekali pakai untuk Monitor Ulangan.
  * @param {number} kuisId
  * @returns {Promise<z.infer<typeof skemaTiketSse>>}
  */

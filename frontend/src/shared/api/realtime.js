@@ -3,7 +3,7 @@
  * bentuk URL-nya.
  *
  * Sebelumnya tiap halaman menulis `VITE_REALTIME_URL ?? 'http://localhost:4000'`
- * sendiri; begitu ada dua pemakai (Live Monitor guru dan layar kelas), salinan
+ * sendiri; begitu ada dua pemakai (Monitor Ulangan guru dan layar kelas), salinan
  * itu mulai bisa berbeda diam-diam — dan alamat dasar yang salah hanya terlihat
  * sebagai "SSE tidak pernah hidup" di layar pengguna.
  */

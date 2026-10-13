@@ -96,7 +96,7 @@ export default function HalamanKuisDetail() {
                   <TombolTaut varian="tepi" to={ruteKoreksiKuis(data.id)}>Koreksi manual</TombolTaut>
                 )}
                 {sebagaiGuru && (
-                  <TombolTaut varian="tepi" to={ruteMonitorKuis(data.id)}>Live Monitor</TombolTaut>
+                  <TombolTaut varian="tepi" to={ruteMonitorKuis(data.id)}>Monitor Ulangan</TombolTaut>
                 )}
                 {sebagaiGuru && (
                   <TombolTaut varian="tepi" to={ruteTimKuis(data.id)}>Kelola tim</TombolTaut>

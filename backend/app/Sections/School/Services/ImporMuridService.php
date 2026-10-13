@@ -33,6 +33,33 @@ class ImporMuridService
 
     private const KOLOM_WAJIB = ['nama', 'email', 'kelas'];
 
+    /** Kolom opsional yang dikenali selain kolom wajib. */
+    private const KOLOM_OPSIONAL = ['nis', 'nisn', 'kata_sandi'];
+
+    /**
+     * Judul kolom lain yang diterima, dipetakan ke nama kolom resmi.
+     *
+     * Berkas buatan guru jarang memakai judul persis template: Excel menulis
+     * "Nama Lengkap", Google Sheets "Nama Murid", dan email sering ditulis
+     * "E-mail". Dulu semuanya berhenti di 422 "Kolom wajib tidak ditemukan"
+     * padahal isi berkasnya sudah benar.
+     *
+     * @var array<string, string>
+     */
+    private const ALIAS_KOLOM = [
+        'nama lengkap' => 'nama',
+        'nama murid' => 'nama',
+        'nama siswa' => 'nama',
+        'e-mail' => 'email',
+        'email murid' => 'email',
+        'email siswa' => 'email',
+        'nama kelas' => 'kelas',
+        'nomor induk siswa' => 'nis',
+        'nomor induk siswa nasional' => 'nisn',
+        'password' => 'kata_sandi',
+        'sandi' => 'kata_sandi',
+    ];
+
     /**
      * @return array{total: int, sukses: int, gagal: int, dihentikan: bool, batas_galat: int, galat: list<array{baris: int, pesan: string}>}
      */
@@ -162,11 +189,31 @@ class ImporMuridService
     {
         $map = [];
 
+        // Nama resmi dulu, supaya berkas yang memuat "Nama" dan "Nama Lengkap"
+        // sekaligus tetap memakai kolom "Nama" — bukan judul alias terakhir.
         foreach ($headerAsli as $nama) {
-            $map[$this->normalisasiNamaKolom($nama)] = $nama;
+            $kunci = $this->normalisasiNamaKolom($nama);
+
+            if ($kunci !== '' && $this->kolomDikenal($kunci) && ! array_key_exists($kunci, $map)) {
+                $map[$kunci] = $nama;
+            }
+        }
+
+        // Baru judul alias, dan hanya untuk kolom resmi yang belum ketemu.
+        foreach ($headerAsli as $nama) {
+            $kanonik = self::ALIAS_KOLOM[$this->normalisasiNamaKolom($nama)] ?? null;
+
+            if ($kanonik !== null && ! array_key_exists($kanonik, $map)) {
+                $map[$kanonik] = $nama;
+            }
         }
 
         return $map;
+    }
+
+    private function kolomDikenal(string $kunci): bool
+    {
+        return in_array($kunci, [...self::KOLOM_WAJIB, ...self::KOLOM_OPSIONAL], true);
     }
 
     /**

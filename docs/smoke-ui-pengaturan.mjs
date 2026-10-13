@@ -1,8 +1,11 @@
-// Smoke UI halaman Pengaturan (CDP): saklar anti-cheat per jenis tampil, bisa
-// dinyalakan/dimatikan, dan tombol "Nyalakan/Matikan semua" tersedia per kelompok.
+// Smoke UI halaman Pengaturan (CDP): skala **per ulangan** (bukan per akun),
+// saklar anti-cheat per jenis tampil, bisa dinyalakan/dimatikan, dan tombol
+// "Nyalakan/Matikan semua" tersedia per kelompok.
 //
-// Saklar yang diuji (`block_paste`) dikembalikan ke keadaan semula di akhir,
-// jadi basis data dev tidak berubah.
+// Sejak 12 Oktober 2026 halaman ini tidak lagi menawarkan lapis sekolah/kelas:
+// yang diperiksa di sini adalah daftar ulangan sebagai satu-satunya lingkup, dan
+// saklar yang diuji dikembalikan ke keadaan semula di akhir — jadi basis data
+// dev tidak berubah.
 //
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
@@ -75,6 +78,28 @@ async function main() {
     await send('Page.navigate', { url: `${APP}/pengaturan` }, sessionId)
     await sleep(4000)
 
+    // Lingkup halaman: hanya ulangan. Lapis "Sekolah"/"Kelas" tidak boleh ada
+    // lagi di pemilih, karena halaman ini memang bukan setelan akun.
+    const lingkup = await evalJs(`(() => {
+      const pilih = document.querySelector('#lingkup-pengaturan')
+      if (!pilih) return null
+      return {
+        label: document.querySelector('label[for="lingkup-pengaturan"]')?.innerText?.trim() ?? '',
+        opsi: [...pilih.options].map((o) => o.textContent.trim()).filter((t) => t !== ''),
+        nilai: pilih.value,
+        judul: document.querySelector('h1')?.innerText?.trim() ?? '',
+      }
+    })()`)
+
+    const adaLapisAkun = (lingkup?.opsi ?? []).some(
+      (t) => t.toLowerCase().includes('sekolah') || t.toLowerCase().includes('kelas'),
+    )
+    catat(
+      'lingkup pengaturan hanya per ulangan (tanpa lapis sekolah/kelas)',
+      lingkup !== null && lingkup.opsi.length > 0 && !adaLapisAkun && lingkup.nilai.startsWith('kuis:'),
+      lingkup === null ? 'pemilih tidak ditemukan' : `${lingkup.label}: ${lingkup.opsi.length} opsi · terpilih=${lingkup.nilai}`,
+    )
+
     const ringkas = await evalJs(`(() => {
       const bagian = ${kelompokAntiCheat}
       if (!bagian) return null
@@ -92,32 +117,32 @@ async function main() {
       ringkas === null ? 'kelompok tidak ditemukan' : `${ringkas.saklar} saklar · ${ringkas.tombol.join(', ')} · ${ringkas.judul}`,
     )
 
-    // Saklar sungguhan: hidupkan lalu matikan lagi (nilai akhir = seperti semula).
-    const saklarUji = `document.querySelector('#set-block_paste')`
+    // Saklar sungguhan: pilih satu saklar anti-cheat yang **tidak dikunci**, ubah,
+    // lalu kembalikan ke nilai semula — jadi uji ini tidak mengandaikan bawaan
+    // tertentu (nilai ulangan bisa berbeda-beda).
+    const saklarUji = `(() => {
+      const bagian = ${kelompokAntiCheat}
+      if (!bagian) return null
+      return [...bagian.querySelectorAll('input[role="switch"]')].find((el) => !el.disabled) ?? null
+    })()`
+
     const sebelum = await evalJs(`${saklarUji}?.checked ?? null`)
-    catat('saklar blokir tempel tersedia (bawaan mati)', sebelum === false, `checked=${sebelum}`)
+    catat('ada saklar anti-cheat yang bisa diubah (tidak dikunci sekolah)', typeof sebelum === 'boolean', `checked=${sebelum}`)
 
-    await evalJs(`(async () => {
+    const ubah = (nilai) => evalJs(`(async () => {
       const el = ${saklarUji}
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set
-      setter.call(el, !el.checked)
+      setter.call(el, ${nilai})
       el.dispatchEvent(new Event('change', { bubbles: true }))
       await new Promise((r) => setTimeout(r, 1800))
       return el.checked
     })()`)
-    const sesudahHidup = await evalJs(`${saklarUji}?.checked ?? null`)
-    catat('saklar bisa dinyalakan dan tersimpan', sesudahHidup === true, `checked=${sesudahHidup}`)
 
-    await evalJs(`(async () => {
-      const el = ${saklarUji}
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set
-      setter.call(el, false)
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-      await new Promise((r) => setTimeout(r, 1800))
-      return el.checked
-    })()`)
-    const sesudahMati = await evalJs(`${saklarUji}?.checked ?? null`)
-    catat('saklar bisa dimatikan lagi (kembali ke bawaan)', sesudahMati === false, `checked=${sesudahMati}`)
+    const sesudahUbah = await ubah(!sebelum)
+    catat('saklar bisa diubah dan tersimpan', sesudahUbah === !sebelum, `dari=${sebelum} ke=${sesudahUbah}`)
+
+    const sesudahKembali = await ubah(sebelum)
+    catat('saklar dikembalikan ke nilai semula', sesudahKembali === sebelum, `checked=${sesudahKembali}`)
   } finally {
     const gagal = hasil.filter((satu) => !satu.lolos)
     console.log(`\n${hasil.length - gagal.length}/${hasil.length} pemeriksaan lulus.`)

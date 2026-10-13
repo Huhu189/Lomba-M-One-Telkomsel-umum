@@ -3,7 +3,7 @@
  *
  * Guru memilih satu keadaan (kosong / pengumuman / sorot soal / instruksi
  * setelah ulangan), lalu setiap perubahan langsung disiarkan ke perangkat murid
- * kelas itu lewat kanal kuis yang sama dengan Live Monitor.
+ * kelas itu lewat kanal kuis yang sama dengan Monitor Ulangan.
  *
  * Beberapa keputusan yang terlihat di layar ini:
  * - **tanpa kunci jawaban**: pratinjau dan payload sengaja tidak memuat kunci,
@@ -297,7 +297,7 @@ export default function HalamanLayar() {
               </p>
 
               <TombolTaut varian="tepi" className="mt-3" to={ruteMonitorKuis(data.kuis_id)}>
-                Buka Live Monitor
+                Buka Monitor Ulangan
               </TombolTaut>
             </div>
           </div>

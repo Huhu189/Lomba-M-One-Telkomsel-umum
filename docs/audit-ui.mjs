@@ -141,6 +141,10 @@ const AUDIT = `window.__audit = function () {
   }
   for (const el of document.querySelectorAll('main p, main span, main a, main li, main td, main th, main strong, main small, main h1, main h2, main h3, main label, main dd, main dt, main div')) {
     if (!terlihat(el)) continue
+    // Teks khusus pembaca layar (.sr-saja) dipotong jadi 1x1 px — tidak pernah
+    // terlihat, jadi kontrasnya bukan cacat tampilan. Tanpa lewatan ini, setiap
+    // tombol ber-label ikon (label tersembunyi) mencetak "kontras 2.77" palsu.
+    if (el.closest('.sr-saja')) continue
     if (!el.textContent || !el.textContent.trim()) continue
     // hanya teks langsung (bukan wadah)
     const punyaTeksAnak = [...el.children].some((c) => (c.textContent || '').trim())
@@ -171,15 +175,17 @@ const AUDIT = `window.__audit = function () {
     return el.tagName.toLowerCase() + kls
   }
 
-  // Lencana jalur data di Live Monitor: 'Langsung (SSE)' vs 'Polling'.
-  const hMonitor = [...document.querySelectorAll('h1')].find((x) => x.innerText.includes('Live Monitor'))
-  const lencanaSse = hMonitor
+  // Monitor Ulangan tidak lagi memajang jalur datanya ke guru (lencana
+  // 'Langsung (SSE)' / 'Polling' dibuang 12 Oktober 2026): yang dicatat di sini
+  // adalah ada-tidaknya lencana itu, supaya jargonnya tidak diam-diam kembali.
+  const hMonitor = [...document.querySelectorAll('h1')].find((x) => x.innerText.includes('Monitor Ulangan'))
+  const lencanaMonitor = hMonitor
     ? hMonitor.parentElement?.parentElement?.querySelector('.badge-status')?.innerText.trim() ?? null
     : null
 
   return {
     judul: document.title,
-    lencanaSse,
+    lencanaMonitor,
     teksKosong: (document.querySelector('main')?.innerText || '').trim().length < 40,
     overflowHalaman: lapor.overflowHalaman,
     keluarTepi: lapor.keluarTepi.slice(0, 8),
@@ -203,9 +209,13 @@ async function main() {
   let id = 0
   const pending = new Map()
   let galatKonsol = []
+  // Penyaring galat konsol per halaman (mis. penolakan server yang memang
+  // disengaja di halaman pengerjaan). Default: tidak menyaring apa pun.
+  let saringKonsol = () => false
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data)
     if (msg.method === 'Log.entryAdded' && msg.params?.entry?.level === 'error') {
+      if (saringKonsol(msg.params.entry)) return
       galatKonsol.push(`${msg.params.entry.source}: ${String(msg.params.entry.text).slice(0, 160)}`)
     }
     if (msg.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(msg.params?.type)) {
@@ -295,7 +305,7 @@ async function main() {
         kontras: h.kontras,
         tanpaNama: h.tanpaNama,
         teksKosong: h.teksKosong,
-        lencanaSse: h.lencanaSse,
+        lencanaMonitor: h.lencanaMonitor,
         galatKonsol: [...new Set(galatKonsol)].slice(0, 4),
       }
       semuaCacat.push(cacat)
@@ -308,8 +318,9 @@ async function main() {
       if (cacat.jumlahKontras) ringkas.push(`KONTRAS:${cacat.jumlahKontras} ${cacat.kontras.map((k) => `${k.rasio}@${k.el}`).join(',')}`)
       if (cacat.tanpaNama.length) ringkas.push(`TANPA-NAMA:${cacat.tanpaNama.map((t) => t.el).join(',')}`)
       if (cacat.teksKosong) ringkas.push('KOSONG')
-      // Lencana jalur data hanya informasi (SSE vs polling), bukan cacat.
-      const infoJalur = cacat.lencanaSse ? ` · jalur data: ${cacat.lencanaSse}` : ''
+      // Lencana jalur data di Monitor Ulangan sengaja tidak ada lagi; kalau
+      // muncul kembali, itu jargon teknis yang bocor ke layar guru.
+      const infoJalur = cacat.lencanaMonitor ? ` · lencana monitor: ${cacat.lencanaMonitor}` : ''
       if (cacat.galatKonsol.length) ringkas.push(`KONSOL:${cacat.galatKonsol.join(' | ')}`)
       console.log(
         `${ringkas.length ? 'CACAT' : 'BERSIH'} · ${label} [${namaVp}]${ringkas.length ? ' · ' + ringkas.join(' · ') : ''}${infoJalur}`,
@@ -349,7 +360,7 @@ async function main() {
   await periksa('Detail kuis', `/kuis/${idKuis}`)
   await periksa('Laporan kuis', `/kuis/${idKuis}/laporan`)
   await periksa('Koreksi kuis', `/kuis/${idKuis}/koreksi`)
-  await periksa('Live Monitor', `/kuis/${idKuis}/monitor`)
+  await periksa('Monitor Ulangan', `/kuis/${idKuis}/monitor`)
   await periksa('Peringkat', `/peringkat/${idKuis}`)
   await keluar()
 
@@ -358,13 +369,32 @@ async function main() {
   console.log(`login murid: ${statusMurid}`)
   const daftarMuridKuis = await apiJson('/v1/kuis')
   const semuaKuisMurid = Array.isArray(daftarMuridKuis) ? daftarMuridKuis : daftarMuridKuis?.data ?? []
-  // Utamakan kuis terbit supaya halaman pengerjaan benar-benar terbuka, bukan
-  // hanya menampilkan banner galat "belum bisa dimulai".
-  const kuisMurid = semuaKuisMurid.find((satu) => satu.status === 'publikasi') ?? semuaKuisMurid[0]
   await periksa('Ulangan saya', '/kuis')
   await periksa('Progres tema', '/progres-tema')
   await periksa('Lencana', '/badge')
-  if (kuisMurid?.id) await periksa('Kerjakan kuis', `/kerjakan/${kuisMurid.id}`, 'Soal')
+  // Halaman pengerjaan hanya benar-benar berisi soal bila jadwal ulangannya
+  // SEDANG berjalan. Kuis terbit yang jadwalnya sudah lewat ditolak server
+  // dengan 422 ("Waktu kuis sudah berakhir"): penolakan itu benar dan halaman
+  // menampilkan banner rapi, tetapi galat jaringan itu ikut tercatat Chrome
+  // sebagai galat konsol — padahal bukan cacat UI. Jadi: prioritas ulangan yang
+  // sedang berjalan, dan bila tidak ada, halaman tetap diaudit dalam keadaan
+  // banner itu dengan galat /mulai yang disengaja disaring (cacat lain tetap
+  // dilaporkan), lalu alasannya dicetak terang-terangan.
+  const kuisTerbuka = semuaKuisMurid.find((satu) => satu.status === 'publikasi' && satu.sedang_berjalan)
+  const kuisDiperiksa = kuisTerbuka ?? semuaKuisMurid[0]
+  const periksaKerjakan = !HANYA || 'kerjakan kuis'.includes(HANYA)
+  if (kuisDiperiksa?.id && periksaKerjakan) {
+    saringKonsol = (entry) => typeof entry.url === 'string' && /\/kuis\/\d+\/mulai$/.test(entry.url)
+    await periksa('Kerjakan kuis', `/kerjakan/${kuisDiperiksa.id}`, kuisTerbuka ? 'Soal' : null)
+    saringKonsol = () => false
+    if (!kuisTerbuka) {
+      console.log(
+        `CATATAN · Kerjakan kuis — tidak ada ulangan yang sedang berjalan untuk akun murid uji, ` +
+          `jadi halaman diuji dalam keadaan banner dan 422 dari /mulai (disengaja server) disaring. ` +
+          `Jalur soal penuh ada di smoke-ui-slice04/kuis-materi.`,
+      )
+    }
+  }
   await keluar()
 
   console.log('\n=== RINGKASAN CACAT ===')

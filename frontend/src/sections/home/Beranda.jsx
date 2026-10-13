@@ -20,6 +20,9 @@ import {
   IkonGrafik,
   IkonBuku,
   IkonJam,
+  IkonLembarSoal,
+  IkonMata,
+  IkonPensil,
   IkonPerisai,
   IkonTambah,
 } from '../../icons.jsx'
@@ -29,7 +32,7 @@ import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import { HiasanLatar } from '../../shared/ui/Maskot.jsx'
-import { TombolTaut } from '../../shared/ui/Tombol.jsx'
+import { TombolTaut, TombolTautIkon } from '../../shared/ui/Tombol.jsx'
 import { useAuthStore } from '../auth/authStore.js'
 import { antreanModerasi } from '../avatar/api.js'
 import { ambilKuis } from '../quiz/api.js'
@@ -96,11 +99,21 @@ export function namaDepan(nama) {
   return nama.trim().split(/\s+/)[0] ?? ''
 }
 
-/** @param {import('../quiz/api.js').DataKuis} kuis */
+/**
+ * Aksi satu baris jadwal: tautan, ikon, dan labelnya (label jadi aria-label
+ * tombol ikon — guru tetap tahu aksi mana yang ia tekan tanpa teks di layar).
+ * @param {import('../quiz/api.js').DataKuis} kuis
+ */
 function tautanJadwal(kuis) {
-  if (kuis.sedang_berjalan) return { to: ruteMonitorKuis(kuis.id), label: 'Pantau' }
-  if (kuis.status !== 'publikasi') return { to: RUTE.kuis, label: 'Lanjutkan' }
-  return { to: ruteKuisDetail(kuis.id), label: 'Lihat detail' }
+  if (kuis.sedang_berjalan) {
+    return { to: ruteMonitorKuis(kuis.id), ikon: IkonMata, label: 'Pantau' }
+  }
+
+  if (kuis.status !== 'publikasi') {
+    return { to: RUTE.kuis, ikon: IkonPensil, label: 'Lanjutkan menyusun' }
+  }
+
+  return { to: ruteKuisDetail(kuis.id), ikon: IkonLembarSoal, label: 'Lihat detail' }
 }
 
 function BerandaTamu() {
@@ -325,9 +338,11 @@ function BerandaGuru({ user }) {
                     </span>
                   </div>
                   <span className={`badge-status ${status.jenis}`}>{status.label}</span>
-                  <TombolTaut to={tautan.to} varian="tepi" ukuran="sedang">
-                    {tautan.label}
-                  </TombolTaut>
+                  <TombolTautIkon
+                    to={tautan.to}
+                    ikon={tautan.ikon}
+                    label={`${tautan.label}: ${satu.judul}`}
+                  />
                 </article>
               )
             })}

@@ -1,7 +1,7 @@
 // Smoke slice 07 lewat browser sungguhan (Chrome DevTools Protocol):
 // guru menyalakan proteksi lewat pengaturan tiga lapis → murid melihat
 // pemberitahuannya → percobaan menempel jawaban tercatat → guru memantau
-// presence di Live Monitor dan meninjau catatannya → aliran SSE dari service
+// presence di Monitor Ulangan (dulu "Live Monitor") dan meninjau catatannya → aliran SSE dari service
 // Node dipakai sekali saja.
 //
 // Harness ini MANDIRI: ulangan + soal ujinya dibuat di awal (kelas murid uji
@@ -209,7 +209,7 @@ async function main() {
   try {
     const buatKuis = await apiJson('/v1/kuis', 'POST', {
       judul: 'SMOKE-07 Ulangan Pengaman',
-      deskripsi: 'Ulangan sementara untuk smoke proteksi, presence, dan Live Monitor.',
+      deskripsi: 'Ulangan sementara untuk smoke proteksi, presence, dan Monitor Ulangan.',
       subject_id: mapelId,
       class_id: kelasId,
       durasi_menit: 30,
@@ -286,10 +286,17 @@ async function main() {
       `${(kejadianAwal.isi ?? []).length} catatan`,
     )
 
-    // --- 4. Live Monitor guru: presence + progres + catatan ---
+    // --- 4. Monitor Ulangan guru: presence + progres + catatan ---
+    // Nama halaman berubah 12 Oktober 2026 (dulu "Live Monitor"): guru melihat
+    // "Monitor Ulangan", dan lencana jalur data (SSE/polling) sudah dibuang.
     await buka(`/kuis/${idKuisUji}/monitor`)
-    const adaMonitor = await tunggu(`window.__alat.ada('Live Monitor') && window.__alat.hitung('tbody tr') > 0`)
-    catat('halaman Live Monitor tampil dengan baris murid', adaMonitor)
+    const adaMonitor = await tunggu(`window.__alat.ada('Monitor Ulangan') && window.__alat.hitung('tbody tr') > 0`)
+    catat('halaman Monitor Ulangan tampil dengan baris murid', adaMonitor)
+
+    const adaJargon = await evalJs(
+      `window.__alat.ada('Langsung (SSE)') || window.__alat.ada('Polling 5 detik')`,
+    )
+    catat('monitor tidak memakai jargon jalur data di layar guru', adaJargon === false)
 
     const baris = await evalJs(`window.__alat.barisMonitor()`)
     const adaHadir = (baris ?? []).some((teks) => teks.includes('Hadir'))

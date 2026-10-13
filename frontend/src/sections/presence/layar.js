@@ -58,7 +58,7 @@ export const skemaLayar = z.object({
   daftar_mode: z.array(skemaModeLayar).optional(),
 })
 
-/** Respons penerbitan tiket SSE (bentuknya sama seperti tiket Live Monitor). */
+/** Respons penerbitan tiket SSE (bentuknya sama seperti tiket Monitor Ulangan). */
 export const skemaTiketSse = z.object({
   tiket: z.string(),
   expires_at: z.string(),
@@ -98,7 +98,7 @@ export async function simpanLayar(kuisId, data) {
 
 /**
  * Tiket sekali pakai untuk mengikuti kanal kuis (jalur murid — guru memakai
- * tiket Live Monitor lewat `sections/cheat/api.js`).
+ * tiket Monitor Ulangan lewat `sections/cheat/api.js`).
  * @param {number} kuisId
  * @returns {Promise<z.infer<typeof skemaTiketSse>>}
  */

@@ -1,49 +1,47 @@
 /**
- * Halaman pengaturan tiga lapis (slice 02, K-05).
+ * Halaman pengaturan **per ulangan** (slice 02, K-05; dipersempit 12 Oktober 2026).
  *
- * Siapa yang boleh menyentuh lapis mana diambil server: lingkup sekolah/kelas
- * hanya admin, lingkup kuis hanya pemilik kuisnya. Pilihan di halaman ini
- * mengikuti aturan itu supaya guru tidak disuguhi tombol yang pasti ditolak.
+ * Dulu halaman ini menawarkan tiga lingkup sekaligus (sekolah, kelas, kuis) dan
+ * karena satu instalasi = satu sekolah, lapis "sekolah" terasa seperti setelan
+ * akun. Sekarang yang diatur di sini hanya aturan **satu ulangan**: guru membuka
+ * ulangannya, menyetel proteksi/waktu/penilaian, selesai.
+ *
+ * Lapis sekolah dan kelas tetap berlaku di server dan tetap bisa **mengunci**
+ * sebuah nilai; halaman ini menampilkan akibatnya ("dikunci sekolah") tanpa lagi
+ * menjadi tempat menyetelnya. Keputusan siapa yang boleh menyentuh lapis mana
+ * tetap di server (K-05), jadi guru lain tidak bisa membuka ulangan bukan miliknya.
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ambilKelas } from '../school/api.js'
 import { ambilKuis } from '../quiz/api.js'
 import { ambilPengaturan, simpanPengaturan } from './api.js'
 import { pesanGalatApi } from '../auth/api.js'
-import { useAuthStore } from '../auth/authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { bacaLingkup, lingkupAwal, pilihanLingkup } from './lingkup.js'
 
 export default function HalamanPengaturan() {
   const queryClient = useQueryClient()
-  const user = useAuthStore((s) => s.user)
-  const sebagaiAdmin = user?.role === 'admin'
   const [pilihan, setPilihan] = useState('')
   const [angkaDraft, setAngkaDraft] = useState(/** @type {Record<string, string>} */ ({}))
   const [sibukMassal, setSibukMassal] = useState(false)
 
-  const daftarKelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
 
   const opsi = pilihanLingkup({
-    sebagaiAdmin,
-    daftarKelas: daftarKelas.data ?? [],
     daftarKuis: (daftarKuis.data ?? []).map((kuis) => ({ id: kuis.id, judul: kuis.judul })),
   })
 
   // Nilai pilihan hanya boleh salah satu dari daftar; sebelum daftarnya tiba,
-  // dipakai lingkup awal (sekolah untuk admin, kuis pertama untuk guru).
-  const aktif = opsi.some((satu) => satu.nilai === pilihan) ? pilihan : lingkupAwal(opsi, sebagaiAdmin)
+  // dipakai ulangan pertama sebagai lingkup awal.
+  const aktif = opsi.some((satu) => satu.nilai === pilihan) ? pilihan : lingkupAwal(opsi)
   const terpilih = bacaLingkup(aktif)
 
-  const kelasId = terpilih?.kelasId ?? null
   const kuisId = terpilih?.kuisId ?? null
 
   const resolusi = useQuery({
-    queryKey: ['pengaturan', kelasId, kuisId],
-    queryFn: () => ambilPengaturan(kelasId, kuisId),
+    queryKey: ['pengaturan', kuisId],
+    queryFn: () => ambilPengaturan(null, kuisId),
     enabled: terpilih !== null,
   })
 
@@ -56,13 +54,13 @@ export default function HalamanPengaturan() {
 
     return simpanPengaturan({
       lingkup: terpilih.lingkup,
-      lingkup_id: terpilih.lingkupId ?? undefined,
+      lingkup_id: terpilih.lingkupId,
       kunci: muatan.kunci,
       nilai: muatan.nilai,
-      // Kunci hanya berlaku di lapis sekolah — lapis itu yang mengalahkan
-      // lapis bawahnya.
-      terkunci: terpilih.lingkup === 'sekolah' ? muatan.terkunci : false,
-      kelas_id: kelasId ?? undefined,
+      // Halaman ini tidak lagi punya lapis sekolah, jadi tidak ada yang bisa
+      // dikunci dari sini; nilai yang sudah dikunci sekolah dilaporkan apa
+      // adanya dan tidak bisa diubah (lihat simpanBanyak).
+      terkunci: false,
       kuis_id: kuisId ?? undefined,
     })
   }
@@ -80,9 +78,9 @@ export default function HalamanPengaturan() {
    * Nyalakan/matikan sekelompok saklar sekaligus (mis. semua jenis anti-cheat).
    *
    * API menyimpan per kunci, jadi dipanggil berurutan; saklar yang dikunci
-   * sekolah dilewati saat lingkupnya bukan sekolah karena nilainya akan
-   * diabaikan — lebih baik dilaporkan daripada disimpan tanpa efek. Satu toast
-   * untuk seluruh kelompok supaya tidak membanjiri guru.
+   * sekolah dilewati karena nilainya akan diabaikan — lebih baik dilaporkan
+   * daripada disimpan tanpa efek. Satu toast untuk seluruh kelompok supaya
+   * tidak membanjiri guru.
    *
    * @param {[string, import('./api.js').NilaiPengaturan][]} daftar
    * @param {boolean} nilai
@@ -96,7 +94,7 @@ export default function HalamanPengaturan() {
 
     try {
       for (const [kunci, info] of daftar) {
-        if (info.terkunci && terpilih.lingkup !== 'sekolah') {
+        if (info.terkunci) {
           dilewati += 1
           continue
         }
@@ -132,21 +130,15 @@ export default function HalamanPengaturan() {
     <div className="row justify-content-center">
       <div className="col-lg-9">
         <div className="kartu-soft p-4 p-md-5">
-          <h1 className="h5 fw-bold mb-1">Pengaturan Tiga Lapis</h1>
+          <h1 className="h5 fw-bold mb-1">Pengaturan per Ulangan</h1>
           <p className="text-body-secondary">
-            Nilai berlaku mengikuti urutan <strong>kuis → kelas → sekolah</strong>. Bila sekolah
-            mengunci sebuah pengaturan, nilai sekolah menang dan lapis bawah diabaikan.
+            Setiap ulangan punya aturannya sendiri. Nilai di halaman ini berlaku untuk{' '}
+            <strong>ulangan yang dipilih</strong>; aturan sekolah atau kelas tetap berlaku di
+            atasnya, dan bila sekolah mengunci sebuah pengaturan, nilai sekolah yang menang.
           </p>
 
-          {!sebagaiAdmin && (
-            <p className="teks-lembut small">
-              Aturan sekolah dan kelas ditetapkan admin. Di sini kamu mengatur aturan{' '}
-              <strong>per kuis</strong> milikmu sendiri.
-            </p>
-          )}
-
           <div className="mb-4" style={{ maxWidth: '24rem' }}>
-            <label className="form-label fw-semibold" htmlFor="lingkup-pengaturan">Lingkup pengaturan</label>
+            <label className="form-label fw-semibold" htmlFor="lingkup-pengaturan">Ulangan yang diatur</label>
             <select
               id="lingkup-pengaturan"
               className="form-select"
@@ -157,7 +149,7 @@ export default function HalamanPengaturan() {
                 setAngkaDraft({})
               }}
             >
-              {opsi.length === 0 && <option value="">Belum ada lingkup yang bisa diatur</option>}
+              {opsi.length === 0 && <option value="">Belum ada ulangan yang bisa diatur</option>}
               {opsi.map((satu) => (
                 <option key={satu.nilai} value={satu.nilai}>{satu.label}</option>
               ))}
@@ -236,12 +228,12 @@ export default function HalamanPengaturan() {
                         // Saklar yang dikunci sekolah tidak bisa diubah dari lapis
                         // bawah; mematikannya di sini hanya akan menyimpan nilai
                         // yang diabaikan, jadi tombolnya dimatikan saja.
-                        disabled={simpan.isPending || sibukMassal || (info.terkunci && terpilih?.lingkup !== 'sekolah')}
+                        disabled={simpan.isPending || sibukMassal || info.terkunci}
                         onChange={(e) => simpan.mutate({ kunci, nilai: e.target.checked, terkunci: info.terkunci })}
                       />
                       <label className="form-check-label small" htmlFor={`set-${kunci}`}>
                         {info.nilai ? 'Aktif' : 'Nonaktif'}
-                        {info.terkunci && terpilih?.lingkup !== 'sekolah' ? ' · dikunci sekolah' : ''}
+                        {info.terkunci ? ' · dikunci sekolah' : ''}
                       </label>
                     </div>
                   )}
@@ -256,12 +248,13 @@ export default function HalamanPengaturan() {
                         className="form-control form-control-sm"
                         style={{ width: '6rem' }}
                         value={angkaDraft[kunci] ?? String(info.nilai)}
-                        disabled={simpan.isPending}
+                        disabled={simpan.isPending || info.terkunci}
                         onChange={(e) => setAngkaDraft({ ...angkaDraft, [kunci]: e.target.value })}
                       />
                       <Tombol
                         ukuran="sedang"
                         memuat={simpan.isPending}
+                        disabled={info.terkunci}
                         onClick={() => simpan.mutate({
                           kunci,
                           nilai: Number(angkaDraft[kunci] ?? info.nilai),
@@ -270,22 +263,6 @@ export default function HalamanPengaturan() {
                       >
                         Simpan
                       </Tombol>
-                    </div>
-                  )}
-
-                  {terpilih?.lingkup === 'sekolah' && (
-                    <div className="form-check m-0">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id={`kunci-${kunci}`}
-                        checked={info.terkunci}
-                        disabled={simpan.isPending}
-                        onChange={(e) => simpan.mutate({ kunci, nilai: info.nilai, terkunci: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor={`kunci-${kunci}`}>
-                        Kunci di sekolah
-                      </label>
                     </div>
                   )}
                 </div>
