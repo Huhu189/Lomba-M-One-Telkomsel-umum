@@ -29,6 +29,8 @@ class KuisMuridResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Alamat kuis yang dipakai klien: slug acak, bukan id berurutan.
+            'slug' => $this->slug,
             'judul' => $this->judul,
             'deskripsi' => $this->deskripsi,
             'status' => $this->status->value,

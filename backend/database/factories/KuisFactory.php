@@ -26,6 +26,7 @@ class KuisFactory extends Factory
             'subject_id' => Mapel::factory(),
             'class_id' => Kelas::factory(),
             'judul' => 'Kuis '.fake()->unique()->numberBetween(1, 99999),
+            'slug' => Kuis::slugBaru(),
             'deskripsi' => null,
             'status' => StatusKuis::Draf,
             'mulai_at' => null,

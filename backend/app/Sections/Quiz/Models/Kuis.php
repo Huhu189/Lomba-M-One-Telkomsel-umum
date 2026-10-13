@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Kuis: jadwal + durasi + mapel + kelas, dengan status draf/publikasi/arsip.
@@ -24,7 +25,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'school_id', 'subject_id', 'class_id', 'judul', 'deskripsi', 'status',
     'mulai_at', 'selesai_at', 'durasi_menit', 'acak_soal', 'acak_opsi',
-    'publikasi_at', 'dibuat_oleh',
+    'publikasi_at', 'dibuat_oleh', 'slug',
 ])]
 class Kuis extends Model
 {
@@ -37,6 +38,52 @@ class Kuis extends Model
     }
 
     protected $table = 'quizzes';
+
+    /**
+     * URL kuis memakai slug, bukan id berurutan.
+     *
+     * Dengan `/kuis/191`, siapa pun yang sudah masuk bisa menyisir id dan
+     * menebak kuis mana yang ada; slug acak menghilangkan pintu itu. Otorisasi
+     * tetap pagar utamanya — slug hanya membuat alamatnya tidak bisa ditebak.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Cari kuis dari slug **atau** id.
+     *
+     * Cadangan id sengaja dipertahankan supaya tautan lama, berkas uji, dan
+     * harness smoke yang masih memakai angka tetap hidup; yang berubah adalah
+     * alamat yang dibagikan/dibuat aplikasi (selalu slug). Tanpa cadangan ini
+     * setiap `/kuis/191` yang beredar akan berubah jadi 404.
+     */
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        $kueri = $this->newQuery()->where('slug', $value);
+
+        if (is_numeric($value)) {
+            $kueri->orWhere($this->getKeyName(), (int) $value);
+        }
+
+        return $kueri->first();
+    }
+
+    /**
+     * Slug acak yang belum dipakai kuis lain.
+     *
+     * Diperiksa ke basis data (bukan hanya acak-asal) karena kolomnya unik:
+     * tumbukan akan melempar galat basis data di tengah penyimpanan guru.
+     */
+    public static function slugBaru(): string
+    {
+        do {
+            $slug = Str::lower(Str::random(8));
+        } while (static::query()->where('slug', $slug)->exists());
+
+        return $slug;
+    }
 
     protected $casts = [
         'status' => StatusKuis::class,

@@ -29,6 +29,9 @@ class KuisService
             'school_id' => $sekolah->getKey(),
             'status' => StatusKuis::Draf,
             'dibuat_oleh' => $guru->getKey(),
+            // Slug dibuat server, bukan diterima dari klien: kalau klien yang
+            // memilih, dua guru bisa saling menebak atau saling menimpa alamat.
+            'slug' => Kuis::slugBaru(),
         ])->save();
 
         return $kuis->refresh();
