@@ -19,10 +19,11 @@
  */
 
 :root {
-  /* Ukuran tulisan (papan putaran 3): SATU variabel --s mengalikan seluruh
-   * skala — huruf, jarak, tinggi kepala. Normal 1 untuk semua orang; Besar
-   * 1,12 untuk murid kecil atau layar jauh. Papan putaran 2 punya tiga pilihan
-   * (Rapat/Normal/Besar); "Rapat" dibuang karena selisihnya tak terasa.
+  /* Skala ukuran (papan putaran 3): SATU variabel --s mengalikan seluruh skala
+   * — huruf, jarak, tinggi kepala. Nilainya tetap 1: dulu diubah tombol
+   * "Normal/Besar" di bilah atas, dan tombol itu sudah dibuang (12 Okt 2026).
+   * Kalau suatu saat skala lain dibutuhkan lagi, ini tetap satu-satunya tempat
+   * mengubahnya.
    *
    * Ukuran berbasis rem (85 deklarasi font-size + utilitas Bootstrap) tidak
    * perlu diubah satu per satu: font-size <html> sendiri ikut --s, jadi
@@ -136,13 +137,6 @@
   --bs-border-color: var(--garis);
   --bs-border-radius: var(--radius);
   --bs-secondary-color: var(--teks-lembut);
-}
-
-/* Ukuran "Besar": satu-satunya tempat --s diubah. Atributnya dipasang di
- * <html> oleh shared/store/tema.js, jadi nilainya sudah benar sebelum React
- * merender (tidak ada kedipan kecil → besar). */
-:root[data-ukuran='besar'] {
-  --s: 1.12;
 }
 
 [data-bs-theme='dark'] {
@@ -2144,14 +2138,17 @@ a {
 
 @media (min-width: 992px) {
   .papan-nav {
-    position: sticky;
-    top: var(--tinggi-kepala);
+    /* Panel tidak dikunci setinggi jendela lagi (12 Okt 2026): tingginya
+     * mengikuti isi menu dan ikut tergulir bersama halaman, sehingga TIDAK ada
+     * scrollbar di dalam panel. Cara lama (`position: sticky` + `height:
+     * 100vh − kepala` + `overflow-y: auto`) memang membuat menu selalu terlihat,
+     * tapi memaksa panel menggulir sendiri begitu jendela lebih pendek dari
+     * daftar menu (kelebihan 84 px di 1366×720, 184 px di 1024×620) — dan
+     * pemilik produk memilih menu yang ikut halaman ketimbang scrollbar itu. */
     flex: 0 0 260px;
     width: 260px;
     align-self: flex-start;
-    height: calc(100vh - var(--tinggi-kepala));
-    max-height: none;
-    overflow-y: auto;
+    overflow: visible;
     /* Menempel rata ke tepi layar: tanpa sudut membulat dan tanpa bayangan
      * melayang. Padding dalam tetap ada agar teks menu tidak menyentuh tepi. */
     border-radius: 0;
@@ -3308,6 +3305,22 @@ a {
   color: var(--teks-lembut);
 }
 
+/* Pautan di dalam jejak (mis. "Kuis / Ulangan Pecahan"): teksnya 14 px, jadi
+ * kotak sentuhnya digemukkan ke 44 px tanpa menggeser tampilan — tambahan
+ * tingginya ditarik kembali dengan margin negatif. Dengan begitu pautan sebaris
+ * di kepala halaman tetap sasaran yang ramah jari, sama seperti tombol lain. */
+.kepala-halaman-jejak a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--sp-2);
+  /* Cadangan untuk peramban tanpa satuan `lh`: tinggi baris teks jejak 22 px,
+   * jadi separuh kelebihannya 11 px. Peramban modern memakai baris di bawah. */
+  margin-block: -11px;
+  margin-block: calc((44px - 1lh) / -2);
+  margin-inline: calc(var(--sp-2) * -1);
+}
+
 .kepala-halaman-deskripsi {
   color: var(--teks-lembut);
   max-width: 70ch;
@@ -3360,7 +3373,7 @@ a {
   white-space: nowrap;
 }
 
-/* Kolom progres Live Monitor: batang + teks butuh lebar tetap. */
+/* Kolom progres Monitor Ulangan: batang + teks butuh lebar tetap. */
 .tabel-data .kolom-progres {
   min-width: 9rem;
 }
@@ -3743,6 +3756,17 @@ a {
 }
 
 /* Petak ringkasan (mis. kelas / jadwal / jumlah soal sebelum terbit). */
+/* Hasil akhir susunan kuis (12 Oktober 2026): dipisah garis dari daftar
+ * soalnya supaya terbaca sebagai kesimpulan di bawah, bukan baris soal. */
+.ringkas-susunan-akhir {
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--garis);
+}
+
+.ringkas-susunan-akhir strong {
+  font-size: 1.05rem;
+}
+
 .petak-ringkas {
   padding: var(--sp-3) var(--sp-4);
   background-color: var(--kartu-lembut);
@@ -3793,9 +3817,12 @@ a {
 }
 
 /* -------------------------------------------------------------------------
- * Pemilih jenis soal ringkas (papan 11 revisi): kartu lipat di paling bawah
- * formulir. Semua tipe tampil sekaligus sebagai petak berikon — lebih ringkas
- * daripada deretan pil, dan tetap sasaran sentuh ≥44 px.
+ * Pemilih jenis soal ringkas (papan 11 revisi). Sejak 12 Oktober 2026 petak
+ * ini ada di PALING ATAS formulir sebagai langkah 1 — pilih tipe dulu, baru
+ * isian khusus tipe itu muncul (permintaan pemilik produk: "spesifik per soal,
+ * jangan dipaksa semua dalam isian"). Semua tipe tampil sekaligus sebagai
+ * petak berikon — lebih ringkas daripada deretan pil, dan tetap sasaran
+ * sentuh ≥44 px.
  * ------------------------------------------------------------------------- */
 .pemilih-jenis > summary {
   display: flex;
@@ -3810,6 +3837,19 @@ a {
   text-decoration: underline;
 }
 
+/* Chip jenis soal adalah ringkasan <details>: tandanya (segitiga) disembunyikan
+ * supaya tampil seperti tombol, dan isi petak diberi jarak saat dibuka
+ * (13 Oktober 2026 — 22 petak dilipat demi menaikkan pertanyaan & pilihan). */
+.pemilih-jenis > summary::marker,
+.pemilih-jenis > summary::-webkit-details-marker {
+  display: none;
+  content: '';
+}
+
+.pemilih-jenis[open] > summary {
+  margin-bottom: var(--sp-2);
+}
+
 .pemilih-jenis-terpilih {
   display: inline-flex;
   align-items: center;
@@ -3819,6 +3859,96 @@ a {
   color: var(--latar);
   background-color: var(--teks);
   border-radius: 999px;
+}
+
+/* Kesimpulan kunci jawaban di bawah soal (12 Oktober 2026): guru membaca satu
+ * kalimat "jawaban benar" untuk seluruh soal, bukan hanya radio per opsi.
+ * Diberi garis tepi kiri supaya terbaca sebagai kesimpulan, bukan isian. */
+.ringkas-kunci-soal {
+  padding: 0.6rem 0.85rem;
+  border-left: 4px solid var(--aksen);
+  background-color: var(--kartu-lembut);
+  border-radius: var(--radius-kecil);
+}
+
+.ringkas-kunci-soal strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* -------------------------------------------------------------------------
+ * Kartu pertanyaan ala editor soal (13 Oktober 2026).
+ *
+ * Permintaan pemilik produk: pilihan jawaban ditaruh langsung di dalam editor
+ * di bawah pertanyaannya, seperti kartu pertanyaan Google Forms. Jadi tiap
+ * pilihan kini satu baris penuh — lingkaran kunci di paling kiri, huruf opsi,
+ * lalu isian teks. Poin duduk di kanan atas pertanyaan.
+ *
+ * Pilihan yang jadi kunci ditandai garis aksen + latar hangat (bukan warna
+ * saja), dan kotak centang/radio tetap ≥44px di layar kecil untuk ramah anak.
+ * ------------------------------------------------------------------------- */
+.baris-opsi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  padding: 0.35rem 0.5rem;
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis-input);
+  border-radius: var(--radius-kecil);
+}
+
+.baris-opsi.kunci {
+  background-color: var(--sorot-hangat);
+  border-color: var(--aksen);
+}
+
+.pilih-opsi {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.pilih-opsi .form-check-input {
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0;
+}
+
+/* Poin di kanan atas kartu soal (pola kartu pertanyaan). */
+.poin-soal {
+  width: 6.5rem;
+}
+
+.poin-soal .form-control {
+  text-align: center;
+}
+
+/* Kotak pertanyaan utama sedikit lebih lega daripada isian lain. */
+.soal-teks-utama {
+  min-height: 5.5rem;
+}
+
+@media (min-width: 992px) {
+  /* Di layar lebar editor bersifat padat (lihat blok .editor-soal di bawah). */
+  .editor-soal .baris-opsi {
+    padding: 0.2rem 0.4rem;
+    margin-bottom: var(--sp-1);
+  }
+
+  .editor-soal .pilih-opsi {
+    min-height: 32px;
+  }
+
+  .editor-soal .pilih-opsi .form-check-input {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
 }
 
 .petak-tipe {

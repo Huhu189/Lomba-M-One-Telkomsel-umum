@@ -8,7 +8,7 @@
  * memakai renderer yang sama dengan layar murid — jadi yang dilihat guru persis
  * yang dilihat murid.
  */
-import { createElement, useState } from 'react'
+import { createElement, useRef, useState } from 'react'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
 import { IkonTambah, IkonTipeIsianSingkat, IkonTongSampah } from '../../icons.jsx'
@@ -52,6 +52,9 @@ import {
   stateSoalKosong,
 } from './tipeSoal.js'
 import { kelengkapanSoal, siapSoal, validasiSoal } from './validasi.js'
+// Ringkasan kunci yang sama dipakai halaman Koreksi — satu cara membaca kunci
+// untuk semua tipe soal, jadi guru melihat kesimpulan yang konsisten.
+import { ringkasKunci } from '../scoring/tampilan.js'
 
 /**
  * Elemen ikon untuk satu jenis soal. Sengaja mengembalikan **elemen** (lewat
@@ -230,6 +233,21 @@ export default function EditorSoal({
     soal === null ? { ...stateSoalKosong(), subject_id: mapelAwal } : stateDariSoal(soal),
   )
   const [galat, setGalat] = useState(/** @type {string[]} */ ([]))
+  // Pemilih jenis soal dilipat jadi satu chip (13 Oktober 2026). Guru menulis
+  // lebih cepat karena 22 petak tidak lagi mendorong pertanyaan & pilihannya ke
+  // bawah; begitu satu jenis dipilih, daftarnya menutup sendiri.
+  const jenisRef = useRef(/** @type {HTMLDetailsElement|null} */ (null))
+
+  /**
+   * Soal ini dipakai kuis yang sedang berjalan (12 Okt 2026).
+   *
+   * Isi soal tetap boleh diperbaiki — guru sering menemukan salah ketik saat
+   * ulangan sudah jalan, dan perubahan langsung terlihat murid yang sedang
+   * mengerjakan (layar pengerjaan memeriksa cap versi isi soal). Yang tidak
+   * boleh berubah adalah kunci jawaban, skor, dan jenis soal, karena penilaian
+   * attempt yang sedang berjalan memakai ketiganya.
+   */
+  const terkunci = soal?.terkunci === true
 
   /**
    * @param {Partial<import('./tipeSoal.js').StateSoal>} perubahan
@@ -737,83 +755,153 @@ export default function EditorSoal({
     <div className="row g-3 align-items-start editor-soal">
       <div className="col-lg-8">
         <div className="d-flex flex-column gap-3">
+          {terkunci && (
+            <Banner jenis="info" judul="Kuis yang memakai soal ini sedang berjalan">
+              <p className="mb-0">
+                Isi soal masih boleh kamu perbaiki, dan perubahan langsung terlihat murid yang
+                sedang mengerjakan. Yang belum bisa diubah sampai ulangannya selesai:{' '}
+                <strong>kunci jawaban, skor, dan jenis soal</strong> — penilaian ulangan yang
+                sedang berjalan memakai ketiganya.
+              </p>
+            </Banner>
+          )}
+
+          {/*
+            Langkah pertama adalah JENIS soal — bukan satu formulir panjang
+            (12 Oktober 2026, permintaan pemilik produk: "spesifik per soal,
+            jangan dipaksa semua dalam isian"). Begitu tipe dipilih, bagian di
+            bawahnya hanya menampilkan isian yang memang khusus untuk tipe itu.
+          */}
+          {/*
+            Jenis soal tetap dipilih lebih dulu, tetapi 22 petaknya kini **dilipat
+            jadi satu chip** (13 Oktober 2026). Dengan begitu pertanyaan dan
+            pilihan jawabannya naik ke layar tanpa digeser — guru yang paling
+            sering membuat pilihan ganda langsung bisa menulis. Chip menunjukkan
+            jenis aktif; menekannya membuka 22 petak berikon, dan memilih satu
+            petak menutupnya lagi.
+          */}
           <section className="kartu-soft p-3" aria-labelledby="soal-judul-1">
-            <h2 id="soal-judul-1" className="judul-bagian">1. Tulis soalnya</h2>
+            <h2 id="soal-judul-1" className="judul-bagian">1. Pilih jenis soal</h2>
 
-            <div className="row g-2">
-              <div className="col-sm-6">
-                <div className="bidang">
-                  <label className="form-label" htmlFor="soal-mapel">Mapel</label>
-                  <select
-                    id="soal-mapel"
-                    className="form-select"
-                    value={state.subject_id}
-                    onChange={(e) => ubah({ subject_id: e.target.value })}
-                  >
-                    <option value="">Pilih mapel…</option>
-                    {daftarMapel.map((mapel) => (
-                      <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            {terkunci ? (
+              <>
+                <p className="pemilih-jenis-terpilih mb-2">
+                  <span className="petak-tipe-ikon" aria-hidden="true">
+                    {ikonJenis(state.tipe, 20)}
+                  </span>
+                  {LABEL_TIPE[state.tipe] ?? state.tipe}
+                  <span className="teks-lembut small"> · terkunci</span>
+                </p>
+                <p className="teks-lembut small mb-0">
+                  Jenis soal tidak bisa diganti selama kuis berjalan: menggantinya berarti mengganti
+                  kunci dan cara penilaian untuk murid yang sedang mengerjakan.
+                </p>
+              </>
+            ) : (
+              <details className="pemilih-jenis" ref={jenisRef}>
+                <summary>
+                  <span className="pemilih-jenis-terpilih">
+                    <span className="petak-tipe-ikon" aria-hidden="true">
+                      {ikonJenis(state.tipe, 20)}
+                    </span>
+                    {LABEL_TIPE[state.tipe] ?? state.tipe}
+                  </span>
+                  <span className="teks-lembut small">
+                    Ketuk untuk ganti jenis soal ({DAFTAR_TIPE.length} jenis)
+                  </span>
+                </summary>
 
-              <div className="col-sm-6">
-                <div className="bidang">
-                  <label className="form-label" htmlFor="soal-tag">
-                    Tema (tag) <span className="teks-lembut fw-normal">opsional</span>
-                  </label>
-                  <select
-                    id="soal-tag"
-                    className="form-select"
-                    value={state.tag_id}
-                    onChange={(e) => ubah({ tag_id: e.target.value })}
-                  >
-                    <option value="">Tanpa tag</option>
-                    {daftarTag.map((tag) => (
-                      <option key={tag.id} value={String(tag.id)}>{tag.nama}</option>
-                    ))}
-                  </select>
+                <div role="radiogroup" aria-label="Jenis soal" className="petak-tipe">
+                  {DAFTAR_TIPE.map((tipe) => {
+                    const aktif = state.tipe === tipe.nilai
+
+                    return (
+                      <button
+                        key={tipe.nilai}
+                        type="button"
+                        role="radio"
+                        aria-checked={aktif}
+                        className="petak-tipe-tombol"
+                        onClick={() => {
+                          ubah({ tipe: tipe.nilai })
+                          if (jenisRef.current) jenisRef.current.open = false
+                        }}
+                      >
+                        <span className="petak-tipe-ikon" aria-hidden="true">
+                          {ikonJenis(tipe.nilai)}
+                        </span>
+                        <span className="petak-tipe-label">{tipe.label}</span>
+                        {tipe.objektif ? null : <span className="petak-tipe-tanda">perlu tinjau</span>}
+                      </button>
+                    )
+                  })}
                 </div>
+              </details>
+            )}
+          </section>
+
+          {/*
+            Kartu soal mengikuti pola "kartu pertanyaan": pertanyaan di paling
+            atas, poin di kanan atas, lalu jawaban menempel langsung di bawahnya
+            (13 Oktober 2026, permintaan pemilik produk). Mapel & tag pindah ke
+            kartu Pengaturan supaya guru langsung menulis soal tanpa gangguan.
+          */}
+          <section className="kartu-soft p-3" aria-labelledby="soal-judul-2">
+            <div className="d-flex flex-wrap align-items-end justify-content-between gap-3">
+              <h2 id="soal-judul-2" className="judul-bagian mb-0">2. Tulis soalnya</h2>
+
+              <div className="bidang poin-soal">
+                <label className="form-label" htmlFor="soal-skor">Poin</label>
+                <input
+                  id="soal-skor"
+                  className="form-control"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={state.skor}
+                  disabled={terkunci}
+                  aria-describedby={terkunci ? 'soal-skor-alasan' : undefined}
+                  onChange={(e) => ubah({ skor: e.target.value })}
+                />
+                {terkunci && (
+                  <span id="soal-skor-alasan" className="teks-lembut small">
+                    Poin terkunci selama kuis berjalan.
+                  </span>
+                )}
               </div>
             </div>
 
             {state.tipe !== TIPE.susunHuruf && (
-              <div className="bidang mt-3">
+              <div className="bidang mt-2">
                 <label className="form-label" htmlFor="soal-teks">
-                  Isi soal
+                  Pertanyaan
                   {TIPE_TANPA_TEKS.includes(state.tipe) && (
                     <span className="teks-lembut fw-normal"> opsional</span>
                   )}
                 </label>
                 <textarea
                   id="soal-teks"
-                  className="form-control"
+                  className="form-control soal-teks-utama"
                   rows={3}
                   value={state.teks}
                   onChange={(e) => ubah({ teks: e.target.value })}
-                  placeholder="Tulis pertanyaan…"
+                  placeholder="Tulis pertanyaannya…"
                 />
               </div>
             )}
 
             {state.tipe === TIPE.pilihanGanda && (
-              <fieldset className="mt-2">
+              <fieldset className="mt-3">
                 <legend className="fw-bold fs-6">
-                  Pilihan jawaban dan kunci ({MIN_OPSI}–{MAKS_OPSI})
+                  Pilihan jawaban ({MIN_OPSI}–{MAKS_OPSI}) — tandai yang benar
                 </legend>
 
                 {state.opsi.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
-                    <input
-                      className="form-control flex-grow-1"
-                      aria-label={`Teks opsi ${satu.id}`}
-                      value={satu.teks}
-                      onChange={(e) => ubahOpsi(index, e.target.value)}
-                      placeholder="Tulis pilihan"
-                    />
-                    <label className="label-kunci" htmlFor={`kunci-${satu.id}`}>
+                  <div
+                    key={satu.id}
+                    className={`baris-opsi${state.jawaban === satu.id ? ' kunci' : ''}`}
+                  >
+                    <label className="pilih-opsi" htmlFor={`kunci-${satu.id}`}>
                       <input
                         className="form-check-input"
                         type="radio"
@@ -821,9 +909,17 @@ export default function EditorSoal({
                         id={`kunci-${satu.id}`}
                         checked={state.jawaban === satu.id}
                         onChange={() => ubah({ jawaban: satu.id })}
+                        aria-label={`Tandai ${satu.id} sebagai jawaban benar`}
                       />
-                      Kunci
+                      <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     </label>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks opsi ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahOpsi(index, e.target.value)}
+                      placeholder={`Opsi ${index + 1}`}
+                    />
                     <TombolIkon
                       label={`Hapus pilihan ${satu.id}`}
                       ikon={IkonTongSampah}
@@ -1192,32 +1288,34 @@ export default function EditorSoal({
             )}
 
             {state.tipe === TIPE.pilihanGandaKompleks && (
-              <fieldset className="mt-2">
+              <fieldset className="mt-3">
                 <legend className="fw-bold fs-6">
-                  Pilihan jawaban dan kunci ({MIN_OPSI_KOMPLEKS}–{MAKS_OPSI_KOMPLEKS})
+                  Pilihan jawaban ({MIN_OPSI_KOMPLEKS}–{MAKS_OPSI_KOMPLEKS}) — tandai semua yang benar
                 </legend>
-                <p className="teks-lembut small">Tandai semua pilihan yang benar.</p>
 
                 {state.opsi.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
-                    <input
-                      className="form-control flex-grow-1"
-                      aria-label={`Teks opsi ${satu.id}`}
-                      value={satu.teks}
-                      onChange={(e) => ubahOpsi(index, e.target.value)}
-                      placeholder="Tulis pilihan"
-                    />
-                    <label className="label-kunci" htmlFor={`kunci-kompleks-${satu.id}`}>
+                  <div
+                    key={satu.id}
+                    className={`baris-opsi${state.benarKompleks.includes(satu.id) ? ' kunci' : ''}`}
+                  >
+                    <label className="pilih-opsi" htmlFor={`kunci-kompleks-${satu.id}`}>
                       <input
                         className="form-check-input"
                         type="checkbox"
                         id={`kunci-kompleks-${satu.id}`}
                         checked={state.benarKompleks.includes(satu.id)}
                         onChange={(e) => ubahKunciKompleks(satu.id, e.target.checked)}
+                        aria-label={`Tandai ${satu.id} sebagai jawaban benar`}
                       />
-                      Kunci
+                      <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
                     </label>
+                    <input
+                      className="form-control flex-grow-1"
+                      aria-label={`Teks opsi ${satu.id}`}
+                      value={satu.teks}
+                      onChange={(e) => ubahOpsi(index, e.target.value)}
+                      placeholder={`Opsi ${index + 1}`}
+                    />
                     <TombolIkon
                       label={`Hapus pilihan ${satu.id}`}
                       ikon={IkonTongSampah}
@@ -2003,42 +2101,84 @@ export default function EditorSoal({
                   </Tombol>
                 </fieldset>
               ))}
+            {/*
+              Kesimpulan kunci diletakkan di BAWAH soal (12 Oktober 2026): guru
+              melihat satu kalimat "jawaban benar" untuk seluruh soal, tidak
+              hanya tersebar di radio tiap opsi/barisnya.
+            */}
+            <div className="ringkas-kunci-soal mt-3" role="status">
+              <span className="teks-lembut small d-block">Kunci jawaban soal ini</span>
+              <strong>{ringkasKunci(muatan.kunci)}</strong>
+              {(state.tipe === TIPE.pilihanGanda || state.tipe === TIPE.pilihanGandaKompleks) && (
+                <span className="teks-lembut small d-block mt-1">
+                  Tandai jawaban benar lewat lingkaran di kiri tiap pilihan — ringkasan di atas ikut
+                  berubah.
+                </span>
+              )}
+            </div>
           </section>
 
-          <section className="kartu-soft p-3" aria-labelledby="soal-judul-2">
-            <h2 id="soal-judul-2" className="judul-bagian">2. Pengaturan soal</h2>
+          <section className="kartu-soft p-3" aria-labelledby="soal-judul-3">
+            <h2 id="soal-judul-3" className="judul-bagian">3. Pengaturan soal</h2>
 
-            <div className="row g-3 align-items-end">
-              <div className="col-sm-4">
+            <div className="row g-3">
+              <div className="col-sm-6">
                 <div className="bidang">
-                  <label className="form-label" htmlFor="soal-skor">Skor</label>
-                  <input
-                    id="soal-skor"
-                    className="form-control"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={state.skor}
-                    onChange={(e) => ubah({ skor: e.target.value })}
-                  />
+                  <label className="form-label" htmlFor="soal-mapel">Mapel</label>
+                  <select
+                    id="soal-mapel"
+                    className="form-select"
+                    value={state.subject_id}
+                    onChange={(e) => ubah({ subject_id: e.target.value })}
+                  >
+                    <option value="">Pilih mapel…</option>
+                    {daftarMapel.map((mapel) => (
+                      <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="col-sm-8">
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    id="soal-aktif"
-                    checked={state.aktif}
-                    onChange={(e) => ubah({ aktif: e.target.checked })}
-                  />
-                  <label className="form-check-label" htmlFor="soal-aktif">
-                    Soal aktif (soal nonaktif tidak bisa diterbitkan di dalam kuis)
+              <div className="col-sm-6">
+                <div className="bidang">
+                  <label className="form-label" htmlFor="soal-tag">
+                    Tema (tag) <span className="teks-lembut fw-normal">opsional</span>
                   </label>
+                  <select
+                    id="soal-tag"
+                    className="form-select"
+                    value={state.tag_id}
+                    onChange={(e) => ubah({ tag_id: e.target.value })}
+                  >
+                    <option value="">Tanpa tag</option>
+                    {daftarTag.map((tag) => (
+                      <option key={tag.id} value={String(tag.id)}>{tag.nama}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+            </div>
+
+            <div className="form-check form-switch mt-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="soal-aktif"
+                checked={state.aktif}
+                disabled={terkunci}
+                onChange={(e) => ubah({ aktif: e.target.checked })}
+              />
+              <label className="form-check-label" htmlFor="soal-aktif">
+                Soal aktif (soal nonaktif tidak bisa diterbitkan di dalam kuis)
+                {terkunci && (
+                  <span className="teks-lembut">
+                    {' '}
+                    — tidak bisa dinonaktifkan saat kuis berjalan, karena jawaban murid yang
+                    sedang mengerjakan akan ikut hilang.
+                  </span>
+                )}
+              </label>
             </div>
 
             <div className="bidang mt-3">
@@ -2102,48 +2242,6 @@ export default function EditorSoal({
             )}
           </section>
 
-          {/*
-            Pemilih jenis soal diletakkan paling bawah dan bisa dilipat: semua
-            tipe tampil sekaligus sebagai petak berikon (lebih ringkas daripada
-            deretan pil), sedangkan ringkasannya tetap memperlihatkan tipe yang
-            sedang aktif walau lipatan ditutup.
-          */}
-          <section className="kartu-soft p-3" aria-labelledby="soal-judul-3">
-            <details className="pemilih-jenis" open>
-              <summary>
-                <h2 id="soal-judul-3" className="judul-bagian mb-0">3. Pilih jenis soal</h2>
-                <span className="pemilih-jenis-terpilih">
-                  <span className="petak-tipe-ikon" aria-hidden="true">
-                    {ikonJenis(state.tipe, 20)}
-                  </span>
-                  {LABEL_TIPE[state.tipe] ?? state.tipe}
-                </span>
-              </summary>
-
-              <div role="radiogroup" aria-label="Jenis soal" className="petak-tipe">
-                {DAFTAR_TIPE.map((tipe) => {
-                  const aktif = state.tipe === tipe.nilai
-
-                  return (
-                    <button
-                      key={tipe.nilai}
-                      type="button"
-                      role="radio"
-                      aria-checked={aktif}
-                      className="petak-tipe-tombol"
-                      onClick={() => ubah({ tipe: tipe.nilai })}
-                    >
-                      <span className="petak-tipe-ikon" aria-hidden="true">
-                        {ikonJenis(tipe.nilai)}
-                      </span>
-                      <span className="petak-tipe-label">{tipe.label}</span>
-                      {tipe.objektif ? null : <span className="petak-tipe-tanda">perlu tinjau</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </details>
-          </section>
         </div>
       </div>
 
