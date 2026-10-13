@@ -25,6 +25,7 @@ import {
   IkonPensil,
   IkonSilang,
   IkonTambah,
+  IkonTautan,
   IkonTongSampah,
 } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
@@ -45,6 +46,8 @@ import {
 } from './api.js'
 import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from './status.js'
 import { LANGKAH_KUIS, kelengkapanKuis, ringkasJadwal, siapTerbit, totalPoin } from './susunKuis.js'
+import { LABEL_SUMBER, catatanTautan, ringkasSetelan, tautanSiswa } from './setelanSesi.js'
+import { ambilPengaturan } from '../settings/api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
@@ -107,6 +110,10 @@ export default function HalamanKuis() {
    */
   const [soalBaru, setSoalBaru] = useState(false)
   const [soalBaruKe, setSoalBaruKe] = useState(0)
+  // Tautan siswa dibuat atas permintaan (bukan tampil terus) supaya langkah
+  // tinjau tetap ringkas; sekali ditekan, ia tetap tampil sampai halaman
+  // ditutup supaya guru bisa menyalinnya berkali-kali.
+  const [tautanTampil, setTautanTampil] = useState(false)
 
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
@@ -129,6 +136,17 @@ export default function HalamanKuis() {
   // Ringkasan langkah 3 ikut berubah saat guru mengetik (useWatch, bukan watch(),
   // supaya React Compiler tidak melewati komponen ini).
   const nilai = { ...nilaiAwal, ...useWatch({ control, defaultValue: nilaiAwal }) }
+
+  // Setelan yang benar-benar berlaku untuk sesi ini (resolusi tiga lapis:
+  // kuis → kelas → sekolah). Diambil hanya saat guru sampai di langkah tinjau,
+  // dan hanya untuk kuis yang sudah punya id — draf yang belum tersimpan
+  // memang belum punya setelan sendiri.
+  const setelanSesi = useQuery({
+    queryKey: ['pengaturan', 'sesi-kuis', editor?.id ?? null, nilai.class_id],
+    queryFn: () => ambilPengaturan(Number(nilai.class_id) || null, editor?.id ?? null),
+    enabled: langkah === 2 && editor !== null && editor.id !== null,
+    staleTime: 30_000,
+  })
 
   const segarkan = async () => {
     await queryClient.invalidateQueries({ queryKey: ['kuis'] })
@@ -336,6 +354,25 @@ export default function HalamanKuis() {
     adaSoalNonaktif,
   })
   const bisaTerbit = siapTerbit(kelengkapan)
+
+  // Ringkasan setelan + tautan siswa untuk langkah tinjau. Seluruh aturannya ada
+  // di `setelanSesi.js` (murni, diuji Vitest); di sini hanya dipanggil.
+  const ringkas = ringkasSetelan(setelanSesi.data)
+  const tautan = tautanSiswa(editor?.id ?? 0, typeof window === 'undefined' ? '' : window.location.origin)
+  const catatan = catatanTautan({ status: editor?.status ?? 'draf', tamuAktif: ringkas.tamu.aktif })
+
+  /** Salin tautan siswa; bila peramban menolak, katakan apa adanya — jangan diam. */
+  async function salinTautan() {
+    if (tautan === '') return
+
+    try {
+      if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('tanpa klip papan')
+      await navigator.clipboard.writeText(tautan)
+      tampilkanToast('sukses', 'Tautan siswa disalin.')
+    } catch {
+      tampilkanToast('info', 'Peramban ini tidak mengizinkan salin otomatis. Salin tautannya dari kotak di bawah.')
+    }
+  }
 /** Label & warna lencana status kuis di kepala halaman editor. */
 const LABEL_STATUS = /** @type {Record<string, string>} */ ({ draf: 'Draf', publikasi: 'Terbit', arsip: 'Diarsipkan' })
 const JENIS_STATUS = /** @type {Record<string, string>} */ ({
@@ -517,7 +554,8 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               <p className="teks-lembut small">
                 Pengaturan lanjutan (percobaan ulang, peringkat, dan jenis anti-cheat) mengikuti
                 pengaturan sekolah atau kelas. Khusus kuis ini, atur sendiri di{' '}
-                <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis”.
+                <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis” — ringkasan yang
+                benar-benar menyala muncul di langkah 3.
               </p>
 
               <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
@@ -638,9 +676,6 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                   <div className="kartu-soft p-4 h-100">
                     <div className="d-flex align-items-baseline gap-2">
                       <h2 className="judul-bagian flex-grow-1 mb-0">Susunan kuis</h2>
-                      <span className="fw-bold">
-                        {soalTerpilih.length} soal · {poinTerpilih} poin
-                      </span>
                     </div>
 
                     {soalTerpilih.length === 0 && (
@@ -687,6 +722,20 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                     <p className="teks-lembut small mb-0">
                       Urutan ini dipakai bila pengacakan dimatikan. Bila dinyalakan, tiap murid
                       mendapat urutan acak dari server.
+                    </p>
+
+                    {/*
+                      Hasil akhir susunan diletakkan di BAWAH daftar soal
+                      (12 Oktober 2026, permintaan pemilik produk: "hasil akhir
+                      jawabannya benar-benar di bawahnya, bukan di bawah tiap
+                      soal") — angka total dibaca sekali setelah daftarnya,
+                      bukan menempel di tiap baris.
+                    */}
+                    <p className="ringkas-susunan-akhir mt-3 mb-0" role="status">
+                      <span className="teks-lembut small d-block">Total susunan</span>
+                      <strong>
+                        {soalTerpilih.length} soal · {poinTerpilih} poin
+                      </strong>
                     </p>
                   </div>
                 </div>
@@ -747,8 +796,112 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 </div>
 
                 <p className="badge-status info mt-3 mb-0">
-                  Setelah kuis mulai berjalan, soal tidak bisa diubah lagi.
+                  Saat kuis berjalan, isi soal masih boleh diperbaiki — murid yang sedang mengerjakan
+                  langsung melihat versi barunya. Kunci jawaban, skor, dan jenis soal baru bisa
+                  diubah setelah ulangannya selesai.
                 </p>
+              </section>
+
+              {/* Ringkasan setelan sesi: apa yang benar-benar menyala untuk kuis
+                  INI setelah digabung dengan pengaturan kelas dan sekolah. */}
+              <section className="kartu-soal p-3" aria-labelledby="setelan-sesi">
+                <div className="d-flex flex-wrap align-items-baseline gap-2">
+                  <h2 id="setelan-sesi" className="h6 fw-bold mb-0">Setelan sesi ini</h2>
+                  <span className="teks-lembut small ms-auto">
+                    {setelanSesi.isPending
+                      ? 'Memuat setelan…'
+                      : 'gabungan pengaturan kuis ini ‹ kelas ‹ sekolah'}
+                  </span>
+                </div>
+
+                {setelanSesi.isError && (
+                  <p className="teks-lembut small mb-0 mt-2">
+                    Setelan tidak bisa dimuat sekarang. Periksa di{' '}
+                    <Link to={RUTE.pengaturan}>Pengaturan</Link> dengan lingkup “Kuis”.
+                  </p>
+                )}
+
+                {setelanSesi.isSuccess && (
+                  <>
+                    <ul className="list-unstyled d-flex flex-column gap-2 mt-2 mb-0">
+                      <li className="baris-ringkas">
+                        <span className={`badge-status ${ringkas.indukAktif ? 'sukses' : 'lembut'}`}>
+                          {ringkas.indukAktif ? 'Proteksi nyala' : 'Proteksi mati'}
+                        </span>
+                        <span className="flex-grow-1 small">
+                          {!ringkas.indukAktif
+                            ? 'Anti-cheat mati: tidak ada satu pun proteksi yang dipasang, jadi tidak ada catatan kecurangan yang dikumpulkan.'
+                            : ringkas.proteksi.length === 0
+                              ? 'Saklar induk menyala, tetapi belum ada proteksi rinci yang dinyalakan — praktis tidak ada yang dipasang.'
+                              : `${ringkas.proteksi.length} proteksi aktif: ${ringkas.proteksi.map((satu) => satu.label).join(' · ')}`}
+                          {ringkas.indukAktif && ringkas.proteksiMati > 0 && (
+                            <span className="teks-lembut"> · {ringkas.proteksiMati} lainnya mati</span>
+                          )}
+                        </span>
+                      </li>
+
+                      <li className="baris-ringkas">
+                        <span className={`badge-status ${ringkas.tamu.aktif ? 'info' : 'lembut'}`}>
+                          Siswa tamu {ringkas.tamu.aktif ? 'boleh' : 'tidak boleh'}
+                        </span>
+                        <span className="flex-grow-1 small">
+                          {ringkas.tamu.aktif
+                            ? 'Siapa pun dengan tautan boleh ikut tanpa akun, cukup menulis nama.'
+                            : 'Hanya murid yang sudah punya akun yang bisa ikut.'}{' '}
+                          <span className="teks-lembut">
+                            (dari {LABEL_SUMBER[ringkas.tamu.sumber] ?? ringkas.tamu.sumber})
+                          </span>
+                        </span>
+                      </li>
+
+                      <li className="baris-ringkas">
+                        <span className="badge-status lembut">Aturan lain</span>
+                        <span className="flex-grow-1 small">
+                          {ringkas.aturan
+                            .map((satu) => `${satu.label}: ${satu.aktif ? 'nyala' : 'mati'}`)
+                            .join(' · ')}
+                        </span>
+                      </li>
+                    </ul>
+
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
+                      <Tombol
+                        ukuran="sedang"
+                        varian="tepi"
+                        ikon={IkonTautan}
+                        onClick={() => setTautanTampil(true)}
+                      >
+                        Buat tautan siswa
+                      </Tombol>
+                      {tautanTampil && (
+                        <Tombol ukuran="sedang" onClick={() => void salinTautan()}>
+                          Salin tautan
+                        </Tombol>
+                      )}
+                    </div>
+
+                    {tautanTampil && (
+                      <div className="mt-2">
+                        <input
+                          className="form-control form-control-sm"
+                          readOnly
+                          value={tautan}
+                          aria-label="Tautan untuk siswa"
+                          onFocus={(e) => e.target.select()}
+                        />
+                        {catatan.map((satu) => (
+                          <p key={satu} className="teks-lembut small mb-0 mt-1">
+                            {satu}
+                          </p>
+                        ))}
+                        <p className="teks-lembut small mb-0 mt-1">
+                          Tautan ini bekerja untuk murid berakun (lalu “Kerjakan sekarang”) dan untuk
+                          siswa tamu bila pintunya dibuka di atas.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </section>
 
               <div className="d-flex flex-wrap justify-content-between gap-2">

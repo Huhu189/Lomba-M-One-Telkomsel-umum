@@ -5,7 +5,7 @@
  * Sesi dipulihkan saat dimuat agar refresh tidak "mengeluarkan" pengguna.
  */
 import { useEffect } from 'react'
-import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ToastHost, tampilkanToast } from './shared/ui/toast.jsx'
 import KerangkaAuth from './shared/layout/KerangkaAuth.jsx'
 import KerangkaUmum from './shared/layout/KerangkaUmum.jsx'
@@ -42,6 +42,7 @@ import PilihHalamanMateri from './sections/material/PilihHalamanMateri.jsx'
 import EditorMateri from './sections/material/EditorMateri.jsx'
 import PilihHalamanAvatar from './sections/avatar/PilihHalamanAvatar.jsx'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
+import { tujuanLanjut } from './sections/quiz/setelanSesi.js'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
 function LayarMemuat() {
@@ -76,11 +77,26 @@ function GerbangUmum() {
   return <KerangkaUmum />
 }
 
+/**
+ * Alihkan ke halaman masuk sambil membawa tujuan asal (`state.lanjut`).
+ *
+ * Inilah yang membuat tautan yang dibagikan guru hidup: murid yang membuka
+ * `…/kuis/12` tanpa sesi diantar ke halaman masuk, lalu dikembalikan ke kuis
+ * itu setelah masuk — baik lewat akun sekolah maupun lewat pintu siswa tamu
+ * (bila guru membuka `izinkan_tamu` untuk kuis itu). Tujuan itu divalidasi
+ * `tujuanLanjut` sebelum dipakai, jadi hanya jalur internal yang diterima.
+ */
+function KeMasuk() {
+  const lokasi = useLocation()
+
+  return <Navigate to={RUTE.masuk} replace state={{ lanjut: `${lokasi.pathname}${lokasi.search}` }} />
+}
+
 /** Halaman yang butuh sesi (beranda boleh dibuka tamu). */
 function HanyaMasuk() {
   const user = useAuthStore((s) => s.user)
 
-  return user ? <Outlet /> : <Navigate to={RUTE.masuk} replace />
+  return user ? <Outlet /> : <KeMasuk />
 }
 
 /**
@@ -91,7 +107,7 @@ function HanyaMasuk() {
 function HanyaMurid() {
   const user = useAuthStore((s) => s.user)
 
-  if (!user) return <Navigate to={RUTE.masuk} replace />
+  if (!user) return <KeMasuk />
 
   return user.role === 'murid' ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
 }
@@ -100,7 +116,7 @@ function HanyaMurid() {
 function HanyaGuru() {
   const user = useAuthStore((s) => s.user)
 
-  if (!user) return <Navigate to={RUTE.masuk} replace />
+  if (!user) return <KeMasuk />
 
   const isGuru = user.role === 'guru' || user.role === 'admin'
   return isGuru ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
@@ -109,6 +125,7 @@ function HanyaGuru() {
 /** Kerangka aplikasi: sesi, toast, dan router. */
 export default function App() {
   const navigate = useNavigate()
+  const lokasi = useLocation()
   const sesiSiap = useAuthStore((s) => s.sesiSiap)
   const pulihkanSesi = useAuthStore((s) => s.pulihkanSesi)
 
@@ -195,11 +212,19 @@ export default function App() {
               path={RUTE.masuk}
               element={
                 <HalamanMasuk
-                  // Siswa tamu langsung diantar ke daftar ulangan tamu: beranda
-                  // murid memuat pintasan (materi, progres, lencana) yang butuh
-                  // akun sekolah dan pasti ditolak untuk tamu.
+                  // Bila kedatangan ini dari tautan yang dibagikan guru
+                  // (`state.lanjut`), murid dikembalikan ke halaman itu — baik
+                  // ia masuk dengan akun maupun sebagai siswa tamu. Sisanya:
+                  // siswa tamu langsung diantar ke daftar ulangan tamu, karena
+                  // beranda murid memuat pintasan (materi, progres, lencana)
+                  // yang butuh akun sekolah dan pasti ditolak untuk tamu.
                   berhasil={(user) =>
-                    navigate(user.isTamu ? RUTE.kuis : RUTE.beranda, { replace: true })
+                    navigate(
+                      tujuanLanjut(
+                        /** @type {{ lanjut?: unknown }|null} */ (lokasi.state)?.lanjut,
+                      ) ?? (user.isTamu ? RUTE.kuis : RUTE.beranda),
+                      { replace: true },
+                    )
                   }
                 />
               }
