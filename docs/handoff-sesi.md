@@ -65,33 +65,26 @@ git status --short && git diff --stat
 git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 ```
 
-Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.70**):
+Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.71**):
 
-- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat ditulis: `48d366d` *"Catat putaran
-  A.68-A.70 di laporan pengujian dan handoff"*). **A.70** = seluruh commit berawalan `b1025b4` sampai `HEAD`
-  (`git log --oneline 6811c2c..HEAD`): rekam diri + tes, kueri backend, laporan + handoff, dan penyelarasan
-  catatan ini — semuanya sudah dikomit.
-- **`origin/main = 93f66ed`** → **belum ada satu pun commit sesi ini yang di-push**
-  (`git rev-list --count origin/main..HEAD` **6** saat ditulis, sebelum commit dokumentasi ini — angka pastinya
-  ambil dari perintah itu). Repo online belum memuat A.65, A.66, A.67, dan A.70; **push dulu sebelum menutup
-  sesi**.
-- **Working tree = 65 entri belum dikomit** (`git status --short`): 44 diubah · 3 dihapus · 18 berkas baru.
-  Isinya terutama putaran **A.68 + A.69** (ditambah dokumentasi A.61–A.64 yang belum ikut commit):
-  - **18 baru:** backend `Sections/Auth/{Services/AkunService.php,Http/Controllers/AkunController.php,
-    Http/Requests/{PerbaruiAkunRequest,GantiSandiRequest}.php}`, migrasi `2026_10_13_000001_tambah_slug_kuis.php`,
-    tes `backend/tests/Feature/{AkunTest,SlugKuisTest}.php`; frontend `src/halaman.js`,
-    `src/shared/ui/MemuatHalaman.jsx`, `src/sections/settings/{HalamanAkun.jsx,validasiAkun.js}`,
-    `src/sections/quiz/PanelSetelanUlangan.jsx`, empat tes baru (`__tests__/halaman.test.js`,
-    `__tests__/sections/question/bankSoalLazy.test.jsx`, `__tests__/sections/quiz/setelanUlangan.test.jsx`,
-    `__tests__/sections/settings/{halamanAkun.test.jsx,validasiAkun.test.js}`); docs
-    `docs/ukur-bundel-peramban.mjs`.
-  - **3 dihapus:** `src/sections/settings/HalamanPengaturan.jsx`, `src/sections/settings/lingkup.js`,
-    `__tests__/sections/settings/lingkup.test.js` (halaman akun menggantikannya).
-  - Daftar pasti & terkini selalu: `git status --short`. Karena `theme.css`, `App.jsx`, `routes.js`, dan
-    `docs/*.md` ikut di beberapa putaran, jumlah berkasnya bukan penjumlahan bersih per putaran.
+- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`). Sesi ini berisi **A.70** (patch kinerja + rekam
+  diri), **A.71** (log mentah + perapian `docs/`), dan **A.72** (A.61–A.69 dikomit) — `git log --oneline
+  6811c2c..HEAD` untuk daftarnya.
+- **`origin/main = 93f66ed`** → **belum ada satu pun commit sesi ini yang di-push** (`git rev-list --count
+  origin/main..HEAD` **16** saat ditulis, sebelum commit catatan ini — angka pastinya ambil dari perintah itu).
+  Repo online belum memuat A.65, A.66, A.67, dan seluruh A.68–A.72; **push dulu sebelum menutup sesi**.
+- **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
+  dalam enam commit bertema: slug kuis (backend), slug di seluruh layar + pil saring, bank soal bertahap,
+  halaman akun + setelan per kuis, bundel per halaman, dan penjelasan fitur. Daftar lengkap ada di
+  `laporan-pengujian.md` **A.72**.
+  - **Catatan urutan commit:** `App.jsx` memuat dua putaran sekaligus (rute akun dari A.68 dan impor malas dari
+    A.69), jadi commit "halaman akun" belum bisa dijalankan sendiri (ia menghapus `HalamanPengaturan.jsx`
+    sementara `App.jsx` masih mengimpornya) — commit berikutnya yang menutupinya. Pohon terakhir yang sudah
+    diverifikasi hijau adalah yang sekarang: `./verify.sh` **SEMUA HIJAU**.
 - **Jangan ikut dikomit:** arsip/zip, `.agents/`, `.claude/`, `.DS_Store`. `frontend/dist/` memang sudah
   diabaikan (`.gitignore`), jadi hasil `npm run build` aman untuk pengukuran.
-- **`docs/word/*.docx` belum disegarkan** untuk A.68/A.69 — lihat papan pending 0.6 butir 3.
+- **`docs/word/*.docx` belum disegarkan** untuk A.68–A.71 (termasuk `log-mentah.docx` yang sumbernya kini
+  gabungan transkrip semua sesi) — lihat papan pending 0.6 butir 3.
 
 ### 0.3 Nyalakan layanan & gerbang mutu
 
@@ -112,7 +105,19 @@ Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), san
 
 ### 0.4 Sudah terverifikasi (jangan diulang tanpa perubahan kode)
 
-**A.70** (13 Okt 2026, patch kinerja + rekam diri dari luar repo) — **putaran terakhir, sudah dikomit (`b1025b4`, `90512a2`), belum di-push**: `./verify.sh` **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih · checkJs exit 0 · ESLint 0 error · Vitest **81 berkas / 763 tes** · realtime. Kueri `payloadSoal`+`versiSoal` **2 → 1** (diukur, attempt 10 soal); soal kuis di jalur mulai 4 kueri → 1; impor CSV tak lagi `SELECT` per baris / `argon2id` per baris; `snapshot_soal` tak lagi ditarik monitor & ekspor; job saran AI `afterCommit`; `retry_after` queue database 90 → 180 dtk. Bug rekam diri lampiran (durasi basi 0 detik + perekam tak dimatikan saat keluar soal) diperbaiki; tes baru `unggahLampiranRekam` **3/3 lulus** dengan kontrol negatif **3/3 MERAH** atas kode lama. Rincian: A.70.
+**A.72** (13 Okt 2026, pekerjaan yang menumpuk dikomit) — working tree **BERSIH** sesudah enam commit bertema
+  (slug backend `1a2db5f` · slug di layar + pil saring `9192eaf` · bank soal bertahap `7e2001c` · halaman akun +
+  setelan per kuis `7fc4f57` · bundel per halaman `d60cc1e` · penjelasan fitur `95a1a88`), lalu `./verify.sh`
+  **SEMUA HIJAU** (Pest 357/3356 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error · Vitest 81/763 ·
+  realtime). Yang tersisa dari butir 1 papan pending hanyalah **push**. Rincian + catatan keterikatan urutan
+  commit: A.72.
+
+**A.71** (13 Okt 2026, log mentah dari sesi asli 412 MB + perapian `docs/`) — **sudah dikomit, belum di-push**:
+  tiga sesi diekspor dalam bentuk satu folder per sesi (`.gz` byte-exact 68,6 MB + `transkrip.md` utuh 26,8 MB +
+  `info.json`), indeks di `docs/log-mentah/README.md`, `docs/README.md` baru; byte-exactness diperiksa lewat
+  `gzip -dc … | md5` untuk ketiga sesi. Rincian: A.71.
+
+**A.70** (13 Okt 2026, patch kinerja + rekam diri dari luar repo) — **sudah dikomit (`b1025b4`, `90512a2`), belum di-push**: `./verify.sh` **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih · checkJs exit 0 · ESLint 0 error · Vitest **81 berkas / 763 tes** · realtime. Kueri `payloadSoal`+`versiSoal` **2 → 1** (diukur, attempt 10 soal); soal kuis di jalur mulai 4 kueri → 1; impor CSV tak lagi `SELECT` per baris / `argon2id` per baris; `snapshot_soal` tak lagi ditarik monitor & ekspor; job saran AI `afterCommit`; `retry_after` queue database 90 → 180 dtk. Bug rekam diri lampiran (durasi basi 0 detik + perekam tak dimatikan saat keluar soal) diperbaiki; tes baru `unggahLampiranRekam` **3/3 lulus** dengan kontrol negatif **3/3 MERAH** atas kode lama. Rincian: A.70.
 
 **A.69** (13 Okt 2026, bundel dipotong per halaman) — **belum dikomit**:
   `npm run build` → bundel awal **555,26 kB / 176,35 kB gzip** (dari **923,63 kB / 262,06 kB gzip** satu berkas),
@@ -194,14 +199,8 @@ kurang: **deploy publik dengan link yang bisa dibuka**, **Octane Swoole** (atau 
 **jurnal prompt maksimal 5 entri + log mentah utuh**, dan repo **public sejak commit pertama**. Empat hal itu
 mengalahkan semua pekerjaan rapi-rapi di bawah.
 
-1. **Commit + push pekerjaan yang menumpuk** (65 entri; **A.70 dan dokumentasinya sudah dikomit**, tetapi belum
-   ada yang di-push — lihat 0.2). Pisahkan kecil-kecil
-   mengikuti gaya riwayat yang ada (satu putaran = satu commit, judul kalimat perintah/berita, tanpa tanggal
-   commit buatan): (a) slug kuis + bank soal bertahap (`bankSoalLazy`, `paramSoal`, `catatanSoal`),
-   (b) `/pengaturan` jadi halaman akun + setelan ulangan per kuis (`AkunService`, `PanelSetelanUlangan`,
-   penghapusan `HalamanPengaturan`/`lingkup`), (c) bundel per halaman (`halaman.js`, `MemuatHalaman`, tes,
-   `docs/ukur-bundel-peramban.mjs`), (d) dokumentasi A.61–A.69. **Push** sesudahnya (`origin/main` tertinggal
-   3 commit + isi baru).
+1. ~~**Commit + push pekerjaan yang menumpuk**~~ — **commit SELESAI di A.72** (enam commit bertema, working tree
+   bersih). **Yang masih kurang: `git push`** (`origin/main` tertinggal 16 commit: A.65–A.67 + A.70–A.72).
 2. **Deploy** (belum ada sama sekali). Rencana yang paling murah: frontend `npm run build` → hosting statis,
    backend Laravel + MySQL + Redis → satu VPS/container, realtime Node → proses kecil terpisah; URL backend
    disuntik lewat env `VITE_*`/`APP_URL`, cookie Sanctum `SameSite=Lax` + HTTPS, dan `frontend/vite.config.js`
@@ -348,6 +347,7 @@ riwayat A.30–A.60:**
 | A.69 | **bundel frontend dipotong per halaman** (`React.lazy` + `Suspense`, pramuat tautan menu) — 923,63 kB → 555,26 kB bundel awal | bagian 0.1a & 13 · laporan A.69 |
 | A.70 | **patch kinerja dari luar repo diterapkan** (kueri berulang ulangan/impor/laporan, `snapshot_soal`, `afterCommit`, `retry_after`) + dua bug **rekam diri lampiran** (durasi 0 detik, perekam tak dimatikan) | bagian 14 · laporan A.70 |
 | A.71 | **log mentah diganti dari sesi asli** (412 MB / 539 pesan) lewat eksportir streaming, **satu folder per sesi** + indeks, `docs/README.md` baru, rujukan path diperbarui | bagian 15 · laporan A.71 |
+| A.72 | **A.61–A.69 dikomit** dalam enam commit bertema (slug · bank soal bertahap · halaman akun · bundel per halaman · penjelasan fitur); working tree bersih, tinggal push | bagian 16 · laporan A.72 |
 
 ## 1. Status verifikasi terakhir
 
@@ -1039,3 +1039,29 @@ Angka: `chat-messages.json` 412.229.403 B · `.gz` 68.581.188 B · `transkrip.md
 **Cara mengulang:** `python3 docs/export-log-sesi.py` (lalu periksa md5 dari `info.json`).
 Rincian + batasan jujur: `docs/laporan-pengujian.md` **A.71** (transkrip sesi ini masih snapshot, `log-mentah.docx`
 belum diekspor ulang, repo bertambah ≈95 MB).
+
+## 16. A.72 — pekerjaan A.61–A.69 dikomit (13 Oktober 2026)
+
+**Permintaan:** *“Commit 63 entri working tree (A.61–A.69) kecil-kecil mengikuti gaya riwayat yang ada.”* Enam
+commit, satu tema satu commit, urut dari backend ke frontend ke dokumen:
+
+| Commit | Tema |
+| --- | --- |
+| `1a2db5f` | slug acak sebagai alamat kuis (backend: migrasi · `Kuis` · `KuisService` · factory · dua resource · `SlugKuisTest`) |
+| `9192eaf` | slug dipakai seluruh layar kuis + `kunciKuisSah` + perbaikan pil saring Beranda/Monitor dan CSS-nya |
+| `7e2001c` | bank soal bertahap (`per_page`/`q` di `SoalController`, `paramSoal`, `useInfiniteQuery`, `catatanSoal`) |
+| `7fc4f57` | `/pengaturan` jadi halaman akun + setelan ulangan pindah ke kuisnya (`AkunService`, `PanelSetelanUlangan`, penghapusan `HalamanPengaturan`/`lingkup`) |
+| `d60cc1e` | bundel per halaman (`halaman.js`, `MemuatHalaman`, `App.jsx`, dua kerangka, tes + harness ukur bundel) |
+| `95a1a88` | tiga bagian baru di `penjelasan-fitur.md` |
+
+**Bukti:** `git status --short` **kosong** sesudah commit terakhir; keenam commit diperiksa tidak memuat
+`*.zip`/`DS_Store`/`.agents/`/`.claude/`/`node_modules`; `./verify.sh` dijalankan pada pohon **sesudah** semua
+commit dan **SEMUA HIJAU (exit 0)** — Pest 357/3356 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error ·
+Vitest 81 berkas/763 tes · realtime.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:** `App.jsx` membawa dua putaran (rute akun A.68 + impor
+malas A.69) dan `theme.css` membawa perbaikan pil saring + blok `.memuat-halaman`, jadi commit `7fc4f57`
+sendirian belum bisa dijalankan (ia menghapus `HalamanPengaturan.jsx` yang masih diimpor `App.jsx` versi commit
+itu) dan `d60cc1e` yang menutupnya. Yang diverifikasi hijau adalah pohon terakhir, bukan tiap titik tengah.
+
+**Sisa:** `git push` (16 commit tertinggal). Rincian: `docs/laporan-pengujian.md` **A.72**.

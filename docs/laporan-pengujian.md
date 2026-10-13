@@ -6225,3 +6225,52 @@ ulang — tidak ada satu baris pun kode produk yang berubah.
 - **Dihapus:** `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz`, `docs/log-mentah/sesi-2026-10-05-transkrip.md`.
 - **Diubah (rujukan):** `AGENT.md`, `00-index.json`, `docs/word/AGENT.md`, `docs/jurnal-prompt.md`,
   `docs/handoff-sesi.md`, dan entri A.18/A.33 di laporan ini.
+
+## A.72 — Pekerjaan A.61–A.69 yang menumpuk dikomit (13 Oktober 2026)
+
+### A.72.1 Permintaan
+
+**“Commit 63 entri working tree (A.61–A.69) kecil-kecil mengikuti gaya riwayat yang ada.”** Tumpukan ini sudah
+terverifikasi hijau (lihat A.68/A.69/A.70), tetapi belum pernah dikomit — bahaya nyatanya bukan sekadar repo
+online tertinggal, melainkan kehilangan seluruh putaran itu kalau berkas kerja terhapus.
+
+### A.72.2 Enam commit (satu tema satu commit)
+
+| Commit | Judul | Isi pokok |
+| --- | --- | --- |
+| `1a2db5f` | Pakai slug acak sebagai alamat kuis supaya id tidak bisa disisir | migrasi slug, `Kuis` (route key + `slugBaru`), `KuisService`, `KuisFactory`, dua resource, `SlugKuisTest` |
+| `9192eaf` | Buka tiap layar kuis lewat slug dan rapikan pil saring yang menggantung | `routes.js` (+`kunciKuisSah`), tujuh halaman berparameter, lapisan api, dan perbaikan pil saring Beranda/Monitor + CSS-nya |
+| `7e2001c` | Muat bank soal 20 baris sekali jalan dan cari di seluruh bank | `SoalController` (`per_page`, `q` lewat `konten->teks`), `paramSoal`, `HalamanBankSoal`, panel pilih soal di `HalamanKuis` (+`catatanSoal`), tes `bankSoalLazy` |
+| `7fc4f57` | Jadikan /pengaturan halaman akun dan pindahkan setelan ulangan ke kuisnya | `AkunController` + `AkunService` + dua request + limiter `sandi`, `HalamanAkun`/`validasiAkun`, `PanelSetelanUlangan`, penghapusan `HalamanPengaturan`/`lingkup` + tesnya, harness `pengaturan` & audit UI |
+| `d60cc1e` | Potong bundel per halaman dengan React.lazy dan Suspense di dalam kerangka | `halaman.js`, `MemuatHalaman`, `App.jsx`, dua kerangka, `halaman.test.js`, `kerangkaUmum.test.jsx`, `ukur-bundel-peramban.mjs` |
+| `95a1a88` | Catat bank soal bertahap, halaman akun, dan bundel per halaman untuk juri | tiga bagian baru di `penjelasan-fitur.md` |
+
+### A.72.3 Bukti
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| `git status --short` sesudah commit terakhir | **kosong** (63 entri → 0) |
+| `git show --name-only` keenam commit, dicari sampah | tidak ada `*.zip`, `DS_Store`, `.agents/`, `.claude/`, `node_modules` |
+| `./verify.sh` (dijalankan pada pohon **sesudah** semua commit) | **SEMUA HIJAU (exit 0)** — Pest **357/3356** · Redis wajib **9/65** · Pint bersih · checkJs exit 0 · ESLint 0 error · Vitest **81 berkas/763 tes** · realtime lulus |
+
+### A.72.4 Batasan jujur
+
+- **Tidak setiap commit bisa dijalankan sendiri.** `App.jsx` membawa dua putaran sekaligus (rute akun dari A.68
+dan impor malas dari A.69), jadi commit `7fc4f57` (yang menghapus `HalamanPengaturan.jsx`) meninggalkan
+`App.jsx` versi commit itu masih mengimpornya; commit `d60cc1e` menutupnya. Berkas `theme.css` juga membawa
+perbaikan pil saring dan blok `.memuat-halaman` sekaligus. Yang **diverifikasi hijau adalah pohon terakhir**
+(`./verify.sh`), bukan tiap titik tengah — memecahnya lagi hanya bisa dengan staging per-hunk dan risikonya tidak
+sepadan.
+- **Ini rekonstruksi riwayat, bukan commit seperti aslinya.** Isi berkasnya sama dengan pohon yang sudah
+diverifikasi di A.68/A.69 (tidak ada baris kode yang diubah putaran ini); yang dilakukan hanya memecahnya jadi
+enam commit bertema mengikuti gaya judul yang ada.
+- **Harness GUI tidak dijalankan ulang** karena tidak ada isi berkas aplikasi yang berubah sejak A.69 (yang
+sudah membuktikan `pengaturan` 12/12, `susun` 44/44, `slice04` 18/18, `nav` 14/14, `kuis-materi` 48/48, dan
+`slice07` 21/21).
+- **Belum di-push.** `origin/main` kini tertinggal **16 commit** (A.65–A.67 + A.70–A.72); push adalah langkah
+yang diminta terpisah dan belum dilakukan.
+
+### A.72.5 Berkas
+
+Tidak ada berkas baru/diubah. Yang berubah hanyalah **riwayat git**: 63 entri working tree (44 diubah · 3
+dihapus · 18 baru) masuk ke enam commit di A.72.2, dan working tree kini bersih.
