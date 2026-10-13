@@ -475,13 +475,157 @@ async function main() {
         mediaM.menembus.length === 0 ? 'semua di dalam layar' : JSON.stringify(mediaM.menembus),
       )
 
+      // Klip kuis: daftar pemilih kuis di inspector adalah wadah bergulir
+      // BERSARANG di dalam halaman yang panjang — persis tempat yang tidak
+      // nyaman saat memakai laptop (13 Okt 2026): roda/trackpad di atas daftar
+      // dulu ikut menggeser halaman begitu daftarnya mentok.
+      // Klip dipilih lewat KELASNYA, bukan urutan DOM: klip di timeline diurutkan
+      // per jalur (track), jadi `.nle-klip[2]` bukan klip ketiga yang terlihat.
+      await evalJs(`document.querySelector('.nle-klip-kuis').click(); true`)
+      const adaPemilih = await tunggu(`document.querySelector('.nle-pemilih-daftar') !== null`, 8000)
+      await sleep(400)
+      catat(
+        `klip kuis: daftar pemilih kuis muncul di inspector [${namaVp}]`,
+        adaPemilih,
+        adaPemilih ? 'daftar ada' : 'daftar tidak muncul',
+      )
+
+      // Lapisan kuis muncul kalau kepala putar digeser ke klip kuis (mode jeda).
+      await evalJs(`document.querySelector('.nle-tool-kuis').click(); true`)
+      await sleep(500)
+
+      const gayaWadah = await evalJs(`(() => {
+        const ambil = (sel) => {
+          const el = document.querySelector(sel)
+          if (!el) return 'tidak ada'
+          const s = getComputedStyle(el)
+          return s.overscrollBehaviorY || s.overscrollBehavior
+        }
+        return {
+          pemilih: ambil('.nle-pemilih-daftar'),
+          kanvas: ambil('.nle-canvas-isi'),
+          kuis: ambil('.nle-kuis'),
+        }
+      })()`)
+      catat(
+        `gulir bersarang: wadah bergulir di editor memakai contain [${namaVp}]`,
+        gayaWadah.pemilih === 'contain' && gayaWadah.kanvas === 'contain' && gayaWadah.kuis === 'contain',
+        JSON.stringify(gayaWadah),
+      )
+
       if (vp.sentuh) {
+        info(`roda mouse tidak diuji [${namaVp}] (perangkat sentuh memakai jari, bukan roda)`, null)
         catat(
           `editor: semua sasaran sentuh >= 44px [${namaVp}]`,
           teksM.tombolKecil.length === 0 && mediaM.tombolKecil.length === 0,
           JSON.stringify(teksM.tombolKecil.length > 0 ? teksM.tombolKecil : mediaM.tombolKecil),
         )
       } else {
+        // Roda SUNGGUHAN lewat CDP, bukan pemeriksaan gaya: halaman digulirkan
+        // supaya daftar pemilih ada di tengah layar, lalu roda diputar tepat di
+        // atas daftar itu.
+        // Halaman digulirkan DULU, lalu ditunggu mendarat: `scroll-behavior:
+        // smooth` dari Bootstrap membuat `scrollIntoView` beranimasi, dan kalau
+        // koordinatnya dibaca saat animasi masih jalan, roda terkirim ke titik
+        // lama (di luar daftar) sehingga yang bergerak malah halaman.
+        await evalJs(`document.querySelector('.nle-pemilih-daftar').scrollIntoView({ block: 'center' }); true`)
+        await sleep(900)
+        const sebelum = await evalJs(`(() => {
+          const daftar = document.querySelector('.nle-pemilih-daftar')
+          if (!daftar) return null
+          const r = daftar.getBoundingClientRect()
+          const didalam = (nilai, batas) => Math.round(Math.min(Math.max(nilai, 12), batas - 12))
+          return {
+            x: didalam(r.left + r.width / 2, window.innerWidth),
+            y: didalam(r.top + r.height / 2, window.innerHeight),
+            bisaGulir: daftar.scrollHeight > daftar.clientHeight + 1,
+            atas: Math.round(daftar.scrollTop),
+            halaman: Math.round(window.scrollY),
+          }
+        })()`)
+        if (sebelum) info(`titik roda [${namaVp}]`, sebelum)
+
+        catat(
+          `gulir bersarang: daftar pemilih ada untuk diuji [${namaVp}]`,
+          sebelum !== null && sebelum !== undefined,
+          sebelum ? `bisaGulir=${sebelum.bisaGulir}` : 'daftar tidak ditemukan',
+        )
+
+        if (sebelum) {
+          // Gestur roda lewat `Input.synthesizeScrollGesture` (mode mouse), bukan
+          // `Input.dispatchMouseEvent`, karena hanya gestur ini yang benar-benar
+          // menebak elemen di bawah koordinat (hit-test) seperti roda sungguhan.
+          const putarRoda = async (delta) => {
+            await send(
+              'Input.synthesizeScrollGesture',
+              {
+                x: sebelum.x,
+                y: sebelum.y,
+                xDistance: 0,
+                yDistance: -delta,
+                gestureSourceType: 'mouse',
+                speed: 800,
+              },
+              sessionId,
+            )
+          }
+
+          catat(
+            `gulir bersarang: daftar pemilih cukup panjang untuk bisa digulir [${namaVp}]`,
+            sebelum.bisaGulir,
+            `scrollHeight > clientHeight: ${sebelum.bisaGulir}`,
+          )
+
+          await putarRoda(240)
+          await sleep(300)
+          const sesudah = await evalJs(`(() => {
+            const daftar = document.querySelector('.nle-pemilih-daftar')
+            return { atas: Math.round(daftar.scrollTop), halaman: Math.round(window.scrollY) }
+          })()`)
+          catat(
+            `gulir bersarang: roda di atas daftar menggerakkan DAFTARNYA [${namaVp}]`,
+            sesudah.atas > sebelum.atas,
+            `daftar ${sebelum.atas} → ${sesudah.atas}`,
+          )
+          catat(
+            `gulir bersarang: roda di atas daftar TIDAK menggeser halaman [${namaVp}]`,
+            sesudah.halaman === sebelum.halaman,
+            `halaman ${sebelum.halaman} → ${sesudah.halaman}`,
+          )
+
+          // Daftar dipindah ke ujung BAWAHNYA lebih dulu (di basis data dev ada
+          // ratusan kuis, jadi memutar roda sampai ujung akan memerlukan puluhan
+          // gestur). Inilah kasus "sudah mentok" yang dulu membuat halaman
+          // melompat: roda tetap diputar, dan halaman harus tetap diam.
+          await evalJs(`(() => {
+            const daftar = document.querySelector('.nle-pemilih-daftar')
+            daftar.scrollTop = daftar.scrollHeight
+            return true
+          })()`)
+          await sleep(300)
+          await putarRoda(400)
+          await putarRoda(400)
+          await sleep(300)
+          const mentok = await evalJs(`(() => {
+            const daftar = document.querySelector('.nle-pemilih-daftar')
+            return {
+              atas: Math.round(daftar.scrollTop),
+              maks: Math.round(daftar.scrollHeight - daftar.clientHeight),
+              halaman: Math.round(window.scrollY),
+            }
+          })()`)
+          catat(
+            `gulir bersarang: daftar pemilih sudah mentok [${namaVp}]`,
+            mentok.maks > 0 && Math.abs(mentok.atas - mentok.maks) <= 1,
+            `daftar ${mentok.atas} dari maks ${mentok.maks}`,
+          )
+          catat(
+            `gulir bersarang: daftar mentok pun halaman tetap diam [${namaVp}]`,
+            mentok.halaman === sebelum.halaman,
+            `halaman ${sebelum.halaman} → ${mentok.halaman}`,
+          )
+        }
+
         info(`sasaran sentuh < 44px [${namaVp}] (alat editor di layar besar, bukan target sentuh)`, teksM.tombolKecil)
       }
 

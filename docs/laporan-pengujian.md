@@ -6399,3 +6399,88 @@ Pemeriksaan bentuk atas berkas akhir (dijalankan di repo ini, bukan di luar):
   sudah usang diperbarui), `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md`.
 - **Tidak disentuh:** `gunung.svg` dan penggambarnya (`AdeganGunung.jsx`) — di luar permintaan, dan
   `RUTE_TEMA`/`perjalanan.js` juga tidak diubah (rute pos tetap, yang digambar ulang adalah bendanya).
+
+## A.74 — Gulir bersarang tidak bocor ke halaman (13 Oktober 2026)
+
+### A.74.1 Permintaan
+
+Bagian kedua pesan pemilik produk: *"ketika ingin scroll pakai laptop dalam device nya pastikan yang di tuju
+kursor maka di scroll duluan bukna yang mentok duluan agar labih nyaman di pakai"*. Yang diminta: bagian yang
+**ditunjuk kursor** digulir lebih dulu, dan yang **sudah mentok** tidak menyeret halaman ikut bergerak.
+
+### A.74.2 Yang diubah
+
+Satu blok CSS kecil di `frontend/src/theme/theme.css` — bukan JavaScript, karena penyebabnya perilaku bawaan
+peramban (**scroll chaining**): begitu wadah bersarang sampai di ujungnya, gulir diteruskan ke halaman sehingga
+halaman melompat saat orang mengoper trackpad.
+
+| Wadah bergulir | Aturan |
+| --- | --- |
+| `.laci-nav` (laci menu ponsel), `.dialog-samping` (panel formulir samping), `.nle-pemilih-daftar` (daftar pemilih kuis), `.nle-kuis` (lapisan kuis di atas kanvas), `.nle-canvas-isi` (isi bingkai kanvas) | `overscroll-behavior: contain` |
+| `.tabel-isian-bungkus` (tabel yang menggulir **mendatar**) | `overscroll-behavior-x: contain` saja |
+
+Dua keputusan yang sengaja diambil, bukan lupa:
+
+- **`.tabel-isian-bungkus` hanya sisi x.** Kalau dua arah dikunci, gulir tegak di atas tabel tidak bisa lagi
+  menggerakkan halaman sama sekali — menukar satu ketidaknyamanan dengan yang lain.
+- **`.papan-nav` (panel samping guru) tidak dikunci.** Sejak 12 Okt panel itu memang tanpa gulir sendiri di
+  layar lebar (menunya ikut halaman), jadi tidak ada gulir bersarang yang perlu dikunci di sana.
+
+### A.74.3 Bukti (dijalankan, bukan klaim)
+
+Roda **sungguhan** dikirim lewat CDP di peramban headless saat editor materi terbuka dengan klip kuis (daftar
+pemilih kuis ada di dalam halaman yang panjang — persis kasus yang dikeluhkan):
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| `overscroll-behavior` tiap wadah di editor (hp · tablet · laptop) | **contain** untuk `.nle-pemilih-daftar`, `.nle-canvas-isi`, `.nle-kuis` |
+| roda di atas daftar pemilih → daftar bergulir | **0 → 240 px** |
+| roda di atas daftar pemilih → halaman | **1653 → 1653 px** (diam) |
+| daftar dipindah ke ujung bawah (8288 px) lalu roda diputar lagi | daftar tetap di **8278 dari maks 8278**, halaman tetap **1653** |
+| `overscroll-behavior` laci menu (ponsel) | **contain** |
+
+| Perintah | Hasil |
+| --- | --- |
+| `docs/jalankan-smoke-ui.sh editor` | **44/44 lulus** (exit 0) — naik dari 33 pemeriksaan, 11 di antaranya baru |
+| `docs/jalankan-smoke-ui.sh mobile` | **17/17 lulus** (exit 0) |
+| `./verify.sh` | **SEMUA HIJAU (exit 0)** — Pest, Redis wajib 9/65, Pint bersih, checkJs exit 0, ESLint 0 error, Vitest, realtime |
+
+Dua jebakan teknis yang tercatat supaya tidak diulang: (1) roda harus dikirim dengan
+`Input.synthesizeScrollGesture` (mode mouse), **bukan** `Input.dispatchMouseEvent` — hanya gestur itu yang
+menebak elemen di bawah koordinat seperti roda sungguhan; (2) `scroll-behavior: smooth` dari Bootstrap membuat
+`scrollIntoView` beranimasi, jadi koordinat roda baru boleh dibaca **setelah** gulir halaman mendarat (kalau
+tidak, roda mendarat di titik lama dan yang bergerak malah halaman).
+
+### A.74.4 Temuan sampingan yang jujur (belum diperbaiki)
+
+Saat menyiapkan pagar mutu putaran ini, ketahuan bahwa pagar **"warna hanya lewat variabel CSS"**
+(`frontend/src/__tests__/theme/tema.test.js`) sebenarnya **tidak pernah membaca `theme.css`**: Vitest men-stub
+berkas CSS menjadi modul kosong, jadi `import.meta.glob(..., { query: '?raw' })` mengembalikan teks **0
+karakter** (diperiksa: 239 berkas terjaring, `theme.css` panjang 0). Pagar itu karena itu hanya menguji berkas
+`.js`/`.jsx` — bukan "semua berkas" seperti bunyi judulnya.
+
+Dibuktikan dengan menyalakan `test.css: true` sementara: pagar yang sama langsung melaporkan **49 temuan hex di
+`theme.css`** — sebagian besar nilai cadangan di dalam `var(--x, #hex)` (sah), sisanya literal yang memang
+sengaja (mis. latar kanvas hitam, palet `--pos-warna`). Perbaikannya berarti memutuskan satu per satu hex mana
+yang boleh jadi variabel — terutama hex yang **tidak** boleh ikut bertukar di mode gelap — dan itu bukan
+pekerjaan kecil di sisa waktu lomba. Karena itu `test.css: true` **dikembalikan** (tidak diaktifkan) dan tes
+CSS-teks yang saya tulis untuk putaran ini **tidak dikomit**: pagar yang selalu lolos lebih berbahaya daripada
+pagar yang tidak ada. Perilaku gulir sendiri tetap dijaga oleh harness peramban (angka di A.74.3), bukan oleh
+pagar yang buta.
+
+### A.74.5 Batasan jujur
+
+- **Roda diuji di viewport laptop saja** (satu-satunya yang bersentuh-mouse di harness). Perangkat sentuh
+  memakai jari; perilaku gulirnya berbeda dan tidak diklaim di sini.
+- **`.dialog-samping` dan `.tabel-isian-bungkus` hanya diuji lewat aturan CSS-nya** (contain pada sumbu yang
+  tepat), belum lewat roda sungguhan di halaman Kelas/an Isian — harness yang memuat keduanya ada, tetapi roda
+  di sana belum ditambahkan pada putaran ini.
+- **Bukan perbaikan JavaScript.** Tidak ada perubahan pada komponen; yang berubah perilaku bawaan peramban.
+
+### A.74.6 Berkas
+
+- **Diubah:** `frontend/src/theme/theme.css` (blok "gulir bersarang"), `docs/smoke-ui-editor.mjs`
+  (11 pemeriksaan baru), `docs/smoke-ui-mobile.mjs` (1 pemeriksaan baru), `docs/laporan-pengujian.md`,
+  `docs/handoff-sesi.md`.
+- **Tidak dikomit (sengaja):** tes Vitest CSS-teks yang sempat dibuat — alasannya di A.74.4.
+- **`vite.config.js` dikembalikan** ke keadaan semula (percobaan `test.css: true` tidak jadi dipakai).

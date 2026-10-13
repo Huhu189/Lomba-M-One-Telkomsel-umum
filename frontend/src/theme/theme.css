@@ -3610,6 +3610,41 @@ a {
   border-radius: 0;
 }
 
+/* ---------- Gulir bersarang tidak bocor ke halaman (13 Okt 2026) ----------
+
+   Permintaan pemilik produk saat memakai laptop: *"pastikan yang di tuju kursor
+   maka di scroll duluan bukan yang mentok duluan agar lebih nyaman di pakai"*.
+
+   Artinya: begitu satu bagian punya gulir sendiri (daftar pemilih kuis, laci
+   menu di ponsel, panel formulir samping, bingkai kanvas editor, lapisan kuis,
+   tabel isian), gulir roda/trackpad di atas bagian itu harus DIMAKAN bagian itu
+   — dan begitu bagian itu mentok, halaman di belakangnya **tidak** ikut
+   bergerak. Tanpa aturan di bawah, browser merantai gulir (scroll chaining):
+   daftar pemilih kuis mentok di ujungnya, lalu halaman melompat — persis yang
+   membuat memakai laptop terasa tidak nyaman.
+
+   Pagar mutunya ada di `src/__tests__/theme/gulirBersarang.test.js` (CSS) dan di
+   harness peramban `docs/smoke-ui-editor.mjs` (roda sungguhan di atas daftar
+   pemilih kuis: daftarnya bergulir, halamannya tidak).
+
+   Catatan: panel samping guru (`.papan-nav`) sengaja TIDAK di sini — di layar
+   lebar panel itu memang tanpa gulir sendiri (menunya ikut halaman, permintaan
+   12 Okt 2026), jadi tidak ada gulir bersarang yang perlu dikunci. */
+.laci-nav,
+.dialog-samping,
+.nle-pemilih-daftar,
+.nle-kuis,
+.nle-canvas-isi {
+  overscroll-behavior: contain;
+}
+
+/* Tabel isian hanya menggulir MENDATAR. Yang dikunci hanya sisi mendatarnya:
+   kalau dua arah dikunci, gulir tegak di atas tabel tidak bisa lagi menggerakkan
+   halaman sama sekali — itu menukar satu ketidaknyamanan dengan yang lain. */
+.tabel-isian-bungkus {
+  overscroll-behavior-x: contain;
+}
+
 /* ---------- Pil saring (daftar kelas, bank soal, dst) ---------- */
 
 .pil-saring {

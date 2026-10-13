@@ -299,6 +299,11 @@ async function main() {
       lebar: l ? Math.round(l.getBoundingClientRect().width) : 0,
       overlay: document.querySelector('.laci-overlay') !== null,
       tautan: l ? l.querySelectorAll('a').length : 0,
+      // Laci ini wadah bergulir bersarang: gulir di atasnya harus dimakan laci
+      // (13 Okt 2026), bukan diteruskan ke halaman di belakangnya.
+      overscrollLaci: l
+        ? getComputedStyle(l).overscrollBehaviorY || getComputedStyle(l).overscrollBehavior
+        : 'tidak ada',
     }
   })()`)
   dibuka.dalamLayar = posisiLaci !== null && posisiLaci.kiri >= -1 && posisiLaci.kanan <= posisiLaci.vw + 1
@@ -309,6 +314,11 @@ async function main() {
     `aria-expanded=${dibuka.expanded} tautan=${dibuka.tautan} lebar=${dibuka.lebar} overlay=${dibuka.overlay} posisi=${posisiLaci ? `${posisiLaci.kiri}..${posisiLaci.kanan} dari ${posisiLaci.vw}` : '(laci tidak ada)'}`,
   )
   catat('gulir latar dikunci selama laci terbuka', dibuka.bodyOverflow === 'hidden', `body.style.overflow=${dibuka.bodyOverflow || '(kosong)'}`)
+  catat(
+    'laci menu memakai overscroll-behavior: contain (gulirnya tidak bocor ke latar)',
+    dibuka.overscrollLaci === 'contain',
+    `overscroll-behavior-y=${dibuka.overscrollLaci}`,
+  )
 
   // Tautan di dalam laci harus menutup laci + pindah halaman.
   await evalJs(`[...document.querySelectorAll('#laci-navigasi a')].find((a) => a.getAttribute('href') === '/kelas').click()`)

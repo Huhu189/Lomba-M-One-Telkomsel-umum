@@ -106,6 +106,14 @@ Akun demo: `admin@sekolah.test` (guru) & `smoke.murid@sekolah.test` (murid), san
 
 ### 0.4 Sudah terverifikasi (jangan diulang tanpa perubahan kode)
 
+**A.74** (13 Okt 2026, gulir bersarang tidak bocor) — `theme.css` menambahkan `overscroll-behavior: contain` untuk
+  `.laci-nav`, `.dialog-samping`, `.nle-pemilih-daftar`, `.nle-kuis`, `.nle-canvas-isi`, dan
+  `overscroll-behavior-x: contain` untuk `.tabel-isian-bungkus`; `.papan-nav` sengaja tidak dikunci. Bukti roda
+  sungguhan di peramban: daftar pemilih kuis bergulir **0 → 240 px** sementara halaman **1653 → 1653** (diam),
+  dan saat daftar sudah mentok (8278 px) halaman tetap **1653**. `docs/jalankan-smoke-ui.sh editor` **44/44** ·
+  `mobile` **17/17** · `./verify.sh` **SEMUA HIJAU**. Rincian + satu temuan sampingan (pagar warna CSS di
+  `tema.test.js` ternyata tidak pernah membaca `theme.css`): A.74.
+
 **A.73** (13 Okt 2026, latar tema dirombak total + aset CC0) — `pulau.svg` dan `angkasa.svg` **diganti seluruhnya**
   (bukan disetel): 196 bentuk/83 warna dan 164 bentuk/78 warna, rasio tetap 16:9, rute pos tidak digeser, id
   pendaratan tetap lengkap. Lima ikon CC0 Wikimedia Commons (roket, bintang, Mars, peti harta karun, karang)
