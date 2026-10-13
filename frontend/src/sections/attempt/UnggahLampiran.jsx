@@ -84,6 +84,11 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
   const masukanBerkas = useRef(/** @type {HTMLInputElement|null} */ (null))
   const perekam = useRef(/** @type {MediaRecorder|null} */ (null))
   const serpihan = useRef(/** @type {Blob[]} */ ([]))
+  // Durasi rekaman terkini + penanda batal dibaca lewat ref: `onstop` dibuat sekali saat
+  // tombol ditekan, jadi state di dalamnya basi (durasi selalu salah).
+  const durasiRekam = useRef(0)
+  const dibatalkan = useRef(false)
+  const aliranAktif = useRef(/** @type {MediaStream|null} */ (null))
 
   const [galat, setGalat] = useState('')
   const [progres, setProgres] = useState(0)
@@ -110,6 +115,7 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
 
     const jam = window.setInterval(() => {
       detik += 1
+      durasiRekam.current = detik
       setDetikRekam(detik)
 
       if (detik >= DURASI_REKAM_MAKS) {
@@ -122,6 +128,20 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
 
     return () => window.clearInterval(jam)
   }, [sedangRekam])
+
+  // Keluar dari soal/halaman (pindah soal, waktu habis, kumpul) saat merekam: matikan
+  // perekam + kamera/mikrofon dan JANGAN unggah rekaman yang ditinggalkan.
+  useEffect(
+    () => () => {
+      dibatalkan.current = true
+      if (perekam.current && perekam.current.state !== 'inactive') perekam.current.stop()
+      aliranAktif.current?.getTracks().forEach((jalur) => jalur.stop())
+      aliranAktif.current = null
+      perekam.current = null
+      serpihan.current = []
+    },
+    [],
+  )
 
   const unggah = useMutation({
     mutationFn: (/** @type {{jenis: string, isi: Blob, nama: string, durasi?: number}} */ muatan) =>
@@ -185,16 +205,27 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
       const aliran = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       const perekamBaru = new MediaRecorder(aliran)
 
+      aliranAktif.current = aliran
+      dibatalkan.current = false
+      durasiRekam.current = 0
       serpihan.current = []
       perekamBaru.ondataavailable = (peristiwa) => {
         if (peristiwa.data.size > 0) serpihan.current.push(peristiwa.data)
       }
       perekamBaru.onstop = () => {
         aliran.getTracks().forEach((jalur) => jalur.stop())
+        aliranAktif.current = null
+
+        if (dibatalkan.current) {
+          serpihan.current = []
+          return
+        }
+
         const isi = new Blob(serpihan.current, { type: perekamBaru.mimeType || 'video/webm' })
+        serpihan.current = []
 
         if (isi.size > 0) {
-          unggah.mutate({ jenis: 'rekam', isi, nama: 'rekaman-diri.webm', durasi: detikRekam })
+          unggah.mutate({ jenis: 'rekam', isi, nama: 'rekaman-diri.webm', durasi: durasiRekam.current })
         }
       }
 
