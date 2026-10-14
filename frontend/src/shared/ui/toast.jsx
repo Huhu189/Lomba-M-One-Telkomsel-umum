@@ -2,7 +2,7 @@
  * Toast buatan sendiri (chunk theme) — tanpa library eksternal.
  * Status selalu disertai ikon + teks, warna dari variabel CSS tema.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { IkonCentang, IkonSilang, IkonPeringatan, IkonInfo } from '../../icons.jsx'
 
@@ -70,22 +70,46 @@ const labelJenis = {
 }
 
 /**
- * Satu item toast dengan auto-tutup.
+ * Berapa lama toast menutup sendiri. Toast "salah"/"peringatan" **tidak** ikut
+ * menutup sendiri: pesan seperti "gagal mengumpulkan" atau "gagal menyimpan"
+ * bisa hilang sebelum sempat dibaca, padahal itu pesan yang paling penting
+ * (temuan M5). Yang menutup sendiri hanya kabar baik/sekilas (sukses & info).
+ */
+const JEDA_TUTUP_MS = 5000
+
+/** @param {'sukses'|'salah'|'peringatan'|'info'} jenis */
+function menutupSendiri(jenis) {
+  return jenis === 'sukses' || jenis === 'info'
+}
+
+/**
+ * Satu item toast. Sukses/info menutup sendiri, galat/peringatan menetap
+ * sampai ditutup — dan yang menutup sendiri berhenti menghitung saat disentuh,
+ * disorot, atau difokus keyboard supaya sempat dibaca.
  * @param {{ toast: Toast }} props
  */
 function ToastItem({ toast }) {
   const dismiss = useToastStore((s) => s.dismiss)
   const Ikon = ikonJenis[toast.jenis] ?? IkonInfo
+  const [ditahan, setDitahan] = useState(false)
+  const menetap = !menutupSendiri(toast.jenis)
 
   useEffect(() => {
-    const timer = setTimeout(() => dismiss(toast.id), 5000)
+    if (menetap || ditahan) return undefined
+
+    const timer = setTimeout(() => dismiss(toast.id), JEDA_TUTUP_MS)
     return () => clearTimeout(timer)
-  }, [toast.id, dismiss])
+  }, [toast.id, dismiss, menetap, ditahan])
 
   return (
     <div
-      className={`toast-item ${toast.jenis}`}
+      className={`toast-item ${toast.jenis}${menetap ? ' menetap' : ''}`}
       role={toast.jenis === 'salah' ? 'alert' : 'status'}
+      data-menetap={menetap ? '1' : undefined}
+      onMouseEnter={() => setDitahan(true)}
+      onMouseLeave={() => setDitahan(false)}
+      onFocus={() => setDitahan(true)}
+      onBlur={() => setDitahan(false)}
     >
       <Ikon className="ikon" size={22} />
       <div>

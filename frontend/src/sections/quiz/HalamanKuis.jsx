@@ -200,7 +200,7 @@ export default function HalamanKuis() {
     reset,
     setValue,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(skemaKuisForm),
     defaultValues: nilaiAwal,
@@ -798,12 +798,24 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               bagian 3, dan diubah dari tombol <strong>Setelan ulangan</strong> di sana.
             </p>
 
+            {/*
+              Hanya "Batal" yang tampil di sini; "Simpan draf" cukup satu, di
+              bar aksi lengket di atas (temuan S3) — dua tombol bernama sama di
+              satu halaman membuat guru ragu mana yang menyimpan.
+
+              Tombol kirim tersembunyi di bawah ini BUKAN aksi kedua: ia ada
+              supaya menekan Enter di kolom tetap menyimpan (tanpa satu pun
+              `type="submit"` di dalam form, peramban berhenti melakukan
+              pengiriman implisit pada form berisi banyak kolom).
+            */}
             <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
-              <Tombol varian="tepi" onClick={tutupEditor}>Batal</Tombol>
-              <Tombol type="submit" memuat={isSubmitting || simpan.isPending}>
-                Simpan draf
+              <Tombol varian="tepi" onClick={tutupEditor}>
+                Batal &amp; kembali ke daftar
               </Tombol>
             </div>
+            <button type="submit" className="sr-saja" tabIndex={-1} aria-hidden="true">
+              Simpan draf
+            </button>
           </form>
 
           <section

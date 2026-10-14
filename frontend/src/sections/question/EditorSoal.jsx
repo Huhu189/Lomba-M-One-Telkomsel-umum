@@ -3,7 +3,7 @@
  *
  * Tata letaknya tiga kartu bernomor di kolom utama (jenis soal → isi soal →
  * pengaturan) dengan sisi kanan yang mengikuti gulir berisi pratinjau dan daftar
- * kelengkapan. Bidang berubah mengikuti tipe soal (delapan tipe); validasi
+ * kelengkapan. Bidang berubah mengikuti tipe soal (22 tipe); validasi
  * kelengkapan dijalankan di klien (cermin registry backend) lalu pratinjau
  * memakai renderer yang sama dengan layar murid — jadi yang dilihat guru persis
  * yang dilihat murid.
@@ -14,7 +14,13 @@ import { buatMapel } from '../school/api.js'
 import { pesanGalatApi } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
+import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
+import {
+  JUDUL_BELUM_TERSIMPAN,
+  PESAN_BELUM_TERSIMPAN,
+  usePenjagaSebelumTutup,
+} from '../../shared/penjagaPerubahan.js'
 import { IkonTambah, IkonTipeIsianSingkat, IkonTongSampah } from '../../icons.jsx'
 import RendererSoal from './render/RendererSoal.jsx'
 import {
@@ -441,6 +447,11 @@ export default function EditorSoal({
   // grid teka silang (batas sisi) — diucapkan di bawah alatnya.
   const [pesanTabel, setPesanTabel] = useState('')
   const [pesanSilang, setPesanSilang] = useState('')
+  // Ada perubahan yang belum tersimpan? Dipakai penjaga "belum tersimpan"
+  // (temuan K3): peramban diminta konfirmasi saat halaman ditutup/disegarkan,
+  // dan tombol Batal menanyakan dulu sebelum membuang soal yang sedang ditulis.
+  const [kotor, setKotor] = useState(false)
+  const [dialogKeluar, setDialogKeluar] = useState(false)
 
   const tambahMapel = useMutation({
     mutationFn: async () =>
@@ -491,6 +502,7 @@ export default function EditorSoal({
    * @param {Partial<import('./tipeSoal.js').StateSoal>} perubahan
    */
   function ubah(perubahan) {
+    setKotor(true)
     setState((lama) => ({ ...lama, ...perubahan }))
   }
 
@@ -506,6 +518,7 @@ export default function EditorSoal({
    * @param {string} tipe
    */
   function gantiJenis(tipe) {
+    setKotor(true)
     setState((lama) => ({
       ...lama,
       tipe,
@@ -1152,15 +1165,67 @@ export default function EditorSoal({
   const siap = siapSoal(kelengkapan)
   const muatan = muatanDariState(state)
 
+  // Perubahan tertahan dihitung juga saat guru mengetik tanpa melewati `ubah()`
+  // (mis. mapel baru dibuat dari dialog). Menyimpan menutup penjaganya.
+  usePenjagaSebelumTutup(kotor && !sedangMenyimpan)
+
+  /**
+   * Bidang yang pertama kali perlu diperbaiki, dalam urutan yang paling mungkin
+   * menjadi sebab tombol dulu terasa mati (temuan P4).
+   *
+   * @returns {{ id: string, pesan: string }|null}
+   */
+  function bidangKurang() {
+    if (state.subject_id === '') return { id: 'soal-mapel', pesan: 'Pilih mapel dulu.' }
+    if (state.teks.trim() === '' && !TIPE_TANPA_TEKS.includes(state.tipe)) {
+      return { id: 'soal-teks', pesan: 'Isi soal masih kosong.' }
+    }
+
+    const skor = Number(state.skor)
+    if (!Number.isInteger(skor) || skor < 1 || skor > 100) {
+      return { id: 'soal-skor', pesan: 'Skor harus angka 1 sampai 100.' }
+    }
+
+    return null
+  }
+
+  /**
+   * Simpan soal (temuan P4: tombol selalu bisa ditekan).
+   *
+   * Dulu tombolnya `disabled` sampai SEMUA butir kelengkapan hijau — termasuk
+   * "Mapel dipilih" yang kolomnya ada di kartu 3 paling bawah, sementara guru
+   * baru mengisi kartu 1–2. Guru menekan tombol abu-abu itu berulang kali tanpa
+   * respons apa pun dan menyimpulkan editornya rusak. Sekarang tombolnya aktif:
+   * bila ada yang kurang, editor menggulir ke kolom pertama yang bermasalah,
+   * memberinya fokus (sekaligus sorotan), dan menyebut sebabnya.
+   */
   function kirim() {
     const temuan = validasiSoal(state)
 
     if (temuan.length > 0) {
       setGalat(temuan)
+      setKotor(true)
+
+      const bidang = bidangKurang()
+      const simpul = bidang === null ? null : document.getElementById(bidang.id)
+
+      if (simpul !== null) {
+        // `scrollIntoView` tidak ada di semua lingkungan (jsdom & webview tua),
+        // jadi dipanggil hanya bila tersedia — fokus di bawah tetap jalan.
+        if (typeof simpul.scrollIntoView === 'function') simpul.scrollIntoView({ block: 'center' })
+        if (typeof simpul.focus === 'function') simpul.focus({ preventScroll: true })
+      } else {
+        const kartu = document.getElementById('soal-kelengkapan')
+        if (kartu && typeof kartu.scrollIntoView === 'function') {
+          kartu.scrollIntoView({ block: 'center' })
+        }
+      }
+
       return
     }
 
     setGalat([])
+    setKotor(false)
     onSimpan(muatan, { lanjut: lanjutSerupa })
   }
 
@@ -3037,14 +3102,40 @@ export default function EditorSoal({
             <h2 id="soal-kelengkapan" className="judul-kecil">Kelengkapan</h2>
 
             <ul className="list-unstyled d-flex flex-column gap-2 mb-3">
-              {kelengkapan.map((satu) => (
-                <li key={satu.teks} className="d-flex align-items-center gap-2">
-                  <span className={`badge-status ${satu.ok ? 'sukses' : 'peringatan'}`}>
-                    {satu.ok ? 'Lengkap' : 'Belum'}
-                  </span>
-                  <span className="small">{satu.teks}</span>
-                </li>
-              ))}
+              {kelengkapan.map((satu) => {
+                // Butir yang belum lengkap bisa diketuk untuk melompat ke
+                // kolomnya (temuan P4) — daftar ini tadinya cuma bacaan, jadi
+                // guru harus mencari sendiri di mana yang kurang.
+                const tujuan = satu.ok ? null : idBidangKelengkapan(satu.teks)
+
+                return (
+                  <li key={satu.teks} className="d-flex align-items-center gap-2">
+                    <span className={`badge-status ${satu.ok ? 'sukses' : 'peringatan'}`}>
+                      {satu.ok ? 'Lengkap' : 'Belum'}
+                    </span>
+                    {tujuan === null ? (
+                      <span className="small">{satu.teks}</span>
+                    ) : (
+                      <Tombol
+                        varian="teks"
+                        className="p-0 text-start"
+                        data-lompat-kelengkapan={tujuan}
+                        onClick={() => {
+                          const simpul = document.getElementById(tujuan)
+                          if (simpul && typeof simpul.scrollIntoView === 'function') {
+                            simpul.scrollIntoView({ block: 'center' })
+                          }
+                          if (simpul && typeof simpul.focus === 'function') {
+                            simpul.focus({ preventScroll: true })
+                          }
+                        }}
+                      >
+                        <span className="small">{satu.teks} · perbaiki</span>
+                      </Tombol>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
 
             {soal === null && (
@@ -3068,24 +3159,64 @@ export default function EditorSoal({
 
             <div className="d-flex flex-wrap gap-2">
               <Tombol
-                disabled={!siap}
                 memuat={sedangMenyimpan}
                 teksMemuat="Menyimpan…"
                 onClick={kirim}
               >
                 {soal === null ? (lanjutSerupa ? 'Simpan & lanjut' : 'Simpan soal') : 'Perbarui soal'}
               </Tombol>
-              <Tombol varian="tepi" onClick={onBatal}>Batal</Tombol>
+              <Tombol
+                varian="tepi"
+                onClick={() => (kotor ? setDialogKeluar(true) : onBatal())}
+              >
+                Batal
+              </Tombol>
             </div>
 
             {!siap && (
               <p className="teks-lembut small mt-2 mb-0">
-                Lengkapi butir yang masih “Belum” supaya soal bisa disimpan.
+                Tombol Simpan tetap bisa ditekan: kalau ada yang kurang, editor menggulir ke kolomnya
+                dan menyebut sebabnya.
               </p>
             )}
           </section>
         </div>
       </aside>
+
+      {/* Penjaga "belum tersimpan" (temuan K3): keluar dengan perubahan yang
+       * belum disimpan selalu lewat konfirmasi, bukan langsung dibuang. */}
+      <DialogKonfirmasi
+        buka={dialogKeluar}
+        judul={JUDUL_BELUM_TERSIMPAN}
+        labelYa="Buang perubahan"
+        bahaya
+        onYa={() => {
+          setDialogKeluar(false)
+          onBatal()
+        }}
+        onBatal={() => setDialogKeluar(false)}
+      >
+        <p className="mb-0">{PESAN_BELUM_TERSIMPAN}</p>
+      </DialogKonfirmasi>
     </div>
   )
+}
+
+/**
+ * Kolom yang dituju satu butir kelengkapan (temuan P4).
+ *
+ * Hanya butir yang kolomnya punya id di editor yang bisa diketuk; sisanya
+ * (mis. kelengkapan grid teka silang) tetap tampil sebagai teks — lebih baik
+ * tidak bisa diketuk daripada menggulir ke tempat yang salah.
+ *
+ * @param {string} teks
+ * @returns {string|null}
+ */
+function idBidangKelengkapan(teks) {
+  if (teks === 'Mapel dipilih') return 'soal-mapel'
+  if (teks === 'Isi soal terisi') return 'soal-teks'
+  if (teks === 'Skor angka 1 sampai 100') return 'soal-skor'
+  if (teks.startsWith('Template MathML')) return 'soal-matematika'
+
+  return null
 }

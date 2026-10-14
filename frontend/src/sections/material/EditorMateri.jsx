@@ -14,13 +14,17 @@
  * untuk timeline/inspector supaya guru tetap leluasa menyusun.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
 import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import TabelData from '../../shared/ui/TabelData.jsx'
-import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { IkonPanahKiri } from '../../icons.jsx'
+import {
+  JUDUL_BELUM_TERSIMPAN,
+  PESAN_BELUM_TERSIMPAN,
+  usePenjagaSebelumTutup,
+} from '../../shared/penjagaPerubahan.js'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
@@ -552,6 +556,9 @@ export default function EditorMateri() {
  * }} props
  */
 function PanelEditor({ materi, daftarKuis, onTersimpan }) {
+  const navigasi = useNavigate()
+  // Dialog konfirmasi ketika guru keluar dengan perubahan yang belum disimpan.
+  const [dialogKeluar, setDialogKeluar] = useState(false)
   const [blok, setBlok] = useState(() => dariServer(materi.blok))
   const [progresUnggah, setProgresUnggah] = useState(0)
   // Tautan media (14 Okt 2026): kotak di sidebar untuk menyelipkan klip baru,
@@ -1114,6 +1121,21 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
     temaNama !== (materi.tema?.nama ?? materi.perjalanan?.nama ?? '') ||
     videoKode !== (materi.tema?.video_kode ?? '')
 
+  // Penjaga "belum tersimpan" (temuan K3): editor materi tidak punya autosave,
+  // jadi menutup/ menyegarkan halaman dengan perubahan tertahan wajib ditanya
+  // dulu. Keluar lewat tombol "Daftar materi" memakai dialog yang sama.
+  usePenjagaSebelumTutup(belumTersimpan && !simpanBlok.isPending && !terbitkan.isPending)
+
+  /** Keluar ke daftar materi — dengan konfirmasi bila ada perubahan tertahan. */
+  function cobaKeluar() {
+    if (belumTersimpan) {
+      setDialogKeluar(true)
+      return
+    }
+
+    void navigasi(RUTE.materi)
+  }
+
   const tandaDetik = useMemo(() => {
     const langkah = total <= 120 ? 5 : total <= 300 ? 10 : 30
     /** @type {number[]} */
@@ -1173,18 +1195,50 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
       }}
       onDrop={lepasBerkasKeEditor}
     >
+      {/* Bar aksi lengket (14 Oktober 2026, temuan K2): Simpan & Terbitkan dulu
+        * terkubur di dasar sidebar — di bawah "Tambah elemen", "Selipkan dari
+        * tautan", "Template tema", "Nama tema", dan "Latar tema" — sehingga di
+        * layar sempit guru harus menggulir jauh untuk menyimpan. Kini keduanya
+        * ada di bilah atas yang selalu terlihat, bersama status "Belum
+        * tersimpan" yang tidak lagi kecil terlewat. */}
+      <div className="bar-susun nle-bar">
+        <Tombol varian="tepi" ukuran="sedang" ikon={IkonPanahKiri} onClick={cobaKeluar}>
+          Daftar materi
+        </Tombol>
+        <span className="fw-semibold teks-patah">{materi.judul}</span>
+        <span className="badge-status lembut">{materi.status_label ?? materi.status}</span>
+        {belumTersimpan && (
+          <span className="badge-status peringatan" data-belum-tersimpan="1">
+            Belum tersimpan
+          </span>
+        )}
+        <div className="d-flex flex-wrap gap-2 ms-md-auto">
+          <Tombol
+            ukuran="sedang"
+            memuat={simpanBlok.isPending}
+            onClick={() => simpanBlok.mutate()}
+          >
+            Simpan
+          </Tombol>
+          <Tombol
+            varian="tepi"
+            ukuran="sedang"
+            memuat={terbitkan.isPending}
+            disabled={blok.length === 0}
+            onClick={() => terbitkan.mutate()}
+          >
+            Terbitkan
+          </Tombol>
+        </div>
+      </div>
+
       {/* ===== Sidebar: tools + template ===== */}
       <aside className="nle-sidebar">
         <div className="mb-3">
-          <TombolTaut varian="tepi" ikon={IkonPanahKiri} className="mb-2" to={RUTE.materi}>
-            Daftar materi
-          </TombolTaut>
-          <h1 className="h6 fw-bold mb-0">{materi.judul}</h1>
-          <p className="small teks-lembut mb-1">
+          <h2 className="nle-judul mb-0">Materi ini</h2>
+          <p className="small teks-lembut mb-0">
             {materi.mapel_nama ?? '—'} · {materi.kelas_nama ?? '—'}
           </p>
-          <span className="badge-status lembut">{materi.status_label ?? materi.status}</span>
-          {belumTersimpan && <span className="badge-status peringatan ms-1">Belum tersimpan</span>}
         </div>
 
         <h2 className="nle-judul">Tambah elemen</h2>
@@ -1318,20 +1372,25 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
           </p>
         )}
 
-        <div className="mt-3 d-grid gap-2">
-          <Tombol memuat={simpanBlok.isPending} onClick={() => simpanBlok.mutate()}>
-            Simpan
-          </Tombol>
-          <Tombol
-            varian="tepi"
-            memuat={terbitkan.isPending}
-            disabled={blok.length === 0}
-            onClick={() => terbitkan.mutate()}
-          >
-            Terbitkan
-          </Tombol>
-        </div>
+        <p className="small teks-lembut mt-3 mb-0">
+          Simpan &amp; Terbitkan ada di bilah atas supaya selalu terjangkau, bahkan di layar sempit.
+        </p>
       </aside>
+
+      {/* Penjaga "belum tersimpan" (temuan K3) untuk tombol keluar di layar. */}
+      <DialogKonfirmasi
+        buka={dialogKeluar}
+        judul={JUDUL_BELUM_TERSIMPAN}
+        labelYa="Buang perubahan"
+        bahaya
+        onYa={() => {
+          setDialogKeluar(false)
+          void navigasi(RUTE.materi)
+        }}
+        onBatal={() => setDialogKeluar(false)}
+      >
+        <p className="mb-0">{PESAN_BELUM_TERSIMPAN}</p>
+      </DialogKonfirmasi>
 
       {/* ===== Area kerja: canvas → playback → timeline ===== */}
       <div className="nle-kerja">
