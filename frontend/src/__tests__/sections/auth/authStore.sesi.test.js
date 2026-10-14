@@ -35,6 +35,9 @@ const userContoh = {
   emailTerverifikasi: true,
   // Akun murid biasa: bukan siswa tamu (mode tamu tanpa login).
   isTamu: false,
+  // Akun biasa juga sudah punya kata sandi sendiri (bukan akun dari Google).
+  perluBuatSandi: false,
+  punyaGoogle: false,
 }
 
 describe('jejak sesi di perangkat bersama', () => {

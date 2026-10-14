@@ -31,6 +31,7 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { IkonKunci, IkonPengguna, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
 import KartuAuth from './KartuAuth.jsx'
+import GoogleMasuk from './GoogleMasuk.jsx'
 import MasukTamu from './MasukTamu.jsx'
 import PeringatanTunggu from './PeringatanTunggu.jsx'
 import MemuatHalaman from '../../shared/ui/MemuatHalaman.jsx'
@@ -172,6 +173,13 @@ export default function HalamanMasuk({ berhasil }) {
         <MemuatHalaman />
       ) : (
         <>
+          {/**
+           * Tombol Google ditempatkan di ATAS formulir kata sandi (14 Oktober
+           * 2026): bagi murid yang akunnya dibuat lewat Google, pintu itu memang
+           * yang pertama ia cari. Tampil hanya bila sekolah menyalakannya.
+           */}
+          <GoogleMasuk berhasil={berhasil} />
+
           {formulirAkun}
 
           <p className="auth-pemisah">Belum punya akun?</p>

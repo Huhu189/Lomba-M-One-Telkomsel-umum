@@ -30,6 +30,7 @@ import {
   HalamanAturUlangSandi,
   HalamanBadge,
   HalamanBankSoal,
+  HalamanBuatSandi,
   HalamanDaftar,
   HalamanHasil,
   HalamanImporMurid,
@@ -75,18 +76,55 @@ function HanyaTamu() {
 }
 
 /**
- * Kerangka umum dengan gerbang verifikasi: akun yang sudah masuk tetapi belum
- * memverifikasi email diarahkan ke halaman verifikasi (fitur lain memang ditolak
- * server, jadi jangan biarkan murid menabrak dinding 403).
+ * Kerangka umum dengan gerbang verifikasi & kata sandi: akun yang sudah masuk
+ * tetapi belum memverifikasi email diarahkan ke halaman verifikasi, dan akun
+ * yang lahir dari Google (belum punya kata sandi sendiri) diarahkan ke langkah
+ * pembuatan kata sandi. Keduanya memang ditolak server (403), jadi jangan
+ * biarkan murid menabrak dinding itu atau melihat halaman yang pasti gagal.
  */
 function GerbangUmum() {
   const user = useAuthStore((s) => s.user)
+
+  if (user?.perluBuatSandi) {
+    return <Navigate to={RUTE.buatSandi} replace />
+  }
 
   if (user && !user.emailTerverifikasi) {
     return <Navigate to={RUTE.perluVerifikasi} replace />
   }
 
   return <KerangkaUmum />
+}
+
+/**
+ * Halaman buat kata sandi: hanya untuk yang sedang masuk DAN memang belum
+ * bersandi. Yang sudah bersandi dialihkan ke beranda; yang belum masuk ke
+ * halaman masuk — halaman ini tidak boleh jadi jalan pintas mengganti sandi
+ * tanpa sandi lama.
+ */
+function HanyaBuatSandi() {
+  const user = useAuthStore((s) => s.user)
+
+  if (!user) return <KeMasuk />
+
+  return user.perluBuatSandi ? <Outlet /> : <Navigate to={RUTE.beranda} replace />
+}
+
+/**
+ * Halaman buat kata sandi + penyambungnya ke store: nama murid dibaca reaktif
+ * (bukan sekali saat render) supaya sapaan di halaman itu ikut hidup bila user
+ * baru selesai dipulihkan, dan pengarahan sesudah berhasil tetap satu tempat.
+ */
+function HalamanBuatSandiTersambung() {
+  const nama = useAuthStore((s) => s.user?.name ?? '')
+  const navigate = useNavigate()
+
+  return (
+    <HalamanBuatSandi
+      nama={nama}
+      berhasil={() => navigate(RUTE.beranda, { replace: true })}
+    />
+  )
 }
 
 /**
@@ -292,9 +330,15 @@ export default function App() {
                   // yang butuh akun sekolah dan pasti ditolak untuk tamu.
                   berhasil={(user) =>
                     navigate(
-                      tujuanLanjut(
-                        /** @type {{ lanjut?: unknown }|null} */ (lokasi.state)?.lanjut,
-                      ) ?? (user.isTamu ? RUTE.kuis : RUTE.beranda),
+                      // Akun dari Google dengan kata sandi belum dibuat tidak
+                      // diantar ke tujuan asalnya dulu: lapisan wajib-buat-sandi
+                      // didahulukan, karena seluruh rute lain memang ditolak
+                      // server sampai kata sandinya ada.
+                      user.perluBuatSandi
+                        ? RUTE.buatSandi
+                        : (tujuanLanjut(
+                            /** @type {{ lanjut?: unknown }|null} */ (lokasi.state)?.lanjut,
+                          ) ?? (user.isTamu ? RUTE.kuis : RUTE.beranda)),
                       { replace: true },
                     )
                   }
@@ -308,11 +352,24 @@ export default function App() {
                   berhasil={(email) =>
                     navigate(RUTE.perluVerifikasi, { replace: true, state: { email } })
                   }
+                  // Daftar lewat Google: emailnya sudah diverifikasi Google, jadi
+                  // murid langsung masuk dan tinggal membuat kata sandinya
+                  // (langkah yang sama dengan jalur masuk lewat Google).
+                  berhasilGoogle={(user) =>
+                    navigate(user.perluBuatSandi ? RUTE.buatSandi : RUTE.beranda, { replace: true })
+                  }
                 />
               }
             />
             <Route path={RUTE.lupaSandi} element={<HalamanLupaSandi />} />
             <Route path={RUTE.aturUlangSandi} element={<HalamanAturUlangSandi />} />
+          </Route>
+
+          {/* Lapisan wajib-buat-sandi untuk akun dari Google. Boleh dibuka oleh
+              yang sudah masuk (karena itu di luar `HanyaTamu`), tetapi hanya
+              selama akunnya memang belum punya kata sandi sendiri. */}
+          <Route element={<HanyaBuatSandi />}>
+            <Route path={RUTE.buatSandi} element={<HalamanBuatSandiTersambung />} />
           </Route>
           {/* Tautan dari email boleh dibuka siapa pun, termasuk yang sudah masuk. */}
           <Route path={RUTE.verifikasiEmail} element={<HalamanVerifikasiEmail />} />

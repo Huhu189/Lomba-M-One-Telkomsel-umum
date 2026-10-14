@@ -893,6 +893,53 @@ zustand 328,98 kB; `axios` + `react-router` 209,85 kB) — itu batas tumpukan ya
 
 ---
 
+## 23. Masuk & daftar lewat Google — dengan kata sandi sekali di awal (14 Oktober 2026)
+
+Murid yang emailnya sudah punya akun Google tidak perlu mengetik apa pun: satu tekan tombol di halaman
+**Masuk** atau **Daftar**, dan ia masuk. Yang emailnya belum terdaftar **langsung dibuatkan akun** — jadi
+satu tombol itu melayani dua hal sekaligus (masuk *dan* daftar).
+
+### Cara kerjanya (dan mengapa tidak ada rahasia yang ikut ke peramban)
+Klien memakai **Google Identity Services**, menerima **ID token** (JWT bertanda tangan Google), lalu
+mengirimkannya ke `POST /v1/auth/google`. Server **memeriksa sendiri** token itu
+(`GoogleIdTokenVerifier`): tanda tangan RS256 dicocokkan dengan kunci publik Google (JWKS, di-cache,
+disegarkan sendiri bila kuncinya dirotasi), lalu `iss`/`exp`/`aud` diperiksa — **`aud` wajib milik aplikasi
+ini**, sebab tanpa itu ID token aplikasi Google lain bisa dipakai masuk — dan `email_verified` harus benar.
+`client_secret` tidak dibutuhkan alur ini dan tidak pernah dikirim ke peramban; yang tahu id klien hanyalah
+`GET /v1/auth/google` (publik, bukan rahasia). Bila sekolah belum mengisi `GOOGLE_CLIENT_ID`, server
+menjawab `aktif: false` dan **tombolnya tidak pernah muncul** — anak tidak melihat pintu yang pasti gagal.
+
+### Akun Google tetap akun biasa — dan wajib punya kata sandi sendiri
+Tiga hal yang membuatnya benar-benar setara akun lain:
+
+1. **Satu akun per email.** Email dari Google sudah pasti milik pemakainya, jadi bila emailnya sudah
+   terdaftar (dibuat sekolah lewat impor, atau lebih dulu lewat Google), akun **itu** yang dipakai — tidak
+   ada akun kedua untuk anak yang sama. Kata sandi lamanya **tidak disentuh**: murid yang biasa masuk dengan
+   kata sandi tetap bisa begitu. Email yang sudah dibuktikan Google dianggap terverifikasi, jadi akun yang
+   tadinya `pending` (belum membuka tautan verifikasi) langsung aktif.
+2. **Akun baru = peran murid, seperti pendaftaran mandiri** — guru/admin tidak bisa lahir dari tombol di
+   halaman masuk, dan muridnya langsung masuk kelas penampung sampai guru menempatkannya.
+3. **Satu lapisan sekali seumur akun: buat kata sandi.** Akun yang lahir dari Google dibuat server dengan
+   kata sandi acak 40 karakter yang **tidak pernah diberitahukan ke siapa pun**, jadi murid diminta membuat
+   kata sandinya sendiri di `/buat-sandi` sebelum memakai aplikasi. Sebelum itu middleware `sandi-disetel`
+   menolak 403 semua rute lain (hanya akun sendiri, keluar, dan pembuatan sandi yang boleh) — halaman lain
+   juga mengalihkannya, jadi tidak ada jalan memutar dengan mengetik alamat halaman. Rute pembuatan sandi
+   otomatis tertutup setelah dipakai: penggantian berikutnya wajib lewat jalur ganti sandi yang meminta
+   sandi lama.
+
+Sesudah kata sandinya ada, murid masuk seperti biasa — **tidak pernah ditanya kata sandi lagi selama
+sesinya masih hidup**, dan boleh memakai tombol Google kapan saja (dua-duanya menuju akun yang sama).
+Mengapa justru diminta sekali: kata sandi itu satu-satunya jalan masuk bila akun Google-nya tidak bisa
+dipakai (ganti perangkat, akun anak ditutup sekolah) — akun tanpa sandi bisa terkunci permanen.
+
+### Kalau akunnya dibatasi sekolah
+Akun yang ditangguhkan/dihapus tetap ditolak **walau lewat Google** — status akun adalah keputusan sekolah,
+bukan sesuatu yang bisa dilewati dengan memilih pintu masuk lain. Akun Google yang belum bersandi juga tidak
+bisa dimasuki lewat kolom kata sandi (sandi acaknya tidak diketahui siapa pun, dan jalur sandi memang
+ditutup sampai sandinya dibuat).
+
+---
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**

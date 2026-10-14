@@ -55,6 +55,8 @@ const halamanMalas = [
   'HalamanDaftar',
   'HalamanLupaSandi',
   'HalamanAturUlangSandi',
+  // Lapisan wajib-buat-sandi akun Google (14 Oktober 2026).
+  'HalamanBuatSandi',
   'HalamanVerifikasiEmail',
   'HalamanPerluVerifikasi',
   'HalamanAkun',

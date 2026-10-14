@@ -115,12 +115,44 @@ async function tenang() {
 }
 
 /**
+ * Tunggu sampai `ambil()` mengembalikan elemennya.
+ *
+ * Satu tik `setTimeout` TIDAK cukup dan tidak bisa diandalkan: React Query
+ * menyiarkan hasil antrean di batching-nya sendiri, jadi kadang form-nya baru
+ * ada beberapa tik kemudian. Dulu tes ini "pasang → `await tenang()` → langsung
+ * kueri elemen": saat tiknya kebetulan kurang, kegagalannya menyesatkan —
+ * `null` yang dibaca sebagai elemen (atau TypeError dari jsdom: “'set value'
+ * called on an object that is not a valid instance of HTMLInputElement”) padahal
+ * aplikasinya baik-baik saja. Menunggu begini membuat hasilnya pasti, bukan
+ * bergantung waktu.
+ *
+ * @param {() => Element | null | undefined} ambil
+ * @returns {Promise<Element>}
+ */
+async function tungguSampai(ambil) {
+  for (let tik = 0; tik < 50; tik += 1) {
+    const elemen = ambil()
+
+    if (elemen) return elemen
+
+    await tenang()
+  }
+
+  throw new Error('Elemen yang ditunggu tidak muncul di form koreksi')
+}
+
+/** Tombol berteks, setelah dipastikan sudah terpasang. @param {string} teks */
+function tungguTombol(teks) {
+  return tungguSampai(() => tombol(teks))
+}
+
+/**
  * Isi skor + alasan pada form yang sedang terbuka.
  * @param {number} skor
  */
-function isiForm(skor) {
-  const angka = /** @type {HTMLInputElement} */ (wadah.querySelector('input[type="number"]'))
-  const alasan = /** @type {HTMLTextAreaElement} */ (wadah.querySelector('textarea'))
+async function isiForm(skor) {
+  const angka = /** @type {HTMLInputElement} */ (await tungguSampai(() => wadah.querySelector('input[type="number"]')))
+  const alasan = /** @type {HTMLTextAreaElement} */ (await tungguSampai(() => wadah.querySelector('textarea')))
 
   act(() => {
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set?.call(
@@ -160,12 +192,12 @@ afterEach(() => {
 describe('FormKoreksi — sekali klik', () => {
   it('satu tombol Simpan menerbitkan token lalu menyimpan', async () => {
     pasang()
-    await tenang()
+    await isiForm(4)
 
-    isiForm(4)
+    const simpan = /** @type {HTMLButtonElement} */ (await tungguTombol('Simpan & berikutnya'))
 
     await act(async () => {
-      tombol('Simpan & berikutnya')?.click()
+      simpan.click()
     })
 
     expect(mintaTokenKoreksi).toHaveBeenCalledTimes(1)
@@ -181,7 +213,7 @@ describe('FormKoreksi — sekali klik', () => {
 
   it('tombol "Minta token" manual tidak lagi wajib ditekan', async () => {
     pasang()
-    await tenang()
+    await tungguTombol('Simpan & berikutnya')
 
     expect(tombol('Minta token konfirmasi')).toBeTruthy()
     // Tanpa menekannya pun, jalur simpan tetap sah (dibuktikan tes di atas).
@@ -190,13 +222,9 @@ describe('FormKoreksi — sekali klik', () => {
 
   it('skor bisa dipilih satu ketukan dan alasan siap pakai mengurangi mengetik', async () => {
     pasang()
-    await tenang()
 
-    const cepat = /** @type {HTMLElement} */ (wadah.querySelector('[data-skor-cepat="2"]'))
-    const alasan = /** @type {HTMLElement} */ (wadah.querySelector('[data-alasan-cepat]'))
-
-    expect(cepat).not.toBeNull()
-    expect(alasan).not.toBeNull()
+    const cepat = /** @type {HTMLElement} */ (await tungguSampai(() => wadah.querySelector('[data-skor-cepat="2"]')))
+    const alasan = /** @type {HTMLElement} */ (await tungguSampai(() => wadah.querySelector('[data-alasan-cepat]')))
 
     act(() => cepat.click())
     act(() => alasan.click())
@@ -209,9 +237,8 @@ describe('FormKoreksi — sekali klik', () => {
 
   it('alasan tetap wajib: Simpan mati sampai alasan cukup', async () => {
     pasang()
-    await tenang()
 
-    const simpan = /** @type {HTMLButtonElement} */ (tombol('Simpan & berikutnya'))
+    const simpan = /** @type {HTMLButtonElement} */ (await tungguTombol('Simpan & berikutnya'))
 
     expect(simpan.disabled).toBe(true)
   })

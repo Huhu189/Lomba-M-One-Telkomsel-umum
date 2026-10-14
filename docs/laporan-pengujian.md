@@ -8110,3 +8110,109 @@ Batasan jujur putaran ini: yang dijalankan ulang lewat `./verify.sh` adalah
 **pohon terakhir** sesudah semua commit; commit di tengah tidak diverifikasi
 satu per satu, jalur jenis berkas tidak diuji peramban, dan pemeriksaan peramban
 untuk mengurutkan/menjodohkan hanya menyentuh tampilan-interaksi.
+
+---
+
+## A.89 — Masuk & daftar lewat Google (satu pintu) + lapisan kata sandi sekali, dan satu regresi 500 yang diperbaiki (14 Oktober 2026)
+
+### A.89.1 Yang diminta, dan keputusan yang tidak boleh ditebak
+Pemilik produk: **bisa login dan daftar** lewat Google, **menautkan** bila emailnya sudah ada (dibuat lewat
+Google maupun manual), **tidak bisa masuk lewat metode yang berbeda**, dan hasil akhirnya **sama seperti akun
+biasa: ada lapisan meminta kata sandi di awal, setelah itu tidak lagi** untuk masuk.
+
+Dua hal yang karena itu ditetapkan di server, bukan di klien:
+
+1. **Satu akun per email.** Token Google hanya dipercaya setelah `email_verified` diperiksa, jadi email yang
+   sudah terdaftar (impor sekolah atau akun Google sebelumnya) dipakai **akun itu** — bukan dibuat akun kedua.
+   Kata sandi lama tidak disentuh, dan email yang sudah dibuktikan Google dianggap terverifikasi (akun
+   `pending` jadi `aktif`).
+2. **Akun baru wajib membuat kata sandi sendiri sekali** (`/buat-sandi`), sebelum itu ditahan middleware
+   `sandi-disetel`. Sandi acak 40 karakter buatan server tidak pernah diberitahukan, dan jalur sandi ditolak
+   untuk akun yang belum bersandi — jadi tidak ada jalan masuk “beda method”.
+
+### A.89.2 Token Google diperiksa sendiri, tanpa pustaka pihak ketiga
+`GoogleIdTokenVerifier` (baru) memeriksa JWT RS256: kunci publik Google diunduh dari JWKS dan di-cache
+(`Cache::remember`, disegarkan sekali bila `kid` token belum dikenal — kunci Google dirotasi), JWK `n`/`e`
+diubah ke PEM lewat DER yang dibentuk sendiri, lalu `openssl_verify` dijalankan. Klaim yang diperiksa: `alg`
+hanya `RS256`, `aud` **wajib** sama dengan `services.google.client_id` (tanpa ini ID token aplikasi Google
+lain bisa dipakai masuk), `iss` Google, `exp`/`iat` dengan toleransi 60 detik, `sub` + `email` ada, dan
+`email_verified` benar. Semua kegagalan memakai **satu pesan yang sama**. Id klien tidak ditanam di bundel:
+`GET /v1/auth/google` (publik) mengabarkan `aktif` + `client_id`, dan tanpa `GOOGLE_CLIENT_ID` tombolnya tidak
+ditampilkan sama sekali (dibuktikan tes).
+
+### A.89.3 Regresi 500 yang ditemukan pemilik produk saat mencobanya
+Sesudah kode ini terpasang di mesin pengembangan, **seluruh permintaan ber-sesi balas 500**:
+`The attribute [perlu_buat_sandi] either does not exist or was not retrieved for model [App\Models\User]`
+(`/auth/saya`, `/auth/masuk`, dan karenanya juga panel murid + halaman lain). Penyebabnya migrasi belum
+jalan di database pengembangan — kode membaca atribut baru pada baris user yang kolomnya belum ada, dan model
+ketat (`preventAccessingMissingAttributes`) mengubahnya jadi 500.
+
+Dua perbaikan:
+
+1. `php artisan migrate` dijalankan (`2026_10_14_000002_tambah_google_id_ke_users` → DONE).
+2. `User::perluBuatSandi()` dan `User::terhubungGoogle()` membaca dari **array atribut mentah**
+   (`$this->attributes[...] ?? default`), jadi urutan “kode dulu, migrasi kemudian” tidak lagi mematikan
+   aplikasi: akun lama dianggap sudah punya kata sandinya sendiri. Ini juga yang membuat tiga keluhan lain
+   (ganti email murid tidak tersimpan, tautan lupa sandi tidak sampai ke email baru, dan “Belum bisa masuk”
+   saat guru bekerja di panel murid) hilang: semuanya terjadi **di dalam jendela 500 itu** — jalur
+   `PUT /murid/{id}` dan `POST /auth/lupa-sandi` sendiri sudah diperiksa ulang lewat API dan berjalan
+   (email murid berubah dan tersimpan; lupa-sandi menjawab 200; SMTP Gmail terhubung dalam ~6 detik).
+
+### A.89.4 Yang diperiksa
+- **Backend `tests/Feature/GoogleAuthTest.php` (baru, 7 tes)**: token uji ditandatangani dengan pasangan kunci
+  RSA yang dibuat di tes dan JWKS-nya disajikan lewat `Http::fake`, jadi jalur kriptografinya benar-benar
+  diuji — akun baru dari Google (peran murid, aktif, email terverifikasi, profil kelas penampung, panji
+  `perluBuatSandi`), masuk ulang tidak menggandakan akun, penautan ke akun guru yang sudah ada (kata sandi
+  lama tetap jalan), akun `pending` jadi aktif, penolakan tanda tangan kunci lain / `aud` salah /
+  `email_verified: false` / token kedaluwarsa, penahanan `sandi-disetel` (403 pada `/kuis`, 200 pada
+  `/auth/saya`, sekali pakai pada `/akun/sandi-pertama`), jalur sandi ditolak sebelum sandinya dibuat dan
+  berfungsi lagi sesudahnya, serta `aktif: false` saat id klien kosong.
+- **Frontend**: `sections/auth/googleMasuk.test.jsx` (5) — tombol tidak muncul saat Google mati (dan skripnya
+  tidak diunduh), id klien datang dari server, `credential` diteruskan ke server lewat store, penolakan server
+  tampil apa adanya tanpa toast sukses, `credential` kosong tidak ditembak, dan skrip yang gagal dimuat
+  (jaringan sekolah memblokir `accounts.google.com`) pulang **diam-diam**; `sections/auth/buatSandiPertama.test.jsx`
+  (3) — sandi pendek/beda ditolak sebelum menembak server, penanda `perluBuatSandi` padam di store sesudah
+  berhasil, dan penolakan server tidak membuka sesi palsu. Dua berkas tes lama disesuaikan: `masukTautanUlangan`
+  (info Google dimatikan agar tidak menembak jaringan) dan `authStore.sesi` (fixture user bertambah dua kolom).
+- **Perbaikan tes yang rapuh (bukan bagian fitur, tapi menghambat gerbang)**: `koreksiSekaliKlik.test.jsx`
+  mengisi form langsung sesudah satu tik `setTimeout`; sesekali form-nya belum terpasang dan kegagalannya
+  menyesatkan (TypeError jsdom / `expected null not to be null`). Sekarang tesnya **menunggu elemennya**
+  (`tungguSampai`/`tungguTombol`) — dijalankan 8× berurutan, stabil. `halaman.test.js` juga bertambah satu
+  halaman malas (`HalamanBuatSandi`) pada daftar yang dihitung.
+- **`./verify.sh` SEMUA HIJAU (exit 0)**: Pest **419 lulus (4222 asersi)** · Redis wajib 9/65 · Pint · checkJs ·
+  ESLint 0 error (3 peringatan lama dari `useForm().watch()`, termasuk satu di halaman baru — pola yang sama
+  dengan halaman daftar & atur-ulang sandi) · Vitest **116 berkas / 1038 tes** · realtime 20 lulus.
+  Vitest dijalankan dua kali berturut-turut hijau.
+
+### A.89.5 Batasan jujur putaran ini
+- **Belum dicoba dengan akun Google sungguhan**: `backend/.env` mesin pengembangan belum memuat
+  `GOOGLE_CLIENT_ID`, jadi yang terverifikasi adalah (a) jalur kriptografi & seluruh aturan akun lewat tes
+  backend, dan (b) keadaan “Google mati”: `GET /v1/auth/google` menjawab `{"aktif":false,"client_id":""}`
+  dan tombolnya tidak dirender. Untuk menyalakannya: isi `GOOGLE_CLIENT_ID` (+ opsional `GOOGLE_CLIENT_SECRET`)
+  di `backend/.env`, lalu daftarkan origin frontend sebagai *Authorized JavaScript origin* di Google Cloud
+  Console. Belum diperiksa di peramban apakah tombol GIS benar-benar tampil pada origin itu.
+- Perutean/layar `/buat-sandi` baru diuji di jsdom (klik & pengisian form), belum di peramban sungguhan.
+- SMTP hanya diperiksa “bisa dihubungi” (~6 detik) dan lewat jawaban 200 `POST /auth/lupa-sandi`; sampai atau
+  tidaknya email ke kotak masuk penerima tetap bergantung penyedia email sekolah (dan folder spam).
+
+### A.89.6 Berkas
+- **Backend baru:** `Sections/Auth/Services/GoogleIdTokenVerifier.php`, `Sections/Auth/Services/GoogleAuthService.php`,
+  `Sections/Auth/Http/Controllers/GoogleAuthController.php`, `Sections/Auth/Http/Requests/MasukGoogleRequest.php`,
+  `Sections/Auth/Http/Requests/BuatSandiRequest.php`, `Http/Middleware/PastikanSandiDisetel.php`,
+  `database/migrations/2026_10_14_000002_tambah_google_id_ke_users.php`, `tests/Feature/GoogleAuthTest.php`.
+- **Backend diubah:** `app/Models/User.php` (fillable + cast + `terhubungGoogle()`/`perluBuatSandi()` yang tahan
+  kolom belum ada), `Sections/Auth/Services/AkunService.php` (`setelSandiPertama`),
+  `Sections/Auth/Services/LoginService.php` (menolak akun yang belum bersandi),
+  `Sections/Auth/Http/Controllers/AkunController.php` (`buatSandiPertama`),
+  `Sections/Auth/Http/Resources/UserResource.php` (`perluBuatSandi`, `punyaGoogle`), `config/services.php`,
+  `bootstrap/app.php` (alias `sandi-disetel`), `routes/api.php`, `app/Providers/AppServiceProvider.php`
+  (limiter `google`), `.env.example`.
+- **Frontend baru:** `sections/auth/GoogleMasuk.jsx`, `sections/auth/HalamanBuatSandi.jsx`,
+  `__tests__/sections/auth/googleMasuk.test.jsx`, `__tests__/sections/auth/buatSandiPertama.test.jsx`.
+- **Frontend diubah:** `sections/auth/api.js`, `sections/auth/authStore.js`, `sections/auth/validasi.js`,
+  `sections/auth/HalamanMasuk.jsx`, `sections/auth/HalamanDaftar.jsx`, `routes.js`, `halaman.js`, `App.jsx`,
+  `theme/theme.css`, `__tests__/halaman.test.js`, `__tests__/sections/auth/masukTautanUlangan.test.jsx`,
+  `__tests__/sections/auth/authStore.sesi.test.js`,
+  `__tests__/sections/scoring/koreksiSekaliKlik.test.jsx` (tes dibuat menunggu elemen, tidak lagi rapuh).
+- **Docs:** `docs/penjelasan-fitur.md` (bagian 23), `docs/handoff-sesi.md`, `docs/laporan-pengujian.md`
+  (bagian ini).

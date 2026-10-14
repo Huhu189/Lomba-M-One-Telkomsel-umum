@@ -15,12 +15,16 @@ import { IkonDaftar, IkonKunci, IkonPengguna, IkonSurat } from '../../icons.jsx'
 import { RUTE } from '../../routes.js'
 import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
 import KartuAuth from './KartuAuth.jsx'
+import GoogleMasuk from './GoogleMasuk.jsx'
 import PeringatanTunggu from './PeringatanTunggu.jsx'
 
 /**
- * @param {{ berhasil?: (email: string) => void }} props
+ * @param {{
+ *   berhasil?: (email: string) => void,
+ *   berhasilGoogle?: (user: import('./authStore.js').DataUser) => void,
+ * }} props
  */
-export default function HalamanDaftar({ berhasil }) {
+export default function HalamanDaftar({ berhasil, berhasilGoogle }) {
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
   const aturUser = useAuthStore((s) => s.aturUser)
 
@@ -73,6 +77,17 @@ export default function HalamanDaftar({ berhasil }) {
       sub="Isi data di bawah. Kamu langsung masuk, lalu tinggal mengaktifkan akun lewat email."
       ikon={IkonDaftar}
     >
+      {/**
+       * Daftar lewat Google (14 Oktober 2026): email Google yang sudah diverifikasi
+       * cukup untuk membuat akun murid — tidak ada email aktivasi yang harus
+       * ditunggu. Akunnya tetap seperti akun biasa (peran murid) dan hanya
+       * diminta membuat kata sandi sekali di langkah berikutnya.
+       *
+       * Tidak ditampilkan bila sekolah belum menyalakan Google, dan tetap di atas
+       * formulir manual supaya murid yang punya akun Google tidak mengetik dua kali.
+       */}
+      <GoogleMasuk berhasil={berhasilGoogle} judul="Atau daftar dengan Google" />
+
       <form onSubmit={kirim} noValidate>
         <PeringatanTunggu />
 

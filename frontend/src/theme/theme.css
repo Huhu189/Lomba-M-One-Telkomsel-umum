@@ -1023,6 +1023,42 @@ a {
   margin-bottom: var(--sp-3);
 }
 
+/*
+ * Tombol Google (14 Oktober 2026).
+ *
+ * Tombolnya dirender Google Identity Services di dalam wadah ini, jadi yang bisa
+ * diatur dari sisi kita hanya wadahnya: lebar mengikuti kolom formulir dan
+ * `overflow: hidden` supaya sudut tombol iframe-nya tidak melewati lengkung
+ * kartu di ponsel kecil. Seluruh blok ini baru muncul setelah skrip Google
+ * selesai dimuat, jadi tidak pernah ada pemisah yang menggantung tanpa tombol.
+ */
+.google-masuk {
+  text-align: start;
+}
+
+.google-masuk .auth-pemisah {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--teks);
+}
+
+.google-tombol {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 44px;
+}
+
+/*
+ * Wadahnya tetap ada di DOM sejak awal (Google butuh elemen tujuan saat
+ * `renderButton` dipanggil), tetapi tingginya nol sampai skripnya siap — kalau
+ * skrip Google diblokir jaringan, tidak ada ruang kosong 44px yang tertinggal.
+ */
+.google-tombol-muat {
+  min-height: 0;
+  height: 0;
+}
+
 /* Blok "masuk sebagai siswa tamu" di halaman masuk: satu pemisah + satu isian. */
 .auth-tamu {
   text-align: start;

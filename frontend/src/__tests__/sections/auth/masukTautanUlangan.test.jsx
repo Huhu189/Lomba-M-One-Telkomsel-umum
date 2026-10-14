@@ -26,11 +26,14 @@ import { useAuthStore } from '../../../sections/auth/authStore.js'
 
 vi.mock('../../../sections/auth/api.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())
-  return { ...asli, ambilInfoTamu: vi.fn() }
+  // Halaman masuk kini juga menanyakan info tombol Google (14 Oktober 2026):
+  // dimatikan di sini supaya tes ini tidak menembak jaringan sungguhan.
+  return { ...asli, ambilInfoTamu: vi.fn(), ambilInfoGoogle: vi.fn() }
 })
 
 const api = await import('../../../sections/auth/api.js')
 const ambilInfoTamu = /** @type {import('vitest').Mock} */ (api.ambilInfoTamu)
+const ambilInfoGoogle = /** @type {import('vitest').Mock} */ (api.ambilInfoGoogle)
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)
 glob.IS_REACT_ACT_ENVIRONMENT = true
@@ -48,6 +51,7 @@ const sleep = (ms) => new Promise((selesai) => setTimeout(selesai, ms))
  */
 async function pasang({ tujuan, diizinkan = true }) {
   ambilInfoTamu.mockResolvedValue({ diizinkan })
+  ambilInfoGoogle.mockResolvedValue({ aktif: false, client_id: '' })
 
   const entri = tujuan === undefined ? ['/masuk'] : [{ pathname: '/masuk', state: { lanjut: tujuan } }]
 
@@ -69,6 +73,7 @@ async function pasang({ tujuan, diizinkan = true }) {
 
 beforeEach(() => {
   ambilInfoTamu.mockReset()
+  ambilInfoGoogle.mockReset()
   useAuthStore.setState({ user: null, detikTunggu: 0 })
 
   wadah = document.createElement('div')

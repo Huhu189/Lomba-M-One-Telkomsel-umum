@@ -7,6 +7,10 @@ export const RUTE = {
   daftar: '/daftar',
   lupaSandi: '/lupa-sandi',
   aturUlangSandi: '/atur-ulang-sandi',
+  // Lapisan "buat kata sandi dulu" untuk akun yang dibuat lewat Google
+  // (14 Oktober 2026): sekali seumur akun, sesudah itu masuk tidak lagi
+  // menanyakan kata sandi selama sesinya hidup.
+  buatSandi: '/buat-sandi',
   verifikasiEmail: '/verifikasi-email',
   perluVerifikasi: '/perlu-verifikasi',
   // Data induk & pengaturan (slice 02).

@@ -1740,3 +1740,35 @@ dokumen kantor (PDF/Word/PowerPoint/Excel) tanpa dipaksa unduh `.upload`.
   (14 Okt 2026)**: `docs/export-word.sh` dijalankan penuh; `log-mentah.docx` kini gabungan tiga sesi
   (10,1 MB) dan dokumen lain ikut diperbarui. Yang **belum** ada: pemampatan isi `log-mentah.docx`
   (Word-nya besar karena transkrip utuh, dan itu memang disengaja — log tidak diringkas).
+
+---
+
+## 29. A.89 — Masuk & daftar lewat Google + lapisan kata sandi sekali (14 Oktober 2026)
+
+**Yang dibuat:** satu tombol Google di halaman **Masuk** dan **Daftar** (`GoogleMasuk.jsx`). Email yang belum
+terdaftar langsung dibuatkan akun murid; email yang sudah terdaftar (impor sekolah atau akun Google sebelumnya)
+**ditautkan** ke akun itu tanpa menyentuh kata sandi lamanya. Akun yang lahir dari Google diberi sandi acak
+40 karakter yang tidak pernah diberitahukan, jadi murid **wajib membuat kata sandinya sendiri sekali** di
+`/buat-sandi`; sebelum itu middleware `sandi-disetel` menolak 403 semua rute lain. Sesudah sandinya ada,
+masuk berikutnya tidak lagi menanyakan kata sandi selama sesinya hidup — persis akun biasa.
+
+**Token Google diperiksa di server, tanpa pustaka pihak ketiga** (`GoogleIdTokenVerifier`): kunci publik dari
+JWKS (di-cache, disegarkan saat kunci dirotasi), JWK → PEM lewat DER buatan sendiri, `openssl_verify`, lalu
+`alg`/`aud` (= `services.google.client_id`)/`iss`/`exp`/`email_verified`. Klien tidak menanam id klien:
+`GET /v1/auth/google` mengabarkannya, dan bila `GOOGLE_CLIENT_ID` kosong tombolnya tidak pernah dirender.
+
+**Regresi yang ketemu saat dicoba pemilik produk (dan sudah diperbaiki):** seluruh permintaan ber-sesi balas
+**500** `The attribute [perlu_buat_sandi] … was not retrieved` karena migrasi belum jalan di database
+pengembangan. Migrasi dijalankan, dan `User::perluBuatSandi()`/`terhubungGoogle()` kini membaca dari array
+atribut mentah sehingga urutan “kode dulu, migrasi kemudian” tidak mematikan aplikasi. Tiga keluhan lain
+(ganti email murid tidak tersimpan, tautan lupa sandi ke email baru, dan “Belum bisa masuk” saat guru bekerja
+di panel murid) hilang bersama jendela 500 itu — `PUT /murid/{id}` dan `POST /auth/lupa-sandi` diperiksa ulang
+lewat API dan berjalan.
+
+**Verifikasi:** `./verify.sh` **SEMUA HIJAU** — Pest 419 lulus (4222 asersi), `GoogleAuthTest` 7 tes dengan
+tanda tangan RSA sungguhan, Vitest 116 berkas / 1038 tes, ESLint 0 error, Pint, checkJs, realtime 20 lulus.
+
+**Belum:** `backend/.env` belum memuat `GOOGLE_CLIENT_ID`, jadi tombol GIS belum pernah dilihat di peramban
+sungguhan (yang terbukti: jalur kriptografi & aturan akun lewat tes, plus keadaan “Google mati”). Isi
+`GOOGLE_CLIENT_ID` lalu daftarkan origin frontend sebagai *Authorized JavaScript origin* untuk menyalakannya.
+Layar `/buat-sandi` baru diuji di jsdom, dan `smoke-ui` belum punya langkah Google. Rincian: `laporan-pengujian.md` **A.89**.

@@ -18,6 +18,12 @@ export const skemaUser = z.object({
   // Akun siswa tamu (masuk tanpa akun, cukup nama). Bawaan `false` supaya
   // penanda ini aman dipakai walau respons lama belum memuatnya.
   isTamu: z.boolean().optional().default(false),
+  // Akun yang dibuat lewat Google: belum punya kata sandi sendiri, jadi klien
+  // mengarahkannya ke langkah `/buat-sandi` sebelum memakai aplikasi.
+  perluBuatSandi: z.boolean().optional().default(false),
+  // Akun ini memang bisa masuk lewat Google (dipakai halaman akun untuk
+  // menampilkan keterangan cara masuk yang tersedia).
+  punyaGoogle: z.boolean().optional().default(false),
 })
 
 /** Skema pesan generik backend. */
@@ -39,6 +45,31 @@ export const skemaResponAturUlang = z.object({
 
 /** Skema diagnostik /v1/sesi. */
 export const skemaSesi = z.object({ terautentikasi: z.boolean() })
+
+/**
+ * Info tombol Google (publik): apakah sekolah menyalakannya dan id klien yang
+ * harus dipakai peramban. `aktif: false` = tombol tidak ditampilkan sama sekali.
+ */
+export const skemaInfoGoogle = z.object({
+  aktif: z.boolean(),
+  client_id: z.string(),
+})
+
+/**
+ * Respons masuk/daftar lewat Google. `baru` = akun murid baru saja dibuat dari
+ * email Google itu (bukan akun yang sudah ada sebelumnya).
+ */
+export const skemaResponsGoogle = z.object({
+  message: z.string(),
+  user: skemaUser,
+  baru: z.boolean(),
+})
+
+/** Respons setelan akun yang mengembalikan user terbaru (mis. buat sandi). */
+export const skemaResponsUser = z.object({
+  message: z.string(),
+  user: skemaUser,
+})
 
 /**
  * Skema info mode tamu (publik, tanpa sesi): apakah halaman masuk perlu
@@ -207,6 +238,47 @@ export async function masukTamu(nama) {
   simpanKodePerangkat(badan.kode_perangkat)
 
   return badan.user
+}
+
+/**
+ * Info tombol Google: dipanggil tanpa sesi supaya halaman masuk tahu apakah
+ * tombolnya perlu ditampilkan (sekolah yang belum mengisi `GOOGLE_CLIENT_ID`
+ * tetap memakai jalur email + kata sandi seperti biasa).
+ * @returns {Promise<z.infer<typeof skemaInfoGoogle>>}
+ */
+export async function ambilInfoGoogle() {
+  const respons = await client.get('/v1/auth/google')
+  return skemaInfoGoogle.parse(respons.data)
+}
+
+/**
+ * Masuk (atau daftar) dengan ID token dari Google Identity Services.
+ *
+ * Server memeriksa tanda tangan & pemilik token itu sendiri; klien hanya
+ * meneruskan apa yang diberikan Google, tanpa menebak isinya.
+ * @param {string} credential ID token (JWT) dari Google
+ * @returns {Promise<z.infer<typeof skemaResponsGoogle>>}
+ */
+export async function masukGoogle(credential) {
+  await ambilCsrfCookie()
+  const respons = await client.post('/v1/auth/google', { credential })
+  return skemaResponsGoogle.parse(respons.data)
+}
+
+/**
+ * Buat kata sandi PERTAMA (sekali seumur akun) untuk akun yang lahir dari
+ * tombol Google. Tanpa `sandi_sekarang`: memang belum ada sandi milik murid,
+ * dan server hanya membuka rute ini selama akunnya belum bersandi.
+ * @param {{ password: string }} data
+ * @returns {Promise<z.infer<typeof skemaResponsUser>>}
+ */
+export async function buatSandiPertama(data) {
+  await ambilCsrfCookie()
+  const respons = await client.put('/v1/akun/sandi-pertama', {
+    password: data.password,
+    password_confirmation: data.password,
+  })
+  return skemaResponsUser.parse(respons.data)
 }
 
 /**

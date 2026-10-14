@@ -41,6 +41,7 @@ const muat = {
   daftar: () => import('./sections/auth/HalamanDaftar.jsx'),
   lupaSandi: () => import('./sections/auth/HalamanLupaSandi.jsx'),
   aturUlangSandi: () => import('./sections/auth/HalamanAturUlangSandi.jsx'),
+  buatSandi: () => import('./sections/auth/HalamanBuatSandi.jsx'),
   verifikasiEmail: () => import('./sections/auth/HalamanVerifikasiEmail.jsx'),
   perluVerifikasi: () => import('./sections/auth/HalamanPerluVerifikasi.jsx'),
 
@@ -85,6 +86,7 @@ const muat = {
 export const HalamanDaftar = malasHalaman(muat.daftar)
 export const HalamanLupaSandi = malasHalaman(muat.lupaSandi)
 export const HalamanAturUlangSandi = malasHalaman(muat.aturUlangSandi)
+export const HalamanBuatSandi = malasHalaman(muat.buatSandi)
 export const HalamanVerifikasiEmail = malasHalaman(muat.verifikasiEmail)
 export const HalamanPerluVerifikasi = malasHalaman(muat.perluVerifikasi)
 

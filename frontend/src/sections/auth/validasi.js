@@ -71,6 +71,22 @@ export const skemaAturUlang = z
     path: ['konfirmasi'],
   })
 
+/**
+ * Form buat kata sandi PERTAMA (akun yang dibuat lewat Google).
+ *
+ * Tanpa kolom "sandi sekarang" — memang belum ada sandi milik murid; server
+ * menolak rute ini begitu akunnya sudah bersandi.
+ */
+export const skemaBuatSandi = z
+  .object({
+    password: skemaSandi,
+    konfirmasi: z.string().min(1, 'Ulangi kata sandi dengan isian yang sama.'),
+  })
+  .refine((data) => data.password === data.konfirmasi, {
+    message: 'Kata sandi belum sama.',
+    path: ['konfirmasi'],
+  })
+
 /** Form kirim ulang verifikasi (hanya email). */
 export const skemaKirimUlang = z.object({
   email: skemaEmail,

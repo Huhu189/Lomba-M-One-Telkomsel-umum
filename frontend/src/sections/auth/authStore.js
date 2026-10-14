@@ -15,6 +15,7 @@ import {
   cekTerautentikasi,
   keluar,
   masuk as apiMasuk,
+  masukGoogle as apiMasukGoogle,
   masukTamu as apiMasukTamu,
 } from './api.js'
 
@@ -28,7 +29,17 @@ import {
  *   statusLabel: string,
  *   emailTerverifikasi: boolean,
  *   isTamu?: boolean,
+ *   perluBuatSandi?: boolean,
+ *   punyaGoogle?: boolean,
  * }} DataUser
+ */
+
+/**
+ * @typedef {{
+ *   user: DataUser,
+ *   baru: boolean,
+ *   message: string,
+ * }} HasilMasukGoogle
  */
 
 /**
@@ -38,6 +49,7 @@ import {
  *   detikTunggu: number,
  *   aturUser: (user: DataUser | null) => void,
  *   masuk: (data: { email: string, password: string }) => Promise<DataUser>,
+ *   masukGoogle: (credential: string) => Promise<HasilMasukGoogle>,
  *   masukTamu: (nama: string) => Promise<DataUser>,
  *   keluar: () => Promise<void>,
  *   mulaiTungguThrottle: (detik: number) => void,
@@ -110,6 +122,21 @@ function buatStoreAuth(set, get) {
       const user = await apiMasuk(data)
       set({ user })
       return user
+    },
+
+    /**
+     * Masuk/daftar lewat Google. Sama seperti `masuk`, bedanya identitas datang
+     * dari ID token Google yang sudah diperiksa server — akun yang belum ada
+     * langsung dibuatkan (peran murid) dan langsung diberi sesi.
+     *
+     * Mengembalikan `baru` supaya pemanggil bisa membedakan akun baru dari akun
+     * yang sudah ada, sedangkan pengarahan ke `/buat-sandi` ditentukan penanda
+     * `perluBuatSandi` pada user-nya.
+     */
+    masukGoogle: async (credential) => {
+      const hasil = await apiMasukGoogle(credential)
+      set({ user: hasil.user })
+      return hasil
     },
 
     /**
