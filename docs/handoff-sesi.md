@@ -1289,11 +1289,17 @@ resmi dan membuang siswa tamu.
 2. `docs/smoke-ui-kuis-materi.mjs` — harness lama mencari tombol “kumpulkan” di soal pertama; dengan pola
    satu-soal-per-layar ia kini hanya ada di soal terakhir. Harness **maju ke soal terakhir dulu**
    (`__keSoalTerakhir`, async supaya React sempat menggambar ulang — versi lurus membaca DOM basi), lalu
-   mengukur; ditambah pemeriksaan **“soal terakhir bisa dijangkau dari soal 1”**. 48 → **50 pemeriksaan**,
-   dan pagar lamanya tidak dilonggarkan.
+   mengukur; ditambah pemeriksaan **“soal terakhir bisa dijangkau dari soal 1”**.
+3. `smoke-ui-kuis-materi.mjs` mendapat **bagian 3**: jalur utuh layar sesudah kuis di aplikasi sungguhan —
+   murid menjawab dua soal (blok kuis berdiri sendiri diberi ketiga saklar; blok di dalam video sengaja
+   tanpa saklar), mengumpulkan, lalu diperiksa: skor hasil, tiga tab sesudah kuis, ringkasan yang membuka
+   jawaban benar dari server, kartu ingat berisi soal, papan peringkat, dan tombol “Tandai bagian ini
+   selesai”. 50 → **57 pemeriksaan**. Dua pemeriksaan awal sempat merah karena `innerText` mengembalikan
+   teks sesudah `text-transform` (“LATIHAN SELESAI”); perbandingannya kini tanpa huruf besar/kecil —
+   pagarnya diperbaiki, bukan dilemahkan.
 
 **Bukti:** `./verify.sh` **SEMUA HIJAU** (Pest 381/3611 · Redis 9/65 · Pint · checkJs · ESLint 0 error ·
-Vitest 90 berkas/848 tes · realtime) · `kuis-materi` **50/50** · `materi` 27/27 · `durasi-klip` 19/19 ·
+Vitest 90 berkas/848 tes · realtime) · `kuis-materi` **57/57** · `materi` 27/27 · `durasi-klip` 19/19 ·
 `slice06` 28/28 · `slice05` 20/20 · `mobile` 17/17 · `admin` 39/39 · `palet-sidebar` 58/58 · `perjalanan`,
 `editor`, `nav`, `layar` — semuanya exit 0.
 
@@ -1308,6 +1314,10 @@ Vitest 90 berkas/848 tes · realtime) · `kuis-materi` **50/50** · `materi` 27/
   kunci setelah latihan dikumpulkan. Panel editor memberi peringatan, bukan pagar teknis.
 - `.pm-kuis` sengaja tidak lagi punya bingkai kartu (dipindah ke `.ks`) — jangan dikembalikan tanpa
   menghapusnya di `.ks`, nanti berbingkai ganda.
+- **Papan peringkat latihan menghitung yang sudah menandai bagian selesai**, bukan yang baru mengumpulkan
+  latihan, sehingga sesaat setelah mengumpulkan tertulis “0 teman sudah menyelesaikannya”. Aturan itu
+  disengaja di `RingkasanKuisService::papan()`; kalau mau diubah (mulai dihitung sejak latihan dikumpulkan),
+  ubah penyaringnya di sana — keputusan produk, bukan bug.
 
 **Sisa:** sapuan penuh seluruh harness belum diulang putaran ini (hijau terakhir pada A.78); `smoke-ui-auth`
 tetap menunggu backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md` **A.79**.

@@ -446,7 +446,21 @@ async function main() {
     // Kuis berdiri sendiri sebagai satu bagian (audit blok kuis biasa) + dua kuis
     // sisipan di dalam klip video (vertikal dan horizontal).
     const blok = [
-      { tipe: 'kuis', wajib: false, quiz_id: idKuisUji, isi: {}, track: 0, mulai_detik: 0, durasi_detik: 20 },
+      // Blok kuis berdiri sendiri: ketiga saklar layar sesudah kuis dinyalakan di
+      // sini supaya bagian terakhir harness bisa membuktikan ringkasan soal, kartu
+      // ingat, dan papan latihan benar-benar muncul di layar murid (bukan hanya di
+      // tes unit). Blok kuis di dalam video sengaja TANPA saklar: dua-duanya
+      // diuji, jadi terlihat juga bahwa saklar mati tidak memunculkan layar itu.
+      {
+        tipe: 'kuis',
+        wajib: false,
+        quiz_id: idKuisUji,
+        isi: {},
+        track: 0,
+        mulai_detik: 0,
+        durasi_detik: 20,
+        tampilan: { mode: 'jeda', tata: 'vertikal', ringkasan: 1, kartu: 1, papan: 1 },
+      },
       {
         tipe: 'media',
         wajib: true,
@@ -631,6 +645,109 @@ async function main() {
       await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('AUDIT Materi Kuis'))?.click(); true`)
       await tunggu(`document.querySelectorAll('ol.list-unstyled:not(.jelajah-daftar) > li').length > 0`, 15000)
     }
+
+    // ------------------------------------------------------------------
+    // Bagian 3: layar SESUDAH kuis sisipan (ringkasan soal, kartu ingat, papan
+    // latihan) — dibuka lewat tiga saklar guru pada blok kuis berdiri sendiri.
+    // Yang dibuktikan di sini adalah jalur utuhnya lewat aplikasi sungguhan:
+    // jawab di layar, kumpulkan, lalu ketiga layar itu benar-benar muncul dan
+    // berisi (termasuk jawaban benar yang datang dari server, bukan dari klien).
+    // ------------------------------------------------------------------
+    await ukur(1366, 900, false)
+    await buka('/materi', 'AUDIT Materi Kuis')
+    await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('AUDIT Materi Kuis'))?.click(); true`)
+    await tunggu(`document.querySelectorAll('ol.list-unstyled:not(.jelajah-daftar) > li').length > 0`, 15000)
+    await evalJs(`document.querySelectorAll('ol.list-unstyled:not(.jelajah-daftar) > li')[0].querySelector('button')?.click(); true`)
+    await tunggu(`(document.body.innerText || '').includes('Soal 1')`, 15000)
+
+    // Jawab kedua soal dengan kunci yang benar (B dan B), lalu kumpulkan.
+    const pilihOpsi = async (nilai) =>
+      evalJs(`(() => {
+        const panel = document.querySelector('.ks')
+        if (!panel) return false
+        const opsi = [...panel.querySelectorAll('input[type="radio"]')].find((i) => i.value === ${JSON.stringify(nilai)})
+        if (!opsi) return false
+        opsi.click()
+        return true
+      })()`)
+
+    const jawabSatu = await pilihOpsi('B')
+    await sleep(700)
+    await evalJs(`window.__keSoalTerakhir(12)`)
+    await sleep(600)
+    const jawabDua = await pilihOpsi('B')
+    await sleep(700)
+    const dikumpulkan = await evalJs(`(() => {
+      const tombol = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('kumpulkan'))
+      if (!tombol) return false
+      tombol.click()
+      return true
+    })()`)
+
+    catat(
+      'murid bisa menjawab kedua soal latihan lalu mengumpulkannya',
+      jawabSatu && jawabDua && dikumpulkan,
+      `soal1 ${jawabSatu} · soal2 ${jawabDua} · kumpulkan ${dikumpulkan}`,
+    )
+
+    const adaTab = await tunggu(`document.querySelector('[role="tablist"]') !== null`, 20000)
+    // `innerText` mengembalikan teks SESUDAH `text-transform`, jadi beberapa judul
+    // di layar ini terbaca KAPITAL SEMUA ('LATIHAN SELESAI'). Dibandingkan tanpa
+    // huruf besar/kecil supaya perbandingannya tidak bergantung pada gaya CSS.
+    const teksHasil = await evalJs(`(document.querySelector('.ks')?.innerText || '').replace(/\\s+/g, ' ')`)
+    const hasilKecil = teksHasil.toLowerCase()
+    catat(
+      'setelah dikumpulkan, layar hasil latihan terbuka beserta skornya',
+      adaTab && hasilKecil.includes('latihan selesai') && hasilKecil.includes('soal benar'),
+      teksHasil.slice(0, 140),
+    )
+    catat(
+      'tiga tab sesudah kuis muncul sesuai saklar guru',
+      ['Ringkasan soal', 'Kartu ingat', 'Peringkat'].every((label) => teksHasil.includes(label)),
+      `tab: ${(await evalJs(`[...document.querySelectorAll('[role="tab"]')].map((b) => b.textContent.trim()).join(' | ')`)) ?? '(tidak ada)'}`,
+    )
+
+    // Ringkasan: baris benar terbuka setelah diklik, dan jawaban benarnya dari server.
+    await evalJs(`document.querySelector('[role="tab"]')?.click(); true`)
+    await sleep(600)
+    await evalJs(`document.querySelector('.ks-baris-kepala')?.click(); true`)
+    await sleep(500)
+    const rincian = await evalJs(`(document.querySelector('.ks-baris-rincian')?.innerText || '').replace(/\\s+/g, ' ')`)
+    catat(
+      'ringkasan soal membuka jawaban yang tepat (kunci dari server)',
+      rincian.toLowerCase().includes('jawaban yang tepat') && (rincian.includes('10') || rincian.includes('56')),
+      rincian.slice(0, 120),
+    )
+
+    // Kartu ingat: depan kartu berisi pertanyaan, ada tombol balik.
+    await evalJs(`[...document.querySelectorAll('[role="tab"]')].find((b) => b.textContent.includes('Kartu ingat'))?.click(); true`)
+    await sleep(600)
+    const teksKartu = await evalJs(`(document.querySelector('#ks-panel')?.innerText || '').replace(/\\s+/g, ' ')`)
+    const adaBalik = await evalJs(`[...document.querySelectorAll('#ks-panel button')].length > 0`)
+    catat(
+      'kartu ingat menampilkan soal tadi dan tombol baliknya',
+      teksKartu.includes('AUDIT: berapa hasil') && adaBalik === true,
+      teksKartu.slice(0, 120),
+    )
+
+    // Papan latihan: terpisah dari ranking resmi, dan murid ini ikut terdaftar.
+    await evalJs(`[...document.querySelectorAll('[role="tab"]')].find((b) => b.textContent.includes('Peringkat'))?.click(); true`)
+    await sleep(700)
+    const teksPapan = await evalJs(`(document.querySelector('#ks-panel')?.innerText || '').replace(/\\s+/g, ' ')`)
+    catat(
+      'papan peringkat latihan memuat peserta + penegasan terpisah dari ranking',
+      teksPapan.includes('terpisah dari ranking ulangan resmi') && /\d+ teman sudah menyelesaikannya/.test(teksPapan),
+      teksPapan.slice(0, 140),
+    )
+
+    const tombolLanjut = await evalJs(
+      `(document.querySelector('.ks-kaki')?.innerText || '').replace(/\\s+/g, ' ').trim()`,
+    )
+    catat(
+      'setelah latihan selesai, murid bisa menandai bagian ini selesai',
+      typeof tombolLanjut === 'string' && tombolLanjut.includes('Tandai bagian ini selesai'),
+      tombolLanjut,
+    )
 
     void idMedia
     void idKuisBlok

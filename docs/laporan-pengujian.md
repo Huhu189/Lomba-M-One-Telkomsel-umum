@@ -7019,15 +7019,27 @@ memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend men
    pertama — panel tempat kuis hidup memang berubah, bukan tombolnya hilang. Harness sekarang **maju ke soal
    terakhir lebih dulu** (`__keSoalTerakhir`, async supaya React sempat menggambar ulang — versi lurus
    membaca DOM basi dan selalu bilang “tidak ada”), **lalu** mengukur tombolnya; ditambah dua pemeriksaan
-   baru: **“soal terakhir bisa dijangkau dari soal 1”** per viewport. 48 → **50 pemeriksaan**. Inti pagar
+   baru: **“soal terakhir bisa dijangkau dari soal 1”** per viewport. Inti pagar
    lamanya tidak dilonggarkan: tombol kumpulkan tetap harus terlihat tanpa menggulir panel.
+3. **Bagian 3 baru di `smoke-ui-kuis-materi.mjs` — jalur utuh layar sesudah kuis di aplikasi sungguhan.**
+   Fiturnya hanya terbukti lewat tes unit (Pest + jsdom); sebelum ini tidak ada satu pun pemeriksaan yang
+   benar-benar menjawab latihan, mengumpulkannya, lalu memeriksa layar yang muncul. Sekarang: blok kuis
+   berdiri sendiri diberi ketiga saklar (blok di dalam video sengaja **tetap tanpa saklar**, jadi terlihat
+   juga bahwa saklar mati tidak memunculkan layar itu), murid menjawab dua soal dengan kunci benar →
+   dikumpulkan → lalu diperiksa berturut-turut: skor di layar hasil, tiga tab yang muncul beserta namanya,
+   ringkasan soal yang membuka “jawaban yang tepat” dari server, kartu ingat berisi soal tadi + tombol balik,
+   papan peringkat yang menyebut dirinya terpisah dari ranking, dan tombol “Tandai bagian ini selesai”.
+   50 → **57 pemeriksaan**.
+   Dua pemeriksaan pertama sempat merah **bukan karena aplikasinya** — `innerText` mengembalikan teks SESUDAH
+   `text-transform`, jadi judul layarnya terbaca “LATIHAN SELESAI”, bukan “Latihan selesai”. Perbandingannya
+   kini tanpa huruf besar/kecil; pagar diperbaiki, bukan dilemahkan.
 
 ### A.79.4 Bukti (dijalankan setelah seluruh perubahan)
 
 | Perintah | Hasil |
 | --- | --- |
 | `./verify.sh` | **SEMUA HIJAU** — Pest **381/3611** (dari 377; +4 tes baru) · Redis wajib **9/65** · Pint **PASS** · checkJs bersih · ESLint **0 error** · Vitest **90 berkas/848 tes** (dari 88/828) · realtime lulus |
-| `docs/jalankan-smoke-ui.sh kuis-materi` | **50/50 lulus, exit 0** (sebelum perbaikan harness: 42/48) |
+| `docs/jalankan-smoke-ui.sh kuis-materi` | **57/57 lulus, exit 0** (sebelum perbaikan harness: 42/48) — termasuk 7 pemeriksaan jalur utuh sesudah kuis |
 | `docs/jalankan-smoke-ui.sh materi` · `durasi-klip` · `perjalanan` · `editor` | **27/27** · **19/19** · exit 0 · exit 0 |
 | `docs/jalankan-smoke-ui.sh slice06` · `slice05` · `mobile` · `nav` · `layar` · `admin` · `palet-sidebar` | **28/28** · **20/20** · **17/17** · exit 0 · exit 0 · **39/39** · **58/58** — semuanya exit 0 |
 | `php artisan test --filter=Slice08Test` | **20 lulus (271 asersi)**, termasuk `saklar ringkasan/kartu/papan hanya tersimpan bila dikirim`, `ringkasan kuis: ditutup sampai latihan dikumpulkan`, `ringkasan kuis: guru yang tidak membukanya 404`, `papan peringkat latihan: terpisah dari ranking resmi` |
@@ -7043,6 +7055,12 @@ memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend men
 - **Kunci jawaban benar-benar terlihat murid** setelah latihan dikumpulkan bila guru menyalakan ringkasan —
   panel editor sudah memperingatkan agar kuis itu tidak dipakai ulang sebagai ulangan resmi yang belum
   berlangsung, tetapi tidak ada pagar teknis yang mencegahnya.
+- **Papan peringkat latihan menghitung murid yang sudah MENANDAI BAGIAN SELESAI**, bukan yang baru
+  mengumpulkan latihannya (`RingkasanKuisService::papan()` menyaring `material_progress.status = selesai`).
+  Akibat yang terlihat di harness: sesaat setelah mengumpulkan, murid membaca “0 teman sudah
+  menyelesaikannya” — padahal ia sendiri baru saja selesai. Angkanya benar menurut aturannya, tetapi
+  kalimatnya bisa menyesatkan. **Tidak saya ubah** (itu keputusan produk: mau dihitung sejak latihan
+  dikumpulkan, atau sejak bagiannya ditandai selesai).
 - **Harness lain belum dijalankan seluruhnya** putaran ini: sapuan penuh terakhir (31 harness) hijau pada
   A.78; di sini saya menjalankan 12 harness yang menyentuh area berubah atau luas. `smoke-ui-auth` tetap
   tidak dijalankan ulang (butuh backend `MAIL_MAILER=log`).
