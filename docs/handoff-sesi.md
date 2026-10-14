@@ -88,8 +88,9 @@ Keadaan saat handoff ini diperbarui (**14 Okt 2026, sesudah putaran A.88**):
 - **Jangan ikut dikomit:** arsip/zip, `.agents/`, `.claude/`, `.DS_Store`. `frontend/dist/` memang sudah
   diabaikan (`.gitignore`), jadi hasil `npm run build` aman untuk pengukuran.
 - **Urutan commit putaran ini backend → frontend → tema → dokumen**, supaya tiap commit memuat kode
-  server yang dibutuhkan lapisan di atasnya. Yang **diverifikasi hijau hanya pohon terakhir** (sepuluh
-  commit di atas `fd3636a`); commit di tengah belum dijalankan satu per satu lewat `./verify.sh`.
+  server yang dibutuhkan lapisan di atasnya. Yang **diverifikasi hijau hanya pohon pada `ad6ba41`**
+  (sesudah seluruh commit kode + dokumentasi pertama); commit di tengah belum dijalankan satu per satu
+  lewat `./verify.sh`, dan commit dokumentasi sesudahnya tidak menyentuh kode sama sekali.
 - **`docs/word/*.docx` SUDAH disegarkan (14 Okt 2026)** lewat `docs/export-word.sh`: `log-mentah.docx`
   3,8 MB → **10,1 MB** (sumbernya kini gabungan transkrip **tiga** sesi, termasuk sesi 412 MB),
   `laporan-pengujian.docx` 250 KB → 266 KB, `penjelasan-fitur.docx` 63 KB → 65 KB, plus `AGENT.docx` dan
