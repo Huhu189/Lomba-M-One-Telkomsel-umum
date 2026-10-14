@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sections\Question\Registry;
 
+use App\Sections\Question\Enums\TeknikKoreksi;
 use App\Sections\Question\Enums\TipeSoal;
 
 /**
@@ -85,7 +86,44 @@ final class RegistryTipeSoal
         return array_values(array_unique([
             ...$penangan->validasiKonten($konten),
             ...$penangan->validasiKunci($konten, $kunci),
+            ...self::galatTeknikKoreksi($tipe, $kunci),
         ]));
+    }
+
+    /**
+     * Pilihan teknik koreksi guru harus termasuk yang bisa dikerjakan jenis
+     * soal itu (14 Oktober 2026).
+     *
+     * Tanpa pagar ini, guru bisa memilih "Otomatis" untuk tugas unggah (tidak
+     * ada kuncinya), atau "Otomatis teks" untuk pilihan ganda — permintaan yang
+     * tidak bisa ditepati mesin, dan diam-diam jadi "semua perlu ditinjau".
+     * Kunci tanpa `teknik_koreksi` tetap sah: itu soal lama, dan bawaannya
+     * sudah sama dengan perilaku lamanya.
+     *
+     * @param  array<string, mixed>  $kunci
+     * @return array<int, string>
+     */
+    public static function galatTeknikKoreksi(TipeSoal $tipe, array $kunci): array
+    {
+        $nilai = $kunci['teknik_koreksi'] ?? null;
+
+        if ($nilai === null) {
+            return [];
+        }
+
+        $tersedia = $tipe->teknikKoreksiTersedia();
+        $pilihan = is_string($nilai) ? TeknikKoreksi::tryFrom($nilai) : null;
+
+        if ($pilihan !== null && in_array($pilihan, $tersedia, true)) {
+            return [];
+        }
+
+        $nama = array_map(static fn (TeknikKoreksi $satu): string => $satu->label(), $tersedia);
+
+        return [
+            'kunci.teknik_koreksi tidak cocok untuk '.$tipe->label()
+            .' — pilihan yang tersedia: '.implode(' atau ', $nama).'.',
+        ];
     }
 
     /**

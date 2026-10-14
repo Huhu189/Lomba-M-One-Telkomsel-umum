@@ -360,6 +360,62 @@ it('antrean koreksi memuat soal perlu tinjau beserta kunci dan hanya untuk guru'
     $this->getJson("/api/v1/kuis/{$kuis->id}/koreksi")->assertStatus(403);
 });
 
+it('antrean koreksi membawa catatan kecurangan murid, hanya milik attempt itu', function (): void {
+    $uraian = buatSoal06($this, 'uraian', ['teks' => 'Jelaskan fotosintesis.'], [
+        'kata_kunci' => [['teks' => 'fotosintesis']],
+    ], 4);
+
+    $kuis = kuisSoal06($this, [$uraian]);
+
+    $muridLain = Murid::factory()->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $this->kelas->id,
+    ]);
+
+    // Catatan hanya boleh dikirim murid selagi ulangannya berjalan, jadi attempt
+    // pertama dikerjakan langkah demi langkah (bukan lewat `kerjakan06`).
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $mulai = $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated();
+    $bercatatan = Attempt::query()->findOrFail((int) $mulai->json('id'));
+
+    $this->postJson("/api/v1/attempt/{$bercatatan->id}/kejadian", [
+        'kejadian' => [['kategori' => 'tab_switch'], ['kategori' => 'paste_attempt']],
+    ])->assertCreated();
+
+    $this->postJson("/api/v1/attempt/{$bercatatan->id}/jawab", [
+        'question_id' => $uraian->id,
+        'jawaban' => 'Belum tahu.',
+    ])->assertOk();
+
+    $this->postJson("/api/v1/attempt/{$bercatatan->id}/kumpulkan", [
+        'idempotency_key' => 'kunci-catatan-1',
+    ])->assertOk();
+
+    $bersih = kerjakan06($this, $kuis, $muridLain, [$uraian->id => 'Belum tahu juga.']);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $antrean = $this->getJson("/api/v1/kuis/{$kuis->id}/koreksi")->assertOk();
+
+    $catatan = collect($antrean->json('catatan_attempt'));
+    $milik = $catatan->firstWhere('attempt_id', $bercatatan->id);
+
+    expect($catatan)->toHaveCount(1)
+        ->and($milik['jumlah'])->toBe(2)
+        ->and($milik['belum_ditinjau'])->toBe(2)
+        ->and($milik['skor_tertinggi'])->toBe(6)
+        // Rincian terbaru di atas, dan yang dibaca adalah label awamnya.
+        ->and($milik['daftar'][0]['kategori_label'])->toBe('Percobaan menempel jawaban')
+        ->and($milik['daftar'][0]['review_status'])->toBe('menunggu');
+
+    // Murid tanpa catatan tidak muncul sama sekali: panel guru tidak menuduh
+    // anak yang bersih hanya karena ada catatan milik anak lain di kuis ini.
+    expect($catatan->firstWhere('attempt_id', $bersih->id))->toBeNull();
+});
+
 it('koreksi manual butuh token sekali pakai dan alasan yang jelas', function (): void {
     $uraian = buatSoal06($this, 'uraian', ['teks' => 'Jelaskan fotosintesis.'], [
         'kata_kunci' => [['teks' => 'fotosintesis']],

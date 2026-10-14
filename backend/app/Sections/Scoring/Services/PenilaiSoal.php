@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sections\Scoring\Services;
 
+use App\Sections\Question\Enums\TeknikKoreksi;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Scoring\Enums\StatusPenilaian;
@@ -17,6 +18,17 @@ use App\Sections\Scoring\Enums\StatusPenilaian;
  *   boleh skor parsial, boleh `perlu_tinjau` untuk guru).
  * - Tugas unggah selalu `perlu_tinjau`: berkasnya dinilai guru lewat rubrik,
  *   jadi tidak boleh jatuh ke pencocokan kata kunci `PenilaianTeks`.
+ *
+ * Sejak 14 Oktober 2026 guru boleh memilih **teknik koreksi** per jenis soal
+ * (`kunci.teknik_koreksi`, lihat `TeknikKoreksi`):
+ *
+ * - `Manual` → semua jawaban masuk antrean koreksi guru, apa pun jenis soalnya.
+ * - `Otomatis` → jalur kunci pasti (`PenilaianObjektif`).
+ * - `OtomatisTeks` → jalur teks (`PenilaianTeks`).
+ *
+ * Pilihan yang tidak sah sudah ditolak saat menyimpan soal
+ * (`RegistryTipeSoal::validasi`), dan di sini pun pilihan yang tidak sah jatuh
+ * kembali ke bawaan jenis soalnya — jadi data lama tidak pernah berubah perilaku.
  *
  * Kontraknya tetap sama untuk pemanggil: selalu mengembalikan array status +
  * benar + skor, tidak pernah melempar exception.
@@ -39,8 +51,20 @@ final class PenilaiSoal
             return ['status' => StatusPenilaian::Gagal, 'benar' => null, 'skor' => 0.0];
         }
 
+        $teknik = TeknikKoreksi::untuk($tipe, $soal->kunciSebagaiArray());
+
+        // Guru memilih menilai sendiri: mesin tidak menyentuh nilainya sama
+        // sekali, termasuk untuk soal pilihan ganda.
+        if ($teknik === TeknikKoreksi::Manual) {
+            return ['status' => StatusPenilaian::PerluTinjau, 'benar' => null, 'skor' => 0.0];
+        }
+
         if ($tipe === TipeSoal::TugasUnggah) {
             return ['status' => StatusPenilaian::PerluTinjau, 'benar' => null, 'skor' => 0.0];
+        }
+
+        if ($teknik === TeknikKoreksi::OtomatisTeks) {
+            return $this->teks->nilai($soal, $jawaban);
         }
 
         if ($tipe->objektif()) {

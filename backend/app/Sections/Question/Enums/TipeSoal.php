@@ -73,6 +73,33 @@ enum TipeSoal: string
         return ! $this->objektif();
     }
 
+    /**
+     * Teknik koreksi yang **boleh** dipilih guru untuk jenis soal ini.
+     *
+     * Urutannya menentukan bawaan (pilihan pertama).
+     *
+     * - Tugas unggah: hanya manual — tidak ada jawaban yang bisa dicocokkan mesin.
+     * - Isian singkat & uraian: otomatis dengan toleransi teks, atau manual.
+     * - Sisanya: otomatis (kunci pasti) atau manual bila guru ingin menilai
+     *   sendiri.
+     *
+     * @return array<int, TeknikKoreksi>
+     */
+    public function teknikKoreksiTersedia(): array
+    {
+        return match ($this) {
+            self::TugasUnggah => [TeknikKoreksi::Manual],
+            self::IsianSingkat, self::Uraian => [TeknikKoreksi::OtomatisTeks, TeknikKoreksi::Manual],
+            default => [TeknikKoreksi::Otomatis, TeknikKoreksi::Manual],
+        };
+    }
+
+    /** Teknik koreksi bawaan bila guru tidak memilih apa pun. */
+    public function teknikKoreksiBawaan(): TeknikKoreksi
+    {
+        return $this->teknikKoreksiTersedia()[0];
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -7,6 +7,8 @@ namespace App\Sections\Scoring\Services;
 use App\Models\User;
 use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Jawaban;
+use App\Sections\Cheat\Enums\StatusTinjauan;
+use App\Sections\Cheat\Models\KejadianKecurangan;
 use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Models\Kuis;
 use App\Sections\Scoring\Enums\StatusPenilaian;
@@ -29,6 +31,12 @@ class KoreksiService
 
     /** Alasan minimal (karakter) supaya koreksi selalu bisa dipertanggungjawabkan. */
     public const ALASAN_MIN = 10;
+
+    /** Batas jumlah catatan yang dirinci di antrean (menjaga ukuran payload). */
+    public const CATATAN_DETAIL_MAKS = 200;
+
+    /** Batas jumlah catatan per attempt di antrean (jumlah totalnya tetap utuh). */
+    public const CATATAN_PER_ATTEMPT_MAKS = 8;
 
     /**
      * Antrean koreksi satu kuis: soal yang belum pasti dinilai mesin.
@@ -90,7 +98,87 @@ class KoreksiService
             'ai_aktif' => $this->aiAktif(),
             'jumlah' => count($item),
             'item' => $item,
+            // Catatan murid ikut di sini supaya guru TIDAK perlu pindah halaman
+            // ke Monitor Ulangan saat menilai (14 Oktober 2026).
+            'catatan_attempt' => $this->catatanPerAttempt(array_map(
+                static fn (array $satu): int => (int) $satu['attempt_id'],
+                $item,
+            )),
         ];
+    }
+
+    /**
+     * Catatan kecurangan tiap attempt yang jawabannya ada di antrean.
+     *
+     * Guru yang sedang menilai satu jawaban perlu tahu **sekaligus** bahwa anak
+     * itu punya catatan (mis. berpindah tab, menempel jawaban): dulu ia harus
+     * membuka Monitor Ulangan, mengingat siapa yang dicari, lalu kembali ke sini.
+     * Yang ikut ke payload hanya yang **dibaca**: jumlah, skor risiko tertinggi,
+     * berapa yang belum ditinjau, dan rincian terbaru. Meninjau (valid/tidak
+     * valid) tetap di Monitor Ulangan — di sini tidak ada tombol yang mengubah
+     * catatan append-only itu.
+     *
+     * Jumlah dihitung dengan agregat SQL (selalu lengkap), sedangkan rinciannya
+     * dibatasi supaya payload tidak meledak pada kuis dengan ratusan catatan;
+     * `daftar` karena itu bisa lebih pendek dari `jumlah`.
+     *
+     * @param  array<int, int>  $attemptIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function catatanPerAttempt(array $attemptIds): array
+    {
+        $ids = array_values(array_unique(array_filter($attemptIds, static fn (int $id): bool => $id > 0)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $ringkas = KejadianKecurangan::query()
+            ->whereIn('attempt_id', $ids)
+            ->selectRaw('attempt_id, COUNT(*) as jumlah, MAX(skor_risiko) as skor_tertinggi')
+            ->selectRaw("SUM(CASE WHEN review_status = '".StatusTinjauan::Menunggu->value."' THEN 1 ELSE 0 END) as belum_ditinjau")
+            ->groupBy('attempt_id')
+            ->get();
+
+        $peta = [];
+
+        foreach ($ringkas as $satu) {
+            $peta[(int) $satu->attempt_id] = [
+                'attempt_id' => (int) $satu->attempt_id,
+                'jumlah' => (int) $satu->jumlah,
+                'belum_ditinjau' => (int) $satu->belum_ditinjau,
+                'skor_tertinggi' => (int) $satu->skor_tertinggi,
+                'daftar' => [],
+            ];
+        }
+
+        $detail = KejadianKecurangan::query()
+            ->whereIn('attempt_id', $ids)
+            ->orderByDesc('id')
+            ->limit(self::CATATAN_DETAIL_MAKS)
+            ->get();
+
+        foreach ($detail as $satu) {
+            $id = (int) $satu->attempt_id;
+
+            if (! isset($peta[$id]) || count($peta[$id]['daftar']) >= self::CATATAN_PER_ATTEMPT_MAKS) {
+                continue;
+            }
+
+            $peta[$id]['daftar'][] = [
+                'id' => (int) $satu->getKey(),
+                'kategori' => $satu->kategori->value,
+                'kategori_label' => $satu->kategori->label(),
+                'skor_risiko' => (int) $satu->skor_risiko,
+                'dari_klien' => (bool) $satu->dari_klien,
+                'created_at' => $satu->created_at?->toIso8601String(),
+                'client_at' => $satu->client_at?->toIso8601String(),
+                'review_status' => $satu->review_status->value,
+                'review_status_label' => $satu->review_status->label(),
+            ];
+        }
+
+        return array_values($peta);
     }
 
     /** Apakah sekolah ini menyalakan penilaian AI (dipakai antrean & tombol guru). */
