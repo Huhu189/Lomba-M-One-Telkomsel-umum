@@ -171,19 +171,39 @@ describe('PetaPerjalanan', () => {
     expect(html).toContain('Jalan Pintas (opsional)')
   })
 
-  it('menandai tiap pos sebagai kemah di jalur, bukan bulatan berikon', () => {
+  it('menandai tiap pos dengan bentuk tema, bukan bulatan berikon', () => {
     const html = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta()} />)
 
-    // Satu tenda per pos, lengkap dengan atap dan pintunya. (`-atap`/`-pintu`
-    // juga diawali `jelajah-pos-kemah`, jadi kelas tendanya harus dicocokkan
-    // sampai tanda kutip penutup atribut.)
-    expect(html.match(/class="jelajah-pos-kemah"/g)).toHaveLength(4)
-    expect(html.match(/jelajah-pos-kemah-atap/g)).toHaveLength(4)
-    expect(html.match(/jelajah-pos-kemah-pintu/g)).toHaveLength(4)
+    // Satu penanda per pos. Kelas penandanya dicocokkan sampai tanda kutip
+    // penutup atribut, karena kelas bagiannya juga diawali `jelajah-pos-`.
+    expect(html.match(/class="jelajah-pos-bentuk jelajah-pos-kemah"/g)).toHaveLength(4)
+    // Tenda: satu atap (badan) + satu pintu (bagian terang) per pos.
+    expect(html.match(/jelajah-pos-badan/g)).toHaveLength(4)
+    expect(html.match(/jelajah-pos-terang/g)).toHaveLength(4)
     // Ikon jenis pos yang lama sudah tidak dipakai lagi.
     expect(html).not.toContain('jelajah-pos-ikon')
     // Nomor pos tetap tertulis di dalam penanda sebagai teks.
     expect(html.match(/jelajah-pos-nomor">\d</g)).toHaveLength(4)
+  })
+
+  it('bentuk penanda mengikuti tema: kemah (gunung), perahu (pulau), roket (angkasa)', () => {
+    const kemah = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'gunung' })} />)
+    const perahu = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'pulau' })} />)
+    const roket = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'angkasa' })} />)
+
+    // Tenda di jalur pendakian, perahu di pelayaran, roket di antariksa.
+    expect(kemah).toContain('class="jelajah-pos-bentuk jelajah-pos-kemah"')
+    expect(perahu).toContain('class="jelajah-pos-bentuk jelajah-pos-perahu"')
+    expect(roket).toContain('class="jelajah-pos-bentuk jelajah-pos-roket"')
+
+    // Bentuk tema lain tidak ikut muncul (satu bentuk per halaman).
+    expect(perahu).not.toContain('jelajah-pos-kemah"')
+    expect(roket).not.toContain('jelajah-pos-perahu"')
+    expect(kemah).not.toContain('jelajah-pos-roket"')
+
+    // Adegan yang tidak dikenal jatuh ke kemah — materi lama tidak kehilangan penanda.
+    const lain = renderToStaticMarkup(<PetaPerjalanan perjalanan={peta({ adegan: 'polos' })} />)
+    expect(lain).toContain('class="jelajah-pos-bentuk jelajah-pos-kemah"')
   })
 
   it('menyediakan label aksesibilitas pada panggung peta', () => {

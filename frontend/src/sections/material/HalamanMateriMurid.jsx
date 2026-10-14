@@ -18,6 +18,7 @@ import KuisSisipan from './KuisSisipan.jsx'
 import PemutarMateri, { PenjelasanKuis } from './PemutarMateri.jsx'
 import PetaPerjalanan from './PetaPerjalanan.jsx'
 import { kenaikanUntuk } from './perjalanan.js'
+import { labelDokumen, namaBerkas, sajianBerkas } from './sajianBerkas.js'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import {
   bolehDibuka,
@@ -136,6 +137,10 @@ export default function HalamanMateriMurid() {
       ).length
     : 0
 
+  // Cara menyajikan media blok yang sedang dibuka (lihat `sajianBerkas`):
+  // `semat` tampil di halaman, `dokumen` dibuka, `unduh` diunduh.
+  const cara = sajianBerkas(blokAktif?.media ?? null)
+
   return (
     <div className="container py-4">
       <h1 className="h4 fw-bold mb-1">Materi Belajar</h1>
@@ -242,7 +247,7 @@ export default function HalamanMateriMurid() {
                       {blokAktif.media.tersedia === false && (
                         <Banner jenis="peringatan">Berkas ini belum tersedia.</Banner>
                       )}
-                      {blokAktif.media.tersedia !== false && blokAktif.media.tampil_langsung && (
+                      {blokAktif.media.tersedia !== false && cara === 'semat' && (
                         <>
                           {blokAktif.media.mime?.startsWith('image/') && (
                             <img
@@ -263,13 +268,43 @@ export default function HalamanMateriMurid() {
                             <audio src={blokAktif.media.url} controls className="w-100" />
                           )}
                           {blokAktif.media.mime === 'application/pdf' && (
-                            <a href={blokAktif.media.url} target="_blank" rel="noreferrer">
-                              Buka dokumen PDF
-                            </a>
+                            <div>
+                              {/* PDF langsung tampil di halaman — tidak perlu unduh dulu. */}
+                              <iframe
+                                className="materi-dokumen"
+                                src={`${blokAktif.media.url}#view=FitH`}
+                                title={blokAktif.media.nama || 'Dokumen PDF materi'}
+                                loading="lazy"
+                              />
+                              <a
+                                className="taut-sentuh small"
+                                href={blokAktif.media.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Buka PDF di tab baru
+                              </a>
+                            </div>
                           )}
                         </>
                       )}
-                      {blokAktif.media.tersedia !== false && !blokAktif.media.tampil_langsung && (
+                      {blokAktif.media.tersedia !== false && cara === 'dokumen' && (
+                        <div>
+                          <a
+                            href={blokAktif.media.url}
+                            className="btn btn-tepi"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Buka dokumen {labelDokumen(blokAktif.media)} ({namaBerkas(blokAktif.media)})
+                          </a>
+                          <p className="small teks-lembut mb-0 mt-2">
+                            Dokumen {labelDokumen(blokAktif.media)} tidak bisa ditampilkan langsung di
+                            halaman; berkasnya terbuka di aplikasi dokumenmu dengan nama aslinya.
+                          </p>
+                        </div>
+                      )}
+                      {blokAktif.media.tersedia !== false && cara === 'unduh' && (
                         <a href={blokAktif.media.url} className="btn btn-tepi" download>
                           Unduh berkas ({blokAktif.media.kategori_label})
                         </a>

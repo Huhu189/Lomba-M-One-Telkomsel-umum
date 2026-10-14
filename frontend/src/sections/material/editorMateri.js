@@ -18,6 +18,7 @@
  *   teks: string,
  *   keterangan: string,
  *   unggahan_kode: string,
+ *   tautan: string,
  *   quiz_id: number|string,
  *   track: number,
  *   mulai_detik: number,
@@ -72,6 +73,44 @@ export const TIPE_BLOK = /** @type {Array<{nilai: TipeBlok, label: string, ikon:
 export const FASE_KOSONG = ''
 
 /**
+ * Apa yang dilakukan ketika **berkas** dijatuhkan (drag & drop) ke panel
+ * editor — dipisah murni supaya keputusannya bisa diuji tanpa DOM.
+ *
+ * Aturannya sengaja sederhana dan bisa ditebak guru: berkas yang jatuh di atas
+ * satu klip **menukar sumber klip itu**, berkas yang jatuh di tempat lain
+ * membuat **klip media baru**. Lebih dari satu berkas sekaligus belum didukung
+ * (unggahan berjalan satu per satu, berurutan) — ditolak dengan pesan jelas,
+ * bukan diam-diam hanya mengunggah yang pertama.
+ *
+ * @param {number|null} indeksKlip klip yang dijatuhi, `null` bila bukan di klip
+ * @param {number} jumlahBerkas
+ * @returns {{ aksi: 'tukar'|'tambah'|'tolak', indeks: number|null, pesan: string }}
+ */
+export function rencanaLepasBerkas(indeksKlip, jumlahBerkas) {
+  if (jumlahBerkas === 0) {
+    return {
+      aksi: 'tolak',
+      indeks: null,
+      pesan: 'Tidak ada berkas yang terbaca dari seretan itu — coba tarik berkasnya dari folder.',
+    }
+  }
+
+  if (jumlahBerkas > 1) {
+    return {
+      aksi: 'tolak',
+      indeks: null,
+      pesan: `${jumlahBerkas} berkas sekaligus belum didukung — jatuhkan satu berkas, lalu ulangi untuk berikutnya.`,
+    }
+  }
+
+  if (indeksKlip !== null) {
+    return { aksi: 'tukar', indeks: indeksKlip, pesan: '' }
+  }
+
+  return { aksi: 'tambah', indeks: null, pesan: '' }
+}
+
+/**
  * Baris klip baru untuk satu tipe blok.
  * @param {TipeBlok} tipe
  * @param {Partial<BarisBlok>} [isi]
@@ -84,6 +123,7 @@ export function blokBaru(tipe, isi) {
     teks: '',
     keterangan: '',
     unggahan_kode: '',
+    tautan: '',
     quiz_id: '',
     track: 0,
     mulai_detik: 0,
@@ -119,6 +159,8 @@ export function dariServer(blok) {
       teks: typeof satu.teks === 'string' ? satu.teks : '',
       keterangan: typeof satu.keterangan === 'string' ? satu.keterangan : '',
       unggahan_kode: typeof satu.unggahan_kode === 'string' ? satu.unggahan_kode : '',
+      // Sumber kedua klip media: tautan yang diselipkan guru (tanpa unggahan).
+      tautan: typeof satu.tautan === 'string' ? satu.tautan : '',
       quiz_id: typeof satu.quiz_id === 'number' ? satu.quiz_id : '',
       track: typeof satu.track === 'number' ? satu.track : 0,
       mulai_detik: typeof satu.mulai_detik === 'number' ? satu.mulai_detik : indeks * DURASI_BAWAAN,
@@ -158,7 +200,14 @@ export function muatanBlok(blok) {
       satu.tipe === 'teks'
         ? { teks: satu.teks }
         : satu.tipe === 'media'
-          ? { unggahan_kode: satu.unggahan_kode, keterangan: satu.keterangan }
+          ? {
+              unggahan_kode: satu.unggahan_kode,
+              keterangan: satu.keterangan,
+              // Klip media punya DUA sumber: berkas unggahan atau tautan. Yang
+              // kosong dikirim `null` supaya server membacanya sebagai "tidak
+              // diisi", bukan sebagai kode/tautan kosong.
+              tautan: satu.tautan.trim() === '' ? null : satu.tautan.trim(),
+            }
           : penjelasanTerisi(satu)
             ? {
                 penjelasan: {
@@ -188,6 +237,53 @@ export function muatanBlok(blok) {
  */
 export function penjelasanTerisi(satu) {
   return satu.penjelasan_teks.trim() !== '' || satu.penjelasan_kode !== ''
+}
+
+/**
+ * Klip dan penjelasan yang menunjuk satu berkas pustaka.
+ *
+ * Dipakai dua kali oleh editor: saat memberi tahu guru dampak "Hapus berkas"
+ * ("dipakai 2 klip"), dan saat menyamakan susunan di layar dengan yang dilakukan
+ * server sesudah berkasnya benar-benar dibuang.
+ *
+ * @param {BarisBlok[]} blok
+ * @param {string} kode
+ * @returns {{ klip: number, penjelasan: number }}
+ */
+export function pemakaiBerkas(blok, kode) {
+  let klip = 0
+  let penjelasan = 0
+
+  for (const satu of blok) {
+    if (satu.tipe === 'media' && satu.unggahan_kode === kode) klip++
+    if (satu.penjelasan_kode === kode) penjelasan++
+  }
+
+  return { klip, penjelasan }
+}
+
+/**
+ * Lepas satu berkas dari susunan klip yang BELUM tersimpan, setelah berkasnya
+ * dibuang dari pustaka materi.
+ *
+ * Bukan sekadar kerapian tampilan: server menolak blok media yang berkasnya
+ * tidak ada lagi ("Berkas media belum selesai diunggah"), jadi klip yang masih
+ * menunjuk berkas hilang akan membuat penyimpanan berikutnya gagal. Di sini
+ * susunan di layar disamakan dengan hasil pembersihan server — klip media yang
+ * menunjuk berkas itu dibuang seluruhnya, sedangkan media penjelasan dilepas
+ * tanpa menghapus teks penjelasannya.
+ *
+ * @param {BarisBlok[]} blok
+ * @param {string} kode
+ * @returns {{ blok: BarisBlok[], klip: number, penjelasan: number }}
+ */
+export function lepasBerkas(blok, kode) {
+  const { klip, penjelasan } = pemakaiBerkas(blok, kode)
+  const sisa = blok
+    .filter((satu) => !(satu.tipe === 'media' && satu.unggahan_kode === kode))
+    .map((satu) => (satu.penjelasan_kode === kode ? { ...satu, penjelasan_kode: '' } : satu))
+
+  return { blok: sisa, klip, penjelasan }
 }
 
 /**
@@ -405,29 +501,8 @@ export function offsetMedia(detik, mulai, durasi) {
 }
 
 /* ------------------------------------------------------------------ *
- * Bingkai (rasio terkunci), penyesuaian media, dan kuis sisipan.
+ * Penyesuaian media dan kuis sisipan.
  * ------------------------------------------------------------------ */
-
-/** Rasio bingkai pratinjau yang bisa dipilih guru. */
-export const RASIO_CANVAS = [
-  { nilai: '16:9', label: 'Horizontal 16:9' },
-  { nilai: '9:16', label: 'Vertikal 9:16' },
-  { nilai: '1:1', label: 'Kotak 1:1' },
-  { nilai: '4:3', label: 'Klasik 4:3' },
-]
-
-export const RASIO_BAWAAN = '16:9'
-
-/**
- * Rasio "a:b" jadi angka lebar/tinggi. Nilai tak sah jatuh ke 16:9.
- * @param {string|undefined|null} rasio
- * @returns {number}
- */
-export function rasioAngka(rasio) {
-  const [a, b] = String(rasio ?? '').split(':').map(Number)
-
-  return a > 0 && b > 0 ? a / b : 16 / 9
-}
 
 /**
  * @param {unknown} nilai

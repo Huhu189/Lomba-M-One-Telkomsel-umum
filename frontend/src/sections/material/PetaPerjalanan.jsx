@@ -101,21 +101,76 @@ const LABEL_STATUS = {
 }
 
 /**
- * Penanda satu pos di peta: **kemah** (tenda) di jalur pendakian, bukan
- * bulatan berikon. Warnanya mengikuti warna pos itu (`--pos-warna` di
- * `theme.css`), pintunya lebih terang supaya terbaca sebagai tenda.
+ * Bentuk penanda pos menurut **tema perjalanan** (adegan tema).
  *
- * Ikon fase (tenda/pohon/sungai/batu/kabut/bendera) **tidak lagi** ditempel di
+ * Sampai 14 Okt 2026 penandanya selalu **kemah** (tenda), warisan tema pendakian —
+ * akibatnya di tema **Harta Karun di Pulau** dan **Luar Angkasa** posnya tampak
+ * seperti tenda di tengah laut/langit, bukan bagian dari temanya. Sekarang
+ * bentuknya ikut temanya:
+ *
+ * - `gunung` → **kemah** (tenda) di jalur pendakian;
+ * - `pulau` (**Harta Karun di Pulau**) → **perahu layar**, karena posnya adalah
+ *   pelayaran dari dermaga ke goa harta karun;
+ * - `angkasa` (**Luar Angkasa**) → **roket** di jalur antariksa.
+ *
+ * Adegan yang tidak dikenal (atau tema tanpa bentuk sendiri) memakai kemah —
+ * bentuk yang paling lama dipakai, jadi materi lama tidak kehilangan penandanya.
+ *
+ * Ikon fase (tenda/pohon/sungai/batu/kabut/bendera) tetap **tidak** ditempel di
  * dalam penanda: di ukuran penanda di peta ikon sekecil itu tidak terbaca dan
- * membuat tendanya penuh. Identitas pos tetap aman — warnanya berbeda per pos,
- * nomornya tertulis di bawah tenda, dan nama fasenya selalu tertulis di daftar
- * pos di bawah peta (juga di `aria-label` panggung).
+ * membuat bentuknya penuh. Identitas pos tetap aman — warnanya berbeda per pos
+ * (mengikuti `--pos-warna` di `theme.css`), nomornya tertulis di bawah penanda,
+ * dan nama fasenya selalu tertulis di daftar pos di bawah peta (juga di
+ * `aria-label` panggung).
  */
-function KemahPos() {
+const BENTUK_POS = /** @type {Record<string, string>} */ ({
+  gunung: 'kemah',
+  pulau: 'perahu',
+  angkasa: 'roket',
+})
+
+/**
+ * Penanda satu pos di peta, bentuknya mengikuti tema (`BENTUK_POS`).
+ *
+ * Semua bentuk digambar di `viewBox 0 0 24 20` yang sama supaya besar dan
+ * letaknya tidak berbeda antar tema (kotak penandanya `2.3rem × 1.9rem`).
+ *
+ * @param {{ adegan?: string|null }} props
+ */
+function PenandaPos({ adegan }) {
+  const bentuk = (adegan !== null && adegan !== undefined && BENTUK_POS[adegan]) || 'kemah'
+  const kelas = `jelajah-pos-bentuk jelajah-pos-${bentuk}`
+
+  if (bentuk === 'perahu') {
+    return (
+      <svg className={kelas} viewBox="0 0 24 20" aria-hidden="true" focusable="false">
+        <path className="jelajah-pos-terang" d="M13 2.6 21 12.2H13z" />
+        <path className="jelajah-pos-terang" d="M11.2 4.6 5.4 12.2h5.8z" />
+        <rect className="jelajah-pos-badan" x="11.4" y="2" width="1.4" height="11" />
+        <path className="jelajah-pos-badan" d="M3.2 13.1h17.6l-2.6 5.3H5.8z" />
+      </svg>
+    )
+  }
+
+  if (bentuk === 'roket') {
+    return (
+      <svg className={kelas} viewBox="0 0 24 20" aria-hidden="true" focusable="false">
+        <path className="jelajah-pos-badan" d="M6.8 12.4 L3 18.8 L6.8 18.8 Z" />
+        <path className="jelajah-pos-badan" d="M17.2 12.4 L21 18.8 L17.2 18.8 Z" />
+        <path
+          className="jelajah-pos-badan"
+          d="M12 1 C 15.6 4.4 17.2 8.8 17.2 12.6 L17.2 15.2 L6.8 15.2 L6.8 12.6 C 6.8 8.8 8.4 4.4 12 1 Z"
+        />
+        <path className="jelajah-pos-terang" d="M9.6 15.2 L14.4 15.2 L12 19.4 Z" />
+        <circle className="jelajah-pos-terang" cx="12" cy="8.2" r="2.3" />
+      </svg>
+    )
+  }
+
   return (
-    <svg className="jelajah-pos-kemah" viewBox="0 0 24 20" aria-hidden="true" focusable="false">
-      <path className="jelajah-pos-kemah-atap" d="M12 1.4 22.5 18.6H1.5z" />
-      <path className="jelajah-pos-kemah-pintu" d="M12 8.4 16.9 18.6H7.1z" />
+    <svg className={kelas} viewBox="0 0 24 20" aria-hidden="true" focusable="false">
+      <path className="jelajah-pos-badan" d="M12 1.4 22.5 18.6H1.5z" />
+      <path className="jelajah-pos-terang" d="M12 8.4 16.9 18.6H7.1z" />
     </svg>
   )
 }
@@ -288,7 +343,7 @@ export default function PetaPerjalanan({ perjalanan, ringkas = false, judul }) {
             data-jenis={satu.wajib ? 'wajib' : 'opsional'}
             style={{ left: `${titik[indeks]?.x ?? 50}%`, top: `${titik[indeks]?.y ?? 50}%` }}
           >
-            <KemahPos />
+            <PenandaPos adegan={perjalanan.adegan} />
             <span className="jelajah-pos-nomor">{satu.nomor}</span>
           </span>
         ))}

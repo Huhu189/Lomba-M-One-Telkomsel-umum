@@ -16,7 +16,9 @@ import {
   durasiTotal,
   formatWaktu,
   klipPada,
+  lepasBerkas,
   muatanBlok,
+  pemakaiBerkas,
   pindahBlok,
   penjelasanTerisi,
   offsetMedia,
@@ -46,6 +48,7 @@ describe('klip', () => {
       teks: '',
       keterangan: '',
       unggahan_kode: '',
+      tautan: '',
       quiz_id: '',
       track: 0,
       mulai_detik: 0,
@@ -64,9 +67,9 @@ describe('klip', () => {
     ])
 
     expect(hasil).toEqual([
-      { tipe: 'teks', wajib: false, teks: 'Halo', keterangan: '', unggahan_kode: '', quiz_id: '', track: 2, mulai_detik: 5, durasi_detik: 7, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
-      { tipe: 'kuis', wajib: true, teks: '', keterangan: '', unggahan_kode: '', quiz_id: 12, track: 0, mulai_detik: DURASI_BAWAAN, durasi_detik: DURASI_BAWAAN, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
-      { tipe: 'teks', wajib: false, teks: '', keterangan: '', unggahan_kode: '', quiz_id: '', track: 0, mulai_detik: 2 * DURASI_BAWAAN, durasi_detik: DURASI_BAWAAN, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
+      { tipe: 'teks', wajib: false, teks: 'Halo', keterangan: '', unggahan_kode: '', tautan: '', quiz_id: '', track: 2, mulai_detik: 5, durasi_detik: 7, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
+      { tipe: 'kuis', wajib: true, teks: '', keterangan: '', unggahan_kode: '', tautan: '', quiz_id: 12, track: 0, mulai_detik: DURASI_BAWAAN, durasi_detik: DURASI_BAWAAN, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
+      { tipe: 'teks', wajib: false, teks: '', keterangan: '', unggahan_kode: '', tautan: '', quiz_id: '', track: 0, mulai_detik: 2 * DURASI_BAWAAN, durasi_detik: DURASI_BAWAAN, fase: '', penjelasan_teks: '', penjelasan_kode: '' },
     ])
 
     expect(dariServer(undefined)).toEqual([])
@@ -96,7 +99,7 @@ describe('muatan ke server', () => {
 
     expect(muatan).toEqual([
       { tipe: 'teks', wajib: true, isi: { teks: 'Penjelasan' }, quiz_id: null, track: 1, mulai_detik: 3.5, durasi_detik: 8 },
-      { tipe: 'media', wajib: true, isi: { unggahan_kode: 'abc', keterangan: 'Peta' }, quiz_id: null, track: 0, mulai_detik: 0, durasi_detik: DURASI_BAWAAN },
+      { tipe: 'media', wajib: true, isi: { unggahan_kode: 'abc', keterangan: 'Peta', tautan: null }, quiz_id: null, track: 0, mulai_detik: 0, durasi_detik: DURASI_BAWAAN },
       { tipe: 'kuis', wajib: true, isi: undefined, quiz_id: 9, track: 2, mulai_detik: 2, durasi_detik: DURASI_BAWAAN },
     ])
   })
@@ -336,5 +339,50 @@ describe('ciri klip', () => {
     expect(ciriKlip('media')).toEqual({ ikon: '▶', label: 'Media' })
     expect(ciriKlip('kuis')).toEqual({ ikon: '?', label: 'Kuis sisipan' })
     expect(ciriKlip(/** @type {any} */ ('entah'))).toEqual({ ikon: '•', label: 'Blok' })
+  })
+})
+
+describe('membuang berkas pustaka dari susunan klip', () => {
+  it('menghitung pemakai berkas untuk peringatan di dialog', () => {
+    const blok = [
+      klip('media', { unggahan_kode: 'berkas-a' }),
+      klip('teks', { teks: 'Catatan' }),
+      klip('kuis', { quiz_id: 7, penjelasan_teks: 'Baca bab 3.', penjelasan_kode: 'berkas-a' }),
+      klip('kuis', { quiz_id: 7, penjelasan_kode: 'berkas-b' }),
+      klip('media', { unggahan_kode: 'berkas-b' }),
+    ]
+
+    expect(pemakaiBerkas(blok, 'berkas-a')).toEqual({ klip: 1, penjelasan: 1 })
+    expect(pemakaiBerkas(blok, 'berkas-b')).toEqual({ klip: 1, penjelasan: 1 })
+    expect(pemakaiBerkas(blok, 'berkas-c')).toEqual({ klip: 0, penjelasan: 0 })
+  })
+
+  it('membuang klip medianya dan melepas media penjelasan tanpa menghapus teksnya', () => {
+    const blok = [
+      klip('media', { unggahan_kode: 'berkas-a', track: 1 }),
+      klip('teks', { teks: 'Penutup.', mulai_detik: 20 }),
+      klip('kuis', { quiz_id: 7, penjelasan_teks: 'Baca bab 3.', penjelasan_kode: 'berkas-a' }),
+      klip('media', { unggahan_kode: 'berkas-b' }),
+    ]
+
+    const hasil = lepasBerkas(blok, 'berkas-a')
+
+    expect(hasil.klip).toBe(1)
+    expect(hasil.penjelasan).toBe(1)
+    expect(hasil.blok.map((satu) => satu.tipe)).toEqual(['teks', 'kuis', 'media'])
+    expect(hasil.blok[1].penjelasan_teks).toBe('Baca bab 3.')
+    expect(hasil.blok[1].penjelasan_kode).toBe('')
+    // Klip lain tetap apa adanya: titik mulai & track tidak ikut bergeser.
+    expect(hasil.blok[0]).toEqual(blok[1])
+    expect(hasil.blok[2].unggahan_kode).toBe('berkas-b')
+    // Susunan aslinya tidak diubah (helper ini murni).
+    expect(blok).toHaveLength(4)
+  })
+
+  it('menyisakan klip teks/kuis walau sudah tidak ada klip media yang tertinggal', () => {
+    const blok = [klip('teks', { teks: 'Satu-satunya.' })]
+    const hasil = lepasBerkas(blok, 'berkas-a')
+
+    expect(hasil).toEqual({ blok, klip: 0, penjelasan: 0 })
   })
 })

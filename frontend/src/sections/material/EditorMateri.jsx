@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
+import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import TabelData from '../../shared/ui/TabelData.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { IkonPanahKiri } from '../../icons.jsx'
@@ -28,19 +29,20 @@ import { ambilKuis } from '../quiz/api.js'
 import {
   ambilMateriDetail,
   ambilTemaMateri,
+  hapusUnggahan,
   laporanMateri,
   publikasiMateri,
   sinkronBlok,
   unggahBerkas,
 } from './api.js'
 import PetaPerjalanan from './PetaPerjalanan.jsx'
+import { labelDokumen, namaBerkas, sajianBerkas } from './sajianBerkas.js'
+import { jenisTautan, labelTautan, namaTautan, pesanGalatTautan } from './tautanMedia.js'
 import { faseKe, petaLokal, tanpaPeta, terapkanTema } from './perjalanan.js'
 import {
   DURASI_BAWAAN,
   DURASI_MINIMUM,
   MAKS_PENJELASAN,
-  RASIO_BAWAAN,
-  RASIO_CANVAS,
   TIPE_BLOK,
   blokBaru,
   ciriKlip,
@@ -52,12 +54,14 @@ import {
   klipDasarPada,
   kuisJeda,
   kuisPadaWaktu,
+  lepasBerkas,
   muatanBlok,
   offsetMedia,
   pangkasKanan,
   pangkasKiri,
+  pemakaiBerkas,
   penjelasanTerisi,
-  rasioAngka,
+  rencanaLepasBerkas,
   setDurasi,
   setMulai,
   sisipBlok,
@@ -85,6 +89,26 @@ function ujungKlip(baris) {
   if (baris === undefined) return 0
 
   return Math.round((baris.mulai_detik + baris.durasi_detik) * 10) / 10
+}
+
+/**
+ * Kalimat hasil pembuangan berkas pustaka, menyebut rujukan yang ikut
+ * dibersihkan server supaya guru tahu bagian mana dari materinya yang berubah.
+ *
+ * @param {import('./api.js').DataHasilBuangBerkas} hasil
+ * @returns {string}
+ */
+function ringkasanBuangBerkas(hasil) {
+  /** @type {string[]} */
+  const ikut = []
+
+  if (hasil.klip > 0) ikut.push(`${hasil.klip} klip media dibuang`)
+  if (hasil.penjelasan > 0) ikut.push(`${hasil.penjelasan} media penjelasan dilepas`)
+  if (hasil.tema > 0) ikut.push('latar tema kembali ke animasi bawaan')
+
+  return ikut.length === 0
+    ? 'Berkas dibuang dari pustaka materi.'
+    : `Berkas dibuang · ${ikut.join(' · ')}.`
 }
 
 /**
@@ -272,13 +296,24 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
   if (satu.tipe === 'media') {
     const berkas = satu.unggahan_kode === '' ? undefined : cariUnggahan(satu.unggahan_kode)
 
+    // Klip bersumber TAUTAN: beritahu jenisnya, bukan "belum ada berkas".
+    if (!berkas && satu.tautan.trim() !== '') {
+      return (
+        <p className="mb-0">
+          <strong>{labelTautan(jenisTautan(satu.tautan))}</strong> · {namaTautan(satu.tautan)}
+        </p>
+      )
+    }
+
     if (!berkas) {
       return <p className="teks-lembut mb-0">(Belum ada berkas terunggah untuk klip ini.)</p>
     }
 
+    const cara = sajianBerkas(berkas)
+
     return (
       <div className="nle-media-wrap">
-        {berkas.tampil_langsung && berkas.mime?.startsWith('image/') && (
+        {cara === 'semat' && berkas.mime?.startsWith('image/') && (
           <img
             src={berkas.url ?? undefined}
             alt={satu.keterangan || berkas.nama_asli}
@@ -286,7 +321,7 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
             style={gayaMedia(satu)}
           />
         )}
-        {berkas.tampil_langsung &&
+        {cara === 'semat' &&
           (berkas.mime?.startsWith('video/') || berkas.mime?.startsWith('audio/')) && (
             <MediaTersinkron
               key={berkas.kode}
@@ -296,12 +331,26 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
               detik={detik}
             />
           )}
-        {berkas.tampil_langsung && berkas.mime === 'application/pdf' && (
+        {cara === 'semat' && berkas.mime === 'application/pdf' && (
           <a href={berkas.url ?? undefined} target="_blank" rel="noreferrer">
             Buka dokumen PDF
           </a>
         )}
-        {!berkas.tampil_langsung && (
+        {cara === 'dokumen' && (
+          <div>
+            <p className="mb-1">
+              <strong>Dokumen {labelDokumen(berkas)}</strong> · {namaBerkas(berkas)}
+            </p>
+            <a href={berkas.url ?? undefined} target="_blank" rel="noreferrer" className="btn btn-tepi">
+              Buka dokumen
+            </a>
+            <p className="small teks-lembut mb-0 mt-1">
+              Murid membuka dokumen ini di aplikasi dokumennya — bukan diunduh sebagai berkas
+              samar bernama .upload.
+            </p>
+          </div>
+        )}
+        {cara === 'unduh' && (
           <a href={berkas.url ?? undefined} className="btn btn-tepi" download>
             Unduh berkas ({berkas.kategori_label})
           </a>
@@ -505,13 +554,24 @@ export default function EditorMateri() {
 function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const [blok, setBlok] = useState(() => dariServer(materi.blok))
   const [progresUnggah, setProgresUnggah] = useState(0)
+  // Tautan media (14 Okt 2026): kotak di sidebar untuk menyelipkan klip baru,
+  // dan kotak di panel klip untuk mengganti sumber klip terpilih.
+  const [tautanBaru, setTautanBaru] = useState('')
+  const [galatTautanBaru, setGalatTautanBaru] = useState('')
+  const [tautanKlip, setTautanKlip] = useState('')
+  const [galatTautanKlip, setGalatTautanKlip] = useState('')
+  // Berkas sedang diseret di atas panel editor (cuma penanda visual).
+  const [seretBerkas, setSeretBerkas] = useState(false)
   const [galat, setGalat] = useState('')
   const [terpilih, setTerpilih] = useState(0)
   const [detik, setDetik] = useState(0)
   const [bermain, setBermain] = useState(false)
   const [trackEkstra, setTrackEkstra] = useState(0)
   const [menuTambah, setMenuTambah] = useState(false)
-  const [rasio, setRasio] = useState(materi.rasio ?? RASIO_BAWAAN)
+  // Berkas pustaka yang sedang dimintakan konfirmasi pembuangan (null = tutup).
+  const [berkasDibuang, setBerkasDibuang] = useState(
+    /** @type {import('./api.js').DataUnggahan|null} */ (null),
+  )
   // Tema perjalanan: pilihan guru, disimpan bersama susunan klip.
   const [temaKode, setTemaKode] = useState(materi.tema?.kode ?? materi.perjalanan?.kode ?? '')
   const [temaNama, setTemaNama] = useState(materi.tema?.nama ?? materi.perjalanan?.nama ?? '')
@@ -546,7 +606,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const simpanBlok = useMutation({
     mutationFn: async () =>
-      sinkronBlok(materi.id, muatanBlok(blok), rasio, {
+      sinkronBlok(materi.id, muatanBlok(blok), {
         kode: temaKode,
         nama: temaNama,
         video_kode: videoKode === '' ? null : videoKode,
@@ -576,9 +636,11 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const unggah = useMutation({
     mutationFn: async (/** @type {{ indeks: number, berkas: File }} */ variabel) =>
-      unggahBerkas(materi.id, variabel.berkas, { onProgres: setProgresUnggah }),
-    onSuccess: (berkasJadi, variabel) => {
+      unggahBerkas(materi.id, variabel.berkas, { onProgres: setProgresUnggah }),      onSuccess: (berkasJadi, variabel) => {
       setProgresUnggah(0)
+      // Sebelumnya pesan ini menyebut semua berkas non-gambar sebagai "berisiko
+      // (.upload)" — padahal PDF/Word/PowerPoint justru bahan ajar yang lazim
+      // (14 Oktober 2026). Sekarang pesannya mengikuti cara sajiannya.
       setBlok((sebelum) =>
         sebelum.map((satu, urutan) =>
           urutan === variabel.indeks ? { ...satu, unggahan_kode: berkasJadi.kode } : satu,
@@ -587,12 +649,44 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
       onTersimpan()
       tampilkanToast(
         'sukses',
-        berkasJadi.tampil_langsung
-          ? 'Berkas siap ditampilkan.'
-          : 'Berkas berisiko: murid akan mengunduhnya (.upload).',
+        berkasJadi.sajian === 'dokumen'
+          ? `Dokumen ${labelDokumen(berkasJadi)} siap dibuka murid.`
+          : berkasJadi.tampil_langsung
+            ? 'Berkas siap ditampilkan.'
+            : 'Berkas berisiko: murid akan mengunduhnya (.upload).',
       )
     },
     onError: (error) => setGalat(pesanGalatApi(error)),
+  })
+
+  /**
+   * Buang satu berkas dari pustaka materi — berkas nyatanya, bukan cuma klipnya.
+   *
+   * Sesudah server membuang berkas + seluruh rujukannya, susunan yang belum
+   * tersimpan di layar ikut dibersihkan (`lepasBerkas`) supaya yang dilihat guru
+   * sama dengan yang akan tersimpan: klip media yang menunjuk berkas hilang akan
+   * membuat Simpan ditolak server, jadi membiarkannya di layar justru menipu.
+   */
+  const buangBerkas = useMutation({
+    mutationFn: (/** @type {string} */ kode) => hapusUnggahan(kode),
+    onSuccess: (hasil, kode) => {
+      // Susunan terbaru dibaca dari ref (bukan dari closure render) supaya
+      // penghapusan tetap benar meski guru menggeser klip selagi menunggu.
+      const sesudah = lepasBerkas(blokRef.current, kode)
+
+      setGalat('')
+      setBlok(sesudah.blok)
+      setTerpilih((sebelum) => Math.max(0, Math.min(sebelum, Math.max(sesudah.blok.length - 1, 0))))
+      // Video latar tema yang berkasnya dibuang tidak bisa dipakai lagi.
+      setVideoKode((sebelum) => (sebelum === kode ? '' : sebelum))
+      setBerkasDibuang(null)
+      tampilkanToast('sukses', ringkasanBuangBerkas(hasil))
+      onTersimpan()
+    },
+    onError: (error) => {
+      setBerkasDibuang(null)
+      setGalat(pesanGalatApi(error))
+    },
   })
 
   const total = durasiTotal(blok)
@@ -787,6 +881,11 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
    * @param {File} berkas
    */
   function unggahKeKlip(indeks, berkas) {
+    // Satu klip satu sumber: berkas baru menggantikan tautan yang mungkin masih
+    // menempel di klip itu.
+    setBlok((sebelum) =>
+      sebelum.map((satu, urutan) => (urutan === indeks && satu.tautan !== '' ? { ...satu, tautan: '' } : satu)),
+    )
     unggah.mutate({ indeks, berkas })
 
     void bacaDurasiBerkas(berkas).then((durasi) => {
@@ -808,6 +907,83 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   }
 
   /**
+   * Sisipkan klip media dari **tautan** (tanpa unggahan). Aturannya satu sumber
+   * di `tautanMedia.js` (cermin aturan server); server tetap yang memutuskan.
+   * @param {string} tautan
+   * @returns {number|null} indeks klip baru, atau `null` bila tautannya belum sah
+   */
+  function imporMediaTautan(tautan) {
+    const pesan = pesanGalatTautan(tautan)
+    setGalatTautanBaru(pesan)
+
+    if (pesan !== '') return null
+
+    const indeks = tambahBlok('media', { tautan: tautan.trim() })
+    setTautanBaru('')
+
+    return indeks
+  }
+
+  /**
+   * Pakai tautan untuk klip terpilih. Klip media hanya punya SATU sumber: tautan
+   * menggantikan berkas unggahan (dan sebaliknya) supaya tidak ada dua alamat
+   * yang saling bertentangan di satu klip.
+   * @param {number} indeks
+   * @param {string} tautan
+   */
+  function pakaiTautan(indeks, tautan) {
+    const pesan = pesanGalatTautan(tautan)
+    setGalatTautanKlip(pesan)
+
+    if (pesan !== '') return
+
+    ubahBaris(indeks, { tautan: tautan.trim(), unggahan_kode: '' })
+    setTautanKlip('')
+  }
+
+  /**
+   * Apakah seretan ini membawa berkas (bukan klip timeline)?
+   * @param {import('react').DragEvent} e
+   * @returns {boolean}
+   */
+  function adaBerkasSeret(e) {
+    return Array.from(e.dataTransfer?.types ?? []).includes('Files')
+  }
+
+  /**
+   * Berkas dijatuhkan di panel editor: klip yang dijatuhi ditukar berkasnya,
+   * selain itu dibuat klip media baru. Aturan keputusannya murni di
+   * `rencanaLepasBerkas` (editorMateri.js) supaya bisa diuji tanpa DOM.
+   * @param {import('react').DragEvent<HTMLDivElement>} e
+   */
+  function lepasBerkasKeEditor(e) {
+    if (!adaBerkasSeret(e)) return
+
+    e.preventDefault()
+    setSeretBerkas(false)
+
+    const berkas = Array.from(e.dataTransfer?.files ?? [])
+    const klip = /** @type {HTMLElement} */ (e.target).closest?.('.nle-klip')
+    const indeksKlip = klip instanceof HTMLElement ? Number(klip.dataset.indeks) : Number.NaN
+    const rencana = rencanaLepasBerkas(
+      Number.isInteger(indeksKlip) && indeksKlip >= 0 && indeksKlip < blok.length ? indeksKlip : null,
+      berkas.length,
+    )
+
+    if (rencana.aksi === 'tolak') {
+      tampilkanToast('peringatan', rencana.pesan)
+      return
+    }
+
+    if (rencana.aksi === 'tukar') {
+      unggahKeKlip(/** @type {number} */ (rencana.indeks), berkas[0])
+      return
+    }
+
+    imporMedia(berkas[0])
+  }
+
+  /**
    * Sisipkan berkas pustaka sebagai klip media baru. Durasinya dibaca dari
    * berkasnya sendiri supaya klip langsung sepanjang videonya.
    * @param {import('./api.js').DataUnggahan} satu
@@ -826,6 +1002,12 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const cariUnggahan = (/** @type {string} */ kode) =>
     berkasSiap.find((satu) => satu.kode === kode)
+
+  // Dampak yang akan terjadi bila berkas di dialog konfirmasi benar-benar
+  // dibuang — dihitung dari susunan di layar, jadi angkanya sama dengan yang
+  // dibaca guru di pustaka media.
+  const pemakaiBerkasDibuang =
+    berkasDibuang === null ? { klip: 0, penjelasan: 0 } : pemakaiBerkas(blok, berkasDibuang.kode)
 
   const daftarTema = katalog.data?.tema ?? []
   const videoTema = berkasSiap.find((satu) => satu.kode === videoKode)
@@ -854,6 +1036,59 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const aktif = Math.min(terpilih, Math.max(blok.length - 1, 0))
   const klipAktif = blok[aktif]
 
+  /**
+   * Hapus klip ke-`indeks` lalu jaga pilihannya tetap masuk akal: klip di
+   * belakang yang terpilih ikut bergeser satu, dan bila yang dihapus klip
+   * terakhir pilihannya mundur. Satu perilaku dipakai dua jalan — tombol ✕ di
+   * timeline dan tombol "Hapus klip" di inspector.
+   *
+   * @param {number} indeks
+   */
+  function hapusKlip(indeks) {
+    setBlok((sebelum) => sebelum.filter((_, urutan) => urutan !== indeks))
+    setTerpilih((sebelum) => {
+      const bergeser = sebelum > indeks ? sebelum - 1 : sebelum
+
+      return Math.max(0, Math.min(bergeser, Math.max(blok.length - 2, 0)))
+    })
+  }
+
+  /**
+   * Papan tombol di dalam editor: **Delete/Backspace** membuang klip yang sedang
+   * dipilih — jalan yang sama dengan tombol ✕ di timeline dan "Hapus klip" di
+   * inspector, supaya guru yang bekerja dengan papan tombol (mis. setelah
+   * menyeret klip) tidak perlu memindahkan tangan ke tetikus.
+   *
+   * Dipasang di akar editor, bukan di `window`: tombolnya hanya berlaku saat
+   * fokus memang berada di dalam editor. Saat fokus ada di kolom isian (teks,
+   * angka, pemilih) tombol dibiarkan apa adanya — di sana Delete untuk menghapus
+   * karakter, bukan untuk membuang klip.
+   *
+   * @param {import('react').KeyboardEvent<HTMLDivElement>} e
+   */
+  function tekanPapanTombol(e) {
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    if (blok.length === 0) return
+
+    // Dialog konfirmasi yang sedang terbuka memegang papan tombol: Delete di sana
+    // milik dialognya, bukan milik timeline yang ada di belakangnya.
+    if (e.currentTarget.querySelector('dialog[open]') !== null) return
+
+    const sasaran = e.target
+
+    if (sasaran instanceof HTMLElement) {
+      const tag = sasaran.tagName
+
+      if (sasaran.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        return
+      }
+    }
+
+    e.preventDefault()
+    hapusKlip(aktif)
+  }
+
   const track = useMemo(() => susunTrack(blok), [blok])
   const trackTampil = useMemo(() => [...track].reverse(), [track])
   const klipTampil = klipDasarPada(blok, detik)
@@ -875,7 +1110,6 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
 
   const belumTersimpan =
     JSON.stringify(muatanBlok(blok)) !== JSON.stringify(muatanBlok(dariServer(materi.blok))) ||
-    rasio !== (materi.rasio ?? RASIO_BAWAAN) ||
     temaKode !== (materi.tema?.kode ?? materi.perjalanan?.kode ?? '') ||
     temaNama !== (materi.tema?.nama ?? materi.perjalanan?.nama ?? '') ||
     videoKode !== (materi.tema?.video_kode ?? '')
@@ -923,7 +1157,22 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
   const jumlahTrackTampil = trackTampil.length + trackEkstra
 
   return (
-    <div className="nle">
+    <div
+      className={`nle${seretBerkas ? ' nle-sedang-seret' : ''}`}
+      onKeyDown={tekanPapanTombol}
+      // Berkas boleh dijatuhkan DI SELURUH panel editor (14 Okt 2026). Seretan
+      // klip di timeline tetap ditangani lane-nya sendiri (`lepasKlip`), karena
+      // seretan itu membawa `text/klip` — bukan berkas.
+      onDragOver={(e) => {
+        if (!adaBerkasSeret(e)) return
+        e.preventDefault()
+        setSeretBerkas(true)
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setSeretBerkas(false)
+      }}
+      onDrop={lepasBerkasKeEditor}
+    >
       {/* ===== Sidebar: tools + template ===== */}
       <aside className="nle-sidebar">
         <div className="mb-3">
@@ -965,6 +1214,36 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
               {satu.ikon} <span>{satu.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* Sumber kedua klip media: tautan, tanpa mengunggah berkas apa pun. */}
+        <h2 className="nle-judul">Selipkan dari tautan</h2>
+        <div className="mb-3">
+          <label className="form-label small mb-1" htmlFor="nle-tautan-baru">
+            Tempelkan alamat YouTube, Google Drive, atau berkas media
+          </label>
+          <input
+            id="nle-tautan-baru"
+            className="form-control form-control-sm"
+            inputMode="url"
+            value={tautanBaru}
+            onChange={(e) => setTautanBaru(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=…"
+          />
+          <Tombol
+            varian="tepi"
+            ukuran="sedang"
+            className="mt-2"
+            disabled={pesanGalatTautan(tautanBaru) !== ''}
+            onClick={() => imporMediaTautan(tautanBaru)}
+          >
+            Selipkan klip tautan
+          </Tombol>
+          {galatTautanBaru !== '' && <p className="small text-danger mb-0 mt-1">{galatTautanBaru}</p>}
+          <p className="small teks-lembut mb-0 mt-1">
+            Bingkai YouTube/Google Drive dipasang di alamat resminya oleh server. Berkas yang
+            tersimpan di Drive harus dibagikan “siapa saja yang punya tautan”.
+          </p>
         </div>
 
         <h2 className="nle-judul">Template tema</h2>
@@ -1058,32 +1337,13 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
       <div className="nle-kerja">
         {galat && <Banner jenis="salah">{galat}</Banner>}
 
-        <div className="nle-bilah" role="group" aria-label="Rasio bingkai">
-          <span className="small fw-semibold">🔒 Rasio bingkai</span>
-          {RASIO_CANVAS.map((satu) => (
-            <button
-              key={satu.nilai}
-              type="button"
-              className={`nle-segmen${rasio === satu.nilai ? ' aktif' : ''}`}
-              aria-pressed={rasio === satu.nilai}
-              onClick={() => setRasio(satu.nilai)}
-            >
-              {satu.label}
-            </button>
-          ))}
-        </div>
-
         <PetaPerjalanan
           perjalanan={petaPratinjau}
           judul={tanpaPeta(petaPratinjau) ? undefined : temaNama}
         />
 
         <div className="nle-canvas" aria-label="Pratinjau hasil">
-          <div
-            className="nle-bingkai"
-            style={/** @type {import('react').CSSProperties} */ ({ '--r': rasioAngka(rasio) })}
-            data-rasio={rasio}
-          >
+          <div className="nle-bingkai">
             <div className="nle-canvas-isi">
               {klipTampil ? (
                 <IsiKlip
@@ -1109,7 +1369,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
             )}
           </div>
           <div className="nle-canvas-catatan small teks-lembut">
-            {klipTampil ? `Klip aktif · track ${klipTampil.track}` : 'Layar kosong'} · bingkai {rasio}
+            {klipTampil ? `Klip aktif · track ${klipTampil.track}` : 'Layar kosong'} · bingkai 16:9
           </div>
         </div>
 
@@ -1223,6 +1483,10 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     <button
                       type="button"
                       key={`klip-${indeks}`}
+                      // `data-indeks` dipakai saat BERKAS dijatuhkan di atas klip
+                      // (tukar berkas), sedangkan `text/klip` mengangkut nomor
+                      // klip saat klipnya sendiri yang diseret.
+                      data-indeks={indeks}
                       className={`nle-klip nle-klip-${baris.tipe}${indeks === aktif ? ' nle-klip-aktif' : ''}`}
                       style={{
                         left: posisiPersen(baris.mulai_detik),
@@ -1231,6 +1495,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/klip', String(indeks))}
                       onClick={() => setTerpilih(indeks)}
+                      title="Pilih klip ini, lalu tombol Delete di papan tombol membuangnya"
                       aria-label={`Klip ${indeks + 1}: ${ciri.label} mulai detik ${baris.mulai_detik}, durasi ${baris.durasi_detik} detik`}
                     >
                       <span className="nle-klip-judul" aria-hidden="true">
@@ -1240,6 +1505,26 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     </button>
                   )
                 })}
+                {/*
+                  Tombol hapus klip terpilih, langsung di timeline (tidak perlu
+                  mencari inspector dulu). Diletakkan di lane, DI LUAR kotak klip:
+                  klipnya sendiri sebuah <button>, jadi kontrol bersarang di
+                  dalamnya tidak sah dan kliknya tidak sampai. Jaraknya diberi
+                  celah dari tepi klip supaya tidak tertukar dengan tanda pangkas
+                  `|` yang duduk tepat di tepi klip.
+                */}
+                {klipAktif && satu.track === klipAktif.track && (
+                  <button
+                    type="button"
+                    className="nle-klip-hapus"
+                    style={{ left: posisiPersen(klipAktif.mulai_detik + klipAktif.durasi_detik) }}
+                    title="Hapus klip yang sedang dipilih (bisa juga dengan tombol Delete)"
+                    aria-label={`Hapus klip ${aktif + 1}: ${ciriKlip(klipAktif.tipe).label}`}
+                    onClick={() => hapusKlip(aktif)}
+                  >
+                    ✕
+                  </button>
+                )}
                 {/*
                   Gagang pangkas `|` di kedua sisi klip yang sedang dipilih.
                   Sengaja diletakkan di lane (bukan di dalam tombol klip) supaya
@@ -1366,7 +1651,8 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
               <Tombol
                 varian="teks"
                 ukuran="sedang"
-                onClick={() => setBlok((sebelum) => sebelum.filter((_, urutan) => urutan !== aktif))}
+                title="Bisa juga dengan tombol Delete saat klipnya terpilih"
+                onClick={() => hapusKlip(aktif)}
               >
                 Hapus klip
               </Tombol>
@@ -1503,11 +1789,34 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                       if (berkas) unggahKeKlip(aktif, berkas)
                     }}
                   />
+                  {/* Daftar jenis yang diterima ditulis apa adanya: sebelumnya
+                   * guru mengira materi hanya untuk video/gambar (14 Oktober 2026). */}
+                  <p className="small teks-lembut mb-0 mt-1">
+                    Boleh gambar, video, suara, PDF, Word (.docx), PowerPoint (.pptx), atau Excel
+                    (.xlsx). Word/PowerPoint/Excel dibuka murid di aplikasi dokumennya; berkas yang
+                    tidak dikenal tetap diunduh sebagai .upload.
+                  </p>
                   {unggah.isPending && (
                     <p className="small teks-lembut mb-0">Mengunggah… {progresUnggah}%</p>
                   )}
+                  {/* Nama berkasnya dipakai apa adanya; kode unggahan sengaja tidak
+                   * ditampilkan lagi — yang perlu dikenali guru adalah berkasnya. */}
                   {klipAktif.unggahan_kode !== '' && (
-                    <p className="small mb-0">Berkas: {klipAktif.unggahan_kode}</p>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                      <span className="small mb-0">
+                        Berkas: {cariUnggahan(klipAktif.unggahan_kode)?.nama_asli ?? 'sudah tidak ada di pustaka'}
+                      </span>
+                      {cariUnggahan(klipAktif.unggahan_kode) !== undefined && (
+                        <Tombol
+                          varian="teks"
+                          ukuran="sedang"
+                          className="ms-auto"
+                          onClick={() => setBerkasDibuang(cariUnggahan(klipAktif.unggahan_kode) ?? null)}
+                        >
+                          Hapus berkas ini
+                        </Tombol>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="col-12 col-lg-6">
@@ -1518,12 +1827,55 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     placeholder="Keterangan berkas (opsional)"
                   />
                 </div>
+
+                {/* Sumber kedua klip media: tautan. Satu klip satu sumber —
+                 * memakai tautan mengosongkan berkas unggahannya, dan mengunggah
+                 * berkas mengosongkan tautannya (lihat `unggahKeKlip`). */}
+                <div className="col-12">
+                  <label className="form-label small fw-semibold mb-1" htmlFor={`nle-tautan-klip-${aktif}`}>
+                    Atau pakai tautan (YouTube, Google Drive, berkas media)
+                  </label>
+                  <div className="input-group input-group-sm">
+                    <input
+                      id={`nle-tautan-klip-${aktif}`}
+                      className="form-control form-control-sm"
+                      inputMode="url"
+                      value={tautanKlip}
+                      onChange={(e) => setTautanKlip(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=…"
+                    />
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      disabled={pesanGalatTautan(tautanKlip) !== ''}
+                      onClick={() => pakaiTautan(aktif, tautanKlip)}
+                    >
+                      Pakai tautan
+                    </Tombol>
+                  </div>
+                  {galatTautanKlip !== '' && <p className="small text-danger mb-0 mt-1">{galatTautanKlip}</p>}
+                  {klipAktif.tautan !== '' && (
+                    <p className="small mb-0 mt-1">
+                      Sumber klip: <strong>{labelTautan(jenisTautan(klipAktif.tautan))}</strong> ·{' '}
+                      {namaTautan(klipAktif.tautan)}{' '}
+                      <Tombol varian="teks" ukuran="sedang" onClick={() => ubahBaris(aktif, { tautan: '' })}>
+                        Lepas tautan
+                      </Tombol>
+                    </p>
+                  )}
+                  {klipAktif.tautan !== '' && (
+                    <p className="small teks-lembut mb-0">
+                      Kuis di dalam klip tautan tidak bisa dipicu otomatis oleh waktu putar — murid
+                      membukanya lewat tombol di bawah pemutar.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
             {klipAktif.tipe === 'media' && (
               <div className="nle-atur mt-2">
-                <strong className="small d-block mb-1">Penyesuaian di bingkai {rasio}</strong>
+                <strong className="small d-block mb-1">Penyesuaian di bingkai 16:9</strong>
                 <div className="row g-2 align-items-end">
                   <div className="col-12 col-lg-4">
                     <label className="form-label small mb-1" htmlFor="nle-fit">
@@ -1687,6 +2039,7 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                         {berkasSiap.map((satu) => (
                           <option key={satu.kode} value={satu.kode}>
                             {satu.nama_asli} · {satu.ukuran_manusia} · {satu.kategori_label}
+                      {sajianBerkas(satu) === 'dokumen' ? ' · dibuka di aplikasi dokumen' : ''}
                           </option>
                         ))}
                       </select>
@@ -1721,21 +2074,32 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
               Sisipkan berkas lagi sebagai klip baru tanpa mengunggah ulang.
             </p>
             <ul className="list-unstyled mb-0">
-              {berkasSiap.map((satu) => (
-                <li key={satu.kode} className="d-flex flex-wrap align-items-center gap-2 py-1">
-                  <span className="small">
-                    {satu.nama_asli} · {satu.ukuran_manusia} · {satu.kategori_label}
-                  </span>
-                  <Tombol
-                    varian="teks"
-                    ukuran="sedang"
-                    className="ms-auto"
-                    onClick={() => sisipkanMedia(satu)}
-                  >
-                    Sisipkan
-                  </Tombol>
-                </li>
-              ))}
+              {berkasSiap.map((satu) => {
+                const dipakai = pemakaiBerkas(blok, satu.kode)
+
+                return (
+                  <li key={satu.kode} className="d-flex flex-wrap align-items-center gap-2 py-1">
+                    <span className="small">
+                      {satu.nama_asli} · {satu.ukuran_manusia} · {satu.kategori_label}
+                      {sajianBerkas(satu) === 'dokumen' ? ' · dibuka di aplikasi dokumen' : ''}
+                      {dipakai.klip > 0 && (
+                        <span className="teks-lembut"> · dipakai {dipakai.klip} klip</span>
+                      )}
+                    </span>
+                    <Tombol
+                      varian="teks"
+                      ukuran="sedang"
+                      className="ms-auto"
+                      onClick={() => sisipkanMedia(satu)}
+                    >
+                      Sisipkan
+                    </Tombol>
+                    <Tombol varian="teks" ukuran="sedang" onClick={() => setBerkasDibuang(satu)}>
+                      Hapus berkas
+                    </Tombol>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}
@@ -1791,6 +2155,40 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
           </div>
         )}
       </div>
+
+      {/* Pembuangan berkas mempengaruhi bagian materi yang lain (klip, media
+       * penjelasan, latar tema) dan tidak bisa dikembalikan, jadi selalu lewat
+       * konfirmasi yang menyebut angka dampaknya lebih dulu. */}
+      <DialogKonfirmasi
+        buka={berkasDibuang !== null}
+        judul={`Buang berkas ${berkasDibuang?.nama_asli ?? ''}?`}
+        labelYa="Buang berkas"
+        bahaya
+        memuat={buangBerkas.isPending}
+        onYa={() => {
+          if (berkasDibuang !== null) buangBerkas.mutate(berkasDibuang.kode)
+        }}
+        onBatal={() => setBerkasDibuang(null)}
+      >
+        <p className="mb-2">
+          Berkasnya dihapus dari pustaka materi ini dan tidak bisa dikembalikan — kalau masih
+          dibutuhkan, unggah ulang berkasnya.
+        </p>
+        {pemakaiBerkasDibuang.klip > 0 && (
+          <p className="status-peringatan mb-2">
+            {pemakaiBerkasDibuang.klip} klip media yang memakai berkas ini ikut dibuang dari susunan.
+          </p>
+        )}
+        {pemakaiBerkasDibuang.penjelasan > 0 && (
+          <p className="mb-2">
+            {pemakaiBerkasDibuang.penjelasan} penjelasan setelah kuis kehilangan medianya; teksnya
+            tetap ada.
+          </p>
+        )}
+        {videoKode !== '' && videoKode === berkasDibuang?.kode && (
+          <p className="mb-0">Latar tema kembali ke animasi bawaan.</p>
+        )}
+      </DialogKonfirmasi>
     </div>
   )
 }

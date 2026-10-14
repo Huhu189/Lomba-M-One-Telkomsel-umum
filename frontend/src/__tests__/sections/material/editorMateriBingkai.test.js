@@ -1,6 +1,9 @@
 /**
- * Tes helper bingkai editor: rasio terkunci, penyesuaian media, kuis sisipan
- * (mode jeda/berjalan), dan posisi jarum merah.
+ * Tes helper bingkai editor: penyesuaian media, kuis sisipan (mode
+ * jeda/berjalan), dan posisi jarum merah.
+ *
+ * Rasio bingkai TIDAK diuji di sini lagi: sejak 14 Oktober 2026 bingkai
+ * dikunci 16:9 di CSS, jadi tidak ada lagi pilihan rasio untuk dihitung.
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -12,7 +15,6 @@ import {
   kuisJeda,
   kuisPadaWaktu,
   muatanBlok,
-  rasioAngka,
   tampilanKlip,
   ubahTampilan,
 } from '../../../sections/material/editorMateri.js'
@@ -24,15 +26,6 @@ const video = () => blokBaru('media', { track: 0, mulai_detik: 0, durasi_detik: 
  */
 const kuis = (mulai, tampilan) =>
   ({ ...blokBaru('kuis', { track: 1, mulai_detik: mulai, durasi_detik: 10, quiz_id: '3' }), tampilan })
-
-describe('rasio bingkai', () => {
-  it('mengubah rasio jadi angka dan jatuh ke 16:9 bila tak sah', () => {
-    expect(rasioAngka('9:16')).toBeCloseTo(0.5625)
-    expect(rasioAngka('1:1')).toBe(1)
-    expect(rasioAngka('ngawur')).toBeCloseTo(16 / 9)
-    expect(rasioAngka(undefined)).toBeCloseTo(16 / 9)
-  })
-})
 
 describe('penyesuaian tampilan', () => {
   it('memberi bawaan dan menjepit nilai di luar batas', () => {

@@ -20,20 +20,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
+import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import { bukaBlok, selesaikanBlok } from './api.js'
-import { gayaMedia, rasioAngka, tampilanKlip } from './editorMateri.js'
+import { gayaMedia, tampilanKlip } from './editorMateri.js'
 import KuisSisipan from './KuisSisipan.jsx'
 import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from './pemutarMateri.js'
+import { labelDokumen, namaBerkas, sajianBerkas } from './sajianBerkas.js'
 
 /**
  * Penjelasan guru yang muncul SETELAH kuis selesai (opsional).
  *
  * Teks ditampilkan apa adanya (baris baru dipertahankan), media memakai aturan
- * yang sama dengan blok media: kategori yang boleh tampil langsung dirender
- * sesuai mime-nya, sisanya jadi tautan unduh. Tidak ada kunci jawaban di sini —
- * penjelasan ditulis guru dan tidak masuk penilaian.
+ * yang sama dengan blok media: gambar/video/suara/PDF tampil di halaman,
+ * dokumen kantor dibuka, dan arsip diunduh (lihat `sajianBerkas`). Tidak ada
+ * kunci jawaban di sini — penjelasan ditulis guru dan tidak masuk penilaian.
  *
  * @param {{ penjelasan: import('./api.js').DataIsiBlok['penjelasan'] }} props
  */
@@ -42,6 +44,11 @@ export function PenjelasanKuis({ penjelasan }) {
 
   const teks = (penjelasan.teks ?? '').trim()
   const media = penjelasan.media ?? null
+  // `media` di luar blok ini bisa null; sisanya (cara/label) hanya dibaca saat ada.
+  const cara = media === null ? 'unduh' : sajianBerkas(media)
+  // Berkas yang belum selesai diunggah tidak punya URL: cukup pesan, jangan
+  // menampilkan pemutar/tautan kosong.
+  const tersedia = media !== null && media.tersedia !== false
 
   if (teks === '' && media === null) return null
 
@@ -59,7 +66,7 @@ export function PenjelasanKuis({ penjelasan }) {
         <p className="small teks-lembut mb-0">Media penjelasan sudah tidak tersedia.</p>
       )}
 
-      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('image/') && (
+      {tersedia && cara === 'semat' && media.mime?.startsWith('image/') && (
         <img
           className="pm-penjelasan-media"
           src={media.url}
@@ -69,21 +76,42 @@ export function PenjelasanKuis({ penjelasan }) {
         />
       )}
 
-      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('video/') && (
+      {tersedia && cara === 'semat' && media.mime?.startsWith('video/') && (
         <video className="pm-penjelasan-media" src={media.url} controls playsInline preload="metadata" />
       )}
 
-      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime?.startsWith('audio/') && (
+      {tersedia && cara === 'semat' && media.mime?.startsWith('audio/') && (
         <audio className="pm-penjelasan-audio" src={media.url} controls preload="metadata" />
       )}
 
-      {media !== null && media.tersedia !== false && media.tampil_langsung === true && media.mime === 'application/pdf' && (
-        <a className="btn btn-tepi btn-sedang" href={media.url} target="_blank" rel="noreferrer">
-          Buka dokumen PDF penjelasan
-        </a>
+      {tersedia && cara === 'semat' && media.mime === 'application/pdf' && (
+        <div>
+          {/* PDF dibuka di dalam halaman: guru tidak perlu mengunduh dulu. */}
+          <iframe
+            className="pm-penjelasan-dokumen"
+            src={`${media.url}#view=FitH`}
+            title={media.nama ?? 'Dokumen PDF penjelasan'}
+            loading="lazy"
+          />
+          <a className="taut-sentuh small" href={media.url} target="_blank" rel="noreferrer">
+            Buka PDF di tab baru
+          </a>
+        </div>
       )}
 
-      {media !== null && media.tersedia !== false && media.tampil_langsung !== true && (
+      {tersedia && cara === 'dokumen' && (
+        <div>
+          <a className="btn btn-tepi btn-sedang" href={media.url} target="_blank" rel="noreferrer">
+            Buka dokumen {labelDokumen(media)} ({(namaBerkas(media) || '').slice(0, 60)})
+          </a>
+          <p className="small teks-lembut mb-0 mt-1">
+            Peramban tidak bisa menampilkan dokumen {labelDokumen(media)} langsung; berkasnya terbuka
+            di aplikasi dokumenmu dengan nama aslinya.
+          </p>
+        </div>
+      )}
+
+      {tersedia && cara === 'unduh' && (
         <a className="btn btn-tepi btn-sedang" href={media.url} download>
           Unduh media penjelasan ({media.kategori_label ?? 'berkas'})
         </a>
@@ -141,12 +169,17 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
     panel.scrollIntoView?.({ block: 'nearest' })
   }, [aktif])
 
-  /** @param {number} detik */
-  async function periksa(detik) {
+  /**
+   * Buka satu kuis sisipan. Dipakai dua jalur: **mesin waktu video** (`periksa`)
+   * dan **daftar tombol** di bawah pemutar untuk klip yang tidak punya waktu
+   * putar — klip **tautan/sematan** (YouTube/Drive) tidak memberi `currentTime`,
+   * jadi kuis di dalamnya tidak bisa dipicu sendiri dan wajib bisa dibuka murid.
+   *
+   * @param {import('./api.js').DataRingkasanMateri['blok'][number]} target
+   * @param {number} [detik] waktu video saat ini (untuk mengembalikan posisi)
+   */
+  async function bukaKuis(target, detik) {
     if (aktif !== null || membukaRef.current) return
-
-    const target = kuisJatuhTempo(sisipan, detik, tertutup)
-    if (target === null) return
 
     membukaRef.current = true
     const mode = tampilanKlip({ tipe: 'kuis', tampilan: target.tampilan ?? undefined }).mode
@@ -154,7 +187,7 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
 
     // Berhenti SEKARANG (sebelum menunggu server) supaya video tidak lari lewat
     // titik kuis, lalu kembalikan ke titik kuis agar konteksnya pas.
-    if (mode === 'jeda' && el) {
+    if (mode === 'jeda' && el && typeof detik === 'number') {
       el.pause()
       if (Number.isFinite(detik)) el.currentTime = Math.min(el.currentTime, target.mulai_detik ?? 0)
     }
@@ -175,6 +208,14 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
     } finally {
       membukaRef.current = false
     }
+  }
+
+  /** @param {number} detik */
+  async function periksa(detik) {
+    const target = kuisJatuhTempo(sisipan, detik, tertutup)
+    if (target === null) return
+
+    await bukaKuis(target, detik)
   }
 
   async function kumpulkan() {
@@ -239,26 +280,41 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
             : 'pm-panggung'
         }
       >
-        <div
-          className="pm-bingkai"
-          style={/** @type {import('react').CSSProperties} */ ({ '--r': rasioAngka(ringkasan.materi.rasio) })}
-        >
-          <video
-            ref={videoRef}
-            src={media?.url}
-            controls
-            // Layar penuh bawaan menyembunyikan panel kuis; bingkai ini sudah cukup besar.
-            controlsList="nofullscreen"
-            playsInline
-            className="nle-media-penuh"
-            style={tampilanVideo}
-            onTimeUpdate={(e) => void periksa(e.currentTarget.currentTime)}
-            onEnded={() => void periksa(Number.POSITIVE_INFINITY)}
-            onPlay={(e) => {
-              // Kuis "jeda" sedang terbuka: video tidak boleh jalan di belakangnya.
-              if (menahanRef.current) e.currentTarget.pause()
-            }}
-          />
+        <div className="pm-bingkai">
+          {/* Klip media punya DUA sumber (14 Okt 2026): berkas unggahan materi,
+              atau TAUTAN yang diselipkan guru. Tautan YouTube/Drive dipasang di
+              alamat bingkai resmi yang dihitung SERVER (`media.sematan`) — klien
+              tidak pernah menyusun alamat bingkai sendiri, jadi guru tidak bisa
+              menyelipkan bingkai dari host sembarang. */}
+          {media?.sematan ? (
+            <iframe
+              src={media.sematan}
+              title={`Media tautan: ${media.nama ?? 'tautan'}`}
+              className="nle-media-penuh nle-media-sematan"
+              style={tampilanVideo}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              src={media?.url}
+              controls
+              // Layar penuh bawaan menyembunyikan panel kuis; bingkai ini sudah cukup besar.
+              controlsList="nofullscreen"
+              playsInline
+              className="nle-media-penuh"
+              style={tampilanVideo}
+              onTimeUpdate={(e) => void periksa(e.currentTarget.currentTime)}
+              onEnded={() => void periksa(Number.POSITIVE_INFINITY)}
+              onPlay={(e) => {
+                // Kuis "jeda" sedang terbuka: video tidak boleh jalan di belakangnya.
+                if (menahanRef.current) e.currentTarget.pause()
+              }}
+            />
+          )}
         </div>
 
         {aktif && attempt && (
@@ -302,9 +358,27 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
 
       {!aktif && galat && <Banner jenis="salah">{galat}</Banner>}
 
+      {/* Klip tautan/sematan tidak memberi `currentTime`, jadi kuis di dalamnya
+          tidak bisa dipicu sendiri. Tautan itu tetap bisa dibuka murid lewat
+          tombol — kalau tidak, kuis wajib di dalamnya tak akan pernah tampil. */}
+      {media?.sematan && sisipan.length > 0 && (
+        <div className="d-flex flex-wrap gap-2 mt-2">
+          {sisipan.map((satu) => (
+            <Tombol
+              key={satu.block_id}
+              varian={satu.wajib ? 'utama' : 'tepi'}
+              ukuran="sedang"
+              onClick={() => void bukaKuis(satu)}
+            >
+              Buka kuis: {satu.tipe_label}
+            </Tombol>
+          ))}
+        </div>
+      )}
+
       {sisipan.length > 0 && (
         <p className="small teks-lembut mt-2 mb-0" aria-live="polite">
-          {sisipan.length} kuis di dalam video
+          {sisipan.length} kuis {media?.sematan ? 'di dalam klip tautan ini' : 'di dalam video'}
           {sisa > 0 ? ` · ${sisa} wajib belum selesai` : ' · semua kuis wajib selesai'}.
         </p>
       )}

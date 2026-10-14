@@ -25,6 +25,8 @@ export const skemaUnggahan = z.object({
   kategori: z.string(),
   kategori_label: z.string(),
   tampil_langsung: z.boolean(),
+  // 'semat' | 'dokumen' | 'unduh' — lihat sections/material/sajianBerkas.js.
+  sajian: z.string().optional(),
   ukuran: z.number(),
   ukuran_manusia: z.string(),
   jumlah_potongan: z.number(),
@@ -47,6 +49,9 @@ export const skemaBlokMateri = z.object({
   wajib: z.boolean(),
   teks: z.string().nullable().optional(),
   unggahan_kode: z.string().nullable().optional(),
+  // Sumber kedua klip media: tautan https yang diselipkan guru (YouTube/Drive/
+  // berkas langsung) — lihat sections/material/tautanMedia.js.
+  tautan: z.string().nullable().optional(),
   keterangan: z.string().nullable().optional(),
   quiz_id: z.number().nullable().optional(),
   // Penempatan klip di timeline editor (gaya video editor).
@@ -80,7 +85,6 @@ export const skemaMateri = z.object({
   class_id: z.number().optional(),
   tag_id: z.number().nullable().optional(),
   urutan: z.number().optional(),
-  rasio: z.string().optional(),
   // Tema perjalanan: pilihan guru + konfigurasi lengkap (nama pos & tingkat).
   tema: skemaTemaMateri.nullable().optional(),
   perjalanan: skemaKonfigurasiTema.optional(),
@@ -130,6 +134,7 @@ export const skemaProgresBlok = z.object({
           kategori: z.string().optional(),
           kategori_label: z.string().optional(),
           tampil_langsung: z.boolean().optional(),
+          sajian: z.string().optional(),
           mime: z.string().optional(),
           ukuran_manusia: z.string().optional(),
           url: z.string().optional(),
@@ -204,7 +209,6 @@ export const skemaRingkasanMateri = z.object({
     deskripsi: z.string().nullable(),
     mapel_nama: z.string().nullable().optional(),
     tema_nama: z.string().nullable().optional(),
-    rasio: z.string().optional(),
   }),
   blok: z.array(skemaProgresBlok),
   // Peta perjalanan (tema + pos yang sudah dilewati) untuk layar murid.
@@ -226,10 +230,17 @@ export const skemaIsiBlok = skemaProgresBlok.extend({
       kategori: z.string().optional(),
       kategori_label: z.string().optional(),
       tampil_langsung: z.boolean().optional(),
-      mime: z.string().optional(),
-      ukuran: z.number().optional(),
-      ukuran_manusia: z.string().optional(),
+      sajian: z.string().optional(),
+      mime: z.string().nullable().optional(),
+      ukuran: z.number().nullable().optional(),
+      ukuran_manusia: z.string().nullable().optional(),
       url: z.string().optional(),
+      // 'unggahan' (berkas milik materi) atau 'tautan' (alamat luar).
+      sumber: z.string().optional(),
+      jenis: z.string().optional(),
+      // Alamat bingkai resmi (youtube-nocookie/Drive) yang dihitung SERVER; null
+      // untuk berkas unggahan dan berkas tautan langsung.
+      sematan: z.string().nullable().optional(),
       tersedia: z.boolean().optional(),
       tampilan: z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
     })
@@ -350,8 +361,23 @@ export const skemaResponsPotongan = z.object({
 })
 
 /**
+ * Hasil membuang berkas pustaka: berapa rujukan yang ikut dibersihkan server.
+ *
+ * Angka-angka ini yang membuat guru tahu dampaknya (klip media hilang, media
+ * penjelasan dilepas, latar tema kembali ke animasi bawaan) — bukan cuma
+ * "berhasil" tanpa penjelasan.
+ */
+export const skemaHasilBuangBerkas = z.object({
+  message: z.string().optional(),
+  klip: z.number(),
+  penjelasan: z.number(),
+  tema: z.number(),
+})
+
+/**
  * @typedef {z.infer<typeof skemaMateri>} DataMateri
  * @typedef {z.infer<typeof skemaUnggahan>} DataUnggahan
+ * @typedef {z.infer<typeof skemaHasilBuangBerkas>} DataHasilBuangBerkas
  * @typedef {z.infer<typeof skemaRingkasanMateri>} DataRingkasanMateri
  * @typedef {z.infer<typeof skemaIsiBlok>} DataIsiBlok
  * @typedef {z.infer<typeof skemaLaporanMateri>} DataLaporanMateri
@@ -476,16 +502,14 @@ export async function hapusMateri(id) {
  * Ganti seluruh urutan blok materi.
  * @param {number} id
  * @param {MuatanBlok[]} blok
- * @param {string} [rasio] rasio bingkai pratinjau (16:9, 9:16, 1:1, 4:3)
  * @param {MuatanTema} [tema] tema perjalanan (nama ganti + video latar)
  */
-export async function sinkronBlok(id, blok, rasio, tema) {
+export async function sinkronBlok(id, blok, tema) {
   await ambilCsrfCookie()
 
   /** @type {Record<string, unknown>} */
   const muatan = { blok }
 
-  if (rasio) muatan.rasio = rasio
   if (tema) muatan.tema = tema
 
   const respons = await client.put(`/v1/materi/${id}/blok`, muatan)
@@ -545,6 +569,22 @@ export async function selesaikanUnggahan(kode) {
   await ambilCsrfCookie()
   const respons = await client.post(`/v1/unggahan/${kode}/selesai`)
   return skemaUnggahan.parse(respons.data)
+}
+
+/**
+ * Buang satu berkas dari pustaka materi.
+ *
+ * Server sekaligus membersihkan rujukan berkas itu (klip media, media
+ * penjelasan, video latar tema), dan jumlahnya dibalas supaya editor bisa
+ * melaporkan apa yang berubah kepada guru.
+ *
+ * @param {string} kode
+ * @returns {Promise<import('zod').infer<typeof skemaHasilBuangBerkas>>}
+ */
+export async function hapusUnggahan(kode) {
+  await ambilCsrfCookie()
+  const respons = await client.delete(`/v1/unggahan/${kode}`)
+  return skemaHasilBuangBerkas.parse(respons.data)
 }
 
 /**

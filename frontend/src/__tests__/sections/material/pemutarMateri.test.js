@@ -26,7 +26,7 @@ const blok = (lebih) => ({
 /** @param {Array<Record<string, unknown>>} daftar */
 const ringkasan = (daftar) =>
   skemaRingkasanMateri.parse({
-    materi: { id: 1, judul: 'M', deskripsi: null, rasio: '9:16' },
+    materi: { id: 1, judul: 'M', deskripsi: null },
     blok: daftar,
     // Peta perjalanan tidak diuji di sini; bagian pemutar hanya butuh bentuk sah.
     perjalanan: {
@@ -101,9 +101,10 @@ describe('kuis di dalam video', () => {
 })
 
 describe('daftar bagian murid', () => {
-  it('membaca rasio materi dan penempatan dari server', () => {
-    expect(data.materi.rasio).toBe('9:16')
+  it('membaca penempatan klip dari server', () => {
     expect(data.blok[1].host_id).toBe(10)
+    // Bingkai materi dikunci 16:9, jadi tidak ada lagi rasio yang dibaca klien.
+    expect('rasio' in data.materi).toBe(false)
   })
 
   it('memakai keputusan boleh_dibuka dari server bila ada', () => {
