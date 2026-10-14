@@ -7,7 +7,7 @@ namespace App\Sections\Presence\Enums;
 /**
  * Apa yang sedang ditampilkan di layar guru (slice 10).
  *
- * Sengaja hanya empat keadaan: layar kelas dipakai di tengah ulangan, jadi guru
+ * Sengaja hanya lima keadaan: layar kelas dipakai di tengah ulangan, jadi guru
  * butuh tombol yang bisa ditekan cepat — bukan editor bebas.
  */
 enum ModeLayar: string
@@ -21,6 +21,17 @@ enum ModeLayar: string
     /** Sorot satu soal: guru membahas soal tertentu bersama kelas. */
     case Soal = 'soal';
 
+    /**
+     * Papan peringkat kelas di perangkat murid (14 Oktober 2026).
+     *
+     * Papan yang tampil adalah papan yang DILIHAT MURID di halaman peringkat
+     * miliknya sendiri — nomor peringkat tetap hanya untuk N% teratas. Server
+     * tidak menitipkan isi papan di payload layar: perangkat murid memanggil
+     * endpoint peringkat dengan sesinya sendiri, sehingga aturan keterbukaan dan
+     * penyembunyian jejak bonus tidak punya jalur pintas lewat layar kelas.
+     */
+    case Peringkat = 'peringkat';
+
     /** Hasil/kesimpulan setelah ulangan, mis. tautan atau instruksi lanjutan. */
     case Hasil = 'hasil';
 
@@ -30,6 +41,7 @@ enum ModeLayar: string
             self::Kosong => 'Kosong (ulangan biasa)',
             self::Pengumuman => 'Pengumuman singkat',
             self::Soal => 'Sorot satu soal',
+            self::Peringkat => 'Papan peringkat',
             self::Hasil => 'Instruksi setelah ulangan',
         };
     }

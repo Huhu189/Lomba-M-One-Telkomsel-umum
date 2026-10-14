@@ -10,10 +10,16 @@
  * - tidak menampilkan jawaban/kunci apa pun (payload server pun tanpa kunci);
  * - tidak menghalangi pekerjaan murid — pengumuman bersifat informasi, bukan
  *   modal yang mengunci layar, supaya ulangan tetap bisa dikerjakan.
+ *
+ * Mode "papan peringkat" (14 Oktober 2026) isinya TIDAK datang dari payload
+ * layar: payload itu hanya penanda mode, dan papannya diambil panel sendiri dari
+ * endpoint peringkat dengan sesi murid — lihat `PanelPeringkatMurid.jsx`.
  */
 import Banner from '../../shared/ui/Banner.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
+import PanelPeringkatMurid from './PanelPeringkatMurid.jsx'
 import useLayar from './useLayar.js'
+import { MODE_PERIANGKAT } from './layar.js'
 
 /**
  * @param {{ kuisId: number }} props
@@ -22,6 +28,12 @@ export default function PanelLayarMurid({ kuisId }) {
   const { data } = useLayar(kuisId, { peran: 'murid' })
 
   if (data === undefined || !data.aktif || data.mode === 'kosong') return null
+
+  if (data.mode === MODE_PERIANGKAT) {
+    // `key` dari versi: setiap penyiaran ulang oleh guru mengambil ulang papannya
+    // (angka terbaru langsung muncul), tanpa menunggu selang penyegaran panel.
+    return <PanelPeringkatMurid key={`peringkat-${data.versi}`} kuisId={kuisId} />
+  }
 
   if (data.mode === 'soal' && data.soal !== null) {
     return (

@@ -19,16 +19,21 @@ use Illuminate\Validation\ValidationException;
  * Layar guru → perangkat murid (slice 10).
  *
  * Guru menyiapkan **satu keadaan layar per kuis** (kosong / pengumuman / sorot
- * soal / instruksi setelah ulangan), lalu setiap perubahan disiarkan lewat kanal
- * kuis yang sudah dipakai Live Monitor. Perangkat murid mengikuti keadaan itu
- * dengan SSE, dan bila SSE tidak tersedia cukup memanggil ulang endpoint yang
- * sama (polling) — jadi layar kelas tidak pernah macet karena Redis mati.
+ * soal / papan peringkat / instruksi setelah ulangan), lalu setiap perubahan
+ * disiarkan lewat kanal kuis yang sudah dipakai Live Monitor. Perangkat murid
+ * mengikuti keadaan itu dengan SSE, dan bila SSE tidak tersedia cukup memanggil
+ * ulang endpoint yang sama (polling) — jadi layar kelas tidak pernah macet
+ * karena Redis mati.
  *
- * Dua pagar penting:
+ * Tiga pagar penting:
  * - **kunci jawaban tidak pernah ikut**: payload soal memakai kolom eksplisit
  *   (id, nomor, tipe, konten, skor) tanpa `kunci`/`pembahasan`;
  * - **saklar `layar_guru`**: begitu sekolah/guru mematikannya (pengaturan tiga
- *   lapis), guru tidak bisa mengubah layar dan murid tidak menerima apa pun.
+ *   lapis), guru tidak bisa mengubah layar dan murid tidak menerima apa pun;
+ * - **mode `peringkat` tidak membawa papan**: payloadnya tetap hanya penanda
+ *   mode + versi. Papan disusun di perangkat murid dari endpoint peringkat
+ *   dengan sesinya sendiri, supaya aturan "nomor hanya untuk N% teratas" dan
+ *   penyembunyian jejak bonus tidak punya jalur pintas dari layar kelas.
  */
 class LayarService
 {

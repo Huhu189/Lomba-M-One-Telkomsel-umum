@@ -73,6 +73,16 @@ export const skemaTiketSse = z.object({
 /** Mode yang wajib menyertakan soal yang disorot (cermin `ModeLayar::butuhSoal`). */
 export const MODE_SOAL = 'soal'
 
+/**
+ * Mode papan peringkat (cermin `ModeLayar::Peringkat`).
+ *
+ * Perhatikan: payload layar TIDAK memuat isi papan — hanya penanda mode. Papan
+ * disusun di perangkat murid dari endpoint peringkat dengan sesinya sendiri,
+ * jadi nomor peringkat tetap hanya untuk N% teratas dan jejak bonus tetap tidak
+ * ikut ke murid.
+ */
+export const MODE_PERIANGKAT = 'peringkat'
+
 /** Mode yang wajib punya judul/isi (cermin `ModeLayar::butuhTulisan`). */
 const MODE_TULISAN = ['pengumuman', 'hasil']
 
@@ -122,6 +132,10 @@ export function ringkasLayar(data) {
     return data.soal === null ? 'Sorotan soal (belum dipilih)' : `Sorotan soal nomor ${data.soal.nomor}`
   }
 
+  if (data.mode === MODE_PERIANGKAT) {
+    return 'Papan peringkat kelas'
+  }
+
   if (data.mode === 'pengumuman' || data.mode === 'hasil') {
     const judul = data.judul ?? data.isi ?? ''
 
@@ -147,6 +161,18 @@ export function butuhTulisan(mode) {
  */
 export function butuhSoal(mode) {
   return mode === MODE_SOAL
+}
+
+/**
+ * Mode yang mengabaikan judul/isi sama sekali — isinya datang dari tempat lain
+ * (layar kosong, atau papan peringkat yang disusun dari data peringkat). Kolom
+ * tulisan dimatikan, bukan dibiarkan terisi lalu tidak pernah tampil.
+ *
+ * @param {string} mode
+ * @returns {boolean}
+ */
+export function tanpaTulisan(mode) {
+  return mode === 'kosong' || mode === MODE_PERIANGKAT
 }
 
 /**

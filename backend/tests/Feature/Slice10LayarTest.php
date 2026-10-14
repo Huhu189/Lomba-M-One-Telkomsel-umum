@@ -145,7 +145,7 @@ it('guru menyorot soal, murid kelas itu mengikuti tanpa kunci jawaban ikut terki
         ->and($simpan->json('soal.nomor'))->toBe(2)
         ->and($simpan->json('judul'))->toBe('Bahas nomor 2')
         ->and($simpan->json('daftar_soal'))->toHaveCount(2)
-        ->and($simpan->json('daftar_mode'))->toHaveCount(4);
+        ->and($simpan->json('daftar_mode'))->toHaveCount(5);
 
     // Kunci jawaban & pembahasan tidak pernah ikut, bahkan untuk guru: layar
     // kelas hanya menampilkan, dan guru sudah bisa melihatnya di halaman kuis.
@@ -246,6 +246,66 @@ it('menolak mode tak dikenal dan sorotan soal yang bukan bagian kuis ini', funct
 
     expect(LayarKuis::query()->count())->toBe(0)
         ->and($this->siaran)->toBe([]);
+});
+
+it('mode papan peringkat tidak menitipkan isi papan ke perangkat murid', function (): void {
+    $kuis = l10Kuis($this, [l10Soal($this)]);
+
+    l10Guru($this);
+
+    // Pengumuman dulu, supaya terbukti papan peringkat menggantikan layar
+    // sepenuhnya — bukan menumpang tulisan lama yang tertinggal.
+    $this->putJson("/api/v1/kuis/{$kuis->id}/layar", [
+        'mode' => 'pengumuman',
+        'judul' => 'Waktu tersisa 10 menit',
+    ])->assertOk();
+
+    // Tanpa judul, tanpa isi, tanpa soal: mode ini memang tidak butuh bahan —
+    // papannya disusun dari data peringkat di perangkat murid.
+    $simpan = $this->putJson("/api/v1/kuis/{$kuis->id}/layar", ['mode' => 'peringkat'])->assertOk();
+
+    expect($simpan->json('mode'))->toBe('peringkat')
+        ->and($simpan->json('mode_label'))->toBe('Papan peringkat')
+        ->and($simpan->json('versi'))->toBe(2)
+        ->and($simpan->json('soal'))->toBeNull()
+        ->and($simpan->json('judul'))->toBeNull()
+        ->and(collect($simpan->json('daftar_mode'))->pluck('nilai'))->toContain('peringkat');
+
+    l10Murid($this->murid);
+
+    $muridLihat = $this->getJson("/api/v1/kuis/{$kuis->id}/layar")->assertOk();
+
+    expect($muridLihat->json('mode'))->toBe('peringkat')
+        // Pagar mode ini: perangkat murid hanya menerima PENANDA mode. Isi papan
+        // (baris, nama, skor peringkat) tidak pernah lewat jalur layar kelas —
+        // papan diambil perangkat murid dari endpoint peringkat dengan sesinya
+        // sendiri, sehingga batas "nomor hanya untuk N% teratas" dan
+        // penyembunyian jejak bonus tidak punya jalur pintas dari sini.
+        // Daftar kunci ditulis penuh: menambah kolom apa pun ke payload murid
+        // akan menggagalkan tes ini, bukan lolos diam-diam.
+        ->and(array_keys($muridLihat->json()))->toEqualCanonicalizing([
+            'kuis_id',
+            'aktif',
+            'mode',
+            'mode_label',
+            'judul',
+            'isi',
+            'soal',
+            'versi',
+            'diperbarui_at',
+        ]);
+
+    // Siaran ke kanal murid juga hanya membawa penanda, bukan papannya.
+    expect($this->siaran)->toHaveCount(2)
+        ->and($this->siaran[1]['kanal'])->toBe("ulangan:kuis:{$kuis->id}:murid")
+        ->and($this->siaran[1]['payload']['mode'])->toBe('peringkat')
+        ->and(array_keys($this->siaran[1]['payload']))->toEqualCanonicalizing([
+            'jenis',
+            'kuis_id',
+            'mode',
+            'versi',
+            'diperbarui_at',
+        ]);
 });
 
 it('setiap perubahan menaikkan versi dan disiarkan ke kanal kuis', function (): void {

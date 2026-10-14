@@ -5,6 +5,7 @@ import {
   butuhTulisan,
   ringkasLayar,
   skemaLayar,
+  tanpaTulisan,
 } from '../../../sections/presence/layar.js'
 
 /** Keadaan layar seperti dikirim server untuk murid (tanpa bahan pengendali). */
@@ -123,15 +124,37 @@ describe('ringkasLayar', () => {
       'Sorotan soal (belum dipilih)',
     )
   })
+
+  it('menyebut papan peringkat apa adanya — isinya tidak ikut payload layar', () => {
+    const data = skemaLayar.parse(layarMurid({ mode: 'peringkat', mode_label: 'Papan peringkat', versi: 4 }))
+
+    expect(ringkasLayar(data)).toBe('Papan peringkat kelas')
+    // Penanda mode saja: tidak ada kolom papan yang ikut, bahkan bila server
+    // keliru mengirimnya (skema membuang kolom asing).
+    expect(data).not.toHaveProperty('peringkat')
+    expect(data).not.toHaveProperty('papan')
+  })
 })
 
 describe('aturan form layar guru', () => {
   it('hanya mode soal yang butuh soal dan hanya pengumuman/hasil yang butuh tulisan', () => {
     expect(butuhSoal('soal')).toBe(true)
     expect(butuhSoal('pengumuman')).toBe(false)
+    expect(butuhSoal('peringkat')).toBe(false)
     expect(butuhTulisan('pengumuman')).toBe(true)
     expect(butuhTulisan('hasil')).toBe(true)
     expect(butuhTulisan('kosong')).toBe(false)
+    expect(butuhTulisan('peringkat')).toBe(false)
+  })
+
+  it('mematikan kolom tulisan di mode yang mengabaikannya', () => {
+    expect(tanpaTulisan('kosong')).toBe(true)
+    // Papan peringkat tidak memakai judul/isi sama sekali: kolomnya dimatikan
+    // supaya guru tidak mengetik tulisan yang tidak akan pernah tampil.
+    expect(tanpaTulisan('peringkat')).toBe(true)
+    expect(tanpaTulisan('pengumuman')).toBe(false)
+    expect(tanpaTulisan('hasil')).toBe(false)
+    expect(tanpaTulisan('soal')).toBe(false)
   })
 
   it('menahan simpan sampai bahan yang wajib terisi', () => {
@@ -140,5 +163,7 @@ describe('aturan form layar guru', () => {
     expect(bolehSimpan({ mode: 'soal', judul: '', isi: '', soalId: 5 })).toBe(true)
     expect(bolehSimpan({ mode: 'pengumuman', judul: '   ', isi: '', soalId: null })).toBe(false)
     expect(bolehSimpan({ mode: 'pengumuman', judul: '', isi: 'Sisa 5 menit', soalId: null })).toBe(true)
+    // Papan peringkat bisa disiarkan langsung: tidak ada bahan yang perlu diisi.
+    expect(bolehSimpan({ mode: 'peringkat', judul: '', isi: '', soalId: null })).toBe(true)
   })
 })

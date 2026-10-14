@@ -11,7 +11,11 @@
  * - **keadaan penuh, bukan tambalan**: tombol "Kosongkan layar" mengembalikan
  *   perangkat murid ke tampilan ulangan biasa tanpa menghapus riwayat;
  * - **polling tetap jalan**: perubahan dari perangkat lain tetap terlihat walau
- *   SSE di perangkat guru tidak dipakai.
+ *   SSE di perangkat guru tidak dipakai;
+ * - **papan peringkat bukan jalur pintas** (14 Oktober 2026): mode itu tidak
+ *   membawa isi papan dari sini; perangkat murid mengambil papan yang sama
+ *   dengan halaman peringkatnya sendiri, jadi nomor di luar N% teratas tetap
+ *   tertutup.
  */
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -23,7 +27,7 @@ import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { pesanGalatApi } from '../auth/api.js'
 import { RUTE, kunciKuisSah, ruteKuisDetail, ruteMonitorKuis } from '../../routes.js'
-import { bolehSimpan, butuhSoal, butuhTulisan, simpanLayar } from './layar.js'
+import { MODE_PERIANGKAT, bolehSimpan, butuhSoal, butuhTulisan, simpanLayar, tanpaTulisan } from './layar.js'
 import useLayar from './useLayar.js'
 
 export default function HalamanLayar() {
@@ -195,14 +199,14 @@ export default function HalamanLayar() {
 
                 <div className="mb-3">
                   <label className="form-label fw-semibold" htmlFor="judul-layar">
-                    Judul {butuhTulisan(draf.mode) ? '' : '(opsional)'}
+                    Judul {butuhTulisan(draf.mode) ? '' : tanpaTulisan(draf.mode) ? '(tidak dipakai mode ini)' : '(opsional)'}
                   </label>
                   <input
                     id="judul-layar"
                     className="form-control"
                     value={draf.judul}
                     maxLength={data.maks_judul ?? 120}
-                    disabled={!data.aktif || simpan.isPending || draf.mode === 'kosong'}
+                    disabled={!data.aktif || simpan.isPending || tanpaTulisan(draf.mode)}
                     onChange={(e) => ubah('judul', e.target.value)}
                     placeholder="mis. Sisa waktu 10 menit"
                   />
@@ -210,7 +214,7 @@ export default function HalamanLayar() {
 
                 <div className="mb-3">
                   <label className="form-label fw-semibold" htmlFor="isi-layar">
-                    Isi {butuhTulisan(draf.mode) ? '' : '(opsional)'}
+                    Isi {butuhTulisan(draf.mode) ? '' : tanpaTulisan(draf.mode) ? '(tidak dipakai mode ini)' : '(opsional)'}
                   </label>
                   <textarea
                     id="isi-layar"
@@ -218,7 +222,7 @@ export default function HalamanLayar() {
                     rows={3}
                     value={draf.isi}
                     maxLength={data.maks_isi ?? 1000}
-                    disabled={!data.aktif || simpan.isPending || draf.mode === 'kosong'}
+                    disabled={!data.aktif || simpan.isPending || tanpaTulisan(draf.mode)}
                     onChange={(e) => ubah('isi', e.target.value)}
                     placeholder="Kalimat singkat; baris baru tetap dipertahankan."
                   />
@@ -273,6 +277,21 @@ export default function HalamanLayar() {
                     </p>
                   )}
                 </Banner>
+              )}
+
+              {draf.mode === MODE_PERIANGKAT && (
+                <div className="kartu-lembut p-3">
+                  <p className="fw-semibold mb-1">Papan peringkat kelas</p>
+                  <p className="teks-lembut small mb-0">
+                    Papan yang tampil di perangkat murid <strong>sama persis</strong> dengan papan di
+                    halaman peringkat miliknya: nomor peringkat hanya untuk N% teratas, dan yang di
+                    bawahnya tetap melihat skornya sendiri.
+                  </p>
+                  <p className="teks-lembut small mb-0 mt-2">
+                    Kalau ranking sedang dimatikan, murid melihat keterangan itu apa adanya — bukan papan
+                    kosong tanpa penjelasan. Jejak bonus penyemangat tetap tidak ikut ke murid.
+                  </p>
+                </div>
               )}
 
               {butuhSoal(draf.mode) && (

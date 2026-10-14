@@ -86,6 +86,16 @@ const ALAT = `window.__alat = {
       halaman: halaman.slice(0, 200),
     }
   },
+  /** Papan peringkat yang disiarkan guru (panel di layar pengerjaan murid). */
+  papanMurid() {
+    const panel = document.querySelector('section[aria-label="Papan peringkat dari guru"]')
+    const teks = panel ? (panel.innerText ?? '').replace(/\\s+/g, ' ').trim() : ''
+    return {
+      ada: Boolean(panel),
+      teks,
+      tabel: panel ? (panel.querySelector('table')?.innerText ?? '').replace(/\\s+/g, ' ').trim() : null,
+    }
+  },
 }`
 
 const hasil = []
@@ -199,6 +209,9 @@ async function main() {
   /** Nilai `layar_guru` sebelum harness menyentuhnya — dikembalikan di `finally`. */
   let layarSebelumnya = null
 
+  /** Nilai `ranking` sebelum harness menyentuhnya — dikembalikan di `finally`. */
+  let rankingSebelumnya = null
+
   try {
     const guru = await pasang(ctxGuru)
     const masukGuru = await guru.masuk(AKUN_GURU)
@@ -257,6 +270,7 @@ async function main() {
     // dulu untuk dikembalikan nanti — lalu dimatikan untuk menguji pagarnya.
     const sebelum = await guru.apiJson(`/v1/pengaturan?kuis_id=${kuisId}`)
     layarSebelumnya = sebelum.isi?.pengaturan?.layar_guru?.nilai ?? null
+    rankingSebelumnya = sebelum.isi?.pengaturan?.ranking?.nilai ?? null
     const matikan = await guru.apiJson('/v1/pengaturan', 'PUT', {
       lingkup: 'kuis',
       lingkup_id: kuisId,
@@ -431,7 +445,149 @@ async function main() {
       (await murid.evalJs(`__alat.panelMurid().halaman`)).slice(0, 140),
     )
 
-    // ---------- 8. Murid tidak boleh mengubah layar kelas ----------
+    // ---------- 8. Papan peringkat dikirim ke perangkat murid ----------
+    // Yang sampai ke HP murid adalah papan yang SAMA dengan halaman peringkatnya
+    // sendiri (nomor hanya untuk N% teratas), dan saklar `ranking` tetap
+    // dihormati: saat mati, murid membaca keterangannya — bukan papan kosong.
+    await guru.buka(`/kuis/${kuisId}/layar`)
+    await guru.evalJs(`__alat.pilih('#mode-layar', 'peringkat')`)
+    await sleep(700)
+    const modePapan = await guru.evalJs(`({
+      isi: __alat.halaman(),
+      judulMati: __alat.mati('#judul-layar'),
+      isiMati: __alat.mati('#isi-layar'),
+      simpanMati: __alat.tombolMati('Tampilkan di perangkat murid'),
+    })`)
+    cek(
+      'mode "Papan peringkat" menjelaskan batasnya apa adanya (sama persis + N% teratas)',
+      modePapan.isi.includes('sama persis') && modePapan.isi.includes('N% teratas'),
+      modePapan.isi.slice(-240),
+    )
+    cek(
+      'kolom judul/isi dimatikan di mode papan peringkat (tidak dipakai)',
+      modePapan.judulMati === true && modePapan.isiMati === true && modePapan.isi.includes('(tidak dipakai mode ini)'),
+      `judul=${modePapan.judulMati} isi=${modePapan.isiMati}`,
+    )
+    cek('papan peringkat bisa disiarkan tanpa bahan tambahan', modePapan.simpanMati === false, '')
+
+    /**
+     * Siarkan ulang mode yang sedang dipilih. Dipakai juga sebagai penyegar
+     * papan: setiap siaran menaikkan versi, dan perangkat murid mengambil ulang
+     * isinya dari endpoint peringkat.
+     */
+    const siarkanUlangPapan = async () => {
+      await guru.buka(`/kuis/${kuisId}/layar`)
+      await sleep(600)
+      await guru.evalJs(`__alat.klik('Tampilkan di perangkat murid')`)
+      await sleep(1200)
+    }
+
+    await guru.evalJs(`__alat.klik('Tampilkan di perangkat murid')`)
+    cek(
+      'penyiaran papan peringkat dilaporkan ke guru',
+      await guru.tunggu(`__alat.toast().includes('Layar kelas diperbarui (Papan peringkat)')`, 20_000),
+      await guru.evalJs(`__alat.toast()`),
+    )
+
+    cek(
+      'murid menerima papan peringkat tanpa memuat ulang halaman',
+      await murid.tunggu(`__alat.papanMurid().ada === true`, 40_000),
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 180),
+    )
+
+    // Saklar ranking diuji DUA keadaan (mati lalu hidup) supaya hasilnya tidak
+    // bergantung pada nilai yang kebetulan tersimpan di DB dev.
+    const matikanRanking = await guru.apiJson('/v1/pengaturan', 'PUT', {
+      lingkup: 'kuis',
+      lingkup_id: kuisId,
+      kunci: 'ranking',
+      nilai: false,
+    })
+    cek('saklar ranking bisa dimatikan untuk kuis ini', matikanRanking.status === 200, `status=${matikanRanking.status}`)
+    await siarkanUlangPapan()
+
+    cek(
+      'ranking yang dimatikan guru diucapkan apa adanya di HP murid — bukan papan kosong',
+      await murid.tunggu(
+        `__alat.papanMurid().teks.includes('Gurumu mematikan tampilan peringkat untuk kelas ini.')`,
+        40_000,
+      ),
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 200),
+    )
+    cek(
+      'papan di HP murid bukan papan guru (tanpa kolom catatan, tanpa jejak bonus)',
+      (await murid.evalJs(`!__alat.papanMurid().teks.includes('Catatan guru') && !__alat.papanMurid().teks.includes('dibantu')`)) === true,
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 160),
+    )
+    cek(
+      'papan tidak mengunci pekerjaan murid',
+      (await murid.evalJs(`__alat.papanMurid().teks.includes('jawabanmu di halaman ini tidak berubah')`)) === true,
+      '',
+    )
+
+    // Lalu dinyalakan: papan yang punya isi pun tetap papan versi murid, dan
+    // siaran ulang dipakai sebagai penyegar papannya.
+    const nyalakanRanking = await guru.apiJson('/v1/pengaturan', 'PUT', {
+      lingkup: 'kuis',
+      lingkup_id: kuisId,
+      kunci: 'ranking',
+      nilai: true,
+    })
+    cek('saklar ranking bisa dinyalakan untuk kuis ini', nyalakanRanking.status === 200, `status=${nyalakanRanking.status}`)
+    await siarkanUlangPapan()
+
+    const papanMuridApi = await murid.apiJson(`/v1/kuis/${kuisId}/ranking`)
+    const aturanPapan = `Nomor peringkat dibuka untuk ${papanMuridApi.isi?.terbuka_jumlah} murid teratas. Skormu sendiri tetap terlihat.`
+    cek(
+      'endpoint peringkat menjawab dengan pandangan MURID, bukan pandangan guru',
+      papanMuridApi.status === 200 && papanMuridApi.isi?.guru === false && papanMuridApi.isi?.tampil === true,
+      `status=${papanMuridApi.status} guru=${papanMuridApi.isi?.guru} tampil=${papanMuridApi.isi?.tampil}`,
+    )
+    cek(
+      'aturan keterbukaan di papan HP murid = aturan di halaman peringkatnya',
+      await murid.tunggu(`__alat.papanMurid().teks.includes(${JSON.stringify(aturanPapan)})`, 40_000),
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 220),
+    )
+    // Belum ada yang mengumpulkan (murid uji baru memulai attempt-nya), jadi
+    // papannya menyebut keadaan itu apa adanya — bukan tabel kosong tanpa kata.
+    cek(
+      'papan yang masih kosong diucapkan apa adanya',
+      (await murid.evalJs(
+        `__alat.papanMurid().teks.includes('Belum ada murid yang mengumpulkan ulangan ini.')`,
+      )) === true,
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 200),
+    )
+
+    // Dibandingkan langsung dengan halaman peringkat murid itu sendiri.
+    await murid.buka(`/peringkat/${kuisId}`)
+    const halamanPapan = await murid.evalJs(`__alat.halaman()`)
+    cek(
+      'halaman peringkat murid memakai kalimat aturan yang sama dengan papan yang disiarkan',
+      halamanPapan.includes(aturanPapan),
+      halamanPapan.slice(0, 220),
+    )
+    cek(
+      'keadaan papan disiarkan = keadaan di halaman peringkat murid (kalimat yang sama)',
+      halamanPapan.includes('Belum ada murid yang mengumpulkan ulangan ini.'),
+      halamanPapan.slice(0, 220),
+    )
+    cek(
+      'papan yang disiarkan tidak lebih terbuka daripada halamannya (tanpa jejak guru)',
+      !halamanPapan.includes('Catatan guru') && !halamanPapan.includes('dibantu'),
+      '',
+    )
+
+    const layarMurid = await murid.apiJson(`/v1/kuis/${kuisId}/layar`)
+    cek(
+      'payload layar untuk murid hanya penanda mode (isi papan tidak dititipkan)',
+      layarMurid.isi?.mode === 'peringkat' &&
+        layarMurid.isi?.peringkat === undefined &&
+        layarMurid.isi?.papan === undefined &&
+        layarMurid.isi?.daftar_mode === undefined,
+      `kunci: ${Object.keys(layarMurid.isi ?? {}).join(', ')}`,
+    )
+
+    // ---------- 9. Murid tidak boleh mengubah layar kelas ----------
     const muridCobaSimpan = await murid.apiJson(`/v1/kuis/${kuisId}/layar`, 'PUT', {
       mode: 'pengumuman',
       judul: 'Murid tidak boleh',
@@ -460,6 +616,14 @@ async function main() {
           nilai: typeof layarSebelumnya === 'boolean' ? layarSebelumnya : true,
         })
         cek('pembersihan: saklar layar guru dikembalikan ke nilai semula', kembali.status === 200, `nilai=${layarSebelumnya}`)
+
+        const kembaliRanking = await guru.apiJson('/v1/pengaturan', 'PUT', {
+          lingkup: 'kuis',
+          lingkup_id: kuisId,
+          kunci: 'ranking',
+          nilai: typeof rankingSebelumnya === 'boolean' ? rankingSebelumnya : false,
+        })
+        cek('pembersihan: saklar ranking dikembalikan ke nilai semula', kembaliRanking.status === 200, `nilai=${rankingSebelumnya}`)
 
         // Kuis dihapus lebih dulu: attempt + jawaban murid ikut terhapus.
         const hapusKuis = await guru.apiJson(`/v1/kuis/${kuisId}`, 'DELETE')
