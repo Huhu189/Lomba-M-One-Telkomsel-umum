@@ -7145,12 +7145,13 @@ Dua keputusan yang sengaja diambil:
   6,5** sedangkan `skor` di baris itu tetap 5; papan guru punya sel `td[data-label="Catatan guru"]` bertanda
   "dibantu" + "peringkat asli"; mode proyektor menghapus sel itu; papan murid tidak memuat kata "dibantu",
   tidak punya sel catatan, dan responsnya hanya berisi 13 kunci tanpa satu pun jejak bonus.
-- `bash docs/jalankan-smoke-ui.sh peringkat` — **20/20 lulus** (harness baru, kasus nyata dari ujung ke
+- `bash docs/jalankan-smoke-ui.sh peringkat` — **22/22 lulus** (harness baru, kasus nyata dari ujung ke
   ujung): guru menyiapkan tag + 4 soal + kuis untuk kelasnya, **membuat lima akun murid** (kata sandi
-  diketahui), lalu menyalakan ranking 40% + bonus (bawah 60%, maks 25%). **Murid A mengerjakan lewat
-  layarnya sendiri** (`/kuis/<slug>` → “Kerjakan sekarang” → klik opsi → “Selanjutnya” ×3 → “Periksa &
-  kumpulkan” → “Kumpulkan”, lalu skornya terbaca 20/20 di halaman hasil); empat murid lain mengumpulkan
-  lewat jalur server yang sama dengan skor 20/15/10/5. Bukti yang didapat: papan berisi 5 murid dengan
+  diketahui), lalu menyalakan ranking 40% + bonus (bawah 60%, maks 25%). **Kelima murid mengerjakan lewat
+  layarnya masing-masing** — `/kuis/<slug>` → “Kerjakan sekarang” → klik opsi → “Selanjutnya” ×3 → “Periksa
+  & kumpulkan” → “Kumpulkan” → halaman hasil menampilkan skornya: A 20/20, B 20/20, C 15/20, D 10/20, dan E
+  5/20, masing-masing sesuai jumlah jawaban benar yang sengaja dipilih (4, 4, 3, 2, 1 dari 4 soal). Bukti
+  yang didapat: papan berisi 5 murid dengan
   40% → 2 baris terbuka; D (10) dan E (5) bertanda `berbantuan` dengan angka tampilan **15** dan **10**
   sementara `skor` tetap 10 dan 5 (peringkat asli #4 dan #5); laporan guru tetap 2/4 (50%) untuk D; papan
   guru punya 5 sel catatan dengan 2 bertanda “dibantu”; mode proyektor mengosongkan sel itu; dan yang

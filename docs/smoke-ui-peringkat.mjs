@@ -1,9 +1,9 @@
 // Smoke peringkat lewat browser sungguhan (Chrome DevTools Protocol) — satu
 // KASUS NYATA dari ujung ke ujung, bukan potongan pemeriksaan:
 //
-// seorang guru menyiapkan ulangan, LIMA murid mengerjakannya (satu di antaranya
-// benar-benar menekan tombol di layarnya sendiri), lalu guru membuka papan
-// peringkat kelasnya dan menyalakan mode proyektor.
+// seorang guru menyiapkan ulangan, LIMA murid mengerjakannya lewat layar
+// masing-masing (buka kuis, pilih opsi, kumpulkan — bukan lewat API), lalu guru
+// membuka papan peringkat kelasnya dan menyalakan mode proyektor.
 //
 // Yang dibuktikan:
 //
@@ -329,102 +329,118 @@ async function main() {
       `sumber peringkat: ${bonusMaks.isi?.pengaturan?.peringkat_terbuka_persen?.sumber}`,
     )
 
-    // ---------- 2. Murid A mengerjakan LEWAT LAYARNYA ----------
-    await gantiAkun({ email: akunMurid[0].email, password: SANDI_MURID })
+    /**
+     * Satu murid mengerjakan ulangan dari LAYARNYA sendiri, seperti anak SD:
+     * buka halaman kuis → “Kerjakan sekarang” → pilih opsi → “Selanjutnya” →
+     * “Periksa & kumpulkan” → “Kumpulkan” → baca skornya di halaman hasil.
+     *
+     * `benar` menentukan berapa soal yang dijawab betul: soal ke-… dijawab dengan
+     * kunci, sisanya sengaja dijawab salah. Karena keempat soal berkunci sama,
+     * jumlah benar tidak bergantung pada urutan soal yang keluar.
+     *
+     * @param {{ email: string, nama: string, huruf: string }} murid
+     * @param {number} benar
+     */
+    const kerjakanLewatLayar = async (murid, benar) => {
+      await gantiAkun({ email: murid.email, password: SANDI_MURID })
 
-    await buka(`/kuis/${slugKuis}`)
-    const adaTombolKerjakan = await tunggu(`(document.body.innerText || '').includes('Kerjakan sekarang')`, 15000)
-    const diklik = await evalJs(`__alat.klik('Kerjakan sekarang')`)
-    const soalMuncul = await tunggu(`document.querySelector('.soal-opsi input[type="radio"]') !== null`, 15000)
-    catat(
-      'murid A membuka ulangannya dari halaman kuis lalu menekan “Kerjakan sekarang”',
-      adaTombolKerjakan && diklik === true && soalMuncul,
-      `tombol ${adaTombolKerjakan} · soal tampil ${soalMuncul}`,
-    )
+      await buka(`/kuis/${slugKuis}`)
+      const adaTombolKerjakan = await tunggu(`(document.body.innerText || '').includes('Kerjakan sekarang')`, 15000)
+      const diklik = await evalJs(`__alat.klik('Kerjakan sekarang')`)
+      const soalMuncul = await tunggu(`document.querySelector('.soal-opsi input[type="radio"]') !== null`, 15000)
 
-    let terjawab = 0
-    for (let nomor = 1; nomor <= SOAL_UJI.length; nomor++) {
-      const dipilih = await evalJs(
-        `(() => {
-          const opsi = document.querySelector('.soal-opsi input[type="radio"][value="${KUNCI}"]')
-          if (!opsi) return false
-          opsi.click()
-          return true
-        })()`,
-      )
-      if (dipilih) terjawab += 1
-      await sleep(800)
+      let terjawab = 0
+      for (let nomor = 1; nomor <= SOAL_UJI.length; nomor++) {
+        const dipilihOpsi = nomor <= benar ? KUNCI : SALAH
+        const dipilih = await evalJs(
+          `(() => {
+            const layar = document.querySelector('.soal-opsi input[type="radio"][value="${dipilihOpsi}"]')
+            if (!layar) return false
+            layar.click()
+            return true
+          })()`,
+        )
+        if (dipilih) terjawab += 1
+        await sleep(800)
 
-      const terakhir = nomor === SOAL_UJI.length
-      const lanjut = await evalJs(
-        `__alat.klik(${terakhir ? "'Periksa & kumpulkan'" : "'Selanjutnya'"})`,
-      )
-      await sleep(terakhir ? 400 : 900)
-      if (!lanjut) break
-    }
-
-    const dikonfirmasi = await evalJs(`(() => {
-      const tombol = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Kumpulkan')
-      if (!tombol) return false
-      tombol.click()
-      return true
-    })()`)
-    // Dibandingkan tanpa huruf besar/kecil: di layar judulnya tercetak
-    // “Sudah dikumpulkan”, dan `innerText` mengembalikan teks SESUDAH gaya CSS.
-    const terkumpul = await tunggu(
-      `(document.body.innerText || '').toLowerCase().includes('sudah dikumpulkan')`,
-      20000,
-    )
-
-    catat(
-      'murid A menjawab empat soal di layar dan mengumpulkannya',
-      terjawab === SOAL_UJI.length && dikonfirmasi === true && terkumpul,
-      `terjawab ${terjawab}/${SOAL_UJI.length} · kumpulkan ${dikonfirmasi} · selesai ${terkumpul}`,
-    )
-
-    // Setelah dikumpulkan, aplikasi langsung memindahkan murid ke halaman hasil
-    // (ada pula tautan “Lihat hasil” di banner) — jadi yang diperiksa adalah
-    // angkanya benar-benar terbaca, bukan tautan mana yang terklik.
-    const diklikHasil = await evalJs(`__alat.klik('Lihat hasil')`)
-    const hasilTerbaca = await tunggu(`/Skor\\s*20\\s*\\/\\s*20/.test(document.body.innerText || '')`, 15000)
-    const layarHasil = await evalJs(`__alat.teksMain()`)
-    catat(
-      'murid A melihat hasilnya sendiri: skor 20 / 20 dari empat jawaban di layar',
-      hasilTerbaca && /\b20\b/.test(layarHasil),
-      `tautan hasil ${diklikHasil} · hasil terbaca ${hasilTerbaca} · ${layarHasil.slice(0, 110)}`,
-    )
-
-    // ---------- 3. Empat murid lain mengerjakan (jalur server yang sama) ----------
-    const skorApi = []
-    for (const satu of akunMurid.slice(1)) {
-      await gantiAkun({ email: satu.email, password: SANDI_MURID })
-
-      const mulaiAttempt = await apiJson(`/v1/kuis/${idKuisUji}/mulai`, 'POST')
-      const attempt = mulaiAttempt.isi
-      if (mulaiAttempt.status !== 201) throw new Error(`mulai gagal untuk ${satu.nama}: ${mulaiAttempt.status}`)
-
-      for (const [indeks, soalId] of idSoalUji.entries()) {
-        const jawaban = indeks < satu.benar ? KUNCI : SALAH
-        const simpan = await apiJson(`/v1/attempt/${attempt.id}/jawab`, 'POST', {
-          question_id: soalId,
-          jawaban,
-        })
-        if (simpan.status !== 200) throw new Error(`jawab gagal untuk ${satu.nama}: ${simpan.status}`)
+        const terakhir = nomor === SOAL_UJI.length
+        const lanjut = await evalJs(`__alat.klik(${terakhir ? "'Periksa & kumpulkan'" : "'Selanjutnya'"})`)
+        await sleep(terakhir ? 400 : 900)
+        if (!lanjut) break
       }
 
-      const kumpul = await apiJson(`/v1/attempt/${attempt.id}/kumpulkan`, 'POST', {
-        idempotency_key: `smoke-p-${satu.huruf}-${CAP}`,
-      })
-      skorApi.push({ huruf: satu.huruf, status: kumpul.status, skor: kumpul.isi?.skor, maksimal: kumpul.isi?.skor_maksimal })
+      // Autosave diberi waktu mengalir sebelum dikumpulkan: aplikasi menahan
+      // pengumpulan kalau ada jawaban yang belum tersimpan server.
+      await sleep(1200)
+      const konfirmasi = () =>
+        evalJs(`(() => {
+          const tombol = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Kumpulkan')
+          if (!tombol) return false
+          tombol.click()
+          return true
+        })()`)
+
+      let dikonfirmasi = await konfirmasi()
+      // Dibandingkan tanpa huruf besar/kecil: di layar judulnya tercetak
+      // “Sudah dikumpulkan”, dan `innerText` mengembalikan teks SESUDAH gaya CSS.
+      let terkumpul = await tunggu(
+        `(document.body.innerText || '').toLowerCase().includes('sudah dikumpulkan')`,
+        20000,
+      )
+
+      // Satu percobaan ulang kalau pengumpulan pertama ditahan autosave.
+      if (!terkumpul) {
+        dikonfirmasi = (await konfirmasi()) || dikonfirmasi
+        terkumpul = await tunggu(
+          `(document.body.innerText || '').toLowerCase().includes('sudah dikumpulkan')`,
+          20000,
+        )
+      }
+
+      // Setelah dikumpulkan, aplikasi langsung memindahkan murid ke halaman hasil
+      // (ada pula tautan “Lihat hasil” di banner) — jadi yang diperiksa adalah
+      // angkanya benar-benar terbaca, bukan tautan mana yang terklik.
+      await evalJs(`__alat.klik('Lihat hasil')`)
+      await tunggu(`/Skor\\s*\\d+\\s*\\/\\s*\\d+/.test(document.body.innerText || '')`, 15000)
+      const layarHasil = await evalJs(`__alat.teksMain()`)
+      const cocok = /Skor\s*(\d+)\s*\/\s*(\d+)/.exec(layarHasil)
+
+      return {
+        huruf: murid.huruf,
+        tombolKerjakan: adaTombolKerjakan && diklik === true && soalMuncul,
+        terjawab,
+        dikonfirmasi,
+        terkumpul,
+        skor: cocok === null ? null : Number(cocok[1]),
+        maksimal: cocok === null ? null : Number(cocok[2]),
+        teks: layarHasil.slice(0, 110),
+      }
     }
 
-    // Skor tiap murid harus persis sebanyak jawaban benarnya — tidak ada yang
-    // tercampur dengan nilai anak lain.
-    const skorBenar = skorApi.every((satu, indeks) => satu.skor === akunMurid[indeks + 1].benar * 5)
+    // ---------- 2. Kelima murid mengerjakan lewat layarnya masing-masing ----------
+    const lewatLayar = []
+    for (const satu of akunMurid) {
+      const jalannya = await kerjakanLewatLayar(satu, satu.benar)
+      lewatLayar.push(jalannya)
+
+      const seharusnya = satu.benar * 5
+      catat(
+        `murid ${satu.huruf} mengerjakan lewat layarnya sendiri dan mengumpulkan (` +
+          `${satu.benar}/4 benar → ${seharusnya} poin)`,
+        jalannya.tombolKerjakan &&
+          jalannya.terjawab === SOAL_UJI.length &&
+          jalannya.dikonfirmasi === true &&
+          jalannya.terkumpul &&
+          jalannya.skor === seharusnya &&
+          jalannya.maksimal === SOAL_UJI.length * 5,
+        `terjawab ${jalannya.terjawab}/${SOAL_UJI.length} · skor ${jalannya.skor}/${jalannya.maksimal} · ${jalannya.teks}`,
+      )
+    }
+
     catat(
-      'empat murid lain mengumpulkan ulangan yang sama dengan skor masing-masing',
-      skorApi.length === 4 && skorApi.every((satu) => satu.status === 200) && skorBenar,
-      skorApi.map((s) => `${s.huruf}=${s.skor}/${s.maksimal}`).join(' · '),
+      'kelima murid benar-benar menekan tombol di layarnya (bukan lewat API)',
+      lewatLayar.length === 5 && lewatLayar.every((satu) => satu.tombolKerjakan === true),
+      lewatLayar.map((satu) => `${satu.huruf}=${satu.skor}`).join(' · '),
     )
 
     // ---------- 4. Guru: papan peringkat kelas ----------
@@ -434,14 +450,15 @@ async function main() {
     const baris = Object.fromEntries((papan.isi?.peringkat ?? []).map((satu) => [satu.nama, satu]))
     const urutan = (papan.isi?.peringkat ?? []).map((satu) => `${satu.nama.replace('SMOKE-P ', '')}=${satu.persen}%`).join(' · ')
 
+    const skorSemuaSesuai = akunMurid.every((satu) => baris[`SMOKE-P ${satu.huruf}`]?.skor === satu.benar * 5)
     catat(
-      'papan berisi lima murid (skor dari layar murid A ikut terhitung) dan aturan 40% teratas berlaku',
+      'papan berisi lima murid (semua skor dari jawaban di layar mereka) dan aturan 40% teratas berlaku',
       papan.isi?.guru === true &&
         papan.isi?.total === 5 &&
         papan.isi?.terbuka_jumlah === 2 &&
         papan.isi?.terbuka_persen === 40 &&
-        baris['SMOKE-P A']?.skor === 20,
-      `total ${papan.isi?.total} · terbuka ${papan.isi?.terbuka_jumlah} · A ${baris['SMOKE-P A']?.skor}/${baris['SMOKE-P A']?.skor_maksimal} · ${urutan}`,
+        skorSemuaSesuai,
+      `total ${papan.isi?.total} · terbuka ${papan.isi?.terbuka_jumlah} · ${urutan}`,
     )
 
     const d = baris['SMOKE-P D']
