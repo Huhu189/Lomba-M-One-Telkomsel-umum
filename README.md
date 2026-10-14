@@ -1,4 +1,4 @@
-# Dasar Riset Quizfy
+# Dasar Riset Quizfy.
 
 Quizfy dirancang untuk anak SD dengan mengacu pada riset pendidikan tentang cara anak belajar dan bertahan termotivasi. Dokumen ini menghubungkan setiap fitur utama di README dengan temuan yang melatarbelakanginya.
 
