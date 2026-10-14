@@ -205,6 +205,9 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/kuis/{kuis}/soal', [KuisController::class, 'sinkronSoal'])->name('kuis.soal');
         Route::post('/kuis/{kuis}/publikasi', [KuisController::class, 'publikasi'])->name('kuis.publikasi');
         Route::post('/kuis/{kuis}/arsip', [KuisController::class, 'arsipkan'])->name('kuis.arsip');
+        // Pulihkan kuis yang diarsipkan (14 Oktober 2026): arsip dulu satu arah,
+        // jadi salah tekan berarti kuisnya hilang dari daftar kerja guru.
+        Route::post('/kuis/{kuis}/pulihkan', [KuisController::class, 'pulihkan'])->name('kuis.pulihkan');
 
         // Pengerjaan kuis (slice 04): mulai, autosave jawaban, kumpulkan, hasil.
         Route::post('/kuis/{kuis}/mulai', [AttemptController::class, 'mulai'])->name('attempt.mulai');

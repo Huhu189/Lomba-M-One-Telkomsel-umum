@@ -82,6 +82,15 @@ class KuisPolicy
     }
 
     /**
+     * Pulihkan kuis yang diarsipkan (14 Oktober 2026) — mengubah keadaan kuis,
+     * jadi aturannya sama dengan mengubah: pemiliknya (dan bukan kepala sekolah).
+     */
+    public function pulihkan(User $user, Kuis $kuis): bool
+    {
+        return $this->update($user, $kuis);
+    }
+
+    /**
      * Laporan pemahaman per tema (slice 05) dan ekspor nilai: memuat data seluruh
      * murid kelas, jadi murid tidak pernah boleh membukanya — dan guru hanya untuk
      * kuisnya sendiri (K-04), bukan nilai murid guru lain.

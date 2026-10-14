@@ -94,6 +94,8 @@ it('guru lain tidak bisa mengubah, menerbitkan, atau menghapus kuis milik guru l
 
     $this->putJson("/api/v1/kuis/{$this->kuisB->id}", o04IsiKuis($this))->assertStatus(403);
     $this->postJson("/api/v1/kuis/{$this->kuisB->id}/publikasi")->assertStatus(403);
+    // Memulihkan kuis arsip ikut mengubah keadaannya, jadi pagar kepemilikannya sama.
+    $this->postJson("/api/v1/kuis/{$this->kuisB->id}/pulihkan")->assertStatus(403);
     $this->deleteJson("/api/v1/kuis/{$this->kuisB->id}")->assertStatus(403);
 
     expect($this->kuisB->refresh()->judul)->toBe('Kuis milik guru B')
@@ -113,6 +115,7 @@ it('guru lain tidak bisa mengubah, menerbitkan, atau menghapus kuis milik guru l
     // berubah di tangan pihak yang benar-benar mengerjakan ulangannya.
     o04Masuk($this->admin);
     $this->postJson("/api/v1/kuis/{$this->kuisB->id}/publikasi")->assertStatus(403);
+    $this->postJson("/api/v1/kuis/{$this->kuisB->id}/pulihkan")->assertStatus(403);
     $this->deleteJson("/api/v1/kuis/{$this->kuisB->id}")->assertStatus(403);
 
     expect(Kuis::query()->whereKey($this->kuisB->id)->exists())->toBeTrue()

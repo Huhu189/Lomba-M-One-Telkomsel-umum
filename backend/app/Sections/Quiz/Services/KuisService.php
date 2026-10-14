@@ -116,6 +116,28 @@ class KuisService
         return $kuis->refresh();
     }
 
+    /**
+     * Pulihkan kuis yang sudah diarsipkan (14 Oktober 2026).
+     *
+     * Pengarsipan dulu satu arah: begitu guru menekan "Arsipkan", kuisnya hilang
+     * dari daftar kerjanya dan tidak ada jalan kembali — padahal mengarsipkan
+     * sering cuma salah tekan, atau ulangannya perlu dibuka lagi untuk kelas lain.
+     *
+     * Kuisnya kembali sebagai **draf**, bukan langsung terbit: jadwalnya sudah
+     * lewat dan soalnya bisa saja berubah sejak diarsipkan, jadi guru yang
+     * menentukan kapan ia terbit lagi — dan penerbitan tetap memeriksa kelengkapan
+     * (soal aktif + jadwal) seperti biasa.
+     */
+    public function pulihkan(Kuis $kuis): Kuis
+    {
+        if ($kuis->status === StatusKuis::Arsip) {
+            $kuis->status = StatusKuis::Draf;
+            $kuis->save();
+        }
+
+        return $kuis->refresh();
+    }
+
     public function hapus(Kuis $kuis): void
     {
         DB::transaction(function () use ($kuis): void {

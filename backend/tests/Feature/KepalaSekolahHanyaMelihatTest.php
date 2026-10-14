@@ -175,6 +175,7 @@ it('kepala sekolah ditolak di seluruh jalur tulis data akademik', function (): v
     $this->putJson("/api/v1/kuis/{$this->kuis->id}", ksIsiKuis($this))->assertStatus(403);
     $this->postJson("/api/v1/kuis/{$this->kuis->id}/publikasi")->assertStatus(403);
     $this->postJson("/api/v1/kuis/{$this->kuis->id}/arsip")->assertStatus(403);
+    $this->postJson("/api/v1/kuis/{$this->kuis->id}/pulihkan")->assertStatus(403);
     $this->deleteJson("/api/v1/kuis/{$this->kuis->id}")->assertStatus(403);
 
     $this->postJson('/api/v1/materi', ksIsiMateri($this))->assertStatus(403);

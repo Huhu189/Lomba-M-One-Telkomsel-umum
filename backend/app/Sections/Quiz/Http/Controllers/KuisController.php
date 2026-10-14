@@ -153,4 +153,13 @@ class KuisController extends Controller
 
         return new KuisResource($kuis->load(['mapel', 'kelas'])->loadCount('soal'));
     }
+
+    public function pulihkan(Kuis $kuis, KuisService $service): KuisResource
+    {
+        $this->authorize('pulihkan', $kuis);
+
+        $kuis = $service->pulihkan($kuis);
+
+        return new KuisResource($kuis->load(['mapel', 'kelas'])->loadCount('soal'));
+    }
 }
