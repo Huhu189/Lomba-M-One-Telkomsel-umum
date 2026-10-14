@@ -242,8 +242,9 @@ mengalahkan semua pekerjaan rapi-rapi di bawah.
    (c) jadikan asersi "kartu Perlu perhatian tanpa garis sisi berwarna" permanen di `docs/smoke-ui-mobile.mjs`;
    (d) audit tata letak 360/768/1024/1440 px; (e) target sentuh < 44 px di kontrol editor materi;
    (f) perluas pencarian ke Kelas/Mapel/Bank Soal; (g) ambang denyut proteksi (A.54) bisa diatur guru +
-   uji denyut di peramban sungguhan; (h) mode `hasil` pada Layar kelas dan moderasi avatar pada antrean
-   panjang (dua jalur yang masih gelap di GUI).
+   uji denyut di peramban sungguhan; (h) mode `hasil` pada Layar kelas (mode `kosong`, `pengumuman`,
+   `soal`, dan `peringkat` sudah diuji di peramban sejak A.81) dan moderasi avatar pada antrean
+   panjang — dua jalur yang masih gelap di GUI.
 
 ### 0.7 Kebiasaan hemat memory (WAJIB dipertahankan)
 
@@ -756,7 +757,7 @@ docs/jalankan-smoke-ui.sh slice03           # bank soal + editor kuis (9/9)
 docs/jalankan-smoke-ui.sh slice04           # kerjakan + hasil, dua halaman yang kini dimuat malas (18/18)
 docs/jalankan-smoke-ui.sh susun             # editor kuis (44/44)
 docs/jalankan-smoke-ui.sh nav / mobile / sidebar / palet-sidebar   # tata letak & menu (14/14 · 16/16 · 9/9 · 58/58)
-docs/jalankan-smoke-ui.sh layar / tim / impor-murid               # 34/34 · 31/31 · 29/29
+docs/jalankan-smoke-ui.sh layar / tim / impor-murid               # 52/52 · 31/31 · 29/29
 docs/jalankan-smoke-ui.sh mapel / avatar / auth                   # 32/32 · 44/44 · 36/36 (auth butuh MAIL_MAILER=log)
 docs/jalankan-smoke-ui.sh soal-berubah / setelan-sesi / kuis-materi # 19/19 · 23/23 · 48/48
 docs/jalankan-smoke-ui.sh tamu / murid / kuis-manual / slice06     # 9/9 · 18/18 · 15/15 · 28/28
@@ -1398,3 +1399,48 @@ sama ikut melihat baris timnya, mode proyektor tetap bersih, dan tim yang dibant
 **Sisa:** sapuan penuh 31 harness belum diulang putaran ini (hijau terakhir A.78); yang dijalankan adalah
 `slice05` + `pengaturan` (area yang berubah) dan `peringkat` yang baru. `smoke-ui-auth` tetap menunggu
 backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md` **A.80**.
+
+---
+
+## 23. A.81 — mode layar "Papan peringkat": papan sampai ke HP murid (14 Oktober 2026)
+
+**Yang diminta:** guru bisa membagikan papan peringkat ke HP murid — dan yang tampil di HP anak harus
+**sama persis** dengan yang mereka lihat sendiri (nomor hanya N% teratas), bukan papan penuh versi guru.
+
+**Keputusan yang menentukan seluruh bentuk fitur ini:**
+
+1. **Payload layar tidak membawa isi papan.** Server hanya mengirim penanda mode (`mode`, `versi`, …);
+   papannya diambil perangkat murid dari endpoint peringkat dengan **sesinya sendiri**. Artinya aturan N%
+   teratas dan penyembunyian jejak bonus tetap diputus server per pemohon. **Jangan** "menghemat permintaan"
+   dengan menitipkan baris-baris papan ke payload layar: itu membuat layar kelas jadi jalur pintas yang
+   membocorkan nomor peringkat penuh ke semua HP. Dijaga Pest secara per-kunci (payload murid = 9 kunci).
+2. **Satu komponen papan, satu hook.** `PapanPeringkat.jsx` + `usePeringkat.js` di `sections/report/` baru
+   dipakai bersama oleh halaman peringkat dan panel HP murid. "Sama persis" jadi sifat struktur, bukan janji
+   yang harus dijaga manual — kesetaraan itu sendiri diuji di jsdom (isi tabel dua tempat dibandingkan).
+3. **Keadaan jujur, bukan papan kosong.** Ranking mati → murid membaca kalimat yang sama dengan halaman
+   peringkatnya; belum ada yang mengumpulkan → papannya mengatakan itu. `ranking` diuji di layar kelas dalam
+   **dua keadaan** (mati lalu hidup) supaya hasilnya tidak bergantung pada nilai yang kebetulan ada di DB dev.
+4. **Kolom judul/isi dimatikan** di mode ini (`tanpaTulisan()`), supaya guru tidak mengetik tulisan yang
+   tidak akan pernah tampil.
+
+**Bukti:** Slice10LayarTest **7/85 asersi** (tes baru: mode bisa disiarkan tanpa bahan + payload murid
+`toEqualCanonicalizing` per kunci) · Vitest panel peringkat **4 tes baru lulus** + 43 tes area presence/report
+hijau · checkJs bersih · harness `layar` **52/52** (naik dari 34; termasuk saklar ranking dua keadaan dan
+perbandingan kalimat aturan dengan halaman peringkat murid yang dibangun dari respons API nyata) · pagar
+regresi `peringkat` **22/22** dan `peringkat-tim` **15/15** tetap hijau setelah papan dipindah keluar dari
+halaman peringkat.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- **Papan hanya sampai ke murid yang masih di layar pengerjaan.** Yang sudah mengumpulkan dipindah ke
+  halaman hasil, dan panel layar kelas belum dipasang di sana. Kalau guru mengeluh "saya kirim papan tapi
+  anak-anak tidak melihatnya", itu sebabnya — bukan bug layar kelas. Menyambungkannya ke halaman hasil
+  adalah pekerjaan berikutnya.
+- **Jangan menambahkan isi papan ke payload layar** (poin 1). Kalau suatu saat perlu papan versi guru, ia
+  harus tetap diputus per sesi pemohon (endpoint peringkat), bukan lewat kanal layar.
+- **Urutan mode di pemilih layar** = urutan `ModeLayar::cases()`: kosong, pengumuman, sorot soal, papan
+  peringkat, instruksi setelah ulangan. Menambah mode lagi otomatis tampil di pemilih (daftar dikirim server)
+  tetapi ubah juga asersi `daftar_mode` di `Slice10LayarTest`.
+- **Papan menyegarkan diri tiap 30 detik** selama tampil + dipasang ulang setiap siaran baru (versi naik).
+
+Rincian lengkap: `docs/laporan-pengujian.md` **A.81**.

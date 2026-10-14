@@ -7213,3 +7213,101 @@ Dua keputusan yang sengaja diambil:
   `docs/smoke-ui-pengaturan.mjs` (+1 pemeriksaan, 12 → 13), `docs/smoke-ui-peringkat.mjs` (baru: kasus
   nyata lima murid), `docs/smoke-ui-peringkat-tim.mjs` (baru: kasus nyata dua tim), `docs/penjelasan-fitur.md`,
   `docs/handoff-sesi.md`.
+
+---
+
+## A.81 — Mode layar "Papan peringkat": papan yang sama sampai ke HP murid (14 Oktober 2026)
+
+### A.81.1 Permintaan
+
+Guru ingin **membagikan papan peringkat ke HP murid** — papan di proyektor tidak terbaca dari HP anak.
+Syarat yang ditetapkan pemilik: yang dikirim ke HP murid adalah **isi yang sama persis dengan yang mereka
+lihat sendiri**, yaitu nomor peringkat hanya untuk N% teratas. Bukan papan penuh versi guru.
+
+### A.81.2 Cara yang dipilih (dan alasannya)
+
+Mode layar baru `peringkat` (`ModeLayar::Peringkat`) ditambahkan ke layar kelas yang sudah ada, dengan satu
+keputusan arsitektur yang menentukan seluruh sisanya:
+
+- **Payload layar TIDAK membawa isi papan.** Perangkat murid hanya menerima penanda mode (`mode`, `versi`,
+  dst). Papannya diambil perangkat murid sendiri dari endpoint peringkat dengan **sesinya sendiri**, jadi
+  aturan N% teratas dan penyembunyian jejak bonus tetap diputus server per pemohon — tidak ada jalur pintas
+  lewat layar kelas. Ini diuji dua lapis: Pest menulis daftar kunci payload murid secara penuh (menambah
+  kolom apa pun menggagalkan tes), dan harness membandingkan payload nyata dari peramban.
+- **Komponen papannya satu.** Isi papan dipindah dari `HalamanPeringkat.jsx` ke
+  `src/sections/report/PapanPeringkat.jsx`, dan pengambilannya ke `src/sections/report/usePeringkat.js`
+  (dengan `TOP_GURU`/`TOP_MURID` yang sama). Halaman peringkat dan panel baru sama-sama memakai keduanya,
+  sehingga "sama persis" bukan janji yang dijaga manual — secara struktur hanya ada satu cara menggambar
+  papan. Panel meminta `top` yang sama dengan halaman murid (20 baris).
+- **Panelnya informasi, bukan penghalang.** Papan tampil di atas soal seperti pengumuman dan soal yang
+  disorot; ulangan tetap bisa dikerjakan, dan panelnya menyegarkan dirinya sendiri (30 detik) serta setiap
+  kali guru menyiarkan ulang (versi naik → panel dipasang ulang).
+- **Keadaan jujur, bukan papan kosong.** Kalau `ranking` sedang dimatikan, murid membaca kalimat yang sama
+  dengan halaman peringkatnya ("Gurumu mematikan tampilan peringkat untuk kelas ini."); kalau belum ada yang
+  mengumpulkan, papannya bilang "Belum ada murid yang mengumpulkan ulangan ini.".
+- **Kolom judul/isi dimatikan di mode ini** (helper baru `tanpaTulisan()`), supaya guru tidak mengetik
+  tulisan yang tidak akan pernah tampil — bukan dibiarkan lalu dibuang diam-diam.
+
+### A.81.3 Bukti (dijalankan, bukan klaim)
+
+- `php artisan test --filter=Slice10LayarTest` — **7 lulus / 85 asersi**. Tes baru: "mode papan peringkat
+  tidak menitipkan isi papan ke perangkat murid" — mode bisa disiarkan tanpa bahan apa pun, menggantikan
+  layar sebelumnya sepenuhnya (`judul` kembali `null`), dan payload murid diverifikasi **per kunci**
+  (daftar ditulis penuh, bukan sekadar "tidak punya kunci X") termasuk payload siaran ke kanal murid.
+  Asersi `daftar_mode` diperbarui 4 → 5 mengikuti mode baru.
+- `npx vitest run src/__tests__/sections/presence/panelPeringkat.test.jsx` — **4 tes barus lulus**, jsdom:
+  (1) panel dan halaman peringkat murid dirender dari payload yang sama, lalu **isi tabelnya dibandingkan
+  langsung** dan jumlah baris yang diminta sama (20); (2) papan yang disiarkan tidak punya kolom "Catatan
+  guru", kata "dibantu", maupun nomor di luar N% teratas (kolomnya tepat `['#','Nama','Skor','Benar']`);
+  (3) layar kosong = panel tidak digambar dan **tidak ada permintaan peringkat yang sia-sia**; (4) ranking
+  yang dimatikan guru diucapkan apa adanya.
+- `npx vitest run` (berkas presence + report) — **43 lulus**; `npm run check` (checkJs) bersih, termasuk untuk
+  tiga berkas baru (`usePeringkat.js`, `PapanPeringkat.jsx`, `PanelPeringkatMurid.jsx`).
+- `bash docs/jalankan-smoke-ui.sh layar` — **52/52 lulus** di browser sungguhan (18 pemeriksaan baru;
+  sebelumnya 34/34). Yang terbukti di peramban: pratinjau guru menjelaskan batas "sama persis + N% teratas"
+  dan mematikan kolom judul/isi; papan bisa disiarkan tanpa bahan; **HP murid menerimanya tanpa memuat ulang**
+  dan **bukan papan guru** (tanpa "Catatan guru", tanpa "dibantu"); **saklar `ranking` diuji dua keadaan** —
+  saat dimatikan HP murid membaca keterangan apa adanya, saat dinyalakan HP murid memakai kalimat aturan yang
+  **sama** dengan halaman peringkatnya (kalimat itu dibangun dari respons API nyata, bukan disalin); dan
+  payload layar murid dari peramban hanya berisi 9 kunci penanda. Saklar `ranking` dikembalikan ke nilai
+  semula di blok pembersihan, dan kuis/soal ujinya terhapus.
+- `bash docs/jalankan-smoke-ui.sh peringkat` — **22/22 lulus** dan `... peringkat-tim` — **15/15 lulus**
+  (pagar regresi untuk pemindahan papan keluar dari `HalamanPeringkat.jsx`): semua bukti lama tetap: bonus
+  diam-diam, mode proyektor bersih, aturan N%, dan bahasa mode tim.
+
+- `./verify.sh` — **SEMUA HIJAU, exit 0**: Pest **389 lulus / 3910 asersi** · tes Redis wajib · Pint bersih ·
+  `npm run check` (checkJs) bersih · ESLint 0 error · Vitest **92 berkas / 864 tes** · realtime `node --test`
+  **20 lulus**.
+
+### A.81.4 Batasan jujur
+
+- **Papan hanya sampai ke murid yang masih di layar pengerjaan.** Setelah mengumpulkan, murid dipindah ke
+  halaman hasil (`navigate(ruteHasil(...))`, `HalamanKerjakan.jsx:580`) dan panel layar kelas tidak dipasang
+  di sana — jadi guru yang menekan tombol ini setelah semua anak selesai tidak akan terlihat oleh mereka.
+  Menyambungkannya ke halaman hasil adalah pekerjaan berikutnya yang belum dikerjakan, dan disebutkan apa
+  adanya di `docs/penjelasan-fitur.md`.
+- **Papan di harness kosong saat tangkapan layar** (murid uji baru memulai attempt-nya), jadi kesamaan
+  "sama persis" untuk papan yang **berisi baris** dibuktikan di jsdom dengan payload murid yang nyata
+  (baris + `detail_saya` di luar N% teratas), bukan di peramban. Di peramban yang dibandingkan adalah
+  kalimat aturan dan keadaan papannya.
+- **Papan menyegarkan dirinya tiap 30 detik** selama tampil. Untuk satu kelas ini tidak terasa; kalau nanti
+  dipakai di kelas besar dengan koneksi lemah, selang itu perlu ditinjau.
+- Perangkat sungguhan tidak diuji: hanya Chrome headless via CDP, seperti biasa.
+- Sapuan penuh 31 harness tidak diulang; yang dijalankan adalah harness area yang berubah (`layar`) dan
+  pagar regresinya (`peringkat`, `peringkat-tim`).
+
+### A.81.5 Berkas
+
+- **Backend:** `app/Sections/Presence/Enums/ModeLayar.php` (case `Peringkat` + label + catatan pagar),
+  `app/Sections/Presence/Services/LayarService.php` (docblock pagar mode),
+  `tests/Feature/Slice10LayarTest.php` (tes baru + `daftar_mode` 4 → 5).
+- **Frontend:** `src/sections/report/PapanPeringkat.jsx` (baru — papan dipindah ke sini),
+  `src/sections/report/usePeringkat.js` (baru — satu jalur data, `TOP_GURU`/`TOP_MURID`),
+  `src/sections/report/HalamanPeringkat.jsx` (kini memakai keduanya),
+  `src/sections/presence/PanelPeringkatMurid.jsx` (baru), `src/sections/presence/PanelLayarMurid.jsx`
+  (cabang mode `peringkat`), `src/sections/presence/layar.js` (`MODE_PERIANGKAT`, `tanpaTulisan`,
+  `ringkasLayar`), `src/sections/presence/HalamanLayar.jsx` (pratinjau mode + kolom tulisan dimatikan),
+  `src/__tests__/sections/presence/panelPeringkat.test.jsx` (baru),
+  `src/__tests__/sections/presence/layar.test.js` (aturan mode baru).
+- **Docs/harness:**  `docs/smoke-ui-layar.mjs` (+18 pemeriksaan, 34 → 52), `docs/penjelasan-fitur.md`
+  (bagian 4 & 15), `docs/handoff-sesi.md`.

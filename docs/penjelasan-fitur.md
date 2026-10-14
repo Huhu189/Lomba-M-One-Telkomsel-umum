@@ -114,6 +114,11 @@ Jejak bonus hanya sampai ke guru: barisnya bertanda "dibantu" lengkap dengan nil
 sedangkan respons untuk murid sama sekali tidak memuat kunci bonus — dan mode proyektor menyembunyikan
 kolom itu juga, supaya papan yang menghadap kelas sama persis dengan yang dilihat murid.
 
+Sejak 14 Oktober 2026 papan yang sama bisa juga **dikirim ke HP murid** lewat mode "Papan peringkat" di
+layar kelas: yang tampil di perangkat anak adalah papan versi murid (nomor hanya N% teratas), bukan papan
+penuh milik guru — disusun dari komponen dan data yang sama dengan halaman peringkatnya, jadi tidak ada
+angka yang bisa dibaca berbeda antara HP anak dan papan di kelas.
+
 Di **mode tim** aturannya sama, tetapi yang diperingkat adalah timnya: satu baris per tim berisi nama tim dan
 anggotanya, dan bahasa di layar anak ikut mengganti kata ("peringkat timmu", "skor timmu", "N tim teratas").
 **Bonus penyemangat tidak berlaku di papan tim** walau saklarnya menyala: yang tampil adalah nilai kelompok
@@ -187,7 +192,7 @@ Materi pelajaran disusun seperti perjalanan: blok teks, blok gambar/video, dan b
 ### Cara kerjanya
 Guru menyusun materi "Mengenal Pecahan" misalnya: penjelasan singkat → gambar pizza terbagi → kuis latihan 3 soal → video → kuis latihan lagi. Kuis sisipannya memakai soal dari bank soal yang sudah ada (tidak ada jenis soal baru) dan bertipe **latihan**: skornya masuk laporan tema, tidak masuk ranking, bukan nilai asli ulangan. Guru menandai blok wajib atau opsional; server yang memastikan urutannya ditempuh — murid tidak bisa melompat ke blok akhir.
 
-Sejak 10 Oktober 2026 editor materi bergaya **video editor**: guru memilih rasio bingkai materi (16:9, 9:16, 1:1, atau 4:3), menempatkan tiap klip di track dan detik tertentu, dan mengatur tampilan tiap klip — media: **utuh** di dalam bingkai atau **penuhi bingkai** berikut titik fokus dan zoom; kuis: video **berhenti** sampai kuis dijawab atau tetap berjalan, dengan panel kuis **di bawah video** atau **di sampingnya** — selalu di luar gambar, tidak menutupi yang sedang diputar, dan tingginya tumbuh setinggi isinya (bukan jendela gulir sempit di atas video). Urutan bagian yang dilihat murid mengikuti **timeline** (detik mulai, lalu urutan simpan), bukan urutan klip dibuat. Kuis yang titik mulainya jatuh di dalam sebuah video kini muncul dari **pemutar video itu sendiri**, dan server menolak menutup video selama kuis wajib di dalamnya belum selesai — menarik slider ke ujung tidak mem-bypass urutan wajib. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
+Sejak 10 Oktober 2026 editor materi bergaya **video editor**: guru memilih rasio bingkai materi (16:9, 9:16, 1:1, atau 4:3), menempatkan tiap klip di track dan detik tertentu, dan mengatur tampilan tiap klip — media: **utuh** di dalam bingkai atau **penuhi bingkai** berikut titik fokus dan zoom; kuis: video **berhenti** sampai kuis dijawab atau tetap berjalan, dengan panel kuis **di bawah video** atau **di sampingnya** — selalu di luar gambar, tidak menutupi yang sedang diputar, dan tingginya tumbuh setinggi isinya (bukan jendela gulir sempit di atas video). Urutan bagian yang dilihat murid mengikuti **timeline** (detik mulai, lalu urutan simpan), bukan urutan klip dibuat. Kuis yang titik mulainya jatuh di dalam sebuah video kini muncul dari **pemutar video itu sendiri**, dan server menolak menutup video selama kuis wajib di dalamnya belum selesai — menarik slider ke ujung tidak mem-bypass urutan wajib. Layar guru (bagian 15) memakai jalur data ringan (SSE) yang sama, tetapi yang disinkronkan adalah **keadaan layar yang dipilih guru** (pengumuman, soal yang disorot, papan peringkat, instruksi setelah ulangan) — bukan perpindahan otomatis mengikuti blok materi yang sedang guru buka.
 
 Sejak 11 Oktober 2026 (putaran A.38) guru juga bisa menulis **penjelasan setelah kuis**. Saat menyisipkan kuis ke timeline, guru memilih kuisnya lewat pemilih berisi pencarian + jumlah soal, mapel, kelas, dan status (kuis tanpa soal langsung ditandai), lalu boleh mengisi **penjelasan** — teks bebas, media dari pustaka materi, atau keduanya. Penjelasan itu tampil untuk **seluruh kelas** tepat setelah murid menyelesaikan kuis tersebut di dalam materi, sebelum videonya dilanjutkan; tidak masuk penilaian dan bukan kunci jawaban. Isinya opsional: kuis tanpa penjelasan berjalan seperti sebelumnya, dan media memakai mekanisme unggahan materi yang sama (berkas privat, tautan bertanda tangan).
 
@@ -455,17 +460,30 @@ hasil kalibrasi lapangan), dan pemberitahuan pub/sub belum disambungkan ke servi
 ### Apa ini
 Guru memegang satu tombol di kelas: apa pun yang ia pilih muncul di perangkat murid kelas itu dalam
 hitungan detik. Bukan berbagi layar (bukan salinan penuh layar guru) — yang dikirim adalah **keadaan
-konten**: pengumuman singkat, satu soal yang sedang dibahas, atau instruksi setelah ulangan selesai.
+konten**: pengumuman singkat, satu soal yang sedang dibahas, papan peringkat, atau instruksi setelah
+ulangan selesai.
 
 ### Cara kerjanya
-Layar kelas punya empat keadaan: **kosong** (perangkat murid kembali ke tampilan ulangan biasa),
+Layar kelas punya lima keadaan: **kosong** (perangkat murid kembali ke tampilan ulangan biasa),
 **pengumuman** (mis. "sisa waktu 10 menit"), **sorot satu soal** (soal itu tampil utuh di perangkat
-murid), dan **instruksi setelah ulangan**. Guru memilih keadaan lewat halaman `Layar kelas` di detail
-kuis, dan setiap perubahan disiarkan lewat kanal kuis yang sama dengan Monitor Ulangan (Nginx/Redis/pub-sub
+murid), **papan peringkat** (14 Oktober 2026), dan **instruksi setelah ulangan**. Guru memilih keadaan
+lewat halaman `Layar kelas` di detail kuis, dan setiap perubahan disiarkan lewat kanal kuis yang sama
+dengan Monitor Ulangan (Nginx/Redis/pub-sub
 → service Node → SSE ke browser). Perangkat murid menyambung dengan **tiket sekali pakai** yang hanya
 berlaku untuk kuis kelasnya; kalau sambungan langsung gagal (service realtime mati, kantor/sekolah
 memblokir), perangkat murid **tetap** menyusul lewat pembaruan berkala 5 detik. Setiap perubahan menaikkan
 `versi`, jadi perangkat tahu salinan yang dipegangnya sudah basi.
+
+**Papan peringkat lewat layar kelas (14 Oktober 2026).** Mode ini menjawab permintaan guru: "papan di
+proyektor tidak terbaca dari HP anak". Yang sampai ke HP murid adalah papan yang **sama persis** dengan
+papan di halaman peringkatnya sendiri — komponen yang menyusunnya satu (`PapanPeringkat.jsx`), dan
+datanya diambil perangkat murid dari endpoint peringkat dengan sesinya sendiri. Karena itu batas yang
+sudah berlaku ikut utuh: **nomor peringkat hanya untuk N% teratas**, murid di bawahnya membaca skornya
+sendiri, dan **jejak bonus penyemangat tidak ikut** (kolom "Catatan guru" dan kata "dibantu" hanya ada
+di layar kerja guru). Payload layar kelas untuk mode ini **tidak memuat isi papan** — hanya penanda mode —
+jadi tidak ada jalur pintas yang bisa membuka apa yang sengaja ditutup dari murid. Kalau ranking sedang
+dimatikan guru, murid membaca keterangan itu apa adanya, bukan papan kosong; papan juga menyegarkan
+dirinya sendiri selama tampil (30 detik) dan setiap kali guru menyiarkan ulang.
 
 ### Mengapa aman
 Dua hal dijaga di server, bukan di tampilan: (1) **kunci jawaban tidak pernah ikut** — payload soal
@@ -481,11 +499,14 @@ tombol, dan seluruh perangkat menampilkan soal yang sama tanpa murid perlu scrol
 sedang fokus di perangkatnya tidak kehilangan jawaban yang sudah ditulis — jawaban tetap tersimpan di
 server.
 
-Status: **kode, test, dan pengujian API selesai** (slice 10). Bawaannya **menyala** (`layar_guru`), dan bisa
+Status: **kode, test, dan pengujian API selesai** (slice 10; mode papan peringkat 14 Oktober 2026).
+Bawaannya **menyala** (`layar_guru`), dan bisa
 dimatikan per sekolah/kelas/kuis lewat pengaturan tiga lapis; begitu dimatikan, perubahan ditolak server dan
 murid tidak menerima apa pun. Yang jujur **belum**: menyorot satu soal **di dalam halaman materi** (layar
 kelas bekerja di layar pengerjaan ulangan, bukan di dalam materi berblok), pembahasan langkah-demi-langkah
-real-time, dan papan gambar/whiteboard.
+real-time, papan gambar/whiteboard, dan **papan peringkat hanya sampai ke murid yang masih berada di layar
+pengerjaan** — anak yang sudah mengumpulkan dan berpindah ke halaman hasil belum menerimanya (panel layar
+kelas memang belum dipasang di halaman hasil).
 
 ---
 
