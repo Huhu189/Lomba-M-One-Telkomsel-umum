@@ -16,6 +16,7 @@ use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\ProgresMateri;
 use App\Sections\Material\Models\UnggahanMateri;
+use App\Sections\Material\Registry\TautanMedia;
 use App\Sections\School\Models\Murid;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
@@ -138,7 +139,6 @@ class ProgresMateriService
                 'deskripsi' => $materi->deskripsi,
                 'mapel_nama' => $materi->mapel?->nama,
                 'tema_nama' => $materi->tag?->nama,
-                'rasio' => $materi->rasio ?? '16:9',
             ],
             'blok' => $blok,
             // Peta perjalanan (tema + pos yang sudah dilewati) untuk layar murid.
@@ -274,7 +274,11 @@ class ProgresMateriService
         }
 
         if ($blok->tipe === TipeBlok::Media) {
-            $payload['media'] = $this->payloadMedia((string) ($blok->isi['unggahan_kode'] ?? ''), (string) ($blok->isi['keterangan'] ?? ''));
+            $payload['media'] = $this->payloadMedia(
+                (string) ($blok->isi['unggahan_kode'] ?? ''),
+                (string) ($blok->isi['keterangan'] ?? ''),
+                (string) ($blok->isi['tautan'] ?? ''),
+            );
             $payload['media']['tampilan'] = $payload['tampilan'];
         }
 
@@ -327,10 +331,18 @@ class ProgresMateriService
     }
 
     /**
+     * Media satu klip: **berkas unggahan** (`unggahan_kode`) atau **tautan**
+     * yang diselipkan guru (14 Okt 2026). Keduanya menghasilkan bentuk payload
+     * yang sama supaya pemutar murid tidak perlu tahu dari mana asalnya.
+     *
      * @return array<string, mixed>
      */
-    private function payloadMedia(string $kode, string $keterangan): array
+    private function payloadMedia(string $kode, string $keterangan, string $tautan = ''): array
     {
+        if (trim($kode) === '' && trim($tautan) !== '') {
+            return $this->payloadTautan(trim($tautan), $keterangan);
+        }
+
         $unggahan = UnggahanMateri::query()->where('kode', $kode)->first();
 
         if ($unggahan === null) {
@@ -340,15 +352,61 @@ class ProgresMateriService
         return [
             'kode' => $unggahan->kode,
             'keterangan' => $keterangan,
+            'sumber' => 'unggahan',
+            'jenis' => 'unggahan',
+            // Berkas unggahan tidak pernah disematkan: alamatnya bertanda tangan
+            // dan milik server ini sendiri.
+            'sematan' => null,
             'nama' => $unggahan->nama_asli,
             'kategori' => $unggahan->kategori->value,
             'kategori_label' => $unggahan->kategori->label(),
-            // Hanya kategori umum yang boleh ditampilkan langsung; sisanya unduhan.
+            // Umum & dokumen kantor disajikan dengan ekstensi aslinya; arsip dan
+            // berkas tak dikenal tetap unduhan `.upload`.
             'tampil_langsung' => $unggahan->kategori->bolehTampilLangsung(),
+            // `semat` (gambar/video/audio/PDF tampil di halaman), `dokumen`
+            // (Word/Excel/PowerPoint: tombol "Buka dokumen"), `unduh`.
+            'sajian' => $unggahan->kategori->sajian(),
             'mime' => $unggahan->mime,
             'ukuran' => $unggahan->ukuran_total,
             'ukuran_manusia' => $this->penyimpanan->ukuranManusia((int) $unggahan->ukuran_total),
             'url' => $this->penyimpanan->urlBertandaTangan($unggahan),
+            'tersedia' => true,
+        ];
+    }
+
+    /**
+     * Media dari tautan guru. `url` selalu alamat **asli** yang ditempelkan guru;
+     * `sematan` alamat bingkai resminya (YouTube/Drive) yang dihitung server -
+     * lihat Registry\TautanMedia.
+     *
+     * @return array<string, mixed>
+     */
+    private function payloadTautan(string $tautan, string $keterangan): array
+    {
+        $jenis = TautanMedia::jenis($tautan);
+        $sematan = TautanMedia::sematan($tautan);
+        $mime = TautanMedia::mime($tautan);
+        // Tautan halaman biasa (bukan berkas media, bukan YouTube/Drive) hanya
+        // bisa dibuka lewat tautan — bukan disematkan sebagai bingkai.
+        $tampil = $sematan !== null || $mime !== null;
+
+        return [
+            'kode' => null,
+            'keterangan' => $keterangan,
+            'sumber' => 'tautan',
+            'jenis' => $jenis,
+            'sematan' => $sematan,
+            'nama' => TautanMedia::nama($tautan),
+            'kategori' => 'tautan',
+            'kategori_label' => TautanMedia::label($jenis),
+            'tampil_langsung' => $tampil,
+            // Tautan tidak pernah diunduh sebagai berkas: yang bisa disemat masuk
+            // bingkai (`semat`), sisanya cukup dibuka (`tautan`).
+            'sajian' => $sematan !== null ? 'semat' : 'tautan',
+            'mime' => $mime,
+            'ukuran' => null,
+            'ukuran_manusia' => null,
+            'url' => $tautan,
             'tersedia' => true,
         ];
     }

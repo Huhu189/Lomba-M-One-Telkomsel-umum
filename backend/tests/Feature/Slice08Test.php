@@ -176,6 +176,54 @@ it('berkas berisiko diunduh paksa sebagai .upload walau namanya .png', function 
         ->and($disposisi)->toContain('.upload');
 });
 
+it('menerima dokumen kantor (docx/pptx) sebagai dokumen, bukan unduhan .upload', function (): void {
+    $materi = m08Materi($this);
+
+    // Kepala paket OOXML: zip yang daftar isinya memuat [Content_Types].xml lalu
+    // folder `word/` (bentuk inilah yang dilihat KlasifikasiBerkas).
+    $isi = "PK\x03\x04".str_repeat("\0", 26).'[Content_Types].xml'
+        .str_repeat("\0", 40).'word/document.xml'
+        .str_repeat('a', 400);
+
+    $hasil = m08Unggah($this, $materi, 'Materi Pecahan.docx', $isi);
+
+    expect($hasil['respons']->json('kategori'))->toBe('dokumen')
+        ->and($hasil['respons']->json('kategori_label'))->toBe('Dokumen kantor')
+        ->and($hasil['respons']->json('ekstensi'))->toBe('docx')
+        ->and($hasil['respons']->json('mime'))->toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        ->and($hasil['respons']->json('tampil_langsung'))->toBeTrue()
+        ->and($hasil['respons']->json('sajian'))->toBe('dokumen');
+
+    $unggahan = UnggahanMateri::query()->where('kode', $hasil['kode'])->firstOrFail();
+
+    // Berkas tersimpan dengan ekstensi aslinya, bukan `.upload`.
+    expect((string) $unggahan->nama_simpan)->toEndWith('.docx')
+        ->and((string) $unggahan->nama_asli)->toBe('Materi Pecahan.docx');
+
+    $respons = $this->get((string) $hasil['respons']->json('url'))->assertOk();
+    $disposisi = (string) $respons->headers->get('Content-Disposition');
+
+    // Dokumen disajikan apa adanya (nama & tipe asli), tidak dipaksa `attachment`.
+    expect($disposisi)->toContain('inline')
+        ->and($disposisi)->toContain('.docx')
+        ->and($disposisi)->not->toContain('.upload')
+        ->and($respons->headers->get('X-Content-Type-Options'))->toBe('nosniff');
+});
+
+it('zip biasa tetap berisiko walau berawalan PK', function (): void {
+    $materi = m08Materi($this);
+
+    // Arsip tanpa `[Content_Types].xml`: tetap golongan berisiko.
+    $isi = "PK\x03\x04".str_repeat('z', 200).'folder/berkas.exe';
+
+    $hasil = m08Unggah($this, $materi, 'arsip.zip', $isi);
+
+    expect($hasil['respons']->json('kategori'))->toBe('berisiko')
+        ->and($hasil['respons']->json('ekstensi'))->toBe('upload')
+        ->and($hasil['respons']->json('sajian'))->toBe('unduh')
+        ->and($hasil['respons']->json('tampil_langsung'))->toBeFalse();
+});
+
 it('menolak potongan yang hash-nya tidak cocok', function (): void {
     $materi = m08Materi($this);
 
@@ -282,6 +330,80 @@ it('membersihkan sesi unggah yatim beserta potongannya', function (): void {
 
     expect(UnggahanMateri::query()->where('kode', $unggahan->kode)->exists())->toBeFalse()
         ->and(Storage::disk(PenyimpananMateri::DISK)->exists($direktori))->toBeFalse();
+});
+
+it('membuang berkas pustaka sekaligus klip, media penjelasan, dan video temanya', function (): void {
+    $soal = m08Soal($this, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
+    ], ['jawaban' => 'B'], 4, $this->tag->id);
+
+    $kuis = m08Kuis($this, [$soal]);
+    $materi = m08Materi($this);
+    $video = m08Unggah($this, $materi, 'latar.mp4', "\x00\x00\x00\x18ftypmp42".str_repeat('a', 300));
+    $gambar = m08Unggah($this, $materi, 'peta.png', "\x89PNG\r\n\x1a\n".str_repeat('a', 300));
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    // Dua klip memakai gambar yang sama, satu kuis memakai gambar itu sebagai
+    // media penjelasan, dan video dipakai sebagai latar tema.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'media', 'wajib' => true, 'isi' => ['unggahan_kode' => $gambar['kode']]],
+            ['tipe' => 'media', 'wajib' => false, 'isi' => ['unggahan_kode' => $gambar['kode']]],
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => 'Baca ulang bab 3.', 'unggahan_kode' => $gambar['kode']]]],
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => '', 'unggahan_kode' => $gambar['kode']]]],
+        ],
+        'tema' => ['kode' => 'mendaki-gunung', 'nama' => '', 'video_kode' => $video['kode']],
+    ])->assertOk();
+
+    // Guru membuang gambar dari pustaka: balasannya menyebut apa saja yang ikut
+    // dibersihkan supaya editor bisa memberi tahu dampaknya.
+    $this->deleteJson("/api/v1/unggahan/{$gambar['kode']}")
+        ->assertOk()
+        ->assertJsonPath('klip', 2)
+        ->assertJsonPath('penjelasan', 2)
+        ->assertJsonPath('tema', 0);
+
+    $direktori = 'materi/'.$this->sekolah->id.'/'.$gambar['kode'];
+
+    expect(UnggahanMateri::query()->where('kode', $gambar['kode'])->exists())->toBeFalse()
+        ->and(Storage::disk(PenyimpananMateri::DISK)->exists($direktori))->toBeFalse();
+
+    // Klip medianya dibuang; dua blok kuis tetap ada, urutannya rapat kembali.
+    $sisa = BlokMateri::query()->where('material_id', $materi->id)->orderBy('urutan')->get();
+
+    expect($sisa)->toHaveCount(2)
+        ->and($sisa->every(fn (BlokMateri $b): bool => $b->tipe->value === 'kuis'))->toBeTrue();
+
+    // Penjelasan berteks tetap utuh tanpa medianya; yang cuma media jadi kosong.
+    expect($sisa[0]->isi['penjelasan']['teks'])->toBe('Baca ulang bab 3.')
+        ->and($sisa[0]->isi['penjelasan']['unggahan_kode'])->toBeNull()
+        ->and($sisa[1]->isi['penjelasan'] ?? null)->toBeNull();
+
+    // Susunan sisa masih bisa disimpan ulang: tidak ada rujukan berkas yang mati.
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'blok' => [
+            ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id,
+                'isi' => ['penjelasan' => ['teks' => 'Baca ulang bab 3.', 'unggahan_kode' => null]]],
+        ],
+    ])->assertOk();
+
+    // Video latar tema dilepas ke animasi bawaan, bukan dibiarkan menunjuk berkas hilang.
+    $this->deleteJson("/api/v1/unggahan/{$video['kode']}")->assertOk()->assertJsonPath('tema', 1);
+
+    expect($materi->refresh()->tema['video_kode'])->toBeNull();
+
+    // Murid yang sudah mengerjakan materi tetap bisa membuka ringkasannya.
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
 });
 
 it('menegakkan urutan blok wajib dan menjalankan kuis sisipan sebagai latihan', function (): void {
@@ -509,11 +631,12 @@ it('daftar dan buat materi tidak 500 (jumlah_blok dihitung tanpa lazy loading)',
     // Regresi: MateriResource memanggil relasi `blok` yang tidak dimuat.
     $daftar = $this->getJson('/api/v1/materi')->assertOk();
 
-    expect($daftar->json('0.jumlah_blok'))->toBe(2)
-        ->and($daftar->json('0.rasio'))->toBe('16:9');
+    expect($daftar->json('0.jumlah_blok'))->toBe(2);
+    // Rasio bingkai dihapus (14 Oktober 2026): bingkai dikunci 16:9 di CSS.
+    $daftar->assertJsonMissingPath('0.rasio');
 });
 
-it('menyimpan rasio bingkai dan pengaturan tampilan klip (dinormalkan server)', function (): void {
+it('menyimpan pengaturan tampilan klip (dinormalkan server)', function (): void {
     $soal = m08Soal($this, 'pilihan_ganda', [
         'teks' => 'Berapa hasil dari 2 + 3?',
         'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5']],
@@ -526,7 +649,6 @@ it('menyimpan rasio bingkai dan pengaturan tampilan klip (dinormalkan server)', 
     Sanctum::actingAs($this->guru);
 
     $respons = $this->putJson("/api/v1/materi/{$materi->id}/blok", [
-        'rasio' => '9:16',
         'blok' => [
             ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Pembuka.'], 'tampilan' => ['fit' => 'cover']],
             ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'mulai_detik' => 12, 'durasi_detik' => 8,
@@ -534,24 +656,27 @@ it('menyimpan rasio bingkai dan pengaturan tampilan klip (dinormalkan server)', 
         ],
     ])->assertOk();
 
-    expect($respons->json('rasio'))->toBe('9:16')
-        // Teks tidak punya pengaturan tampilan: diabaikan.
-        ->and($respons->json('blok.0.tampilan'))->toBeNull()
+    // Teks tidak punya pengaturan tampilan: diabaikan.
+    expect($respons->json('blok.0.tampilan'))->toBeNull()
         ->and($respons->json('blok.1.tampilan'))->toBe(['mode' => 'berjalan', 'tata' => 'horizontal']);
 
     $ulang = $this->getJson("/api/v1/materi/{$materi->id}")->assertOk();
 
-    expect($ulang->json('rasio'))->toBe('9:16')
-        ->and($ulang->json('blok.1.tampilan.tata'))->toBe('horizontal');
+    expect($ulang->json('blok.1.tampilan.tata'))->toBe('horizontal');
 
-    // Tanpa `rasio` pada sinkron berikutnya, rasio yang tersimpan tidak berubah.
-    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
-        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Saja.']],
-    ]])->assertOk()->assertJsonPath('rasio', '9:16');
+    // Bingkai materi dikunci 16:9 di CSS (14 Oktober 2026): rasio tidak lagi ada
+    // di payload. Kiriman `rasio` dari klien lama (bundel yang masih tersimpan di
+    // peramban) diabaikan — bukan ditolak — supaya guru tidak mendadak gagal
+    // menyimpan hanya karena satu kolom yang sudah tidak dipakai.
+    $respons->assertJsonMissingPath('rasio');
+    $ulang->assertJsonMissingPath('rasio');
 
-    // Nilai di luar daftar ditolak, bukan diam-diam diganti.
-    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['rasio' => '21:9', 'blok' => []])
-        ->assertStatus(422)->assertJsonValidationErrors(['rasio']);
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", [
+        'rasio' => '9:16',
+        'blok' => [
+            ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Saja.']],
+        ],
+    ])->assertOk()->assertJsonMissingPath('rasio');
 
     $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
         ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'tampilan' => ['mode' => 'melayang']],
@@ -604,7 +729,8 @@ it('kuis di dalam video: tidak mengunci dirinya, dan video menunggu kuis wajibny
         // Kuis di dalam video tidak mensyaratkan videonya selesai.
         ->and($ringkasan->json('blok.1.boleh_dibuka'))->toBeTrue()
         ->and($ringkasan->json('blok.2.boleh_dibuka'))->toBeFalse()
-        ->and($ringkasan->json('materi.rasio'))->toBe('16:9');
+        // Ringkasan murid tidak lagi membawa rasio bingkai.
+        ->and(array_key_exists('rasio', (array) $ringkasan->json('materi')))->toBeFalse();
 
     // Penutup tetap terkunci sampai video dan kuisnya beres.
     $this->postJson("/api/v1/materi/{$materi->id}/blok/{$idTeks}/buka")->assertStatus(422);
@@ -860,4 +986,88 @@ it('papan peringkat latihan: terpisah dari ranking resmi dan urut skor', functio
         ->and($respons->json('papan.teratas.1.peringkat'))->toBe(2)
         // Latihan tidak pernah menjadi skor asli, jadi tidak ada di ranking resmi.
         ->and(Attempt::query()->where('asli', true)->count())->toBe(0);
+});
+
+it('menyimpan klip media dari TAUTAN dan menyematkannya lewat alamat resmi server', function (): void {
+    // 14 Oktober 2026: klip media boleh bersumber tautan (YouTube/Drive/berkas
+    // langsung) tanpa unggahan. Yang diuji di sini bukan cuma "bisa disimpan",
+    // tetapi juga dua hal yang dijaga server:
+    //  (a) alamat sematan DIHITUNG SERVER (`youtube-nocookie.com`), bukan dari
+    //      klien, jadi guru tidak bisa menyelipkan bingkai host sembarang;
+    //  (b) tautan yang tidak aman (http / alamat lokal / bukan tautan) DITOLAK.
+    $materi = m08Materi($this);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        // Semua klip opsional supaya tiap blok memang boleh dibuka murid —
+        // yang diuji di sini isi payload-nya, bukan urutan wajib (ada tesnya sendiri).
+        ['tipe' => 'media', 'wajib' => false, 'isi' => [
+            'tautan' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'keterangan' => 'Video pecahan',
+        ]],
+        ['tipe' => 'media', 'wajib' => false, 'isi' => [
+            'tautan' => 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view',
+        ]],
+        ['tipe' => 'media', 'wajib' => false, 'isi' => [
+            'tautan' => 'https://sekolah.example.test/materi/peta-pecahan.mp4',
+        ]],
+        ['tipe' => 'media', 'wajib' => false, 'isi' => [
+            'tautan' => 'https://sekolah.example.test/bank-soal/artikel-pecahan',
+        ]],
+    ]])->assertOk();
+
+    // Guru membaca kembali apa yang ia tempelkan (alamat ASLI, bukan sematan).
+    $blok = $this->getJson("/api/v1/materi/{$materi->id}")->assertOk()->json('blok');
+
+    expect($blok[0]['tautan'])->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->and($blok[0]['unggahan_kode'])->toBe('');
+
+    // Murid melihat sumbernya sudah lengkap: sematan hanya untuk YouTube/Drive.
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    // Media memang baru dikirim saat blok DIBUKA (daftar progres sengaja ringan),
+    // jadi ambil id bloknya dari daftar lalu buka satu per satu.
+    $daftar = $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk()->json('blok');
+
+    $media = [];
+
+    foreach ($daftar as $baris) {
+        $media[] = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$baris['block_id']}/buka")
+            ->assertOk()
+            ->json('blok.media');
+    }
+
+    expect($media[0]['sumber'])->toBe('tautan')
+        ->and($media[0]['jenis'])->toBe('youtube')
+        ->and($media[0]['sematan'])->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        ->and($media[0]['url'])->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->and($media[0]['tampil_langsung'])->toBeTrue()
+        ->and($media[0]['keterangan'])->toBe('Video pecahan')
+        ->and($media[1]['sematan'])->toBe('https://drive.google.com/file/1AbCdEfGhIjKlMnOpQrStUvWxYz/preview')
+        ->and($media[2]['sematan'])->toBeNull()
+        ->and($media[2]['mime'])->toBe('video/mp4')
+        ->and($media[2]['jenis'])->toBe('berkas')
+        // Tautan halaman biasa tetap bisa dibuka, tetapi TIDAK disematkan.
+        ->and($media[3]['sematan'])->toBeNull()
+        ->and($media[3]['tampil_langsung'])->toBeFalse();
+
+    // Tautan tidak aman ditolak, bukan disimpan diam-diam.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    foreach ([
+        'http://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        'javascript:alert(1)',
+        'https://192.168.1.10/video.mp4',
+        'https://localhost/video.mp4',
+    ] as $buruk) {
+        $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+            ['tipe' => 'media', 'wajib' => true, 'isi' => ['tautan' => $buruk]],
+        ]])->assertStatus(422);
+    }
 });

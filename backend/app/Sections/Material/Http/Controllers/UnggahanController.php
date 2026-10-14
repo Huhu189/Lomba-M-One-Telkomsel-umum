@@ -11,6 +11,7 @@ use App\Sections\Material\Http\Resources\UnggahanResource;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\UnggahanMateri;
 use App\Sections\Material\Services\PenyimpananMateri;
+use App\Sections\Material\Services\PustakaMateriService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -77,13 +78,25 @@ class UnggahanController extends Controller
         return new UnggahanResource($penyimpanan->selesai($unggahan));
     }
 
-    public function destroy(Request $request, UnggahanMateri $unggahan, PenyimpananMateri $penyimpanan): JsonResponse
+    /**
+     * Buang berkas dari pustaka materi beserta rujukannya.
+     *
+     * Balasannya menyebut berapa klip, media penjelasan, dan video tema yang ikut
+     * dibersihkan supaya editor bisa memberi tahu guru apa yang berubah — bukan
+     * diam-diam menghapus bagian lain dari materinya.
+     */
+    public function destroy(Request $request, UnggahanMateri $unggahan, PustakaMateriService $pustaka): JsonResponse
     {
         $this->pemilik($request, $unggahan);
 
-        $penyimpanan->hapus($unggahan);
+        $hasil = $pustaka->buang($unggahan);
 
-        return response()->json(['message' => 'Berkas dibuang.']);
+        return response()->json([
+            'message' => 'Berkas dibuang dari pustaka materi.',
+            'klip' => $hasil['klip'],
+            'penjelasan' => $hasil['penjelasan'],
+            'tema' => $hasil['tema'],
+        ]);
     }
 
     private function pemilik(Request $request, UnggahanMateri $unggahan): void

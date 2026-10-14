@@ -11,6 +11,7 @@ use App\Sections\Material\Enums\TipeBlok;
 use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\UnggahanMateri;
+use App\Sections\Material\Registry\TautanMedia;
 use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Question\Enums\TipeSoal;
 use App\Sections\Quiz\Models\Kuis;
@@ -95,15 +96,11 @@ class MateriService
      *
      * @throws ValidationException
      */
-    public function sinkronBlok(Materi $materi, array $blok, ?string $rasio = null, ?array $tema = null): Materi
+    public function sinkronBlok(Materi $materi, array $blok, ?array $tema = null): Materi
     {
         $bersih = array_values($blok);
 
-        DB::transaction(function () use ($materi, $bersih, $rasio, $tema): void {
-            if ($rasio !== null) {
-                $materi->forceFill(['rasio' => $rasio])->save();
-            }
-
+        DB::transaction(function () use ($materi, $bersih, $tema): void {
             if ($tema !== null) {
                 $materi->forceFill(['tema' => $this->tema->siapkan($materi, $tema)])->save();
             }
@@ -379,6 +376,23 @@ class MateriService
         }
 
         $kode = trim((string) ($isi['unggahan_kode'] ?? ''));
+        $tautan = trim((string) ($isi['tautan'] ?? ''));
+
+        // Sumber kedua klip media (14 Okt 2026): tautan https yang diselipkan
+        // guru, tanpa unggahan sama sekali. Keamanannya dari Registry\TautanMedia;
+        // bentuk simpannya tetap `unggahan_kode` (kosong) + `tautan` supaya
+        // pembersih berkas & payload murid hanya punya satu bentuk data.
+        if ($kode === '' && $tautan !== '') {
+            if (! TautanMedia::aman($tautan)) {
+                throw ValidationException::withMessages(['blok' => 'Tautan media harus alamat https yang bisa dibuka murid.']);
+            }
+
+            return [
+                'unggahan_kode' => '',
+                'tautan' => $tautan,
+                'keterangan' => mb_substr(trim((string) ($isi['keterangan'] ?? '')), 0, 255),
+            ];
+        }
 
         $unggahan = UnggahanMateri::query()
             ->where('kode', $kode)
@@ -392,6 +406,7 @@ class MateriService
 
         return [
             'unggahan_kode' => (string) $unggahan->kode,
+            'tautan' => '',
             'keterangan' => mb_substr(trim((string) ($isi['keterangan'] ?? '')), 0, 255),
         ];
     }

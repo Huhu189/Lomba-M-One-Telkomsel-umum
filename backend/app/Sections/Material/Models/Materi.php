@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'school_id', 'subject_id', 'class_id', 'tag_id', 'judul', 'deskripsi',
-    'status', 'urutan', 'rasio', 'tema', 'publikasi_at', 'dibuat_oleh',
+    'status', 'urutan', 'tema', 'publikasi_at', 'dibuat_oleh',
 ])]
 class Materi extends Model
 {

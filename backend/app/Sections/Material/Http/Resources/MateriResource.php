@@ -36,7 +36,6 @@ class MateriResource extends JsonResource
             'tema_nama' => $this->whenLoaded('tag', fn () => $this->tag?->nama),
             'publikasi_at' => $this->publikasi_at?->toIso8601String(),
             'jumlah_blok' => $this->whenCounted('blok'),
-            'rasio' => $this->rasio ?? '16:9',
             // Tema perjalanan: pilihan mentah guru + konfigurasi lengkap (nama
             // bawaan fase/tingkat) supaya editor bisa menggambar peta sebelum
             // perubahan disimpan.

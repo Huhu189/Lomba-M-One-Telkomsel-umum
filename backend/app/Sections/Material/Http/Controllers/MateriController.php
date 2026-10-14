@@ -137,7 +137,7 @@ class MateriController extends Controller
     {
         $this->authorize('update', $materi);
 
-        $materi = $service->sinkronBlok($materi, $request->daftarBlok(), $request->rasio(), $request->tema());
+        $materi = $service->sinkronBlok($materi, $request->daftarBlok(), $request->tema());
 
         return new MateriResource($materi->load(['mapel', 'kelas', 'tag', 'blok.kuis', 'unggahan'])->loadCount('blok'));
     }

@@ -15,12 +15,27 @@ use App\Sections\Material\Enums\KategoriBerkas;
  * yang dibaca server sendiri, dan hanya jenis yang memang dibutuhkan pelajaran
  * SD (gambar, PDF, video, audio) yang dianggap umum.
  *
- * Berkas arsip (zip/rar/7z — termasuk docx/xlsx/pptx yang bentuknya zip) masuk
- * kategori berisiko, dan apa pun yang tidak dikenali masuk kategori tidak
- * dikenal; keduanya hanya bisa **diunduh**, tidak pernah ditampilkan langsung.
+ * Berkas arsip (zip/rar/7z) masuk kategori berisiko, dan apa pun yang tidak
+ * dikenali masuk kategori tidak dikenal; keduanya hanya bisa **diunduh**, tidak
+ * pernah ditampilkan langsung. Paket dokumen kantor (docx/xlsx/pptx) juga
+ * berbentuk zip, tetapi isinya bahan pelajaran — jadi dibaca lebih dulu lewat
+ * daftar isinya dan digolongkan sebagai `Dokumen` (14 Oktober 2026).
+ *
+ * Dokumen lama bergaya OLE (`\xD0\xCF\x11\xE0…` — .doc/.ppt/.xls) sengaja
+ * **tidak** digolongkan dokumen: bentuk itu bisa membawa makro VBA, dan tidak
+ * ada cara menjalankannya dengan aman hanya dari magic bytes.
  */
 class KlasifikasiBerkas
 {
+    /**
+     * Byte yang perlu dibaca pemanggil untuk mengenali isi berkas.
+     *
+     * Enam belas byte cukup untuk semua tanda tangan berkas, tetapi paket OOXML
+     * perlu lebih: daftar isinya (`[Content_Types].xml`, `word/`, `xl/`, `ppt/`)
+     * muncul beberapa kilobyte setelah kepala.
+     */
+    public const KEPALA_BYTE = 8192;
+
     /**
      * Hasil klasifikasi: ekstensi sajian, mime sajian, dan kategori.
      *
@@ -85,9 +100,10 @@ class KlasifikasiBerkas
             return $this->hasil('mp3', 'audio/mpeg', KategoriBerkas::Umum);
         }
 
-        // Arsip: berisiko. Termasuk .docx/.xlsx/.pptx yang juga berawalan PK.
+        // Zip: berisiko — kecuali paket dokumen kantor, yang dibaca lebih dulu.
         if (str_starts_with($awal, "PK\x03\x04")) {
-            return $this->hasil('zip', 'application/zip', KategoriBerkas::Berisiko);
+            return $this->dokumenKantor($isi)
+                ?? $this->hasil('zip', 'application/zip', KategoriBerkas::Berisiko);
         }
 
         if (str_starts_with($awal, "Rar!\x1A\x07")) {
@@ -101,6 +117,55 @@ class KlasifikasiBerkas
         // Termasuk SVG/XML/HTML: sengaja TIDAK pernah masuk kategori umum, karena
         // berkas teks semacam itu bisa membawa skrip yang berjalan di browser.
         return $this->hasil('bin', 'application/octet-stream', KategoriBerkas::TidakDikenal);
+    }
+
+    /**
+     * Paket OOXML (Word/Excel/PowerPoint) dari daftar isi zip-nya.
+     *
+     * Karena entri berkas ditulis berurutan di awal arsip, nama-nama itu biasanya
+     * sudah terlihat di kepala berkas. Ini sengaja **heuristik**, bukan pembaca
+     * zip penuh: kalau daftar isinya tidak terlihat di kepala berkas (mis. entri
+     * pertamanya dikompresi), hasilnya `null` dan berkasnya jatuh kembali ke
+     * golongan `zip` yang harus diunduh — guru tetap bisa membukanya, hanya tidak
+     * disajikan sebagai dokumen. Arah salahnya aman: tidak ada berkas yang keliru
+     * naik menjadi "boleh ditampilkan".
+     *
+     * @return array{ekstensi: string, mime: string, kategori: KategoriBerkas}|null
+     */
+    private function dokumenKantor(string $isi): ?array
+    {
+        $kepala = substr($isi, 0, self::KEPALA_BYTE);
+
+        // Tanpa [Content_Types].xml, ini zip biasa (atau paket yang tidak utuh).
+        if (! str_contains($kepala, '[Content_Types].xml')) {
+            return null;
+        }
+
+        if (str_contains($kepala, 'word/')) {
+            return $this->hasil(
+                'docx',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                KategoriBerkas::Dokumen,
+            );
+        }
+
+        if (str_contains($kepala, 'xl/')) {
+            return $this->hasil(
+                'xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                KategoriBerkas::Dokumen,
+            );
+        }
+
+        if (str_contains($kepala, 'ppt/')) {
+            return $this->hasil(
+                'pptx',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                KategoriBerkas::Dokumen,
+            );
+        }
+
+        return null;
     }
 
     /**

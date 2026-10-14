@@ -10,9 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Blok materi untuk guru. Blok media hanya menunjuk kode berkas; detail dan URL
- * bertanda tangannya ada di daftar `unggahan` materi, jadi satu berkas yang
- * dipakai beberapa blok tetap satu tautan.
+ * Blok materi untuk guru. Blok media menunjuk **salah satu** dari dua sumber:
+ * kode berkas unggahan (detail + URL bertanda tangannya ada di daftar
+ * `unggahan` materi, jadi satu berkas yang dipakai beberapa blok tetap satu
+ * tautan) atau **tautan media** (`tautan`, lihat Registry\TautanMedia) yang
+ * tidak diunggah sama sekali.
  *
  * @mixin BlokMateri
  */
@@ -33,6 +35,12 @@ class BlokResource extends JsonResource
             'wajib' => $this->wajib,
             'teks' => $this->tipe === TipeBlok::Teks ? (string) ($isi['teks'] ?? '') : null,
             'unggahan_kode' => $this->tipe === TipeBlok::Media ? ($isi['unggahan_kode'] ?? null) : null,
+            // Sumber kedua klip media: alamat https yang diselipkan guru. Yang
+            // dikirim balik alamat **aslinya** (bukan alamat sematan) supaya
+            // editor menampilkan apa yang guru tempelkan.
+            'tautan' => $this->tipe === TipeBlok::Media && is_string($isi['tautan'] ?? null)
+                ? $isi['tautan']
+                : null,
             'keterangan' => $this->tipe === TipeBlok::Media ? ($isi['keterangan'] ?? null) : null,
             'quiz_id' => $this->quiz_id,
             // Penempatan klip di timeline editor (gaya video editor).

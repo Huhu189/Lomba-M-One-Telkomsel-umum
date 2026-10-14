@@ -13,7 +13,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Lampiran jawaban seperti yang dilihat klien.
  *
  * `tampil_langsung` memberi tahu klien apakah berkasnya boleh ditampilkan inline
- * atau harus diunduh: kategori berisiko/tidak dikenal selalu unduhan `.upload`.
+ * atau harus diunduh: arsip dan berkas tak dikenal selalu unduhan `.upload`,
+ * sedangkan `sajian` membedakan yang benar-benar tampil di halaman (`semat`)
+ * dari dokumen kantor yang hanya bisa dibuka (`dokumen`).
  *
  * @mixin UnggahanJawaban
  */
@@ -36,6 +38,7 @@ class UnggahanJawabanResource extends JsonResource
             'kategori' => $this->kategori->value,
             'kategori_label' => $this->kategori->label(),
             'tampil_langsung' => $this->tampilLangsung(),
+            'sajian' => $this->kategori->sajian(),
             'ukuran' => $this->ukuran_total,
             'ukuran_manusia' => app(PenyimpananJawaban::class)->ukuranManusia((int) $this->ukuran_total),
             'durasi_detik' => $this->durasi_detik,

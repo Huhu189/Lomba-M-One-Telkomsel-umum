@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Sections\Material\Http\Requests;
 
 use App\Sections\Material\Enums\TipeBlok;
+use App\Sections\Material\Registry\TautanMedia;
 use App\Sections\Material\Registry\TemaPerjalanan;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SinkronBlokRequest extends FormRequest
 {
-    /** Rasio bingkai pratinjau yang diizinkan. */
-    public const RASIO = ['16:9', '9:16', '1:1', '4:3'];
-
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -26,7 +25,6 @@ class SinkronBlokRequest extends FormRequest
     {
         return [
             'blok' => ['present', 'array', 'max:200'],
-            'rasio' => ['nullable', Rule::in(self::RASIO)],
             // Tema perjalanan materi (template tema video: mis. “Mendaki Gunung”).
             'tema' => ['nullable', 'array'],
             'tema.kode' => ['nullable', 'string', Rule::in(TemaPerjalanan::kodeSemua())],
@@ -59,11 +57,41 @@ class SinkronBlokRequest extends FormRequest
         ];
     }
 
-    public function rasio(): ?string
+    /**
+     * Tautan media (14 Okt 2026) diperiksa **di sini**, bukan sebagai aturan
+     * bersarang `blok.*.isi.tautan`.
+     *
+     * Alasannya bukan selera: begitu satu kunci di dalam `isi` punya aturan
+     * bersarang, `validated('blok')` hanya mengembalikan kunci bersarang itu —
+     * `unggahan_kode`, `keterangan`, `teks`, dan `penjelasan` ikut terbuang, dan
+     * seluruh unggahan materi mendadak ditolak sebagai "belum selesai diunggah"
+     * (terbukti: 8 tes Slice08/Slice12 merah). Aturan di `after` menjaga bentuk
+     * `isi` apa adanya, dan cek tautannya tetap satu sumber di
+     * `Registry\TautanMedia`.
+     */
+    public function withValidator(Validator $validator): void
     {
-        $rasio = $this->validated('rasio');
+        $validator->after(function (Validator $validator): void {
+            /** @var array<int, mixed> $blok */
+            $blok = (array) $this->input('blok', []);
 
-        return is_string($rasio) ? $rasio : null;
+            foreach ($blok as $indeks => $satu) {
+                $isi = is_array($satu) ? ($satu['isi'] ?? null) : null;
+                $tautan = is_array($isi) ? ($isi['tautan'] ?? null) : null;
+
+                if (! is_string($tautan) || trim($tautan) === '') {
+                    continue;
+                }
+
+                $pesan = mb_strlen(trim($tautan)) > TautanMedia::MAKS
+                    ? 'Tautan media terlalu panjang (maksimum '.TautanMedia::MAKS.' karakter).'
+                    : 'Tautan media harus alamat https yang bisa dibuka murid (bukan http, alamat lokal, atau alamat bersandi).';
+
+                if (mb_strlen(trim($tautan)) > TautanMedia::MAKS || ! TautanMedia::aman($tautan)) {
+                    $validator->errors()->add('blok.'.$indeks.'.isi.tautan', $pesan);
+                }
+            }
+        });
     }
 
     /**

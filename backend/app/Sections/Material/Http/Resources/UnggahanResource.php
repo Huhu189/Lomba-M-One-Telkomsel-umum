@@ -32,6 +32,9 @@ class UnggahanResource extends JsonResource
             'kategori' => $this->kategori->value,
             'kategori_label' => $this->kategori->label(),
             'tampil_langsung' => $this->kategori->bolehTampilLangsung(),
+            // Cara peramban sebaiknya menyajikan berkasnya: `semat` (tampil di
+            // halaman), `dokumen` (dibuka di tab/aplikasi dokumen), atau `unduh`.
+            'sajian' => $this->kategori->sajian(),
             'ukuran' => $this->ukuran_total,
             'ukuran_manusia' => $penyimpanan->ukuranManusia((int) $this->ukuran_total),
             // Klien perlu tahu berapa potongan yang harus dikirim dan seberapa besar

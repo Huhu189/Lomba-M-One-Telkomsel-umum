@@ -205,13 +205,17 @@ class PenyimpananMateri
             ]);
         }
 
-        // Klasifikasi dari ISI berkas, bukan dari nama kiriman.
-        $kepala = (string) file_get_contents($penuh, false, null, 0, 16);
+        // Klasifikasi dari ISI berkas, bukan dari nama kiriman. Kepalanya dibaca
+        // `KEPALA_BYTE` byte, bukan 16: paket docx/xlsx/pptx hanya kelihatan dari
+        // daftar isi zip-nya yang berada beberapa kilobyte setelah kepala.
+        $kepala = (string) file_get_contents($penuh, false, null, 0, KlasifikasiBerkas::KEPALA_BYTE);
 
         $hasil = $this->klasifikasi->kenali($kepala);
 
-        // Kategori 2 & 3 selalu disajikan sebagai `.upload` agar browser tidak
-        // pernah menjalankannya; mime sajian pun diturunkan ke octet-stream.
+        // Arsip & berkas tak dikenal selalu disajikan sebagai `.upload` agar
+        // browser tidak pernah menjalankannya; mime sajian pun diturunkan ke
+        // octet-stream. Gambar/PDF/audio/video dan dokumen kantor memakai
+        // ekstensi & mime aslinya.
         $ekstensiSajian = $hasil['kategori']->ekstensiSajian($hasil['ekstensi']);
         $mimeSajian = $hasil['kategori']->bolehTampilLangsung() ? $hasil['mime'] : 'application/octet-stream';
         $namaSimpan = $unggahan->kode.'.'.$ekstensiSajian;
