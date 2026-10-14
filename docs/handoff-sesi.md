@@ -1356,7 +1356,9 @@ tambahan yang terlalu kecil untuk menyeberang, aturan N%, validasi 0–100, dan 
 bonus") · Pint bersih · checkJs bersih · ESLint 0 error · Vitest **91 berkas / 856 tes** (baru:
 `__tests__/sections/report/halamanPeringkat.test.jsx` 3 tes + 5 tes aturan murni di `tampilan.test.js`) ·
 `docs/smoke-ui-slice05.mjs` **27/27** lewat browser sungguhan (bukti bonus ujung-ke-ujung: skor asli 5 →
-tampil 6,5 di papan, sementara respons murid hanya berisi 13 kunci tanpa satu pun jejak bonus).
+tampil 6,5 di papan, sementara respons murid hanya berisi 13 kunci tanpa satu pun jejak bonus) ·
+`docs/smoke-ui-pengaturan.mjs` **13/13** (pemeriksaan baru: keempat aturan ini benar-benar bisa diatur guru
+dari panel Setelan ulangan, bukan hanya ada di server).
 
 **Keterikatan yang perlu diketahui sesi berikutnya:**
 
@@ -1376,5 +1378,6 @@ tampil 6,5 di papan, sementara respons murid hanya berisi 13 kunci tanpa satu pu
   di kontrak.
 
 **Sisa:** sapuan penuh 31 harness belum diulang putaran ini (hijau terakhir A.78); yang dijalankan adalah
-`slice05` (menyentuh halaman yang berubah). `smoke-ui-auth` tetap menunggu backend `MAIL_MAILER=log`.
-Rincian lengkap: `docs/laporan-pengujian.md` **A.80**.
+`slice05` (menyentuh halaman yang berubah) dan `pengaturan` (menyentuh panel setelan yang bertambah isinya).
+`smoke-ui-auth` tetap menunggu backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md`
+**A.80**.

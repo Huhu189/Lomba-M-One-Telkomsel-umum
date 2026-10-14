@@ -174,6 +174,42 @@ async function main() {
         `${panel.saklar} saklar · ${panel.tombol.join(', ')}`,
       )
 
+      // Aturan peringkat baru (14 Oktober 2026) harus BISA DIATUR dari panel ini,
+      // bukan hanya ada di server: murid cuma diberi nomor untuk N% teratas, dan
+      // bonus penyemangat punya ambang + batas sendiri.
+      //
+      // Kolom angkanya dikenali dari `aria-label` (dibentuk dari label server),
+      // sedangkan saklarnya dari baris tempat ia berada — jadi penamaannya tidak
+      // perlu dicocokkan huruf per huruf dengan judul kolomnya.
+      const aturanPeringkat = await evalJs(`(() => {
+        const setelan = [...document.querySelectorAll('section')].find((s) =>
+          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
+        )
+        if (!setelan) return null
+        const angka = [...setelan.querySelectorAll('input[type="number"]')].map(
+          (el) => el.getAttribute('aria-label') ?? '',
+        )
+        const barisSaklar = [...setelan.querySelectorAll('input[role="switch"]')].map(
+          (el) => el.closest('div')?.parentElement?.innerText ?? '',
+        )
+        const hitung = (daftar, potongan) => daftar.filter((satu) => satu.includes(potongan)).length
+        return {
+          persen: hitung(angka, 'Nomor peringkat hanya untuk'),
+          bawah: hitung(angka, 'Bonus penyemangat: ambang bawah'),
+          maks: hitung(angka, 'Bonus penyemangat: tambahan maksimal'),
+          induk: hitung(barisSaklar, 'Bonus penyemangat untuk murid di bawah ambang'),
+        }
+      })()`)
+
+      catat(
+        'aturan peringkat baru (N% teratas + bonus penyemangat) bisa diatur dari panel setelan ulangan',
+        aturanPeringkat?.persen === 1 &&
+          aturanPeringkat?.bawah === 1 &&
+          aturanPeringkat?.maks === 1 &&
+          aturanPeringkat?.induk === 1,
+        `persen ${aturanPeringkat?.persen} · ambang ${aturanPeringkat?.bawah} · batas ${aturanPeringkat?.maks} · saklar ${aturanPeringkat?.induk}`,
+      )
+
       // --- 3. Saklar sungguhan: ubah lalu kembalikan (basis data dev utuh) ---
       const saklarUji = `(() => {
         const bagian = ${kelompokAntiCheat}

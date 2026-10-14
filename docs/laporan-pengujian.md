@@ -7145,6 +7145,11 @@ Dua keputusan yang sengaja diambil:
   6,5** sedangkan `skor` di baris itu tetap 5; papan guru punya sel `td[data-label="Catatan guru"]` bertanda
   "dibantu" + "peringkat asli"; mode proyektor menghapus sel itu; papan murid tidak memuat kata "dibantu",
   tidak punya sel catatan, dan responsnya hanya berisi 13 kunci tanpa satu pun jejak bonus.
+- `bash docs/jalankan-smoke-ui.sh pengaturan` — **13/13 lulus** (12 → 13). Pemeriksaan baru membuktikan
+  keempat aturan baru **bisa diatur guru dari panel Setelan ulangan**: satu kolom angka ber-`aria-label`
+  “Nomor peringkat hanya untuk …% teratas”, satu untuk ambang bonus, satu untuk batas tambahannya, dan satu
+  saklar bonus. Ini penting karena panel itu dirender dari resolusi server (bukan daftar tetap), jadi tanpa
+  pemeriksaan ini “bisa diatur” hanya dugaan dari membaca kode.
 
 ### A.80.5 Batasan jujur
 
@@ -7173,4 +7178,5 @@ Dua keputusan yang sengaja diambil:
   `src/theme/theme.css` (`.peringkat-dibantu`), `src/__tests__/sections/report/tampilan.test.js`,
   `src/__tests__/sections/report/halamanPeringkat.test.jsx` (baru).
 - **Docs/harness:** `docs/smoke-ui-slice05.mjs` (+7 pemeriksaan, 20 → 27; ALAT dapat `klik`),
-  `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`.
+  `docs/smoke-ui-pengaturan.mjs` (+1 pemeriksaan, 12 → 13), `docs/penjelasan-fitur.md`,
+  `docs/handoff-sesi.md`.
