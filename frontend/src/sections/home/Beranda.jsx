@@ -11,7 +11,7 @@
  * (Akun belum terverifikasi tidak pernah sampai ke sini: backend menolaknya di
  * jalur login & sesi.)
  */
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   IkonBendera,
@@ -30,6 +30,7 @@ import { RUTE, ruteKerjakanKuis, ruteKoreksiKuis, ruteKuisDetail, ruteMonitorKui
 import Banner from '../../shared/ui/Banner.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
+import MalasHalaman from '../../shared/ui/MalasHalaman.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import { HiasanLatar } from '../../shared/ui/Maskot.jsx'
 import { TombolTaut, TombolTautIkon } from '../../shared/ui/Tombol.jsx'
@@ -45,8 +46,11 @@ import { angkaBeranda, bagiJadwal, perluPerhatian } from './dashboard.js'
  * Dasbor admin dimuat malas: murid dan guru tidak pernah membukanya, jadi
  * modulnya tidak perlu ikut bundel awal (halaman ini memang statis karena
  * beranda semua orang).
+ *
+ * Pemuatnya ditulis sekali di sini (bukan disisipkan di JSX) supaya identitasnya
+ * tetap antar-render — `MalasHalaman` memakainya sebagai kunci effect.
  */
-const BerandaAdmin = lazy(() => import('../admin/BerandaAdmin.jsx'))
+const muatBerandaAdmin = () => import('../admin/BerandaAdmin.jsx')
 
 const fitur = [
   {
@@ -484,10 +488,15 @@ export default function Beranda() {
   if (!user) return <BerandaTamu />
   if (user.role === 'murid') return <BerandaMurid user={user} />
   if (user.role === 'admin') {
+    // Pagar galatnya sama seperti halaman rute: dasbor admin yang modulnya belum
+    // terunduh (koneksi putus) hanya menampilkan kartu "coba lagi" — beranda dan
+    // menu tetap hidup, bukan layar "Ada yang tidak beres" satu aplikasi.
     return (
-      <Suspense fallback={<Skeleton judul baris={3} label="Memuat dasbor sekolah…" />}>
-        <BerandaAdmin user={user} />
-      </Suspense>
+      <MalasHalaman
+        pemuat={muatBerandaAdmin}
+        user={user}
+        penanda={<Skeleton judul baris={3} label="Memuat dasbor sekolah…" />}
+      />
     )
   }
 

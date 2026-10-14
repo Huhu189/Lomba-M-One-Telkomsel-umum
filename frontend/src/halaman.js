@@ -1,5 +1,5 @@
 /**
- * Peta halaman → pemuat malas (`React.lazy`), satu tempat untuk semuanya.
+ * Peta halaman → pemuat malas (`MalasHalaman`), satu tempat untuk semuanya.
  *
  * Sebelum ini `App.jsx` mengimpor SEMUA halaman secara statis, jadi Vite
  * mengeluarkan satu berkas JS besar yang harus diunduh siapa pun yang membuka
@@ -8,7 +8,15 @@
  * halaman ulangan di ponsel kelas ikut mengunduh alat-alat guru itu.
  *
  * Sekarang tiap halaman jadi berkasnya sendiri yang baru diunduh saat rutenya
- * dibuka (`Suspense` menampilkan `MemuatHalaman` selama menunggu).
+ * dibuka (`MalasHalaman` menampilkan `MemuatHalaman` selama menunggu).
+ *
+ * Yang mengunduh bukan `React.lazy` melainkan pembungkus `MalasHalaman`: hasil
+ * impor `lazy` tersimpan untuk selamanya, jadi satu kegagalan unduh (koneksi
+ * putus tepat saat murid menekan menu) membuat rutenya menolak selamanya dan
+ * galatnya menutup SELURUH aplikasi — termasuk ulangan yang sedang dikerjakan.
+ * Pembungkus milik kita membatasi kegagalan itu ke halaman bersangkutan dan
+ * menyediakan tombol "Coba lagi" yang benar-benar mengunduh ulang. Pemisahan
+ * bundelnya sama saja: semuanya tetap impor dinamis, satu berkas per halaman.
  *
  * Yang tetap statis sengaja hanya kerangka aplikasi dan tiga halaman pertama
  * yang paling sering dilihat: `Beranda` (mendaratnya semua orang, termasuk
@@ -19,14 +27,14 @@
  * begitu tautan menunya disorot atau difokus — jadi bundel awalnya kecil TAPI
  * perpindahan menu tetap terasa seketika.
  */
-import { lazy } from 'react'
+import { malasHalaman } from './shared/ui/MalasHalaman.jsx'
 import { RUTE } from './routes.js'
 
 /**
  * Pemuat modul tiap halaman.
  *
- * Hanya di sini jalur impornya ditulis, jadi `lazy` di bawah dan pramuat
- * tautan menu tidak mungkin menunjuk modul yang berbeda.
+ * Hanya di sini jalur impornya ditulis, jadi halaman malas di bawah dan
+ * pramuat tautan menu tidak mungkin menunjuk modul yang berbeda.
  */
 const muat = {
   // Auth (slice 01).
@@ -74,46 +82,46 @@ const muat = {
 }
 
 // Halaman auth.
-export const HalamanDaftar = lazy(muat.daftar)
-export const HalamanLupaSandi = lazy(muat.lupaSandi)
-export const HalamanAturUlangSandi = lazy(muat.aturUlangSandi)
-export const HalamanVerifikasiEmail = lazy(muat.verifikasiEmail)
-export const HalamanPerluVerifikasi = lazy(muat.perluVerifikasi)
+export const HalamanDaftar = malasHalaman(muat.daftar)
+export const HalamanLupaSandi = malasHalaman(muat.lupaSandi)
+export const HalamanAturUlangSandi = malasHalaman(muat.aturUlangSandi)
+export const HalamanVerifikasiEmail = malasHalaman(muat.verifikasiEmail)
+export const HalamanPerluVerifikasi = malasHalaman(muat.perluVerifikasi)
 
 // Data induk & akun.
-export const HalamanAkun = lazy(muat.akun)
-export const HalamanAkunSekolah = lazy(muat.adminAkun)
-export const HalamanKelas = lazy(muat.kelas)
-export const HalamanMapel = lazy(muat.mapel)
-export const HalamanMurid = lazy(muat.murid)
-export const HalamanImporMurid = lazy(muat.imporMurid)
+export const HalamanAkun = malasHalaman(muat.akun)
+export const HalamanAkunSekolah = malasHalaman(muat.adminAkun)
+export const HalamanKelas = malasHalaman(muat.kelas)
+export const HalamanMapel = malasHalaman(muat.mapel)
+export const HalamanMurid = malasHalaman(muat.murid)
+export const HalamanImporMurid = malasHalaman(muat.imporMurid)
 
 // Bank soal, tag, dan kuis.
-export const HalamanBankSoal = lazy(muat.bankSoal)
-export const HalamanTag = lazy(muat.tag)
-export const PilihHalamanKuis = lazy(muat.kuis)
-export const HalamanKuisDetail = lazy(muat.kuisDetail)
+export const HalamanBankSoal = malasHalaman(muat.bankSoal)
+export const HalamanTag = malasHalaman(muat.tag)
+export const PilihHalamanKuis = malasHalaman(muat.kuis)
+export const HalamanKuisDetail = malasHalaman(muat.kuisDetail)
 
 // Pengerjaan & hasil ulangan.
-export const HalamanKerjakan = lazy(muat.kerjakan)
-export const HalamanHasil = lazy(muat.hasil)
-export const HalamanTim = lazy(muat.tim)
+export const HalamanKerjakan = malasHalaman(muat.kerjakan)
+export const HalamanHasil = malasHalaman(muat.hasil)
+export const HalamanTim = malasHalaman(muat.tim)
 
 // Peringkat, laporan, lencana, progres, koreksi.
-export const HalamanPeringkat = lazy(muat.peringkat)
-export const HalamanLaporan = lazy(muat.laporan)
-export const HalamanBadge = lazy(muat.badge)
-export const HalamanProgresTema = lazy(muat.progresTema)
-export const HalamanKoreksi = lazy(muat.koreksi)
+export const HalamanPeringkat = malasHalaman(muat.peringkat)
+export const HalamanLaporan = malasHalaman(muat.laporan)
+export const HalamanBadge = malasHalaman(muat.badge)
+export const HalamanProgresTema = malasHalaman(muat.progresTema)
+export const HalamanKoreksi = malasHalaman(muat.koreksi)
 
 // Anti-cheat & layar kelas.
-export const HalamanMonitor = lazy(muat.monitor)
-export const HalamanLayar = lazy(muat.layar)
+export const HalamanMonitor = malasHalaman(muat.monitor)
+export const HalamanLayar = malasHalaman(muat.layar)
 
 // Materi & avatar.
-export const PilihHalamanMateri = lazy(muat.materi)
-export const EditorMateri = lazy(muat.editorMateri)
-export const PilihHalamanAvatar = lazy(muat.avatar)
+export const PilihHalamanMateri = malasHalaman(muat.materi)
+export const EditorMateri = malasHalaman(muat.editorMateri)
+export const PilihHalamanAvatar = malasHalaman(muat.avatar)
 
 /**
  * Jalur rute tetap → pemuat modulnya.

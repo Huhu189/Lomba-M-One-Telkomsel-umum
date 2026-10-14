@@ -1218,3 +1218,47 @@ hidup supaya langkah emailnya benar-benar terbukti. Rincian lengkap: `docs/lapor
 
 **Komit:** “Uji jalur kepala sekolah di peramban sungguhan dan pindahkan harness guru ke akun guru”
 (35 berkas, di atas `64f48e5`) — **belum di-push**; hash terakhirnya lewat `git log -1 --oneline`.
+
+## 20. A.78 — modul halaman gagal diunduh tidak lagi mematikan aplikasi (14 Oktober 2026)
+
+**Permintaan:** perbaiki bug fungsional pada fitur secara langsung hingga usable. Sasaran yang menunggu di
+meja sejak A.77.5: jalur **luring murid** masih merah (5 pemeriksaan `smoke-ui-luring`, harness berhenti di
+awal langkah 8).
+
+**Akar penyebab (diukur dengan harness diagnostik sementara, lalu dihapus):** saat luring, murid menekan menu
+“Ulangan Saya” yang modulnya belum pernah diunduh → impor itu gagal → **batas galat aplikasi mengambil alih
+seluruh aplikasi** (“Ada yang tidak beres”), sehingga layar ulangan yang sedang dikerjakan hilang dan
+navigasi kembali tidak menolong. Penyebabnya `React.lazy`: hasil impornya disimpan selamanya, jadi satu
+kegagalan menolak rute itu untuk selamanya dan penolakannya naik ke batas galat. Empat pemeriksaan merah
+lainnya hanyalah akibat (timer 0, jawaban luring tak tampak, antrean tak terkirim).
+
+**Yang dikerjakan:**
+
+- **`MalasHalaman` (baru, `shared/ui/`)** menggantikan `React.lazy` untuk rute: kegagalan berhenti di halaman
+  itu (kerangka & menu tetap hidup), tombol “Coba lagi” **benar-benar** mengunduh ulang, dan halaman memuat
+  sendiri saat peramban melaporkan `online`. Pemisahan bundel tidak berubah — semua pemuat tetap impor dinamis.
+- **`GagalMuatHalaman` (baru)** — kartu yang menyebut yang gagal hanya halaman baru dan menegaskan jawaban
+  ulangan tetap tersimpan di perangkat.
+- **`halaman.js`** (28 halaman lewat `malasHalaman`), **`Beranda.jsx`** (dasbor admin malas ikut dibungkus),
+  pagar bundel `halaman.test.js` diperbarui ke sifat baru, dan **5 tes jsdom baru** `malasHalaman.test.jsx`.
+- **`smoke-ui-luring.mjs`** — pemeriksaan terakhir diperbaiki: yang harus hilang setelah submit adalah
+  salinan **kuis ini**, bukan seluruh penyimpanan (perangkat kelas boleh menyimpan salinan ulangan lain, dan
+  sisa run yang berhenti di tengah memang nyata ada: `["312","318","325"]`).
+
+**Bukti:** `smoke-ui-luring` **22/22 lulus** (dari 5 merah + berhenti di tengah) · `./verify.sh` **SEMUA
+HIJAU** (Pest 377/3561 · Redis wajib 9/65 · Pint · checkJs · ESLint 0 error · Vitest 88 berkas/828 tes ·
+realtime) · sapuan 31 harness semuanya exit 0.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- Halaman yang **belum pernah dibuka tetap tidak bisa dibuka saat luring** (modulnya memang belum ada di
+  perangkat). Yang dijamin: kartu penjelas + coba lagi, dan aplikasinya tidak mati. Kalau ini perlu
+  diselesaikan lebih jauh, jalannya **service worker/precache kerangka**, bukan tambalan di router.
+- **Setiap rute baru wajib dibuat lewat `malasHalaman(...)` di `halaman.js`** (bukan `React.lazy`): `lazy`
+  mengembalikan kelas bug yang baru saja diperbaiki, dan `halaman.test.js` menjaganya (pemuat per halaman +
+  App.jsx tetap tanpa impor halaman statis).
+- `BatasGalatUlangan` tetap untuk galat **render** di layar ulangan; galat **unduh modul** tidak pernah lagi
+  sampai ke batas galat mana pun.
+
+**Sisa:** `smoke-ui-auth` masih 24/25 (3 langkah email dilewati karena backend `.env` yang hidup memakai
+mailer smtp). Rincian lengkap: `docs/laporan-pengujian.md` **A.78**.

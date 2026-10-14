@@ -4,10 +4,10 @@
  * - KerangkaUmum: beranda, data induk, dan halaman lain (header + footer).
  * Sesi dipulihkan saat dimuat agar refresh tidak "mengeluarkan" pengguna.
  *
- * Halaman dimuat malas per rute (`React.lazy`, lihat `halaman.js`) supaya
+ * Halaman dimuat malas per rute (`MalasHalaman`, lihat `halaman.js`) supaya
  * aplikasi tidak mengunduh seluruh kode sekaligus. Yang statis hanya kerangka,
  * beranda, halaman masuk, dan 404 — halaman lain baru diunduh saat dibuka, dan
- * `Suspense`-nya dipasang di dalam kerangka (lihat `KerangkaUmum`/
+ * penanda "sedang diunduh" hanya menempati area konten (lihat `KerangkaUmum`/
  * `KerangkaAuth`) supaya menu dan kaki halaman tetap tampil selama menunggu.
  */
 import { useEffect } from 'react'

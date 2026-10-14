@@ -6873,3 +6873,102 @@ Vitest **87 berkas / 821 tes** · peramban kepala sekolah dan halaman-halaman ba
   menutup panelnya).
 - **Komit:** `…` “Uji jalur kepala sekolah di peramban sungguhan dan pindahkan harness guru ke akun guru”
   (35 berkas, di atas `64f48e5`) — **belum di-push**.
+
+## A.78 — Modul halaman yang gagal diunduh tidak lagi mematikan seluruh aplikasi (14 Oktober 2026)
+
+### A.78.1 Permintaan
+
+**“Perbaiki bug fungsional pada fitur secara langsung hingga usable.”** Sasaran konkretnya sudah ada di meja
+sejak A.77.5: jalur **luring murid** masih merah — 5 pemeriksaan `smoke-ui-luring` gagal dan harnessnya
+berhenti di tengah. Itu bug fungsional yang bisa dialami murid sungguhan, bukan kekurangan dokumentasi.
+
+### A.78.2 Akar penyebab (bukan dugaan — diukur)
+
+Harness diagnostik sementara (`docs/smoke-ui-luring-diag.mjs`, dipakai lalu **dihapus**) mencetak keadaan
+halaman di tiap langkah setelah langkah 4 memutus jaringan:
+
+```
+setelah ke /kuis      : { keKuis: false, path: '/kuis', main: '' }
+setelah kembali       : { balik: false, path: '/kerjakan/324', main: '' }
+tunggu 0…3            : main '' · #root: 'Ada yang tidak beres. … Muat ulang'
+```
+
+Jadi: murid menekan **Ulangan Saya** saat luring → modul halaman itu (`PilihHalamanKuis.jsx`, belum pernah
+diunduh di dokumen itu) gagal diimpor → **batas galat aplikasi mengambil alih SELURUH aplikasi** (“Ada yang
+tidak beres”) → layar ulangan yang sedang dikerjakan hilang, dan navigasi kembali ke `/kerjakan/…` tidak
+menolong karena akar React-nya sudah diganti. Sisa pemeriksaan merah hanyalah akibat: timer 0, jawaban luring
+tak tampak, antrean tak terkirim.
+
+Penyebabnya kombinasi dua hal yang masing-masing benar:
+
+1. **Bundel dipecah per halaman** (A.69) — halaman yang belum pernah dibuka memang belum ada di perangkat;
+2. **`React.lazy` menyimpan hasil impornya selamanya** — satu kegagalan membuat rute itu menolak selamanya,
+   dan penolakannya dilempar ke batas galat terdekat. Komentar lama di `halaman.js` bahkan sudah menyebut
+   konsekuensi ini (“navigasi ke halaman itu sendirilah yang akan menampilkan galatnya”), tetapi untuk layar
+   ulangan itu tepat sama dengan kehilangan pekerjaan murid.
+
+### A.78.3 Perbaikannya
+
+- **`frontend/src/shared/ui/MalasHalaman.jsx` (baru)** — pengganti `React.lazy` untuk rute: menyimpan
+  keadaannya sendiri (memuat · siap · gagal), jadi **kegagalan berhenti di halaman itu** dan kerangka
+  (menu, sisi lain aplikasi) tetap hidup. Tombol “Coba lagi” **benar-benar mengunduh ulang** (hal yang tidak
+  bisa dilakukan `resetErrorBoundary` pada `lazy`), dan halaman itu memuat sendiri saat peramban melaporkan
+  `online` — murid tidak perlu tahu apa pun. Pemisahan bundel tetap sama: semua pemuat tetap impor dinamis.
+- **`frontend/src/shared/ui/GagalMuatHalaman.jsx` (baru)** — kartunya: menyebut yang gagal hanya *halaman
+  baru*, dan menegaskan **jawaban ulangan tetap tersimpan di perangkat ini** beserta jalan kembali lewat menu.
+- **`frontend/src/halaman.js`** — 28 halaman memakai `malasHalaman(muat.…)`; pemuatnya ditempelkan sebagai
+  properti `pemuat` supaya bisa dijaga tes.
+- **`frontend/src/sections/home/Beranda.jsx`** — dasbor admin (`BerandaAdmin`) yang juga dimuat malas kini
+  memakai pembungkus yang sama: sebelumnya satu kegagalan unduh di beranda admin juga menutup seluruh aplikasi.
+- **`frontend/src/__tests__/halaman.test.js`** — pagar bundelnya diperbarui ke sifat baru (tiap halaman
+  dibungkus pembungkus malas, **punya pemuatnya sendiri-sendiri**, dan semua pemuat benar-benar impor
+  dinamis); pagar lama “App.jsx tidak mengimpor halaman secara statis” tidak diubah.
+- **`frontend/src/__tests__/shared/malasHalaman.test.jsx` (baru, 5 tes)** — kegagalan berhenti di halaman,
+  “Coba lagi” mengunduh ulang, event `online` memuat sendiri, penanda memuat tampil, dan properti rute
+  diteruskan ke halaman.
+- **`docs/smoke-ui-luring.mjs`** — pemeriksaan terakhir (setelah submit) diperkuat supaya benar: yang harus
+  hilang adalah salinan **kuis ini**, bukan seluruh penyimpanan. Perangkat kelas memang boleh menyimpan
+  salinan ulangan lain (batas 5) — termasuk sisa run harness yang berhenti di tengah, yang nyata ada di
+  profil Chrome: `["312","318","325"]`.
+
+### A.78.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Sebelum | Sesudah |
+| --- | --- | --- |
+| `docs/jalankan-smoke-ui.sh luring` | **5 merah**, harness berhenti di `tombol tidak ada: Selesai` | **22/22 lulus, exit 0** |
+| `npx vitest run src/__tests__/shared/malasHalaman.test.jsx` | tes belum ada | **5/5 lulus** |
+| `./verify.sh` (seluruh pagar mutu) | — | **SEMUA HIJAU** — Pest **377/3561** · Redis wajib **9/65** · Pint bersih · checkJs bersih · ESLint **0 error** · Vitest **88 berkas/828 tes** · realtime lulus |
+| Sapuan harness (31 harness, dua batch) | — | **semua exit 0** — termasuk `admin` 39/39 · `tamu` 10/10 · `slice04` 18/18 · `slice05` 20/20 · `slice06` 28/28 · `slice07` 21/21 · `mobile` 17/17 · `palet-sidebar` 58/58 |
+
+Langkah luring yang tadinya merah, sekarang di layar sungguhan (kutipan keluaran harness):
+
+- `LULUS · soal masih terbuka dari salinan perangkat saat luring · salinan true · balik true · banner true · timer 1178 dtk`
+- `LULUS · jawaban yang diketik saat luring tetap tampil setelah kembali ke soal · tercentang "B"`
+- `LULUS · jam perangkat dimundurkan 1 jam tidak menambah sisa waktu · 1177 → 1174 dtk`
+- `LULUS · jawaban luring terkirim ke server begitu koneksi kembali · jawaban "B" · sisa antrean 0`
+- `LULUS · server menilai kedua jawaban (5 + 5) · skor 10/10 · benar 2`
+
+### A.78.5 Batasan jujur
+
+- **Yang diperbaiki adalah kelas kegagalannya, bukan setiap jalur luring.** Halaman yang belum pernah dibuka
+  memang **tetap tidak bisa dibuka saat luring** — sekarang ia menampilkan kartu yang menjelaskan itu dan bisa
+  dicoba lagi, bukan layar “Ada yang tidak beres”. Itu memang batas teknologi peramban (modulnya belum ada di
+  perangkat), bukan sesuatu yang bisa ditambal aplikasi.
+- **Belum ada service worker / salinan kerangka**, jadi memuat ulang halaman saat luring masih bisa gagal.
+  Yang dijamin: selama aplikasinya masih hidup, berpindah halaman luring tidak lagi membunuhnya.
+- **`BatasGalatUlangan` tetap dipakai** untuk galat *render* di dalam layar ulangan (fail-open). Yang berubah
+  hanya galat *unduh modul*: itu tidak pernah lagi sampai ke batas galat mana pun.
+- **Sisa salinan lama di profil Chrome harness** (`312`, `318`, `325`) adalah artefak run yang berhenti di
+  tengah; ia akan tersapu sendiri oleh batas umur 24 jam / jumlah 5. Tidak dibersihkan, tidak mengganggu.
+- **`smoke-ui-auth` masih 24/25** dengan 3 langkah email dilewati karena backend yang hidup memakai mailer
+  `.env` (sama seperti A.77.5) — tidak berhubungan dengan perubahan ini.
+- **Diuji di Chrome headless** (CDP), bukan di ponsel sungguhan; dua ukuran layar diuji di `mobile`/`admin`.
+
+### A.78.6 Berkas
+
+- **Baru:** `frontend/src/shared/ui/MalasHalaman.jsx`, `frontend/src/shared/ui/GagalMuatHalaman.jsx`,
+  `frontend/src/__tests__/shared/malasHalaman.test.jsx` (5 tes).
+- **Diubah:** `frontend/src/halaman.js`, `frontend/src/App.jsx` (komentar), `frontend/src/sections/home/Beranda.jsx`,
+  `frontend/src/__tests__/halaman.test.js`, `docs/smoke-ui-luring.mjs`.
+- **Dihapus:** `docs/smoke-ui-luring-diag.mjs` (harness diagnostik sementara; tidak pernah dikomit).
+- **Komit:** “Perbaiki modul halaman yang gagal diunduh agar tidak mematikan seluruh aplikasi” (lihat handoff).

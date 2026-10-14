@@ -508,9 +508,13 @@ async function main() {
     await sleep(3500)
 
     const jalurHasil = await evalJs(`location.pathname`)
+    // Yang diperiksa adalah salinan KUIS INI, bukan seluruh penyimpanan: perangkat
+    // kelas dipakai bergantian dan bisa menyimpan salinan ulangan lain (batasnya 5,
+    // lihat BATAS_SNAPSHOT) — termasuk sisa run harness yang berhenti di tengah.
     const bersih = await evalJs(
       `({ riwayat: __alat.simpanan().riwayat?.perAttempt?.[${JSON.stringify(String(attempt.id))}] ?? null,
-          snapshot: __alat.snapshot() })`,
+          salinanKuisIni: (__alat.snapshot() ?? {})[${JSON.stringify(String(attempt.quiz_id))}],
+          sisaSalinan: Object.keys(__alat.snapshot() ?? {}) })`,
     )
     catat(
       'setelah dikumpulkan, murid diarahkan ke hasil',
@@ -518,9 +522,11 @@ async function main() {
       jalurHasil,
     )
     catat(
-      'riwayat jawaban + salinan soal hilang dari perangkat setelah submit',
-      bersih.riwayat === null && bersih.snapshot === null,
-      `riwayat ${JSON.stringify(bersih.riwayat)} · snapshot ${bersih.snapshot === null ? 'kosong' : 'masih ada'}`,
+      'riwayat jawaban + salinan soal kuis ini hilang dari perangkat setelah submit',
+      bersih.riwayat === null && bersih.salinanKuisIni === undefined,
+      `riwayat ${JSON.stringify(bersih.riwayat)} · salinan kuis ini ${
+        bersih.salinanKuisIni === undefined ? 'kosong' : 'masih ada'
+      } · salinan kuis lain ${JSON.stringify(bersih.sisaSalinan)}`,
     )
 
     const hasilApi = await apiJson(`/v1/attempt/${attempt.id}/hasil`)
