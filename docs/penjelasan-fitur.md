@@ -116,8 +116,9 @@ kolom itu juga, supaya papan yang menghadap kelas sama persis dengan yang diliha
 
 Di **mode tim** aturannya sama, tetapi yang diperingkat adalah timnya: satu baris per tim berisi nama tim dan
 anggotanya, dan bahasa di layar anak ikut mengganti kata ("peringkat timmu", "skor timmu", "N tim teratas").
-Bonus penyemangat saat ini juga dihitung untuk baris tim — guru bisa mematikannya dengan saklar bonus bila
-kelasnya dinilai sebagai kelompok.
+**Bonus penyemangat tidak berlaku di papan tim** walau saklarnya menyala: yang tampil adalah nilai kelompok
+apa adanya, karena menambal angka kelompok bukan menyemangati anak — ia justru menutupi hasil kerja bersama
+dari guru dan anggotanya sendiri.
 
 ### Mengapa aman
 Semua perhitungan di server; skor asli tidak punya jalur perubahan dari klien. Ranking default-nya mati — guru yang menyalakannya, karena tidak semua kelas senang diperbandingkan. Yang bisa diubah bonus hanyalah angka di papan; nilai resmi tetap jujur.

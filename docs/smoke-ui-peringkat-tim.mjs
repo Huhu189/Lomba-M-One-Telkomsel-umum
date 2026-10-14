@@ -13,8 +13,9 @@
 //    anggotanya memakai akun masing-masing, lengkap dengan nama anggotanya;
 // 2. aturan N% teratas berlaku untuk tim juga (2 tim dengan 40% → 1 baris), dan
 //    bahasa di layar murid ikut berubah ("nomor peringkat timmu", "skor timmu");
-// 3. janji "diam-diam" tetap berlaku di mode tim: tim yang dibantu bonus membaca
-//    angka tampilannya tanpa satu pun kata "dibantu".
+// 3. bonus penyemangat TIDAK berlaku di papan tim: yang tampil adalah nilai
+//    kelompok apa adanya (saklarnya boleh menyala, tetapi bukan untuk kelompok),
+//    dan tetap tidak ada satu pun kata "dibantu" di layar murid.
 //
 // Harness ini MANDIRI: tag, empat soal, kuis, dua tim, dan empat akun muridnya
 // dibuat di awal lalu dihapus di akhir (kuis dihapus lebih dulu karena `teams`,
@@ -418,20 +419,21 @@ async function main() {
       `${papan.isi?.terbuka_persen}% → ${papan.isi?.terbuka_jumlah} baris`,
     )
 
-    // Perilaku yang SENGAJA dicatat apa adanya: bonus penyemangat ikut dihitung
-    // untuk baris tim (aturan bonusnya sama, dijalankan atas papan yang sama).
-    // Ini keputusan produk yang perlu dikonfirmasi pemilik, bukan efek samping
-    // yang disembunyikan — karena itu angkanya diperiksa persis di sini.
+    // Bonus penyemangat terbatas pada papan INDIVIDU. Saklarnya tetap menyala di
+    // kuis ini (diperiksa di langkah 1), jadi kalau baris tim sampai ditambal,
+    // pemeriksaan di bawah pasti merah. Tim yang nilainya jauh di bawah ambang
+    // pun harus tetap terbaca apa adanya.
     catat(
-      'bonus penyemangat juga menyentuh baris tim (perilaku saat ini: tim di bawah ambang dinaikkan)',
-      biru?.berbantuan === true &&
+      'bonus penyemangat tidak menyentuh papan tim — angka tim dibiarkan apa adanya',
+      papan.isi?.bonus_aktif === false &&
+        biru?.berbantuan === false &&
+        biru?.bonus === 0 &&
         biru?.skor === 5 &&
-        biru?.skor_tampil === 10 &&
-        biru?.persen_tampil === 50 &&
-        biru?.peringkat_asli === 2 &&
+        biru?.skor_tampil === 5 &&
+        biru?.persen_tampil === biru?.persen &&
         merah?.berbantuan === false &&
         merah?.skor === 20,
-      `Biru ${biru?.skor}→${biru?.skor_tampil} (bonus ${biru?.bonus}) · Merah ${merah?.skor} (berbantuan ${merah?.berbantuan})`,
+      `bonus_aktif ${papan.isi?.bonus_aktif} · Biru ${biru?.skor}/${biru?.skor_tampil} (berbantuan ${biru?.berbantuan}) · Merah ${merah?.skor}`,
     )
 
     await buka(`/peringkat/${idKuisUji}`)
@@ -464,11 +466,11 @@ async function main() {
     await buka(`/peringkat/${idKuisUji}`)
     const layarC = await evalJs(`__alat.teksMain()`)
     catat(
-      'murid tim yang kalah membaca aturan versi tim dan angka tampilannya (10 / 20)',
+      'murid tim yang kalah membaca nilai timnya apa adanya (5 / 20) tanpa jejak bonus',
       layarC.includes('Nomor peringkat timmu belum dibuka') &&
         layarC.includes('1 tim teratas') &&
         layarC.includes('Skor timmu:') &&
-        layarC.includes('10 / 20 (50%)') &&
+        layarC.includes('5 / 20 (25%)') &&
         !layarC.includes('dibantu') &&
         !layarC.includes('Mode proyektor'),
       layarC.slice(0, 150),

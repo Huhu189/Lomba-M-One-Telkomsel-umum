@@ -1386,11 +1386,11 @@ sama ikut melihat baris timnya, mode proyektor tetap bersih, dan tim yang dibant
 - **`peringkat`/`persen` bermakna berbeda menurut pemohon** (murid: angka tampilan; guru: angka asli +
   `skor_tampil`). Skema Zod menandai kunci jejak bonus sebagai opsional justru supaya perbedaan itu terlihat
   di kontrak.
-- **Mode tim: bonus ikut dihitung untuk baris TIM** — perilaku yang terukur di harness (tim 5 → 10 poin di
-  papan), bukan efek samping yang disembunyikan. Aturan bonusnya dijalankan atas papan yang sedang berlaku,
-  dan di mode tim papan itu berisi tim. **Keputusan produk yang perlu dikonfirmasi**: kalau bonus seharusnya
-  hanya untuk murid (bukan kelompok), yang diubah satu tempat — lewati `beriBonus()` saat `$modeTim` di
-  `RankingService::untukKuis()`.
+- **Bonus penyemangat HANYA untuk papan individu** (permintaan pemilik, 14 Oktober 2026). Di mode tim,
+  `untukKuis()` mengganti aturannya jadi mati (`$aturanPapan`), sehingga angka kelompok tidak pernah
+  ditambal — dan `bonus_aktif` di respons ikut `false` supaya guru tahu bonusnya memang tidak dipakai di
+  papan itu. Harus tetap begitu: kalau `beriBonus()` dijalankan tanpa mengganti aturannya, tim yang nilainya
+  jauh di bawah ambang akan "dibantu" dan itu bertentangan dengan keputusan ini.
 - **Bahasanya ikut mode tim** (“Peringkat tim ·”, “nomor peringkat timmu”, “N tim teratas”, “Timmu di
   peringkat …”, “Skor timmu:”). Jangan diseragamkan jadi “murid”: di papan tim tidak ada baris anak yang
   bisa dicari.

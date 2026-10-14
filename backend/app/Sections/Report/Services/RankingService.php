@@ -37,7 +37,9 @@ use App\Sections\Settings\Services\PengaturanService;
  *   `skor` asli tidak pernah disentuh: rapor, ekspor nilai, dan laporan tetap
  *   memakai nilai sebenarnya, dan tiap baris berbantuan menandai dirinya sendiri
  *   (`bonus` > 0, `berbantuan`) supaya guru tidak pernah membaca angka palsu
- *   tanpa tahu.
+ *   tanpa tahu. Bonus ini **hanya berlaku di papan individu**: di mode tim yang
+ *   diperingkat adalah kelompok, dan menambal angka kelompok bukan menyemangati
+ *   anak — lihat `untukKuis()`.
  */
 class RankingService
 {
@@ -227,7 +229,15 @@ class RankingService
         $tampil = $this->tampil($kuis);
         $modeTim = $this->tim->modeTim($kuis);
         $aturan = $this->aturan($kuis);
-        $semua = $this->beriBonus($this->semua($kuis), $aturan);
+
+        // Bonus penyemangat hanya untuk papan INDIVIDU (14 Oktober 2026). Di mode
+        // tim yang tampil adalah satu baris milik kelompok, dan menambal angka
+        // kelompok bukan "menyemangati anak" — ia menutupi hasil kerja bersama
+        // dari guru dan anggotanya sendiri. Saklarnya sengaja tidak dimatikan
+        // diam-diam: `bonus_aktif` melaporkan keadaan yang BENAR-BENAR berlaku di
+        // papan ini, jadi guru tahu bonusnya sedang tidak dipakai.
+        $aturanPapan = $modeTim ? [...$aturan, 'bonus' => false] : $aturan;
+        $semua = $this->beriBonus($this->semua($kuis), $aturanPapan);
         $batas = max(1, min($top, self::TOP_MAKSIMAL));
 
         $bolehLihat = $tampil || $selaluTampil;
@@ -304,7 +314,7 @@ class RankingService
             'top' => $batas,
             'terbuka_persen' => $aturan['terbuka_persen'],
             'terbuka_jumlah' => $terbukaJumlah,
-            'bonus_aktif' => $aturan['bonus'],
+            'bonus_aktif' => $aturanPapan['bonus'],
             'bonus_bawah_persen' => $aturan['bawah_persen'],
             'bonus_maks_persen' => $aturan['maks_persen'],
             'peringkat' => $tampilBaris,

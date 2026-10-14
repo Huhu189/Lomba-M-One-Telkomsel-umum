@@ -92,7 +92,7 @@ function t09Murid(Murid $murid): void
 }
 
 /** Nyalakan satu kunci pengaturan pada lingkup kuis. */
-function t09Saklar(object $ctx, Kuis $kuis, KunciPengaturan $kunci, bool $nilai = true): void
+function t09Saklar(object $ctx, Kuis $kuis, KunciPengaturan $kunci, bool|int $nilai = true): void
 {
     t09Guru($ctx);
 
@@ -464,4 +464,65 @@ it('peringkat mode tim diurutkan per tim, bukan per anak', function (): void {
     $this->getJson("/api/v1/kuis/{$kuis->id}/ranking")
         ->assertOk()
         ->assertJsonPath('peringkat_saya', null);
+});
+
+it('bonus penyemangat tidak menyentuh papan tim — hanya papan individu', function (): void {
+    $soal = t09Soal($this);
+    $kuis = t09Kuis($this, [$soal]);
+
+    t09Guru($this);
+    $this->postJson("/api/v1/kuis/{$kuis->id}/tim/bagi", ['jumlah_tim' => 2])->assertOk();
+    t09Saklar($this, $kuis, KunciPengaturan::ModeTim);
+    t09Saklar($this, $kuis, KunciPengaturan::Ranking);
+    t09Saklar($this, $kuis, KunciPengaturan::BonusSemangat);
+    // Ambang 100% + batas 60%: andaikan bonusnya benar-benar dihitung untuk tim,
+    // tim yang nilainya 0 POIN PASTI dapat tambahan. Jadi merah di sini berarti
+    // aturannya bocor ke mode tim — bukan sekadar angkanya kebetulan pas.
+    t09Saklar($this, $kuis, KunciPengaturan::BonusSemangatBawahPersen, 100);
+    t09Saklar($this, $kuis, KunciPengaturan::BonusSemangatMaksPersen, 60);
+
+    $timSatu = t09AnggotaTim($this, $kuis);
+    $timDua = t09AnggotaTim($this, $kuis, 1);
+
+    // Tim satu menjawab benar (10/10), tim dua menjawab salah (0/10).
+    $attemptSatu = t09Mulai($timSatu[0], $kuis);
+    t09Murid($timSatu[1]);
+    $this->postJson("/api/v1/attempt/{$attemptSatu}/jawab", ['question_id' => $soal->id, 'jawaban' => 'a'])->assertOk();
+    $this->postJson("/api/v1/attempt/{$attemptSatu}/kumpulkan", ['idempotency_key' => 'tim-09-bonus-1'])->assertOk();
+
+    $attemptDua = t09Mulai($timDua[0], $kuis);
+    t09Murid($timDua[1]);
+    $this->postJson("/api/v1/attempt/{$attemptDua}/jawab", ['question_id' => $soal->id, 'jawaban' => 'b'])->assertOk();
+    $this->postJson("/api/v1/attempt/{$attemptDua}/kumpulkan", ['idempotency_key' => 'tim-09-bonus-2'])->assertOk();
+
+    t09Guru($this);
+
+    // Saklarnya memang menyala di kuis ini — jadi `bonus_aktif: false` di papan
+    // tim bukan kebetulan dari setelan yang lupa dinyalakan.
+    $setelan = $this->getJson("/api/v1/pengaturan?kuis_id={$kuis->id}")->assertOk();
+    expect($setelan->json('pengaturan.bonus_semangat.nilai'))->toBeTrue()
+        ->and($setelan->json('pengaturan.mode_tim.nilai'))->toBeTrue();
+
+    $papan = $this->getJson("/api/v1/kuis/{$kuis->id}/ranking")->assertOk();
+    $baris = collect($papan->json('peringkat'));
+    $bawah = $baris->firstWhere('skor', 0.0);
+
+    expect($papan->json('mode_tim'))->toBeTrue()
+        ->and($papan->json('total'))->toBe(2)
+        ->and($papan->json('bonus_aktif'))->toBeFalse()
+        ->and($bawah)->not->toBeNull()
+        ->and($bawah['berbantuan'])->toBeFalse()
+        ->and($bawah['bonus'])->toEqual(0)
+        ->and($bawah['skor'])->toEqual(0.0)
+        ->and($bawah['skor_tampil'])->toEqual($bawah['skor'])
+        ->and($bawah['persen_tampil'])->toEqual($bawah['persen'])
+        // Tidak ada satu baris tim pun yang ditambal.
+        ->and($baris->every(fn (array $satu): bool => $satu['berbantuan'] === false && $satu['bonus'] === 0))->toBeTrue();
+
+    // Dan muridnya membaca nilai timnya apa adanya.
+    t09Murid($timDua[0]);
+    $papanMurid = $this->getJson("/api/v1/kuis/{$kuis->id}/ranking")->assertOk();
+
+    expect($papanMurid->json('detail_saya.skor'))->toEqual(0.0)
+        ->and($papanMurid->json('detail_saya.berbantuan'))->toBeNull();
 });

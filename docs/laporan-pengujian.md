@@ -7128,7 +7128,11 @@ Dua keputusan yang sengaja diambil:
 
 ### A.80.4 Bukti (dijalankan, bukan klaim)
 
-- `php artisan test` — **387 lulus / 3866 asersi**. Baru: `backend/tests/Feature/RankingSemangatTest.php`
+- `php artisan test` — **388 lulus / 3895 asersi**. Baru di `Slice09TimTest.php`: “bonus penyemangat tidak
+  menyentuh papan tim — hanya papan individu” (ambang sengaja 100% + batas 60%, jadi kalau aturannya bocor
+  ke mode tim, tim bernilai 0 PASTI ditambal; tesnya juga membuktikan saklarnya memang menyala lewat
+  resolusi pengaturan, dan muridnya membaca `detail_saya.skor` 0 tanpa kunci bonus). Baru:
+  `backend/tests/Feature/RankingSemangatTest.php`
   (6 tes / 224 asersi): tanpa bonus setiap baris `berbantuan=false`; bonus menaikkan angka tampilan sampai
   melewati titik tengah sementara `attempts.skor` tetap 2; batas tambahan 5% membuat bonus tidak cukup
   menyeberang (20% → 25%, tetap peringkat 4); aturan N% (murid peringkat 4 dari 5 tidak menerima nomor,
@@ -7168,10 +7172,9 @@ Dua keputusan yang sengaja diambil:
   layarnya sendiri (Merah 4/4 → 20 poin, Biru 1/4 → 5 poin). Yang terbukti: papan berisi **2 baris (satu per
   tim)** dengan `murid_id` null dan nama anggotanya, aturan 40% teratas juga berlaku untuk tim (2 → 1 baris),
   anggota kedua dari tim yang sama ikut melihat baris timnya sendiri, mode proyektor tetap bersih, dan yang
-  paling penting: **murid tim yang dibantu membaca “Skor timmu: 10 / 20 (50%)” tanpa satu pun kata
-  “dibantu”** walaupun nilai timnya 5/20. Temuan yang dicatat apa adanya (bukan disembunyikan): **bonus
-  penyemangat ikut dihitung untuk baris tim** (Biru 5 → 10) — perilaku saat ini, keputusan produk yang
-  masih perlu dikonfirmasi. Pemeriksaan baru membuktikan
+  paling penting: **bonus penyemangat tidak menyentuh papan tim** — saklarnya menyala di kuis itu, tetapi
+  `bonus_aktif` tetap `false`, `berbantuan` `false`, `skor_tampil === skor`, dan tim yang nilainya 5/20
+  membaca “Skor timmu: 5 / 20 (25%)” apa adanya tanpa satu pun kata “dibantu”. Pemeriksaan baru membuktikan
   keempat aturan baru **bisa diatur guru dari panel Setelan ulangan**: satu kolom angka ber-`aria-label`
   “Nomor peringkat hanya untuk …% teratas”, satu untuk ambang bonus, satu untuk batas tambahannya, dan satu
   saklar bonus. Ini penting karena panel itu dirender dari resolusi server (bukan daftar tetap), jadi tanpa
@@ -7185,6 +7188,9 @@ Dua keputusan yang sengaja diambil:
 - **Bonus dihitung pada setiap permintaan papan** (median kelas dihitung ulang tiap kali). Untuk kelas
   seukuran sekolah ini tidak terasa; kalau nanti ada kuis dengan ratusan peserta, hitungan itu perlu
   di-cache.
+- **Bonus mati di mode tim** walau saklarnya menyala (`bonus_aktif: false` di respons papan tim). Guru yang
+  ingin efek serupa untuk kelompok tidak punya jalan lewat papan; ini keputusan pemilik (14 Oktober 2026),
+  bukan bug.
 - **Bonus tidak menembus daftar N% teratas**: sasarannya titik tengah kelas, jadi anak yang dibantu tetap
   tidak melihat nomornya kalau ia ada di luar 30% — efeknya hanya terlihat di papan guru. Bila yang
   dikehendaki sebaliknya, ubah sasaran `beriBonus()` atau `terbukaJumlah`.
