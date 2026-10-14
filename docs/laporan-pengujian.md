@@ -8216,3 +8216,90 @@ Dua perbaikan:
   `__tests__/sections/scoring/koreksiSekaliKlik.test.jsx` (tes dibuat menunggu elemen, tidak lagi rapuh).
 - **Docs:** `docs/penjelasan-fitur.md` (bagian 23), `docs/handoff-sesi.md`, `docs/laporan-pengujian.md`
   (bagian ini).
+
+## A.90 — Materi ditampilkan apa adanya: pratinjau dokumen kantor, klip tautan, dan latihan sisipan (14 Oktober 2026, dilaporkan 15 Oktober 2026)
+
+### A.90.1 Yang diminta, dan tafsirnya
+Empat keluhan pemilik produk, semuanya soal materi yang **ada di server tetapi tidak terlihat di layar murid**:
+
+1. **“PPTX/DOCX/XLSX jangan cuma diunduh — tampilkan isinya.”** Format OOXML tidak bisa dibuka peramban
+   sendiri, dan di ponsel tombol “Buka dokumen” berakhir di folder unduhan. Tafsirnya: isi berkas dibaca di
+   klien lalu digambar di halaman; tautan ke berkas aslinya tetap ada sebagai cadangan.
+2. **“Kok malah cuma muncul tulisan `Video YouTube · www.youtube.com`?”** Klip tautan (YouTube/Drive) hanya
+   menampilkan keterangannya. Tafsirnya: bingkai sematan yang **sudah dihitung server** benar-benar dipasang.
+3. **“Latihan sisipan di blok teks tidak pernah bisa dibuka, tapi tidak bisa ditutup.”** Blok teks/gambar/PDF
+   tidak memberi titik waktu untuk menumpuk latihan, sehingga panelnya menutupi bacaan. Tafsirnya: untuk blok
+   itu latihan **ditawarkan di bawah** bacaan; untuk media yang punya `currentTime` (video/audio) panel tetap
+   menumpuk di atas pemutarnya seperti semula.
+4. **“Sudah dinyalakan izinkan tamu, kok murid masih dipaksa masuk?”** Bukan bug piksel: pintu tamu memang
+   hanya terbuka untuk kuis yang **sudah diterbitkan**. Tafsirnya: panel setelan menjelaskan syarat itu di
+   bawah saklarnya, bukan mengubah aturannya diam-diam.
+
+Tambahan dari sesi yang sama: **tautan siswa** di halaman kelola kuis dibuat tetap terjangkau saat daftar
+soalnya panjang (bar lengket) — diangkat jadi komponen `TautanSiswa.jsx`.
+
+### A.90.2 Yang berubah
+- **`sections/material/pratinjauOOXML.js` (baru, 722 baris)** — pembaca OOXML murni tanpa pustaka baru
+  (`jszip` sudah dipakai proyek): `word/document.xml` (paragraf, butir, tabel, gambar), `ppt/slides/*.xml`
+  (**urutan diambil dari `presentation.xml`**, bukan nomor berkas), dan `xl/worksheets/*.xml` (nama lembar,
+  string bersama/inline, angka). Format kantor lama (`.doc`/`.ppt`/`.xls`) dan arsip sengaja ditolak, bukan
+  ditebak.
+- **`sections/material/PratinjauDokumen.jsx` (baru)** — menggambar hasil bacaan itu di dalam kotak setinggi
+  `min(70vh, 40rem)` dengan kepala lengket, plus tombol “Tautan berkas” sebagai jalan keluar. Kegagalan
+  dibedakan apa adanya: berkas rusak ≠ penolakan server ≠ berkas tanpa URL.
+- **`sections/material/HalamanMateriMurid.jsx` & `PemutarMateri.jsx`** — `media.sematan` dari server dipasang
+  sebagai `<iframe>` pada klip tautan (dan blok `tautan` ikut diisi supaya tidak ada media yang tampil kosong);
+  blok teks/gambar/PDF memakai jalur “latihan di bawah bacaan”.
+- **`sections/quiz/TautanSiswa.jsx` (baru)** + `HalamanKuis.jsx` / `HalamanKuisDetail.jsx` — tautan siswa
+  beserta tombol salinnya dipindah jadi satu komponen lengket, labelnya bisa diganti sesuai tempat memasangnya.
+- **`sections/quiz/PanelSetelanUlangan.jsx`** — catatan syarat pintu tamu (kuis harus terbit) di bawah saklar.
+- **`theme/theme.css`** — gaya pratinjau dokumen, bingkai klip, dan bar tautan siswa.
+- **Backend nyaris tidak disentuh:** satu-satunya perubahan adalah komentar di `ProgresMateriService.php`
+  (penjelasan nilai `sajian`); alamat bingkai memang sudah dihitung server di `Registry\TautanMedia`
+  (`youtube-nocookie` / Drive `preview`) — klien tidak pernah menyusun alamat bingkai sendiri.
+
+### A.90.3 Yang diperiksa (dijalankan ulang 15 Oktober 2026 atas pohon yang sama)
+- **`npx vitest run` → 120 berkas / 1064 tes lulus, exit 0** (naik dari 1038 di A.89). Berkas tes baru:
+  `material/pratinjauOOXML.test.js` (12 tes — urutan slide PowerPoint, tabel/butir/gambar Word, string bersama
+  Excel, penolakan non-ZIP & jenis tak dikenal), `material/pratinjauDokumen.test.jsx` (5 — isi tampil di
+  halaman, pesan jujur untuk berkas rusak, penolakan server ≠ pratinjau kosong, format lama tetap “Buka
+  dokumen”), `material/halamanMateriMurid.test.jsx` (3 — bingkai YouTube memakai alamat server; latihan blok
+  teks ditawarkan di bawah bacaan dan benar-benar terbuka lewat servernya),
+  `quiz/tautanSiswa.test.jsx` (5 — tombol mati dengan alasan selama kuis belum punya slug, salin sekali tekan,
+  peramban yang menolak salin otomatis diucapkan apa adanya); tes blok video yang tetap menumpuk ada di
+  `material/pemutarMateri.test.js` yang sudah ada sejak A.85.
+- **`npm run check` (`tsc --noEmit`) → exit 0, tanpa galat.** **`npm run lint` → exit 0, 0 galat** (3 peringatan
+  lama `useForm().watch()`, tidak ada di berkas yang disentuh putaran ini).
+- **`./vendor/bin/pint --test` pada `ProgresMateriService.php` → PASS** (satu-satunya berkas PHP yang berubah,
+  dan hanya komentarnya).
+- **Pest tidak dijalankan ulang**: tidak ada kode backend yang berubah (komentar saja), jadi pagar backend
+  tidak tersentuh putaran ini. `./verify.sh` penuh juga tidak dijalankan (langkah Redis/realtime di luar
+  cakupan perubahan).
+- Dua tes lama yang rapuh diperbaiki sambil jalan (bukan bagian fitur, tapi menghambat gerbang):
+  `attempt/lampiranTerlipat.test.jsx` kini **menunggu elemennya** muncul (React Query menyiarkan hasil kueri di
+  batching-nya sendiri, jadi satu tik `tenang()` tidak cukup); `material/penjelasanKuisSajian.test.jsx`
+  menyesuaikan diri pada tafsir baru (“dokumen kantor ditampilkan isinya, bukan tombol unduh”).
+
+### A.90.4 Batasan jujur
+- Pratinjau diuji dengan **berkas ZIP yang dibuat di dalam tes**, bukan PPTX/DOCX/XLSX asli pemilik produk, dan
+  belum pernah dibuka di Chrome: yang terbukti adalah pembacaan isi + penyajiannya (jsdom), bukan tampilannya
+  di peramban.
+- Pratinjau memang **sederhana**: teks, butir, tabel, dan gambar. Tata letak halaman, animasi, bagan, rumus,
+  dan perhitungan Excel **tidak** digambar ulang — batas ini juga ditulis di `docs/penjelasan-fitur.md`
+  bagian 24 supaya tidak dijanjikan berlebihan.
+- Gambar di dalam OOXML dijadikan URL objek sekali per berkas dan dilepas saat pratinjaunya berganti; tidak
+  ada uji beban untuk dokumen yang sangat besar (ratusan gambar).
+
+### A.90.5 Berkas
+- **Frontend baru:** `sections/material/pratinjauOOXML.js`, `sections/material/PratinjauDokumen.jsx`,
+  `sections/quiz/TautanSiswa.jsx`, `__tests__/sections/material/pratinjauOOXML.test.js`,
+  `__tests__/sections/material/pratinjauDokumen.test.jsx`, `__tests__/sections/material/halamanMateriMurid.test.jsx`,
+  `__tests__/sections/quiz/tautanSiswa.test.jsx`.
+- **Frontend diubah:** `sections/material/HalamanMateriMurid.jsx`, `sections/material/PemutarMateri.jsx`,
+  `sections/material/api.js`, `sections/quiz/HalamanKuis.jsx`, `sections/quiz/HalamanKuisDetail.jsx`,
+  `sections/quiz/PanelSetelanUlangan.jsx`, `theme/theme.css`,
+  `__tests__/sections/material/penjelasanKuisSajian.test.jsx`, `__tests__/sections/quiz/setelanUlanganTombol.test.jsx`,
+  `__tests__/sections/attempt/lampiranTerlipat.test.jsx`.
+- **Backend diubah:** `Sections/Material/Services/ProgresMateriService.php` (komentar `sajian` saja).
+- **Docs:** `docs/penjelasan-fitur.md` (bagian 24), `docs/laporan-pengujian.md` (bagian ini).
+- **Commit:** `547d140` (working tree bersih sesudahnya; belum di-push).

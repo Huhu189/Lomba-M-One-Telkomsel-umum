@@ -65,16 +65,18 @@ git status --short && git diff --stat
 git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 ```
 
-Keadaan saat handoff ini diperbarui (**14 Okt 2026, sesudah putaran A.88**):
+Keadaan saat handoff ini diperbarui (**15 Okt 2026, sesudah putaran A.90**):
 
-- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat handoff ini ditulis: `b2a1189`). Putaran
+- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat handoff ini ditulis: `547d140`, putaran
+  **A.90** — materi ditampilkan apa adanya: pratinjau dokumen kantor, klip tautan, latihan sisipan; tulisannya
+  di `laporan-pengujian.md` bagian **A.90** dan `penjelasan-fitur.md` bagian **24**). Putaran
   **A.84–A.88** (14 Okt 2026) dikomit bertema — materi (dokumen kantor + tautan + pustaka berkas), teknik
   koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip, editor materi (frontend), editor
   soal (grid + jenis berkas + teknik koreksi), kuis satu halaman + layar koreksi (frontend), halaman masuk
   dari tautan ulangan, tema + gaya, lalu dokumentasi. Daftar lengkap: `git log --oneline fd3636a..HEAD`.
-- **`origin/main = fd3636a`** → **semua commit sesi ini belum di-push**
-  (`git rev-list --count origin/main..HEAD`; angka pastinya ambil dari perintah itu, jangan ditulis tetap
-  di sini — commit dokumentasi terakhirnya selalu berada di luar daftar ini). Push butuh izin pemilik produk.
+- **`origin/main = fd3636a`** → **semua commit sesi ini belum di-push** (`git rev-list --count origin/main..HEAD`
+  menjawab **17** pada 15 Okt 2026; angka pastinya ambil dari perintah itu, jangan ditulis tetap di sini —
+  commit dokumentasi terakhirnya selalu berada di luar daftar ini). **Push butuh izin pemilik produk.**
 - **Working tree BERSIH** (`git status --short` kosong) sesudah commit dokumentasi itu; semua pekerjaan
   A.74–A.88 yang dulu menumpuk sudah ikut dikomit di commit-commit bertema tersebut.
 - **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
@@ -1772,3 +1774,26 @@ tanda tangan RSA sungguhan, Vitest 116 berkas / 1038 tes, ESLint 0 error, Pint, 
 sungguhan (yang terbukti: jalur kriptografi & aturan akun lewat tes, plus keadaan “Google mati”). Isi
 `GOOGLE_CLIENT_ID` lalu daftarkan origin frontend sebagai *Authorized JavaScript origin* untuk menyalakannya.
 Layar `/buat-sandi` baru diuji di jsdom, dan `smoke-ui` belum punya langkah Google. Rincian: `laporan-pengujian.md` **A.89**.
+
+## 30. A.90 — materi ditampilkan apa adanya (14 Oktober 2026, ditulis 15 Oktober 2026)
+
+Empat keluhan pemilik produk yang semuanya berbentuk sama — materi **ada di server tetapi tidak terlihat di
+layar murid**: (1) PPTX/DOCX/XLSX hanya jadi tombol unduh, (2) klip tautan hanya muncul sebagai keterangan
+`Video YouTube · www.youtube.com`, (3) latihan sisipan di blok teks/gambar/PDF tidak pernah bisa dibuka
+padahal tidak bisa ditutup, (4) “sudah dinyalakan izin tamu, kok masih dipaksa masuk”. Tambahan sesi yang
+sama: tautan siswa di halaman kelola kuis jadi bar lengket.
+
+**Jawaban teknisnya:** isi OOXML dibaca di klien tanpa pustaka baru (`pratinjauOOXML.js` di atas `jszip` yang
+sudah ada) lalu digambar `PratinjauDokumen.jsx`; `media.sematan` yang **sudah dihitung server** benar-benar
+dipasang sebagai bingkai; blok tanpa `currentTime` menawarkan latihannya **di bawah bacaan** (blok video tetap
+menumpuk, seperti semula); panel setelan kuis menjelaskan syarat pintu tamu (kuis harus terbit). Backend
+nyaris tidak disentuh — satu-satunya perubahan PHP adalah komentar di `ProgresMateriService.php`.
+
+**Verifikasi (dijalankan ulang 15 Okt 2026 atas pohon ini):** `npx vitest run` **120 berkas / 1064 tes lulus,
+exit 0** · `npm run check` exit 0 tanpa galat · `npm run lint` exit 0 (0 galat, 3 peringatan lama
+`useForm().watch()`) · Pint PASS untuk `ProgresMateriService.php`. **Pest/`verify.sh` penuh tidak dijalankan**
+(tidak ada kode backend yang berubah). Rincian + batasan: `laporan-pengujian.md` **A.90**.
+
+**Yang belum dibuktikan:** pratinjau diuji dengan ZIP buatan tes (bukan berkas asli pemilik produk) dan belum
+pernah dibuka di Chrome; tata letak/animasi/bagan/rumus tidak digambar ulang (batas ini tertulis di
+`penjelasan-fitur.md` bagian 24).
