@@ -1358,7 +1358,12 @@ bonus") · Pint bersih · checkJs bersih · ESLint 0 error · Vitest **91 berkas
 `docs/smoke-ui-slice05.mjs` **27/27** lewat browser sungguhan (bukti bonus ujung-ke-ujung: skor asli 5 →
 tampil 6,5 di papan, sementara respons murid hanya berisi 13 kunci tanpa satu pun jejak bonus) ·
 `docs/smoke-ui-pengaturan.mjs` **13/13** (pemeriksaan baru: keempat aturan ini benar-benar bisa diatur guru
-dari panel Setelan ulangan, bukan hanya ada di server).
+dari panel Setelan ulangan, bukan hanya ada di server) · `docs/smoke-ui-peringkat.mjs` **20/20** — harness
+baru untuk **kasus nyata**: guru menyiapkan soal + kuis + lima akun murid, murid A mengerjakan lewat
+layarnya sendiri (Kerjakan sekarang → klik opsi → Selanjutnya → Periksa & kumpulkan → Kumpulkan), empat
+murid lain mengumpulkan dengan skor 20/15/10/5, lalu guru membuka papan dan mode proyektor. Bukti
+terpenting dari harness ini: **murid D, yang nilainya 10/20, membaca “15 / 20 (75%)” di halamannya tanpa
+satu pun kata “dibantu”**, sementara laporan guru untuk anak itu tetap 2/4 (50%).
 
 **Keterikatan yang perlu diketahui sesi berikutnya:**
 
@@ -1378,6 +1383,5 @@ dari panel Setelan ulangan, bukan hanya ada di server).
   di kontrak.
 
 **Sisa:** sapuan penuh 31 harness belum diulang putaran ini (hijau terakhir A.78); yang dijalankan adalah
-`slice05` (menyentuh halaman yang berubah) dan `pengaturan` (menyentuh panel setelan yang bertambah isinya).
-`smoke-ui-auth` tetap menunggu backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md`
-**A.80**.
+`slice05` + `pengaturan` (area yang berubah) dan `peringkat` yang baru. `smoke-ui-auth` tetap menunggu
+backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md` **A.80**.

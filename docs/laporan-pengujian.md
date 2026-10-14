@@ -7145,6 +7145,18 @@ Dua keputusan yang sengaja diambil:
   6,5** sedangkan `skor` di baris itu tetap 5; papan guru punya sel `td[data-label="Catatan guru"]` bertanda
   "dibantu" + "peringkat asli"; mode proyektor menghapus sel itu; papan murid tidak memuat kata "dibantu",
   tidak punya sel catatan, dan responsnya hanya berisi 13 kunci tanpa satu pun jejak bonus.
+- `bash docs/jalankan-smoke-ui.sh peringkat` — **20/20 lulus** (harness baru, kasus nyata dari ujung ke
+  ujung): guru menyiapkan tag + 4 soal + kuis untuk kelasnya, **membuat lima akun murid** (kata sandi
+  diketahui), lalu menyalakan ranking 40% + bonus (bawah 60%, maks 25%). **Murid A mengerjakan lewat
+  layarnya sendiri** (`/kuis/<slug>` → “Kerjakan sekarang” → klik opsi → “Selanjutnya” ×3 → “Periksa &
+  kumpulkan” → “Kumpulkan”, lalu skornya terbaca 20/20 di halaman hasil); empat murid lain mengumpulkan
+  lewat jalur server yang sama dengan skor 20/15/10/5. Bukti yang didapat: papan berisi 5 murid dengan
+  40% → 2 baris terbuka; D (10) dan E (5) bertanda `berbantuan` dengan angka tampilan **15** dan **10**
+  sementara `skor` tetap 10 dan 5 (peringkat asli #4 dan #5); laporan guru tetap 2/4 (50%) untuk D; papan
+  guru punya 5 sel catatan dengan 2 bertanda “dibantu”; mode proyektor mengosongkan sel itu; dan yang
+  paling penting — **murid D membaca “15 / 20 (75%)” di halamannya tanpa satu pun kata “dibantu”**,
+  sedangkan murid C (peringkat 3) tidak menerima nomor walau nilainya 75%. Data uji (kuis, soal, tag, dan
+  lima akun muridnya) terhapus di akhir.
 - `bash docs/jalankan-smoke-ui.sh pengaturan` — **13/13 lulus** (12 → 13). Pemeriksaan baru membuktikan
   keempat aturan baru **bisa diatur guru dari panel Setelan ulangan**: satu kolom angka ber-`aria-label`
   “Nomor peringkat hanya untuk …% teratas”, satu untuk ambang bonus, satu untuk batas tambahannya, dan satu
@@ -7178,5 +7190,5 @@ Dua keputusan yang sengaja diambil:
   `src/theme/theme.css` (`.peringkat-dibantu`), `src/__tests__/sections/report/tampilan.test.js`,
   `src/__tests__/sections/report/halamanPeringkat.test.jsx` (baru).
 - **Docs/harness:** `docs/smoke-ui-slice05.mjs` (+7 pemeriksaan, 20 → 27; ALAT dapat `klik`),
-  `docs/smoke-ui-pengaturan.mjs` (+1 pemeriksaan, 12 → 13), `docs/penjelasan-fitur.md`,
-  `docs/handoff-sesi.md`.
+  `docs/smoke-ui-pengaturan.mjs` (+1 pemeriksaan, 12 → 13), `docs/smoke-ui-peringkat.mjs` (baru: kasus
+  nyata lima murid), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`.
