@@ -280,6 +280,14 @@ describe('aturan papan peringkat', () => {
     expect(murid.jumlahDibantu).toBe(0)
   })
 
+  it('mode tim menyebut tim, bukan murid, di kalimat aturannya', () => {
+    const tim = ringkasAturanPapan(papan({ guru: false, mode_tim: true, terbuka_jumlah: 1 }))
+
+    expect(tim.catatanKeterbukaan).toContain('1 tim teratas')
+    expect(tim.catatanKeterbukaan).toContain('Skor timmu')
+    expect(tim.catatanKeterbukaan).not.toContain('murid teratas')
+  })
+
   it('ringkasAturanPapan memberi guru hitungan baris yang dibantu dan batasnya', () => {
     const guru = ringkasAturanPapan(
       papan({

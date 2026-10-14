@@ -1364,7 +1364,11 @@ lewat layarnya masing-masing** (buka kuis → Kerjakan sekarang → klik opsi �
 kumpulkan → Kumpulkan → baca skornya di halaman hasil: A 20/20, B 20/20, C 15/20, D 10/20, E 5/20), lalu
 guru membuka papan dan mode proyektor. Bukti terpenting dari harness ini: **murid D, yang nilainya 10/20,
 membaca “15 / 20 (75%)” di halamannya tanpa satu pun kata “dibantu”**, sementara laporan guru untuk anak itu
-tetap 2/4 (50%).
+tetap 2/4 (50%). · `docs/smoke-ui-peringkat-tim.mjs` **15/15** — kasus nyata **mode tim**: dua tim yang
+anggotanya akun uji, satu murid per tim mengerjakan lewat layarnya (20 poin vs 5 poin). Papan jadi **2 baris
+(satu per tim)** dengan anggota, aturan 40% teratas berlaku untuk tim (2 → 1 baris), anggota kedua tim yang
+sama ikut melihat baris timnya, mode proyektor tetap bersih, dan tim yang dibantu membaca “Skor timmu:
+10 / 20 (50%)” tanpa kata “dibantu”.
 
 **Keterikatan yang perlu diketahui sesi berikutnya:**
 
@@ -1382,6 +1386,14 @@ tetap 2/4 (50%).
 - **`peringkat`/`persen` bermakna berbeda menurut pemohon** (murid: angka tampilan; guru: angka asli +
   `skor_tampil`). Skema Zod menandai kunci jejak bonus sebagai opsional justru supaya perbedaan itu terlihat
   di kontrak.
+- **Mode tim: bonus ikut dihitung untuk baris TIM** — perilaku yang terukur di harness (tim 5 → 10 poin di
+  papan), bukan efek samping yang disembunyikan. Aturan bonusnya dijalankan atas papan yang sedang berlaku,
+  dan di mode tim papan itu berisi tim. **Keputusan produk yang perlu dikonfirmasi**: kalau bonus seharusnya
+  hanya untuk murid (bukan kelompok), yang diubah satu tempat — lewati `beriBonus()` saat `$modeTim` di
+  `RankingService::untukKuis()`.
+- **Bahasanya ikut mode tim** (“Peringkat tim ·”, “nomor peringkat timmu”, “N tim teratas”, “Timmu di
+  peringkat …”, “Skor timmu:”). Jangan diseragamkan jadi “murid”: di papan tim tidak ada baris anak yang
+  bisa dicari.
 
 **Sisa:** sapuan penuh 31 harness belum diulang putaran ini (hijau terakhir A.78); yang dijalankan adalah
 `slice05` + `pengaturan` (area yang berubah) dan `peringkat` yang baru. `smoke-ui-auth` tetap menunggu

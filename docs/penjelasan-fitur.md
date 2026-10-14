@@ -114,6 +114,11 @@ Jejak bonus hanya sampai ke guru: barisnya bertanda "dibantu" lengkap dengan nil
 sedangkan respons untuk murid sama sekali tidak memuat kunci bonus — dan mode proyektor menyembunyikan
 kolom itu juga, supaya papan yang menghadap kelas sama persis dengan yang dilihat murid.
 
+Di **mode tim** aturannya sama, tetapi yang diperingkat adalah timnya: satu baris per tim berisi nama tim dan
+anggotanya, dan bahasa di layar anak ikut mengganti kata ("peringkat timmu", "skor timmu", "N tim teratas").
+Bonus penyemangat saat ini juga dihitung untuk baris tim — guru bisa mematikannya dengan saklar bonus bila
+kelasnya dinilai sebagai kelompok.
+
 ### Mengapa aman
 Semua perhitungan di server; skor asli tidak punya jalur perubahan dari klien. Ranking default-nya mati — guru yang menyalakannya, karena tidak semua kelas senang diperbandingkan. Yang bisa diubah bonus hanyalah angka di papan; nilai resmi tetap jujur.
 

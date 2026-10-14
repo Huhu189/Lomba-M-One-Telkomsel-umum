@@ -245,6 +245,46 @@ describe('HalamanPeringkat', () => {
     expect(wadah.textContent).toContain('7 / 10 (70%)')
   })
 
+  it('mode tim menyapa tim, bukan anaknya: peringkat timmu, skor timmu', async () => {
+    useAuthStore.setState({ user: { id: 9, name: 'Dedi', role: 'murid' } })
+    ambilPeringkat.mockResolvedValue(
+      respon({
+        mode_tim: true,
+        total: 2,
+        terbuka_jumlah: 1,
+        peringkat: [
+          baris({
+            peringkat: 1,
+            attempt_id: 1,
+            murid_id: null,
+            tim_id: 7,
+            tim_nama: 'Tim Merah',
+            nama: 'Tim Merah',
+            anggota: ['Ani', 'Budi'],
+          }),
+        ],
+        detail_saya: {
+          nama: 'Tim Biru',
+          skor: 10,
+          skor_maksimal: 20,
+          persen: 50,
+          peringkat: null,
+          di_luar_terbuka: true,
+        },
+      }),
+    )
+
+    pasang()
+    expect(await tungguTeks('Nomor peringkat timmu belum dibuka')).toBe(true)
+
+    expect(wadah.textContent).toContain('Peringkat tim ·')
+    expect(wadah.textContent).toContain('Skor timmu:')
+    expect(wadah.textContent).toContain('1 tim teratas dari 2 peserta')
+    // Baris tim tetap memakai nama tim, bukan nama anak.
+    expect(wadah.textContent).toContain('Tim Merah')
+    expect(wadah.textContent).toContain('Ani, Budi')
+  })
+
   it('murid yang mengumpulkan melihat peringkatnya sendiri tanpa tabel saat aturan menutupnya', async () => {
     useAuthStore.setState({ user: { id: 2, name: 'Budi', role: 'murid' } })
     ambilPeringkat.mockResolvedValue(

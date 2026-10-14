@@ -7121,6 +7121,10 @@ Dua keputusan yang sengaja diambil:
   menampilkan 2/10 sedangkan murid melihat 7/10 untuk baris yang sama).
 - **Mode proyektor menyembunyikan kolom audit guru.** Layar itu menghadap kelas, jadi papan yang diproyeksikan
   harus identik dengan yang dilihat murid.
+- **Mode tim memakai aturan yang sama, bahasanya diganti.** Yang diperingkat adalah tim (satu baris per tim,
+  `murid_id` null), jadi kalimat yang dibaca anak ikut berubah: “Peringkat tim ·”, “nomor peringkat timmu
+  belum dibuka”, “N tim teratas”, “Timmu di peringkat …”, dan “Skor timmu:”. Tanpa itu, anak yang membaca
+  “nomor peringkatmu” di papan tim akan mencari baris dirinya sendiri yang memang tidak ada di sana.
 
 ### A.80.4 Bukti (dijalankan, bukan klaim)
 
@@ -7158,7 +7162,16 @@ Dua keputusan yang sengaja diambil:
   paling penting — **murid D membaca “15 / 20 (75%)” di halamannya tanpa satu pun kata “dibantu”**,
   sedangkan murid C (peringkat 3) tidak menerima nomor walau nilainya 75%. Data uji (kuis, soal, tag, dan
   lima akun muridnya) terhapus di akhir.
-- `bash docs/jalankan-smoke-ui.sh pengaturan` — **13/13 lulus** (12 → 13). Pemeriksaan baru membuktikan
+- `bash docs/jalankan-smoke-ui.sh peringkat-tim` — **15/15 lulus** (harness baru: kasus nyata **mode tim**).
+  Guru menyusun dua tim manual (`POST /v1/kuis/{id}/tim`, bukan “bagi otomatis”, supaya anggotanya akun yang
+  bisa dimasuki harness), menyalakan `mode_tim`, lalu satu murid dari **setiap** tim mengerjakan lewat
+  layarnya sendiri (Merah 4/4 → 20 poin, Biru 1/4 → 5 poin). Yang terbukti: papan berisi **2 baris (satu per
+  tim)** dengan `murid_id` null dan nama anggotanya, aturan 40% teratas juga berlaku untuk tim (2 → 1 baris),
+  anggota kedua dari tim yang sama ikut melihat baris timnya sendiri, mode proyektor tetap bersih, dan yang
+  paling penting: **murid tim yang dibantu membaca “Skor timmu: 10 / 20 (50%)” tanpa satu pun kata
+  “dibantu”** walaupun nilai timnya 5/20. Temuan yang dicatat apa adanya (bukan disembunyikan): **bonus
+  penyemangat ikut dihitung untuk baris tim** (Biru 5 → 10) — perilaku saat ini, keputusan produk yang
+  masih perlu dikonfirmasi. Pemeriksaan baru membuktikan
   keempat aturan baru **bisa diatur guru dari panel Setelan ulangan**: satu kolom angka ber-`aria-label`
   “Nomor peringkat hanya untuk …% teratas”, satu untuk ambang bonus, satu untuk batas tambahannya, dan satu
   saklar bonus. Ini penting karena panel itu dirender dari resolusi server (bukan daftar tetap), jadi tanpa
@@ -7192,4 +7205,5 @@ Dua keputusan yang sengaja diambil:
   `src/__tests__/sections/report/halamanPeringkat.test.jsx` (baru).
 - **Docs/harness:** `docs/smoke-ui-slice05.mjs` (+7 pemeriksaan, 20 → 27; ALAT dapat `klik`),
   `docs/smoke-ui-pengaturan.mjs` (+1 pemeriksaan, 12 → 13), `docs/smoke-ui-peringkat.mjs` (baru: kasus
-  nyata lima murid), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`.
+  nyata lima murid), `docs/smoke-ui-peringkat-tim.mjs` (baru: kasus nyata dua tim), `docs/penjelasan-fitur.md`,
+  `docs/handoff-sesi.md`.

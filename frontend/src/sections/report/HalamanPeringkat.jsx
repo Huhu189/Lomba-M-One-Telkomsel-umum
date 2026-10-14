@@ -147,7 +147,8 @@ export default function HalamanPeringkat() {
           <div className="d-flex flex-wrap align-items-start gap-2">
             <div className="me-auto">
               <h1 className={modeProyektor ? 'display-6 fw-bold mb-1' : 'h5 fw-bold mb-1'}>
-                Peringkat · {data.judul_kuis}
+                {data.mode_tim ? 'Peringkat tim · ' : 'Peringkat · '}
+                {data.judul_kuis}
               </h1>
               {!modeProyektor && (
                 <p className="teks-lembut small mb-0">
@@ -230,13 +231,16 @@ export default function HalamanPeringkat() {
 
           {data.tampil && !guru && detailSaya !== null && detailSaya.di_luar_terbuka && (
             <div className="border-top pt-3 mt-4">
-              <h2 className="h6 fw-bold mb-1">Nomor peringkatmu belum dibuka</h2>
+              <h2 className="h6 fw-bold mb-1">
+                {data.mode_tim ? 'Nomor peringkat timmu belum dibuka' : 'Nomor peringkatmu belum dibuka'}
+              </h2>
               <p className="teks-lembut small mb-2">
-                Nomor peringkat dibuka untuk {aturan.terbukaJumlah} murid teratas dari {data.total} peserta.
-                Gurumu tetap melihat seluruh papan, dan nilaimu tetap tercatat.
+                Nomor peringkat dibuka untuk {aturan.terbukaJumlah}{' '}
+                {data.mode_tim ? 'tim teratas' : 'murid teratas'} dari {data.total} peserta. Gurumu tetap
+                melihat seluruh papan, dan {data.mode_tim ? 'nilai timmu' : 'nilaimu'} tetap tercatat.
               </p>
               <p className="mb-0">
-                Skormu:{' '}
+                {data.mode_tim ? 'Skor timmu:' : 'Skormu:'}{' '}
                 <strong>
                   {angkaRapi(angkaTampil(detailSaya).nilai)} / {angkaRapi(angkaTampil(detailSaya).maksimal)} (
                   {angkaRapi(angkaTampil(detailSaya).persen)}%)
@@ -247,7 +251,7 @@ export default function HalamanPeringkat() {
 
           {data.tampil && !guru && detailSaya !== null && !detailSaya.di_luar_terbuka && detailSaya.peringkat !== null && (
             <p className="teks-lembut small mb-0">
-              Kamu di peringkat <strong>{detailSaya.peringkat}</strong> dari {data.total} peserta.
+              {sapaan} di peringkat <strong>{detailSaya.peringkat}</strong> dari {data.total} peserta.
             </p>
           )}
 

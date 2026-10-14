@@ -202,6 +202,9 @@ export function catatanBonusBaris(baris) {
  */
 export function ringkasAturanPapan(data) {
   const guru = data?.guru === true
+  // Mode tim mengganti SATU kata di beberapa kalimat: yang diperingkat adalah
+  // timnya, jadi "murid teratas" akan menyesatkan anak yang membacanya.
+  const modeTim = data?.mode_tim === true
   const terbukaPersen = Number(data?.terbuka_persen ?? 0)
   const terbukaJumlah = Number(data?.terbuka_jumlah ?? 0)
   const bonusAktif = data?.bonus_aktif === true
@@ -216,7 +219,9 @@ export function ringkasAturanPapan(data) {
     terbukaJumlah,
     catatanKeterbukaan: guru
       ? `Murid hanya melihat ${terbukaJumlah} baris teratas (${terbukaPersen}% peserta); di layarmu seluruh papan terbuka.`
-      : `Nomor peringkat dibuka untuk ${terbukaJumlah} murid teratas. Skormu sendiri tetap terlihat.`,
+      : modeTim
+        ? `Nomor peringkat dibuka untuk ${terbukaJumlah} tim teratas. Skor timmu sendiri tetap terlihat.`
+        : `Nomor peringkat dibuka untuk ${terbukaJumlah} murid teratas. Skormu sendiri tetap terlihat.`,
     bonusAktif,
     catatanBonus:
       guru && bonusAktif
