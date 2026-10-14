@@ -145,8 +145,8 @@ async function main() {
       kuis === null ? 'kuis tidak ditemukan' : `subject_id=${kuis.subject_id} class_id=${kuis.class_id}`,
     )
 
-    // ---------- 2. Soal ditulis langsung di langkah 2 ----------
-    catat('langkah 2 menawarkan "Buat soal baru"', await evalJs(`__alat.ada('Buat soal baru')`))
+    // ---------- 2. Soal ditulis langsung di bagian 2 ----------
+    catat('bagian 2 menawarkan "Buat soal baru"', await evalJs(`__alat.ada('Buat soal baru')`))
 
     await evalJs(`__alat.klikTeks('Buat soal baru')`)
     await sleep(900)
@@ -242,13 +242,17 @@ async function main() {
       `subject_id=${kuisSetelahSoal.subject_id} (dipilih ${mapel.id})`,
     )
 
-    // ---------- 3. Langkah 3 menyimpan susunan + mengenali mapel lengkap ----------
-    await evalJs(`__alat.klikTeks('Lanjut: tinjau')`)
+    // ---------- 3. Bagian 3 menyimpan susunan + mengenali mapel lengkap ----------
+    //
+    // Sejak 14 Oktober 2026 ketiga bagian tampil sekaligus: susunan disimpan
+    // oleh tombolnya sendiri ("Simpan susunan"), bukan oleh tombol pindah
+    // bagian "Lanjut: tinjau" yang sudah tidak ada.
+    await evalJs(`__alat.klikTeks('Simpan susunan')`)
     await sleep(2400)
     const tinjau = await evalJs(`__alat.main()`)
     catat(
-      'tinjau: butir mapel & soal sudah lengkap, kelas masih boleh menyusul',
-      tinjau.includes('Tinjau sebelum dipublikasikan') &&
+      'bagian 3: butir mapel & soal sudah lengkap, kelas masih boleh menyusul',
+      tinjau.includes('3. Tinjau dan publikasikan') &&
         tinjau.includes('Mapel dipilih') &&
         tinjau.includes('Minimal satu soal dipilih') &&
         !tinjau.includes('Judul terisi (minimal 3 huruf)Belum'),
@@ -259,7 +263,7 @@ async function main() {
       `fetch('/api/v1/kuis/${kuis.id}', { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json()).then((k) => ({ soal: k.jumlah_soal, mapel: k.subject_id }))`,
     )
     catat(
-      'susunan soal tersimpan di server saat lanjut ke tinjau',
+      'susunan soal tersimpan di server lewat tombol "Simpan susunan"',
       tersimpan.soal === 1 && tersimpan.mapel === mapel.id,
       `soal=${tersimpan.soal} mapel=${tersimpan.mapel}`,
     )

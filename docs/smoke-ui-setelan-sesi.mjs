@@ -332,19 +332,22 @@ async function main() {
 
       await ke('/kuis')
       await klikTeks('Ubah')
-      await sleep(1500)
-      await klikTeks('Lanjut: susun soal')
       await sleep(2500)
-      const diLangkah2 = await evalJs(
-        `[...document.querySelectorAll('button')].some((b) => b.textContent.includes('Lanjut: tinjau'))`,
-      )
-      cek('editor sampai langkah 2', diLangkah2 === true)
 
-      await klikTeks('Lanjut: tinjau')
-      await sleep(3000)
+      // Sejak 14 Oktober 2026 editor kuis satu halaman: tidak ada lagi tombol
+      // "Lanjut: susun soal" / "Lanjut: tinjau", dan ringkasan setelan sesi
+      // sudah tampil begitu drafnya dikenal server (tanpa pindah bagian).
+      const satuHalaman = await evalJs(`(() => ({
+        bagian: ['1. Info dan jadwal', '2. Susun soal', '3. Tinjau dan publikasikan']
+          .every((t) => [...document.querySelectorAll('h2')].some((h) => h.textContent.trim() === t)),
+        adaTombolLanjut: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Lanjut:')),
+      }))()`)
+      cek('editor kuis satu halaman (tiga bagian sekaligus, tanpa tombol "Lanjut:")', satuHalaman.bagian && satuHalaman.adaTombolLanjut === false, JSON.stringify(satuHalaman))
+
+      await sleep(1500)
 
       const panelAwal = await evalJs(`(() => {
-        const kepala = [...document.querySelectorAll('h2')]
+        const kepala = [...document.querySelectorAll('h3')]
           .find((h) => h.textContent.trim() === 'Setelan sesi ini')
         if (!kepala) return null
         const bagian = kepala.closest('section')
@@ -354,7 +357,7 @@ async function main() {
         }
       })()`)
 
-      cek('langkah 3: panel "Setelan sesi ini" tampil', panelAwal !== null)
+      cek('bagian 3: panel "Setelan sesi ini" tampil', panelAwal !== null)
       cek(
         'panel: tiga baris ringkas (proteksi · siswa tamu · aturan lain)',
         Array.isArray(panelAwal?.baris) && panelAwal.baris.length === 3,
@@ -369,7 +372,7 @@ async function main() {
         `(() => { const el = document.querySelector('input[aria-label="Tautan untuk siswa"]'); return el ? el.value : null })()`,
       )
       const teksPanel = await evalJs(`(() => {
-        const kepala = [...document.querySelectorAll('h2')].find((h) => h.textContent.trim() === 'Setelan sesi ini')
+        const kepala = [...document.querySelectorAll('h3')].find((h) => h.textContent.trim() === 'Setelan sesi ini')
         return kepala ? kepala.closest('section').innerText.replace(/\\s+/g, ' ').trim() : ''
       })()`)
 

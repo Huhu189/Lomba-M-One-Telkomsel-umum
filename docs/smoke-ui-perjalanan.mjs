@@ -536,6 +536,17 @@ async function main() {
   )
   catat('murid juga melihat video latar tema', (await evalJs(`window.__alat.jumlah('video.jelajah-video')`)) === 1)
 
+  // Bentuk penanda pos ikut tema (14 Okt 2026). Sebelumnya SEMUA tema memakai
+  // kemah, jadi murid melihat tenda pendakian di tengah laut/luar angkasa.
+  const bentukGunung = await evalJs(
+    `({ kemah: window.__alat.jumlah('.jelajah-pos-kemah'), perahu: window.__alat.jumlah('.jelajah-pos-perahu'), roket: window.__alat.jumlah('.jelajah-pos-roket') })`,
+  )
+  catat(
+    'penanda pos tema mendaki gunung berbentuk kemah',
+    bentukGunung?.kemah === 4 && bentukGunung?.perahu === 0 && bentukGunung?.roket === 0,
+    `kemah ${bentukGunung?.kemah ?? '—'} · perahu ${bentukGunung?.perahu ?? '—'} · roket ${bentukGunung?.roket ?? '—'}`,
+  )
+
   // --- 6. Tuntaskan pos 1: peta maju + kenaikan tingkat ---
   // Tombol “Buka”/“Tandai selesai” hanya diklik saat benar-benar hidup, dan
   // setiap penantian memastikan keadaan SEBELUMNYA sudah tercatat di server —
@@ -634,6 +645,40 @@ async function main() {
     'panggung peta tetap 16:9 supaya gambar tema tidak digepengkan',
     kotakPanggung.tinggi > 0 && Math.abs(kotakPanggung.lebar / kotakPanggung.tinggi - 16 / 9) < 0.05,
     `lebar ${kotakPanggung.lebar.toFixed(0)} · tinggi ${kotakPanggung.tinggi.toFixed(0)} · rasio ${(kotakPanggung.lebar / kotakPanggung.tinggi).toFixed(2)}`,
+  )
+
+  // Latar gunung diukur dari HASIL RENDER-nya, alat yang sama dengan angkasa &
+  // pulau, supaya "dirombak jadi lebih kaya" bisa dibandingkan angkanya. Latar
+  // ini dirombak 14 Oktober 2026; kerangka punggungannya TIDAK digeser (rute pos
+  // diukur terhadapnya), yang dilengkapi lapisan detailnya.
+  const diharapGunung = [
+    { x: 6, y: 71 },
+    { x: 88, y: 63 },
+    { x: 38, y: 58 },
+    { x: 64, y: 54 },
+    { x: 50, y: 42 },
+  ]
+  const ukurGunung = await evalJs(
+    `window.__alat.ukurGambar('/tema/gunung.svg', ${JSON.stringify(diharapGunung.map((satu, i) => ({ ...satu, nama: `pos${i + 1}` })))})`,
+  )
+  const posGunung = (ukurGunung?.titik ?? []).map((satu) =>
+    selisihWarna(satu.warna, ukurGunung?.acuan ?? [0, 0, 0]),
+  )
+
+  catat(
+    'latar gunung terang setelah dirender (jalur & pos tetap terbaca)',
+    (ukurGunung?.rata ?? 0) >= 150 && (ukurGunung?.terangPersen ?? 0) >= 5,
+    `rata ${ukurGunung?.rata ?? '—'} · piksel terang ${ukurGunung?.terangPersen ?? '—'}%`,
+  )
+  catat(
+    'gambar gunung berisi detail, bukan bidang polos',
+    (ukurGunung?.warna ?? 0) >= 200 && (ukurGunung?.polos ?? ['x']).length === 0,
+    `${ukurGunung?.warna ?? '—'} warna berbeda · petak polos ${(ukurGunung?.polos ?? []).length}/${ukurGunung?.petak ?? '—'}`,
+  )
+  catat(
+    'tiap pos tema gunung berdiri di daratan, bukan di langit',
+    posGunung.length === 5 && posGunung.every((selisih) => selisih >= 25),
+    `selisih terkecil ${posGunung.length > 0 ? Math.min(...posGunung) : '—'} vs langit ${warnaTeks(ukurGunung?.acuan)}`,
   )
 
   // Guru memilih "tanpa peta": peta hilang, nama tema & latar tidak dipakai lagi.
@@ -821,6 +866,15 @@ async function main() {
     `selisih terkecil ${posAntariksa.length > 0 ? Math.min(...posAntariksa) : '—'} vs ruang kosong ${warnaTeks(ukurAntariksa?.acuan)}`,
   )
 
+  const bentukAntariksa = await evalJs(
+    `({ roket: window.__alat.jumlah('.jelajah-pos-roket'), kemah: window.__alat.jumlah('.jelajah-pos-kemah'), perahu: window.__alat.jumlah('.jelajah-pos-perahu') })`,
+  )
+  catat(
+    'penanda pos tema luar angkasa berbentuk roket, bukan kemah',
+    bentukAntariksa?.roket === 5 && bentukAntariksa?.kemah === 0 && bentukAntariksa?.perahu === 0,
+    `roket ${bentukAntariksa?.roket ?? '—'} · kemah ${bentukAntariksa?.kemah ?? '—'} · perahu ${bentukAntariksa?.perahu ?? '—'}`,
+  )
+
   // --- 9c. Tema latar Harta Karun di Pulau (latar terang) end-to-end ---
   const buatPulau = await apiJson('/v1/materi', 'POST', {
     judul: `Harta Karun Smoke ${Date.now()}`,
@@ -925,6 +979,47 @@ async function main() {
     'tiap pos tema harta karun berdiri di benda, bukan di langit',
     posPulau.length === 6 && posPulau.every((selisih) => selisih >= 25),
     `selisih terkecil ${posPulau.length > 0 ? Math.min(...posPulau) : '—'} vs langit ${warnaTeks(ukurPulau?.acuan)}`,
+  )
+
+  const bentukPulau = await evalJs(
+    `({ perahu: window.__alat.jumlah('.jelajah-pos-perahu'), kemah: window.__alat.jumlah('.jelajah-pos-kemah'), roket: window.__alat.jumlah('.jelajah-pos-roket') })`,
+  )
+  catat(
+    'penanda pos tema harta karun berbentuk perahu, bukan kemah',
+    bentukPulau?.perahu === 6 && bentukPulau?.kemah === 0 && bentukPulau?.roket === 0,
+    `perahu ${bentukPulau?.perahu ?? '—'} · kemah ${bentukPulau?.kemah ?? '—'} · roket ${bentukPulau?.roket ?? '—'}`,
+  )
+
+  // Dua piksel yang membuktikan keluhan 14 Okt 2026 tertutup — diukur dari HASIL
+  // RENDER (kanvas 400×225), bukan dari teks SVG-nya:
+  //  (a) 4,5% di bawah mulut goa dulu langit (tanjung batu melayang di udara),
+  //  (b) kancing emas peti harta karun dulu tidak ada sama sekali, karena yang
+  //      tertinggal di berkas latar hanya penanda teks `{{CC0:peti}}`.
+  const ukurPeti = await evalJs(
+    `window.__alat.ukurGambar('/tema/pulau.svg', [
+      { nama: 'mulutGoa', x: 80, y: 44 },
+      { nama: 'bawahMulutGoa', x: 80, y: 48.5 },
+      { nama: 'kancingPeti', x: 81.4, y: 54 },
+      { nama: 'badanPeti', x: 78, y: 53 },
+    ])`,
+  )
+  const titikPeti = Object.fromEntries((ukurPeti?.titik ?? []).map((satu) => [satu.nama, satu.warna]))
+  const gelapPeti = (warna = [0, 0, 0]) => 0.2126 * warna[0] + 0.7152 * warna[1] + 0.0722 * warna[2]
+
+  // Warna "di bawah mulut goa" harus HANGAT (batu/peti: merah ≥ biru). Langit dan
+  // laut latar ini biru mendominasi, jadi ukuran `b − r ≤ 40` gagal di berkas
+  // lama: di sana titik itu memang langit (tanjungnya berhenti di y = 432,
+  // sedangkan pasir pantai baru mulai di y = 500).
+  const atasMulut = (warna = [0, 0, 0]) => warna[0] - warna[2]
+  catat(
+    'bawah mulut goa berisi batu/peti, bukan langit atau laut (tanjung tidak melayang)',
+    atasMulut(titikPeti.bawahMulutGoa) >= -40,
+    `mulut goa ${warnaTeks(titikPeti.mulutGoa)} · 4,5% di bawahnya ${warnaTeks(titikPeti.bawahMulutGoa)} (r−b ${atasMulut(titikPeti.bawahMulutGoa)})`,
+  )
+  catat(
+    'peti harta karun benar-benar tergambar di mulut goa (badan coklat + kancing emas)',
+    atasMulut(titikPeti.badanPeti) >= 40 && gelapPeti(titikPeti.kancingPeti) >= 150,
+    `badan peti ${warnaTeks(titikPeti.badanPeti)} (r−b ${atasMulut(titikPeti.badanPeti)}) · kancing ${warnaTeks(titikPeti.kancingPeti)} (terang ${Math.round(gelapPeti(titikPeti.kancingPeti))})`,
   )
 
   // --- 10. Bersihkan data uji ---

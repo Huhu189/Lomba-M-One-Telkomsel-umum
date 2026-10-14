@@ -1,5 +1,5 @@
 // Smoke pemutar materi (papan 12) lewat browser sungguhan (Chrome DevTools Protocol):
-// guru menyusun materi bergaya video editor (rasio bingkai + timeline + kuis sisipan
+// guru menyusun materi bergaya video editor (timeline + kuis sisipan
 // di dalam klip) → menerbitkannya → murid membuka materinya, memutar video, dan
 // **kuis di dalam video muncul sendiri saat video mencapai detiknya**.
 //
@@ -244,7 +244,7 @@ async function main() {
     if (buatMateri.status !== 201) throw new Error(`gagal membuat materi uji: ${buatMateri.status}`)
     idMateri = buatMateri.isi.id
 
-    // --- 2. Sinkron blok: rasio bingkai + pengaturan tampilan + timeline ---
+    // --- 2. Sinkron blok: pengaturan tampilan + timeline ---
     const blok = [
       {
         tipe: 'media',
@@ -269,13 +269,20 @@ async function main() {
       { tipe: 'teks', wajib: true, isi: { teks: 'Penutup.' }, track: 0, mulai_detik: 70, durasi_detik: 10 },
     ]
 
-    const sinkron = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', { rasio: '9:16', blok })
+    const sinkron = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', { blok })
 
     catat(
-      'guru menyimpan rasio bingkai + tampilan klip (dinormalkan server)',
-      sinkron.status === 200 && sinkron.isi?.rasio === '9:16' && sinkron.isi?.blok?.[0]?.tampilan?.fit === 'cover' &&
+      'guru menyimpan tampilan klip (dinormalkan server)',
+      sinkron.status === 200 && sinkron.isi?.blok?.[0]?.tampilan?.fit === 'cover' &&
         sinkron.isi?.blok?.[1]?.tampilan?.mode === 'jeda',
-      `status ${sinkron.status} · rasio ${sinkron.isi?.rasio}`,
+      `status ${sinkron.status} · tampilan ${JSON.stringify(sinkron.isi?.blok?.[0]?.tampilan)}`,
+    )
+    // Bingkai materi dikunci 16:9 di CSS (14 Oktober 2026) — payload tidak lagi
+    // membawa rasio, dan kiriman rasio dari klien lama pun tidak diendahkan.
+    catat(
+      'payload materi tidak lagi membawa rasio bingkai',
+      !('rasio' in (sinkron.isi ?? {})),
+      `kunci: ${Object.keys(sinkron.isi ?? {}).filter((k) => k === 'rasio').join(',') || 'tidak ada rasio'}`,
     )
     catat(
       'blok teks tidak punya pengaturan tampilan (diabaikan server)',
@@ -319,7 +326,11 @@ async function main() {
       blokRingkas[2]?.boleh_dibuka === false,
       `boleh_dibuka ${blokRingkas[2]?.boleh_dibuka}`,
     )
-    catat('rasio materi sampai ke murid', ringkasan.isi?.materi?.rasio === '9:16', `rasio ${ringkasan.isi?.materi?.rasio}`)
+    catat(
+      'ringkasan murid juga tanpa rasio bingkai',
+      !('rasio' in (ringkasan.isi?.materi ?? {})),
+      `kunci materi: ${Object.keys(ringkasan.isi?.materi ?? {}).join(', ')}`,
+    )
 
     // --- 4. Layar murid: buka materinya, buka klip video, jalankan kuis sisipan ---
     await buka('/materi')
@@ -343,22 +354,23 @@ async function main() {
       `document.querySelectorAll('${SEL_DAFTAR_BAGIAN}')[0].querySelector('button')?.click(); true`,
     )
     const adaPemutar = await tunggu(`document.querySelectorAll('.pm-bingkai').length === 1`, 15000)
-    catat('pemutar video memasang bingkai rasio terkunci', adaPemutar)
+    catat('pemutar video memasang bingkai', adaPemutar)
 
     const bingkai = await evalJs(`(() => {
       const b = document.querySelector('.pm-bingkai')
       const v = b?.querySelector('video')
+      const k = b?.getBoundingClientRect()
       return {
         adaVideo: Boolean(v),
-        rasio: b ? getComputedStyle(b).getPropertyValue('--r').trim() : null,
+        rasioUkur: k && k.height > 0 ? k.width / k.height : null,
         adaSisipan: (document.body.innerText || '').includes('kuis di dalam video'),
         gaya: v ? v.getAttribute('style') : null,
       }
     })()`)
     catat(
-      'bingkai memakai rasio 9:16 dari guru',
-      Math.abs(Number(bingkai.rasio) - 9 / 16) < 0.001,
-      `--r = ${bingkai.rasio}`,
+      'bingkai pemutar tetap 16:9 (rasio tidak lagi bisa dipilih guru)',
+      bingkai.rasioUkur !== null && Math.abs(bingkai.rasioUkur - 16 / 9) < 0.02,
+      `terukur ${bingkai.rasioUkur === null ? '—' : Number(bingkai.rasioUkur).toFixed(3)} (16:9 = 1,778)`,
     )
     catat(
       'pemutar memberi tahu ada kuis di dalam video',

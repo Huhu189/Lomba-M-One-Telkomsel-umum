@@ -1,10 +1,13 @@
-// Smoke UI papan 10 (susun kuis tiga langkah) & papan 11 (editor soal dengan
+// Smoke UI papan 10 (susun kuis satu halaman) & papan 11 (editor soal dengan
 // pratinjau) lewat Chrome DevTools Protocol.
 //
 // Yang diperiksa, di layar 1280px dan 390px:
-//   1. Halaman kuis: tombol "Buat kuis" membuka alur tiga langkah dengan pil
-//      langkah (aria-current="step"), langkah 1 → 2 → 3 bisa dilalui, bank soal
-//      bisa dicentang, dan langkah 3 menampilkan ringkasan + butir kelengkapan;
+//   1. Halaman kuis: tombol "Buat kuis" membuka **satu halaman tiga bagian**
+//      (14 Oktober 2026 — dulu tiga langkah berurutan). Ketiga bagian tampil
+//      sekaligus, pil di atasnya hanya pelompat (aria-current="step"), tidak ada
+//      tombol "Lanjut: …", dan bar aksi lengket menyediakan "Simpan draf" +
+//      "Terbitkan kuis" dari posisi mana pun; bank soal bisa dicentang, dan
+//      bagian 3 menampilkan ringkasan + butir kelengkapan;
 //   2. Halaman bank soal: "Tambah soal" membuka editor tiga kartu bernomor
 //      (tulis soal → pengaturan → pilih jenis) dengan sisi pratinjau/kelengkapan,
 //      pemilih jenis di kartu paling bawah berupa petak berikon yang bisa
@@ -122,7 +125,7 @@ async function main() {
   }
   cek('login guru lewat API', login.status === 200 && login.role === 'guru', `status ${login.status}`)
 
-  // ================= PAPAN 10: susun kuis tiga langkah =================
+  // ================= PAPAN 10: susun kuis satu halaman =================
   await ukuran(1280, 900, false)
   await buka('/kuis')
 
@@ -135,29 +138,44 @@ async function main() {
   cek('halaman kuis: ada tombol "Buat kuis" ≥44px', daftar.adaTombol && daftar.tinggi >= 44, `tinggi=${daftar.tinggi}`)
 
   await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Buat kuis')).click()`)
-  await sleep(600)
+  await sleep(800)
 
-  const langkah1 = await evalJs(`(() => {
+  const satuHalaman = await evalJs(`(() => {
     const pil = [...document.querySelectorAll('.pil-langkah')]
     const aktif = pil.filter((p) => p.getAttribute('aria-current') === 'step')
+    const judulBagian = ['1. Info dan jadwal', '2. Susun soal', '3. Tinjau dan publikasikan']
+    const adaBagian = judulBagian.map((t) => [...document.querySelectorAll('h2')].some((h) => h.textContent.trim() === t))
+    const bar = document.querySelector('.bar-susun')
+    const tombolLanjut = [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Lanjut:'))
     return {
       jumlah: pil.length,
       nama: pil.map((p) => p.textContent.replace('(sedang dibuka)', '').trim()),
       aktif: aktif.map((p) => p.textContent.replace('(sedang dibuka)', '').trim()),
       tinggi: pil[0]?.getBoundingClientRect().height ?? 0,
       adaJudul: Boolean(document.querySelector('#kuis-judul')),
-      adaTombolLanjut: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Lanjut: susun soal')),
+      adaBagian,
+      // Ketiga bagian tampil sekaligus: isi bagian 2 & 3 sudah ada di DOM tanpa
+      // menekan apa pun (dulu tersembunyi di balik tombol Lanjut).
+      adaBankSoal: Boolean(document.querySelector('#cari-soal-kuis')),
+      adaKelengkapan: Boolean(document.querySelector('section[aria-labelledby="bagian-terbit-judul"]')),
+      tombolLanjut: tombolLanjut.map((b) => b.textContent.trim()),
+      bar: bar ? { teks: bar.textContent, posisi: getComputedStyle(bar).position } : null,
+      tombolBar: bar ? [...bar.querySelectorAll('button')].map((b) => ({ teks: b.textContent.trim(), mati: b.disabled })) : [],
     }
   })()`)
-  cek('langkah 1: tiga pil langkah tampil', langkah1.jumlah === 3, langkah1.nama.join(' | '))
-  cek('langkah 1: pil aktif = "Info dan jadwal" lewat aria-current', langkah1.aktif.length === 1 && langkah1.aktif[0].includes('Info dan jadwal'), langkah1.aktif.join(','))
-  cek('langkah 1: pil langkah ≥48px', langkah1.tinggi >= 48, `tinggi=${langkah1.tinggi}`)
-  cek('langkah 1: formulir info & jadwal tampil', langkah1.adaJudul && langkah1.adaTombolLanjut, '')
+  cek('satu halaman: tiga pil bagian tampil', satuHalaman.jumlah === 3, satuHalaman.nama.join(' | '))
+  cek('satu halaman: pil aktif = "Info dan jadwal" lewat aria-current', satuHalaman.aktif.length === 1 && satuHalaman.aktif[0].includes('Info dan jadwal'), satuHalaman.aktif.join(','))
+  cek('satu halaman: pil bagian ≥48px', satuHalaman.tinggi >= 48, `tinggi=${satuHalaman.tinggi}`)
+  cek('satu halaman: ketiga bagian tampil SEKALIGUS (tak ada yang tersembunyi)', satuHalaman.adaBagian.every(Boolean) && satuHalaman.adaJudul && satuHalaman.adaBankSoal && satuHalaman.adaKelengkapan, `bagian=${satuHalaman.adaBagian.join(',')}`)
+  cek('satu halaman: tidak ada lagi tombol "Lanjut: …"', satuHalaman.tombolLanjut.length === 0, satuHalaman.tombolLanjut.join(' / '))
+  cek('satu halaman: bar aksi lengket menyimpan & menerbitkan dari posisi mana pun', satuHalaman.bar !== null && satuHalaman.bar.posisi === 'sticky' && satuHalaman.tombolBar.length === 2, `posisi=${satuHalaman.bar?.posisi} tombol=${satuHalaman.tombolBar.map((t) => t.teks).join(',')}`)
+  cek('satu halaman: Terbitkan masih mati selagi kuis belum lengkap', satuHalaman.tombolBar.some((t) => t.teks.includes('Terbitkan kuis') && t.mati === true), JSON.stringify(satuHalaman.tombolBar))
 
-  // Isi formulir langkah 1 lalu lanjut (menyimpan draf ke server).
+  // Isi formulir bagian 1 lalu simpan draf dari bar lengket (tombolnya berada di
+  // luar <form>, jadi ini sekaligus membuktikan atribut `form` bekerja).
   await evalJs(`(() => {
     const pilih = (sel) => { const s = document.querySelector(sel); const opsi = [...s.options].filter((o) => o.value !== ''); return opsi[0]?.value ?? '' }
-    window.__isi('#kuis-judul', 'Smoke UI: susun kuis tiga langkah')
+    window.__isi('#kuis-judul', 'Smoke UI: susun kuis satu halaman')
     window.__isi('#kuis-mapel', pilih('#kuis-mapel'))
     window.__isi('#kuis-kelas', pilih('#kuis-kelas'))
     window.__isi('#kuis-durasi', '45')
@@ -166,24 +184,29 @@ async function main() {
     window.__isi('#kuis-selesai', iso(150))
     return true
   })()`)
-  await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Lanjut: susun soal')).click()`)
+  await evalJs(`[...document.querySelectorAll('.bar-susun button')].find((b) => b.textContent.includes('Simpan draf')).click()`)
   await sleep(2500)
 
-  const langkah2 = await evalJs(`(() => {
-    const pil = [...document.querySelectorAll('.pil-langkah')]
-    const aktif = pil.find((p) => p.getAttribute('aria-current') === 'step')?.textContent ?? ''
+  const bagian2 = await evalJs(`(() => {
     const barisSoal = [...document.querySelectorAll('.pilih-soal')]
+    const toast = [...document.querySelectorAll('[role="status"]')].map((e) => e.textContent).join(' ')
+    const pilAktif = document.querySelector('.pil-langkah[aria-current="step"]')?.textContent ?? ''
     return {
-      aktif: aktif.replace('(sedang dibuka)', '').trim(),
       jumlahSoal: barisSoal.length,
       centang: Boolean(document.querySelector('.pilih-soal .kotak-centang')),
-      adaSusunan: Boolean(document.querySelector('.baris-ringkas')) || Boolean(document.querySelector('.kotak-kosong')),
-      toast: [...document.querySelectorAll('[role="status"]')].map((e) => e.textContent).join(' ').slice(0, 120),
+      // Baris susunan dibedakan dari penanda nomornya (.susunan-no): bagian 3
+      // memakai kelas baris yang sama untuk butir kelengkapan & ringkasan setelan.
+      adaSusunan: Boolean(document.querySelector('.susunan-no')) || Boolean(document.querySelector('.kotak-kosong')),
+      adaSimpanSusunan: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Simpan susunan')),
+      toast: toast.slice(0, 120),
+      pilAktif,
     }
   })()`)
-  cek('langkah 2 terbuka setelah draf tersimpan', langkah2.aktif.includes('Susun soal'), langkah2.aktif)
-  cek('langkah 2: bank soal tampil dengan kotak centang', langkah2.jumlahSoal > 0 && langkah2.centang, `soal=${langkah2.jumlahSoal}`)
-  cek('langkah 2: panel susunan tampil (kosong atau terisi)', langkah2.adaSusunan === true, '')
+  cek('simpan draf dari bar lengket menyimpan kuis', bagian2.toast.includes('Kuis dibuat sebagai draf'), bagian2.toast)
+  cek('bagian 2: bank soal tampil dengan kotak centang', bagian2.jumlahSoal > 0 && bagian2.centang, `soal=${bagian2.jumlahSoal}`)
+  cek('bagian 2: panel susunan tampil (kosong atau terisi)', bagian2.adaSusunan === true, '')
+  cek('bagian 2: ada tombol "Simpan susunan" tanpa harus menerbitkan', bagian2.adaSimpanSusunan === true, '')
+  cek('mengisi bagian 1 tidak memindahkan pandangan ke bagian lain', bagian2.pilAktif.includes('Info dan jadwal'), bagian2.pilAktif)
 
   // Centang dua soal, lalu periksa daftar susunan + tombol naik/turun.
   const dipilih = await evalJs(`(() => {
@@ -193,8 +216,12 @@ async function main() {
   })()`)
   await sleep(500)
   const susunan = await evalJs(`(() => {
-    const baris = [...document.querySelectorAll('.baris-ringkas')]
-    const tombol = [...document.querySelectorAll('.baris-ringkas button[aria-label]')]
+    // Bagian 2 & 3 tampil sekaligus sejak 14 Oktober 2026, dan bagian 3 juga
+    // memakai .baris-ringkas untuk butir kelengkapan + ringkasan setelan. Baris
+    // susunan dikenali dari penanda nomornya (.susunan-no) supaya hitungannya
+    // tidak ikut menghitung baris bagian 3.
+    const baris = [...document.querySelectorAll('.baris-ringkas')].filter((b) => b.querySelector('.susunan-no'))
+    const tombol = baris.flatMap((b) => [...b.querySelectorAll('button[aria-label]')])
     return {
       jumlah: baris.length,
       centangAktif: document.querySelectorAll('.pilih-soal[aria-checked="true"]').length,
@@ -209,31 +236,55 @@ async function main() {
   cek('susunan: tombol naik/turun/keluar ada dan ≥44px', susunan.tombol >= 4 && susunan.tinggiTombol >= 44, `tombol=${susunan.tombol} tinggi=${susunan.tinggiTombol}`)
   cek('susunan: tombol menyebut objeknya di aria-label', (susunan.label[0] ?? '').startsWith('Naikkan soal'), susunan.label.join(' / '))
 
-  await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Lanjut: tinjau')).click()`)
-  await sleep(2200)
+  await sleep(400)
 
-  const langkah3 = await evalJs(`(() => {
-    // Butir kelengkapan dibaca dari daftar MILIK langkah 3 saja: sejak A.59
-    // langkah 3 juga memuat panel "Setelan sesi ini" yang memakai kelas baris
-    // yang sama (.baris-ringkas + .badge-status) dengan label yang bukan
-    // Lengkap/Belum ("Proteksi mati", "Siswa tamu tidak boleh", "Aturan lain").
-    // Tanpa penyempitan ini, pemeriksaan di bawah merah padahal kelengkapannya
-    // lengkap — kelas bersama, bukan cacat produk.
-    const daftarKelengkapan = document.querySelector('section[aria-labelledby="langkah-3"] > ul')
+  const bagian3 = await evalJs(`(() => {
+    // Butir kelengkapan dibaca dari daftar MILIK bagian 3 saja: bagian ini juga
+    // memuat panel "Setelan sesi ini" yang memakai kelas baris yang sama
+    // (.baris-ringkas + .badge-status) dengan label yang bukan Lengkap/Belum
+    // ("Proteksi mati", "Siswa tamu tidak boleh", "Aturan lain").
+    const daftarKelengkapan = document.querySelector('section[aria-labelledby="bagian-terbit-judul"] > ul')
     const butir = [...(daftarKelengkapan?.querySelectorAll('.badge-status') ?? [])].map((b) => b.textContent.trim())
     const ringkas = [...document.querySelectorAll('.petak-ringkas')].map((e) => e.textContent.trim())
     const publikasi = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Publikasikan kuis'))
+    const bar = document.querySelector('.bar-susun')
+    const terbitBar = bar ? [...bar.querySelectorAll('button')].find((b) => b.textContent.includes('Terbitkan kuis')) : null
     return {
       butir,
       ringkas,
       adaPublikasi: Boolean(publikasi),
       publikasiAktif: publikasi ? !publikasi.disabled : false,
+      terbitBarAktif: terbitBar ? !terbitBar.disabled : false,
+      // Setelan ulangan kini SATU tombol: panelnya tidak lagi menggelar saklar
+      // di halaman, dan tidak ada satu saklar pun sebelum panelnya dibuka.
+      tombolSetelan: [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Setelan ulangan')).length,
+      saklarDiHalaman: document.querySelectorAll('input[role="switch"][id^="set-"]').length,
     }
   })()`)
-  cek('langkah 3: butir kelengkapan tampil dengan status Lengkap/Belum', langkah3.butir.length >= 6, langkah3.butir.join(','))
-  cek('langkah 3: semua butir lengkap setelah formulir diisi', langkah3.butir.every((b) => b === 'Lengkap'), langkah3.butir.filter((b) => b !== 'Lengkap').join(','))
-  cek('langkah 3: ringkasan kelas/jadwal/soal tampil', langkah3.ringkas.length === 3, langkah3.ringkas.map((r) => r.slice(0, 40)).join(' | '))
-  cek('langkah 3: tombol publikasi aktif karena kuis siap', langkah3.adaPublikasi && langkah3.publikasiAktif, '')
+  cek('bagian 3: butir kelengkapan tampil dengan status Lengkap/Belum', bagian3.butir.length >= 6, bagian3.butir.join(','))
+  cek('bagian 3: semua butir lengkap setelah formulir diisi', bagian3.butir.every((b) => b === 'Lengkap'), bagian3.butir.filter((b) => b !== 'Lengkap').join(','))
+  cek('bagian 3: ringkasan kelas/jadwal/soal tampil', bagian3.ringkas.length === 3, bagian3.ringkas.map((r) => r.slice(0, 40)).join(' | '))
+  cek('bagian 3: tombol publikasi aktif karena kuis siap', bagian3.adaPublikasi && bagian3.publikasiAktif && bagian3.terbitBarAktif, `panel=${bagian3.publikasiAktif} bar=${bagian3.terbitBarAktif}`)
+  cek('setelan ulangan jadi SATU tombol (tidak diulang di halaman), tanpa saklar tergeletak', bagian3.tombolSetelan === 1 && bagian3.saklarDiHalaman === 0, `tombol=${bagian3.tombolSetelan} saklar=${bagian3.saklarDiHalaman}`)
+
+  // Panel setelan benar-benar terbuka dan berisi saklar (dulu tergeletak di halaman).
+  await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Setelan ulangan')).click()`)
+  await sleep(1200)
+  const panelSetelan = await evalJs(`(() => {
+    const dialog = [...document.querySelectorAll('dialog')].find((d) => d.open && d.textContent.includes('Setelan ulangan'))
+    return {
+      terbuka: Boolean(dialog),
+      judul: dialog ? [...dialog.querySelectorAll('h3')].map((h) => h.textContent.trim()) : [],
+      saklar: dialog ? dialog.querySelectorAll('input[role="switch"]').length : 0,
+    }
+  })()`)
+  cek('panel setelan terbuka dari satu tombol dan terstruktur per kelompok', panelSetelan.terbuka && panelSetelan.judul.length >= 2 && panelSetelan.saklar >= 10, `kelompok=${panelSetelan.judul.join(' | ')} saklar=${panelSetelan.saklar}`)
+  await evalJs(`(() => {
+    const dialog = [...document.querySelectorAll('dialog')].find((d) => d.open && d.textContent.includes('Setelan ulangan'))
+    dialog?.querySelector('button[aria-label^="Tutup"]')?.click()
+    return true
+  })()`)
+  await sleep(400)
 
   // Layar sempit: pil + kartu tidak boleh meluber.
   await ukuran(390, 844, true)
@@ -242,7 +293,7 @@ async function main() {
     const akar = document.documentElement
     const pil = [...document.querySelectorAll('.pil-langkah')]
     const kanan = Math.max(...pil.map((p) => p.getBoundingClientRect().right))
-    const kecil = [...document.querySelectorAll('.pil-langkah, .baris-ringkas button, .pilih-soal')]
+    const kecil = [...document.querySelectorAll('.pil-langkah, .bar-susun button, .baris-ringkas button, .pilih-soal')]
       .filter((el) => el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().height < 44)
     return {
       luber: akar.scrollWidth - akar.clientWidth,
@@ -250,8 +301,8 @@ async function main() {
       terlaluKecil: kecil.length,
     }
   })()`)
-  cek('layar 390px: halaman langkah 3 tidak meluber mendatar', sempit.luber <= 1, `luber=${sempit.luber}px`)
-  cek('layar 390px: pil langkah tetap di dalam layar', sempit.pilTerpotong === false, '')
+  cek('layar 390px: halaman susun tidak meluber mendatar', sempit.luber <= 1, `luber=${sempit.luber}px`)
+  cek('layar 390px: pil bagian tetap di dalam layar', sempit.pilTerpotong === false, '')
   cek('layar 390px: tidak ada sasaran sentuh <44px di alur ini', sempit.terlaluKecil === 0, `kecil=${sempit.terlaluKecil}`)
 
   await ukuran(1280, 900, false)

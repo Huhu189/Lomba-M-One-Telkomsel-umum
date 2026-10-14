@@ -9,7 +9,9 @@
 // Karena itu harness ini memeriksa tiga hal:
 //   1. /pengaturan memang halaman akun — ada isian nama + sandi, dan TIDAK ada
 //      satu pun saklar ulangan (kalau ada, artinya pemindahan belum terjadi).
-//   2. Halaman detail kuis memuat panel "Setelan ulangan" untuk kuis itu.
+//   2. Halaman detail kuis memuat **satu tombol** "Setelan ulangan" untuk kuis
+//      itu (14 Oktober 2026: belasan saklarnya tidak lagi tergeletak di halaman,
+//      melainkan terbuka di panel), dan panel itu terstruktur per kelompok.
 //   3. Saklar di panel itu masih bisa diubah dan nilainya kembali seperti semula
 //      di akhir uji — jadi basis data dev tidak berubah.
 //
@@ -66,7 +68,27 @@ async function main() {
     return r.result.value
   }
 
-  const kelompokAntiCheat = `[...document.querySelectorAll('section')].find((s) => s.innerText.startsWith('ANTI-CHEAT') || s.innerText.startsWith('Anti-cheat'))`
+  /** Dialog setelan ulangan yang sedang terbuka (panel "satu tombol"). */
+  const panelTerbuka = `[...document.querySelectorAll('dialog')].find((d) => d.open && d.textContent.includes('Setelan ulangan'))`
+
+  /**
+   * Buka panel setelan ulangan lewat satu tombolnya, lalu tunggu isinya.
+   * Panel ini dulu tergeletak langsung di halaman; sejak 14 Oktober 2026 ia
+   * hanya terbuka dari tombol "Setelan ulangan" di baris aksi halaman kuis.
+   */
+  const bukaPanel = async () => {
+    await evalJs(
+      `[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Setelan ulangan')).click()`,
+    )
+    await sleep(2000)
+  }
+
+  const kelompokAntiCheat = `(() => {
+    const panel = ${panelTerbuka}
+    return panel
+      ? [...panel.querySelectorAll('section')].find((s) => s.innerText.startsWith('ANTI-CHEAT') || s.innerText.startsWith('Anti-cheat'))
+      : null
+  })()`
 
   try {
     await send('Page.navigate', { url: `${APP}/masuk` }, sessionId)
@@ -147,25 +169,41 @@ async function main() {
         `h1="${judulDiHalaman}" · diharapkan memuat "${kuis.judul}"`,
       )
 
+      // Sejak 14 Oktober 2026 setelan ulangan = SATU tombol: halaman hanya
+      // memuat tombolnya (berikut ringkasan angka aktif), sedangkan belasan
+      // saklarnya baru muncul setelah panelnya dibuka.
+      const halamanTanpaSaklar = await evalJs(`(() => ({
+        adaTombol: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Setelan ulangan')),
+        saklarDiHalaman: document.querySelectorAll('input[role="switch"][id^="set-"]').length,
+        pemilihDiHalaman: Boolean(document.querySelector('select#lingkup-pengaturan')),
+      }))()`)
+
+      catat(
+        'halaman detail kuis memuat SATU tombol "Setelan ulangan" — tidak ada saklar tergeletak',
+        halamanTanpaSaklar.adaTombol &&
+          halamanTanpaSaklar.saklarDiHalaman === 0 &&
+          halamanTanpaSaklar.pemilihDiHalaman === false,
+        `tombol=${halamanTanpaSaklar.adaTombol} saklar=${halamanTanpaSaklar.saklarDiHalaman} pemilih lama=${halamanTanpaSaklar.pemilihDiHalaman}`,
+      )
+
+      await bukaPanel()
+
       const panel = await evalJs(`(() => {
-        const bagian = ${kelompokAntiCheat}
-        const setelan = [...document.querySelectorAll('section')].find((s) =>
-          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
-        )
+        const bagian = ${panelTerbuka}
         return {
-          adaSetelan: Boolean(setelan),
-          pemilihDiHalaman: Boolean(document.querySelector('select#lingkup-pengaturan')),
-          saklar: setelan ? setelan.querySelectorAll('input[role="switch"]').length : 0,
-          tombol: setelan
-            ? [...setelan.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => t.startsWith('Nyalakan') || t.startsWith('Matikan'))
+          adaSetelan: Boolean(bagian),
+          kelompok: bagian ? [...bagian.querySelectorAll('h3')].map((h) => h.innerText.trim()) : [],
+          saklar: bagian ? bagian.querySelectorAll('input[role="switch"]').length : 0,
+          tombol: bagian
+            ? [...bagian.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => t.startsWith('Nyalakan') || t.startsWith('Matikan'))
             : [],
         }
       })()`)
 
       catat(
-        'halaman detail kuis memuat panel "Setelan ulangan" untuk kuis ini',
-        panel.adaSetelan && panel.pemilihDiHalaman === false,
-        `pemilih lama=${panel.pemilihDiHalaman}`,
+        'panel terbuka dari tombolnya dan terstruktur per kelompok',
+        panel.adaSetelan && panel.kelompok.length >= 2,
+        panel.kelompok.join(' | '),
       )
 
       catat(
@@ -182,9 +220,7 @@ async function main() {
       // sedangkan saklarnya dari baris tempat ia berada — jadi penamaannya tidak
       // perlu dicocokkan huruf per huruf dengan judul kolomnya.
       const aturanPeringkat = await evalJs(`(() => {
-        const setelan = [...document.querySelectorAll('section')].find((s) =>
-          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
-        )
+        const setelan = ${panelTerbuka}
         if (!setelan) return null
         const angka = [...setelan.querySelectorAll('input[type="number"]')].map(
           (el) => el.getAttribute('aria-label') ?? '',
@@ -253,11 +289,13 @@ async function main() {
       await send('Page.navigate', { url: `${APP}/kuis/${kuis.slug}` }, sessionId)
       await sleep(4000)
 
+      // Saklarnya ada di dalam panel, jadi panelnya dibuka dulu — di layar ponsel
+      // pun setelannya tetap satu tombol yang sama.
+      await bukaPanel()
+
       /** Saklar izin tamu di panel setelan (labelnya datang dari server). */
       const saklarTamu = `(() => {
-        const setelan = [...document.querySelectorAll('section')].find((s) =>
-          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
-        )
+        const setelan = ${panelTerbuka}
         if (!setelan) return null
         return [...setelan.querySelectorAll('input[role="switch"]')].find((el) =>
           (el.getAttribute('aria-label') ?? '').toLowerCase().includes('tamu'),
@@ -279,6 +317,12 @@ async function main() {
           disabled: el.disabled,
         }
       })()`
+
+      // Gulirkan saklarnya ke dalam pandangan lebih dulu: panel setelan lebih
+      // tinggi daripada layar, dan pergeseran tata letak hanya bermakna bila
+      // diukur pada elemen yang benar-benar terlihat.
+      await evalJs(`(() => { const el = ${saklarTamu}; el?.scrollIntoView({ block: 'center' }); return true })()`)
+      await sleep(600)
 
       const sebelumSentuh = await evalJs(ukurSaklar)
       catat(

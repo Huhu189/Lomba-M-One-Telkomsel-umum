@@ -53,6 +53,22 @@ const ALAT = `window.__alat = {
     const bagian = document.querySelector('section.auth-tamu')
     return bagian ? bagian.innerText.replace(/\\\\s+/g, ' ') : null
   },
+  /**
+   * Pintu tamu muncul SEBELUM kolom email di halaman masuk?
+   * Dihitung dari urutan dokumen (bukan urutan CSS), karena yang dibaca anak
+   * adalah urutan yang sama dengan pembaca layar & tombol Tab.
+   */
+  tamuDiAtasAkun() {
+    const tamu = document.querySelector('section.auth-tamu')
+    const email = document.querySelector('input[type="email"]')
+    if (!tamu || !email) return null
+    return Boolean(tamu.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING)
+  },
+  /** Formulir akun sekolah dilipat (details tertutup) di halaman masuk tautan? */
+  akunTerlipat() {
+    const lipat = [...document.querySelectorAll('details')].find((d) => d.querySelector('input[type="password"]'))
+    return lipat ? lipat.open === false : null
+  },
 }`
 
 const hasil = []
@@ -319,6 +335,54 @@ async function main() {
   )
 
   catat('kode perangkat bentuk aneh ditolak validasi (422)', kodeNgawur === 422, `status ${kodeNgawur}`)
+
+  // ---------- 7. Tautan ulangan yang dibagikan: tamu dulu, akun menyusul ----------
+  //
+  // Anak yang membuka tautan guru umumnya tidak punya akun. Sebelum perbaikan
+  // 14 Oktober 2026 ia mendarat di kolom email/kata sandi lebih dulu, dan pintu
+  // tamu hanya muncul sebagai tautan "Atau …" di bagian bawah — jadi anak merasa
+  // dipaksa masuk. Sekarang, bila datang dari `/kuis/…`, pintu tamu tampil di
+  // atas dan formulir akun dilipat.
+  await apiJson('/v1/auth/keluar', 'POST')
+  await evalJs(`window.localStorage.removeItem('${KUNCI_PERANGKAT}'); true`)
+
+  await buka(`/kuis/${kuisTamu}`)
+  const jalurTamu = await evalJs('window.location.pathname')
+  const teksTautan = await evalJs(`__alat.teksTamu()`)
+
+  catat(
+    'buka tautan ulangan tanpa sesi: diantar ke halaman masuk',
+    jalurTamu === '/masuk',
+    `jalur=${jalurTamu}`,
+  )
+
+  catat(
+    'datang dari tautan ulangan: pintu tamu tampil lebih dulu (judul "Ikut ulangan")',
+    typeof teksTautan === 'string' && teksTautan.includes('Ikut ulangan sebagai siswa tamu'),
+    (teksTautan ?? '(tidak ada)').slice(0, 120),
+  )
+
+  catat(
+    'pintu tamu berada di ATAS kolom email (bukan lagi "atau" di bawah)',
+    (await evalJs('__alat.tamuDiAtasAkun()')) === true,
+  )
+
+  catat(
+    'formulir akun sekolah dilipat, tidak menyambut anak dengan kata sandi',
+    (await evalJs('__alat.akunTerlipat()')) === true,
+  )
+
+  await evalJs(`__alat.isiTamu(${JSON.stringify(`${NAMA_TAMU} Tautan`)})`)
+  await sleep(3500)
+
+  const jalurSetelahTamu = await evalJs('window.location.pathname')
+  const tamuTautan = await saya()
+
+  catat(
+    'tulis nama di pintu tamu: dikembalikan ke kuis yang dibuka, tanpa akun',
+    jalurSetelahTamu === `/kuis/${kuisTamu}` && tamuTautan.isTamu === true,
+    `jalur=${jalurSetelahTamu} · id=${tamuTautan.id}`,
+  )
 
   // ---------- Bersih-bersih ----------
   // Pintu tamunya ditutup dengan menghapus kuisnya: saklarnya menempel pada kuis

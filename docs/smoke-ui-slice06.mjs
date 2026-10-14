@@ -440,6 +440,17 @@ async function main() {
       statusJawab.join('/'),
     )
 
+    // Catatan kecurangan murid (slice 07). Dikirim selagi ulangannya masih
+    // berjalan, seperti perangkat murid sungguhan.
+    const kejadian = await apiJson(`/v1/attempt/${attempt.id}/kejadian`, 'POST', {
+      kejadian: [{ kategori: 'tab_switch', client_at: new Date().toISOString() }],
+    })
+    catat(
+      'murid mencatat kejadian berpindah tab saat ulangan berjalan',
+      kejadian.status === 201,
+      `status ${kejadian.status}`,
+    )
+
     // Muat ulang layar kerja: jawaban uraian harus muncul kembali di kotak teks.
     await buka(`/kerjakan/${idKuisUji}`)
     await evalJs(`__alat.bukaSoal(${JSON.stringify(soalTeks.uraian.teks)})`)
@@ -525,6 +536,20 @@ async function main() {
         halamanKoreksi.includes('Simpan koreksi') &&
         halamanKoreksi.includes(`skor ${itemUraian?.skor_sekarang} / ${itemUraian?.skor_maksimal}`),
       halamanKoreksi.slice(0, 90),
+    )
+
+    // Catatan kecurangan murid (14 Oktober 2026): guru menilai tanpa membuka
+    // Monitor Ulangan, dan panelnya juga menyebut sebabnya.
+    const panelCatatan = await evalJs(
+      `document.querySelector('[data-catatan]')?.getAttribute('data-catatan') ?? ''`,
+    )
+    catat(
+      'catatan kecurangan murid langsung tampil di halaman koreksi',
+      panelCatatan === '1' &&
+        halamanKoreksi.includes('catatan pada murid ini') &&
+        halamanKoreksi.includes('Pindah tab') &&
+        halamanKoreksi.includes('Tinjau di Monitor Ulangan'),
+      `panel=${panelCatatan} · ${halamanKoreksi.includes('Pindah tab') ? 'kategori terbaca' : 'kategori tidak ada'}`,
     )
 
     // Koreksi lewat UI: isi skor + alasan, minta token, lalu simpan.

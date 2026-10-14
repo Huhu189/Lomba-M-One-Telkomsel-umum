@@ -7381,6 +7381,8 @@ bukan menukar satu dengan yang lain.
   `docs/laporan-pengujian.md` (bagian ini), `docs/handoff-sesi.md`.
 - **Tidak ada berkas aplikasi** (backend/frontend/realtime) yang diubah.
 
+---
+
 ## A.83 — Lima jalur yang dulu memaksa guru keluar halaman (14 Oktober 2026)
 
 ### A.83.1 Yang dikerjakan (dan sebabnya)
@@ -7499,3 +7501,580 @@ tidak menyimpan apa pun.
   `docs/smoke-ui-slice03.mjs` (+7, 9 → 16), `docs/smoke-ui-slice04.mjs` (+1, 18 → 19),
   `docs/smoke-ui-pengaturan.mjs` (+4, 13 → 17), `docs/penjelasan-fitur.md` (bagian 5, 19, 20),
   `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (bagian ini).
+
+---
+
+## A.84 — Editor kuis satu halaman + setelan ulangan jadi satu tombol (14 Oktober 2026)
+
+### A.84.1 Permintaan & tafsirnya
+
+Permintaan pemilik produk: *"pertama buat pengaturan lebih ringkas dalam 1 button saja dan terstruktur,
+dan kau mulai refactor beberapa hal untuk mempermudah pemakaian dan UI"*, lalu dipertegas saat ditanya
+bentuk panelnya: *"dalam editor form/ujian nya buat ringkas gak perlu 3 step 3 step"* — dan
+*"fokus setelan dulu"* untuk bagian lain.
+
+Dua hal yang dikerjakan, keduanya soal bentuk pemakaian, bukan aturan baru:
+
+1. **Editor kuis bukan lagi tiga langkah berurutan.** Dulu: isi info → tekan "Lanjut: susun soal" →
+   susun soal → tekan "Lanjut: tinjau" → baru bisa menerbitkan. Setiap langkah menyembunyikan isi
+   langkah lain, jadi guru tidak bisa melihat kelengkapan sambil mengisi, dan tombol terbit selalu
+   ada di ujung alur. Sekarang **satu halaman tiga bagian** (Info & jadwal · Susun soal · Tinjau &
+   publikasi) yang semuanya terlihat sekaligus.
+2. **Setelan ulangan jadi SATU tombol.** Dulu halaman detail kuis menggelar belasan saklar, tombol
+   massal per kelompok, dan kotak angka langsung di halaman. Sekarang halaman hanya memuat satu tombol
+   ("Setelan ulangan", berikut ringkasan angka aktif) yang membuka panel terstruktur per kelompok.
+
+### A.84.2 Yang berubah
+
+**Editor kuis (`frontend/src/sections/quiz/HalamanKuis.jsx`):**
+
+- Alur langkah (`langkah` 0–2 yang menyembunyikan isi) diganti **bagian** (`bagian` 0–2) yang hanya
+  dipakai pil pelompat: `LangkahPil` tetap, tetapi `onPilih` kini menggulir ke bagiannya
+  (`lompatKe()` → `scrollIntoView`) dan **tidak ada isi yang tersembunyi**.
+- **Bar aksi lengket** (`.bar-susun`, `position: sticky`): lencana "x dari 8 lengkap" + tombol
+  **"Simpan draf"** (mengirim formulir bagian 1 lewat atribut `form="form-kuis"` — tombolnya berada
+  di luar `<form>`) + **"Terbitkan kuis"** (mati selama kelengkapan belum penuh). Guru tidak perlu
+  menggulir ke bawah untuk menyimpan atau menerbitkan.
+- Karena ketiga bagian kini terlihat sekaligus, guru bisa memilih soal atau menekan Terbitkan **tanpa
+  pernah menekan "simpan" lebih dulu**. Dua jalur baru menjaganya: `simpanDraf()` (validasi Zod yang
+  sama seperti tombol formulir) → `pastikanDraf()` (membuat draf bila belum ada id), dipakai
+  `simpanSusunanKlik()` ("Simpan susunan") dan `terbitkanKuis()` (**simpan draf → simpan susunan →
+  publikasi**). Urutan yang dulu dijamin tiga langkah berurutan sekarang dijaga di satu tempat.
+- Bagian 2 punya tombol **"Simpan susunan"** sendiri (dulu hanya ada "Lanjut: tinjau").
+- `setelanSesi` diambil begitu drafnya punya id (dulu hanya saat sampai langkah 3).
+- `bukaSusun()` (aksi "Susun soal" di daftar) kini juga mengisi formulir bagian 1 — halaman yang sama
+  tidak tampak kosong separuh — lalu menggulir ke bagian 2.
+- `LANGKAH_KUIS` → **`BAGIAN_KUIS`** (`susunKuis.js`), dengan komentar bahwa namanya bagian, bukan
+  langkah yang harus dilalui.
+
+**Setelan ulangan (`frontend/src/sections/quiz/SetelanUlangan.jsx`, baru):**
+
+- Satu tombol + `<PanelForm>` (dialog samping, pola yang sudah dipakai panel form lain). Ringkasan di
+  tombol memakai `ringkasSetelan()` yang **sama** dengan bagian "Tinjau" di editor, jadi angka di dua
+  tempat tidak mungkin berbeda; query-nya satu key (`['pengaturan', kuisId]`) dengan panelnya, jadi
+  membuka panel tidak menembak server dua kali.
+- `PanelSetelanUlangan.jsx` (isi panel, terstruktur per kelompok) **tidak diubah** — tesnya tetap
+  berlaku apa adanya; yang berubah hanya cara membukanya.
+- Dipakai di **dua tempat**: baris aksi halaman detail kuis (`HalamanKuisDetail.jsx` — bagian
+  "Setelan ulangan" yang panjang dihapus, diganti tombol) dan blok "Setelan sesi ini" di bagian 3
+  editor. Sengaja **hanya satu tombol per halaman** (tidak diulang di bagian 1), dan ini dijaga
+  harness.
+
+**Berkas lain:** `frontend/src/theme/theme.css` (`.bar-susun`; komentar `.pil-langkah` disesuaikan),
+`docs/smoke-ui-susun.mjs` (ditulis ulang untuk satu halaman), `docs/smoke-ui-pengaturan.mjs`
+(panel → dialog), `docs/smoke-ui-setelan-sesi.mjs`, `docs/smoke-ui-kuis-manual.mjs`,
+`docs/smoke-ui-slice03.mjs`.
+
+### A.84.3 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **396 lulus (3966 asersi)** · Redis wajib **9/65** · Pint bersih · checkJs exit 0 · ESLint **0 error** · Vitest **98 berkas / 893 tes** · realtime **20** |
+| `npx vitest run src/__tests__/sections/quiz/` | **48 lulus / 5 berkas** — termasuk dua berkas baru di bawah |
+| `setelanUlanganTombol.test.jsx` (baru, 3 tes) | Sebelum ditekan: **0 saklar** di halaman (dialog tertutup) · tombol meringkas **"2/8 aktif"** · setelah ditekan: panel memuat saklar `block_paste` & `izinkan_tamu` + tombol tutup |
+| `editorSatuHalaman.test.jsx` (baru, 4 tes) | Ketiga judul bagian tampil **bersamaan** · **tidak ada** tombol "Lanjut: …" · isian `#kuis-judul` + kelengkapan bagian 3 ada di DOM yang sama · bar `.bar-susun` memuat Simpan draf + Terbitkan (Terbitkan `disabled` saat belum lengkap) · `form="form-kuis"` benar |
+| `docs/jalankan-smoke-ui.sh susun` (Chrome sungguhan) | **51/51 lulus, exit 0** — bagian baru: tiga pil bagian tampil & pil aktif lewat `aria-current` · **ketiga bagian tampil sekaligus** · **tidak ada tombol "Lanjut: …"** · bar `sticky` berisi Simpan draf + Terbitkan (Terbitkan mati saat belum lengkap) · **"Simpan draf" dari bar benar-benar menyimpan** (`Kuis dibuat sebagai draf`) · bagian 2 langsung memuat bank soal + tombol "Simpan susunan" · **setelan ulangan = 1 tombol, 0 saklar tergeletak** · panelnya terbuka dengan **21 saklar** dalam **5 kelompok** |
+| `docs/jalankan-smoke-ui.sh pengaturan` | **18/18 lulus, exit 0** — halaman kuis memuat **satu** tombol setelan tanpa saklar · panel terbuka terstruktur (`ATURAN ULANGAN | TAMPILAN & LAPORAN | ANTI-CHEAT | LAPORAN & PEMAHAMAN | SISWA TAMU`) · aturan peringkat baru tetap bisa diatur · saklar tamu di 390 px **geser 0 px** dan nilainya benar-benar berubah (setelah saklarnya digulirkan ke dalam pandangan lebih dulu — sebelumnya terukur saat berada di luar layar) |
+| `docs/jalankan-smoke-ui.sh setelan-sesi` | **24/24 lulus, exit 0** — termasuk pemeriksaan baru "editor kuis satu halaman (tiga bagian sekaligus, tanpa tombol “Lanjut:”)"; ringkasan "Setelan sesi ini" + tautan siswa tetap utuh |
+| `docs/jalankan-smoke-ui.sh kuis-manual` | **15/15 lulus, exit 0** — soal ditulis & disimpan dari bagian 2, susunan tersimpan lewat **"Simpan susunan"**, mapel soal baru tetap diwarisi kuisnya |
+| `docs/jalankan-smoke-ui.sh slice03` lalu `slice04` | **16/16** dan **19/19 lulus, exit 0** — publikasi dari satu halaman tetap menyimpan susunan lebih dulu (kuis "Latihan Operasi Hitung (draf)" terbit dengan **80 soal**) |
+| `node --check` keenam harness yang disentuh | lolos |
+
+### A.84.4 Batasan jujur
+
+- **Kontrol negatif tidak dijalankan** untuk putaran ini: yang membuktikan perbaikan adalah tes &
+  harness **baru** (yang pasti merah atas kode lama: "Lanjut: …" masih ada, saklar masih tergeletak),
+  bukan perbandingan A/B atas kode lama yang dijalankan ulang.
+- **Tampilan bar lengket hanya diperiksa sebagai `position: sticky` + keberadaan tombolnya** di
+  peramban; tidak diukur apakah bar benar-benar "menempel" saat halaman digulir jauh (butuh
+  pembacaan `getBoundingClientRect` sesudah gulir — belum ditulis).
+- **Pil pelompat tidak melacak gulir.** `aria-current="step"` menandai bagian yang **terakhir
+  dipilih**, bukan yang sedang terlihat; menggulir manual tidak memindahkan penandanya. Alternatif
+  `IntersectionObserver` sengaja tidak dipakai supaya tidak ada jalur kode yang hanya hidup di
+  peramban (dan tak teruji).
+- **`docs/smoke-ui-slice05`, `slice06`, `slice07`, `slice10`, `luring`, `admin`, `mobile` tidak
+  dijalankan ulang** putaran ini (tidak menyentuh jalur kuis/ setelan yang berubah). Yang dijalankan
+  disebut lengkap di tabel di atas.
+- **Editor materi & pustaka media** yang masih ada di pohon kerja dari putaran sebelumnya tetap
+  **belum diverifikasi** di laporan ini (sama seperti catatan A.83).
+- `docs/word/*.docx` belum diekspor ulang untuk entri ini.
+
+---
+
+## A.85 — Penanda pos khas tema, tanjung goa di darat, dan klip media dari tautan + drag & drop (14 Oktober 2026)
+
+Tiga permintaan pemilik produk dalam satu putaran, semuanya dikerjakan dan diukur.
+
+### A.85.1 Penanda pos peta **khas per tema** (bukan tenda di semua tema)
+
+Keluhan: *"jangan semua dibuat … seperti tenda"*. Benar: sejak A.46 penanda pos
+SELALU kemah di semua tema, jadi tema **Harta Karun di Pulau** dan **Luar Angkasa**
+menampilkan tenda pendakian di tengah laut/langit.
+
+- `PetaPerjalanan.jsx`: `KemahPos` → **`PenandaPos`** dengan peta `BENTUK_POS`
+  (`gunung` → kemah, `pulau` → **perahu layar**, `angkasa` → **roket**); adegan tak
+  dikenal tetap kemah supaya materi lama tidak kehilangan penandanya.
+- Kelas CSS dirapikan: `.jelajah-pos-bentuk` (kotak bentuknya),
+  `.jelajah-pos-badan` (atap lambung/badan — bergaris tepi putih + warna pos),
+  `.jelajah-pos-terang` (pintu kemah, layar perahu, jendela & semburan roket).
+- Tes: `petaPerjalanan.test.jsx` +1 (empat penanda per tema, bentuk tema lain tidak
+  bocor) dan `docs/smoke-ui-perjalanan.mjs` +3 pemeriksaan peramban
+  (`kemah 4` · `roket 5` · `perahu 6` — masing-masing 0 bentuk tema lain).
+
+### A.85.2 Tanjung goa **duduk di darat** (tidak lagi melayang di udara)
+
+Keluhan: *"yang harta karun jangan yang kubah harta karunnya di udara"*. Terukur:
+pangkal batu `goa` berhenti di **y = 432** sementara laut mulai **y ≈ 440** dan pasir
+pantai baru **y = 500** pada x pos goa — jadi ada celah langit 8 px (dan 68 px sampai
+garis pasir) di bawah batunya, dan butir-butir emas di bawah goa (y 486–516) jatuh di
+laut.
+
+`pulau.svg`: kaki tanjung kini turun sampai **y ≈ 574** (menyambung ke pasir), mulut
+goa + batu gelapnya ikut turun, batu kecil di sisinya dipindah ke ketinggian yang
+benar. Pagar baru di `latarTema.test.js`: **"kaki tanjung goa sampai ke pasir pantai"**
+— diukur dari badan tanjung (bentuk terluas di grup `goa`) terhadap garis atas `pantai`
+di x pos "Goa Harta Karun". Dijalankan **merah-dulu** atas berkas lama: `badan tanjung
+berhenti di y 432 padahal pasir pantai sudah mulai di y 500 di x 1280 — celah 68 px`.
+
+### A.85.3 Peti harta karun yang **tidak pernah ada** — penanda `{{CC0:…}}` yang tak digambar
+
+Temuan sampingan saat mengerjakan A.85.2: `pulau.svg` memuat **teks penanda**
+`{{CC0:peti}}` dan `{{CC0:karang}}` (sejak A.73). Peramban tidak menggambar teks di
+dalam SVG, jadi peti harta karun dan karang CC0 itu **tidak pernah tampak** walau
+`LISENSI.md` mengaku keduanya sudah disisipkan. Diganti dengan gambar di repo (CC0):
+peti bermulut goa (badan, tutup, pita emas, kancing, dua kilau) dan karang di grup
+`karang`; `LISENSI.md` dikoreksi apa adanya (dua ikon itu dipindah ke tabel "rencana
+yang batal dipakai"). Pagar baru: **tidak ada penanda `{{…}}` di berkas latar**
+(dijalankan merah-dulu atas berkas lama: `pulau: tidak ada penanda aset yang belum
+digambar` **gagal**). Berkas: 196 → **206 bentuk** (23,2 KB).
+
+### A.85.4 Klip media dari **tautan** (YouTube/Drive/berkas) + **drag & drop** berkas
+
+Keluhan: *"dari pada download videonya guru, guru bisa drag and drop langsung untuk
+medianya … ke editor/menyelipkan dengan link"*.
+
+- **Tautan**: klip media kini punya sumber kedua, `isi.tautan`. Guru menempelkan
+  alamat yang ia kenal; **alamat sematan dihitung server**
+  (`Registry\TautanMedia`): YouTube → `www.youtube-nocookie.com/embed/{id}` (mode
+  privasi, tanpa cookie pelacak), Drive → `drive.google.com/file/{id}/preview`, berkas
+  media langsung → diputar pemutar bawaan lewat mime dari ekstensi. Hanya https,
+  tanpa kredensial, host publik (alamat lokal/IP privat ditolak), maks 500 karakter.
+  Di pemutar murid, tautan tersemat dirender `<iframe>` (allowlist host dari server,
+  `loading="lazy"`, `referrerpolicy`), dan kuis di dalam klip tautan **bisa
+dibuka murid lewat tombol** — klip sematan tidak memberi `currentTime`, jadi tanpa tombol
+  kuis wajib di dalamnya tak akan pernah tampil.
+- **Drag & drop**: berkas boleh dijatuhkan **di seluruh panel editor**. Aturan
+  keputusannya murni (`rencanaLepasBerkas`): di atas satu klip = **tukar berkas klip
+  itu**, di tempat lain = **klip media baru**, lebih dari satu berkas sekaligus =
+  **ditolak dengan pesan** (unggahan berjalan satu per satu), seretan tanpa berkas
+  ditolak. Seretan KLIP di timeline tidak terganggu: lane tetap memakai `text/klip`.
+- Editor: kotak "Selipkan dari tautan" di sidebar + kotak "Atau pakai tautan" di panel
+  klip (satu klip satu sumber — memakai tautan mengosongkan berkas unggahannya dan
+  sebaliknya), ringkasan sumber, dan catatan bahwa kuis dalam klip tautan dibuka lewat
+  tombol.
+
+**Terverifikasi pada kode final:** `./verify.sh` **SEMUA HIJAU (exit 0)** — Pest
+**404 lulus / 4039 asersi** (396 → 404: +7 tes `tests/Unit/TautanMediaTest.php` dan +1
+tes Feature ujung-ke-ujung di `Slice08Test` — simpan tautan, alamat sematan dari
+server, mime berkas langsung, dan **empat tautan tidak aman ditolak 422**) · Redis
+wajib 9/65 · Pint bersih (382 berkas) · checkJs · ESLint 0 error · Vitest · realtime 20.
+Vitest **99 berkas / 908 tes** (98/898 → 99/908), termasuk `tautanMedia.test.js` **10/10** (aturan tautan kembar dengan server, keputusan
+drop, `muatanBlok`/`dariServer` tautan) dan `petaPerjalanan.test.jsx` 16/16 (satu
+gagal-dulu saat kelas penanda lama masih dipakai). Peramban: `docs/jalankan-smoke-ui.sh
+perjalanan` **77/77 lulus, exit 0** (69 → 77) untuk penanda per tema, batu tanjung, dan
+peti.
+
+**Batasan jujur:**
+
+- **Jalur tautan & drag & drop belum dijalankan di peramban.** Yang membuktikan baru
+  tes Pest/Vitest + checkJs/Pint; harness `materi`/`kuis-materi`/`editor` belum
+  dijalankan ulang, dan belum ada pemeriksaan GUI yang menjatuhkan berkas sungguhan
+  atau menyematkan iframe YouTube. Klaim "guru bisa drag & drop" belum punya bukti
+  peramban.
+- **Iframe pihak ketiga butuh internet.** Di mode luring materi bertaut tetap tampil
+  sebagai tautan; tidak ada salinan luringnya. Jaringan sekolah yang memblokir
+  `youtube-nocookie.com`/`drive.google.com` membuat bingkainya kosong (disediakan
+  tautan "buka di tab baru").
+- **Kuis di dalam klip tautan tidak bisa dipicu waktu putar** (bukan bug baru, memang
+  keterbatasan iframe) — murid membukanya lewat tombol, dan editor menuliskan itu.
+- **Satu berkas per seretan**; tidak ada unggahan beruntun dari satu seretan.
+- `docs/word/*.docx` belum diekspor ulang untuk putaran ini.
+
+---
+
+## A.86 — Pembuat soal tabel, teka silang, dan sinonim pindah dari teks mentah ke GUI (14 Oktober 2026)
+
+### A.86.1 Permintaan & tafsirnya
+
+Keluhan pemilik produk: *"pada pem[a]bu[a]tan soal [t]abel itu sangat buruk mungkin soal lain ju[a]g[a]
+b[u]at pemb[u]at[a]n[n]ya lebih baik b[u]at dalam gui spe[c]ify"*. Tafsirnya: tiga tipe soal masih
+disusun dengan **mengetik bentuk soalnya sebagai teks**, jadi guru baru melihat bentuk soalnya setelah
+disimpan:
+
+| Tipe | Dulu (teks mentah) | Sekarang (GUI) |
+| --- | --- | --- |
+| Tabel isian | isian `#tabel-kolom` "Nama kolom (pisahkan dengan koma)" + tiap baris satu kartu berisi `Teks tabel (kosongkan agar murid mengisi)` dan `Jawaban diterima (pisah koma)` | **tabel sungguhan**: kepala kolom & selnya diketik **di dalam kotaknya**, tombol `Tambah kolom`/`Tambah baris` dan `×` per kolom/baris |
+| Teka silang mini | satu `<textarea>` `#silang-grid` tempat guru menulis `kucing\n#n#i#t` (satu baris per baris kotak) | **papan kotak**: satu kotak = satu huruf (`aria-label="Huruf jawaban baris r kolom c"`), tombol ■/huruf per kotak, tambah/hapus baris & kolom |
+| Uraian (sinonim) | satu `<textarea>` `#soal-sinonim-uraian` berisi baris `kata = alias` | **baris kata + alias**: tiap baris punya isian `Kata kunci sinonim n` dan `Sinonim kata kunci n`, dengan `Tambah sinonim` / `×` |
+
+Yang **tidak** diubah: tipe lain (pilihan ganda, menjodohkan, klasifikasi, rumpang, dst.) memang sudah
+berbaris — bukan teks mentah — sejak awal, jadi tidak ada yang perlu dipindah. Daftar jawaban yang
+**memang** berupa daftar (mis. "jawaban diterima, pisah koma") tetap diketik berkoma: itu isi, bukan bentuk.
+
+### A.86.2 Yang berubah
+
+**`frontend/src/sections/question/tipeSoal.js`** (+342) — **sembilan belas fungsi murni baru** yang
+menentukan bentuk data yang dikirim ke server, semuanya bisa diuji tanpa peramban: `kolomTabel`/
+`kolomTabelDiganti`, `tambahKolomTabel`/`hapusKolomTabel` (nama kolom masih disimpan sebagai teks berkoma,
+jadi koma di dalam satu nama kolom dibuang supaya tidak menciptakan kolom baru), `tambahBarisTabel`/
+`hapusBarisTabel` (kunci sel yang kolomnya dihapus ikut dibuang — bukan dibiarkan menggantung), `samakanPanjangSilang`,
+`ubahKotakSilang`, `gridDariKotakSilang`/`kotakSilangDariGrid`, `tambah`/`hapusBarisSilang`,
+`tambah`/`hapusKolomSilang`, serta `barisSinonimUraian`/`teksDariBarisSinonimUraian`/
+`ubahBarisSinonimUraian`/`tambahBarisSinonimUraian`/`hapusBarisSinonimUraian` (teks `kata = alias` tetap
+boleh **dibaca** dari soal lama, tetapi editor menyusunnya sebagai baris). Batas server tetap dijaga dan
+**diucapkan**: tabel maksimal `MAKS_SEL` = 40 sel, teka silang maksimal `MAKS_SISI_SILANG` per sisi.
+
+**`frontend/src/sections/question/EditorSoal.jsx`** (+656) — pembuat GUI-nya:
+
+- **Tabel:** `<table class="tabel-editor">` dengan kepala kolom yang bisa diketik, satu `<input>` per sel,
+  isian "Jawaban diterima" **hanya muncul pada sel yang kosong** (sel berisi teks memang tidak dinilai),
+  penanda `perlu-kunci` pada sel kosong yang belum punya kunci (guru langsung melihat mana yang belum
+  lengkap), tombol `+` per kepala kolom, `Tambah baris`, dan ringkasan "Tabel n kolom × m baris".
+- **Teka silang:** papan kotak `silang-editor`; mengetik huruf di kotak menyimpan **satu huruf** (ketikan
+  kedua menggantinya, huruf kecil apa adanya), `#` atau tombol ■ menjadikan kotak hitam **dan** tombolnya
+  berubah menjadi pengembali ("Kotak hitam r c — kembalikan jadi kotak huruf"). Minimal 2 × 2, dan saat
+  batasnya dicoba ditembus, **sebabnya ditulis** ("Teka silang wajib punya minimal 2 kolom."), bukan tombol
+  yang diam. Batas maksimalnya pun disebut di tempatnya ("Tabel isian maksimal 40 sel", "± n dari maksimal
+  40 sel", "maksimal 12 × 12").
+- **Sinonim:** baris kata + alias dengan tambah/hapus; spasi di dalam kata tetap utuh saat diketik.
+- Pratinjau di panel kanan memakai **renderer murid yang sama**, jadi bentuk yang dilihat guru = bentuk yang
+dilihat murid (diuji di peramban: sel r1c2 pratinjau benar-benar jadi kotak isian).
+
+**`frontend/src/theme/theme.css`** (+46) — `.tabel-editor-bungkus`/`.silang-editor-bungkus` (menggulir di
+**dalam** bungkusnya, seperti `.tabel-isian-bungkus`), `.tabel-editor`, `.tabel-editor-sel.perlu-kunci`,
+`.silang-editor-sel(.hitam)`, `.silang-editor-hitam`, `.silang-editor-nomor`.
+
+**Harness baru `docs/smoke-ui-soal-grid.mjs`** (21 pemeriksaan) — menjalankan jalan yang dipakai guru di
+Chrome sungguhan: masuk, buat kuis uji, susun **satu soal tabel + satu teka silang + satu uraian lewat
+grid**, masukkan ketiganya ke susunan kuis, **baca kembali dari server**, lalu bersihkan. Di 390 px grid
+tabel 9 kolom **menggulir di dalam bungkusnya** (geser halaman 0 px).
+
+### A.86.3 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **404 lulus / 4039 asersi** · Redis wajib **9 lulus / 65 asersi** · Pint bersih (**382 berkas**) · checkJs exit 0 · ESLint **0 error** (2 peringatan lama React Compiler) · Vitest **101 berkas / 942 tes** · realtime **20 lulus / 0 gagal** |
+| `npx vitest run src/__tests__/sections/question/guiGridEditor.test.jsx src/__tests__/sections/question/gridSoalEditor.test.js` | **34 lulus / 2 berkas** — `guiGridEditor.test.jsx` **15** (jalan guru: isi grid, tekan tombol, lalu **periksa muatan `onSimpan`**) dan `gridSoalEditor.test.js` **19** (helper murni: kolom/baris/sinonim/kotak silang) |
+| `bash docs/jalankan-smoke-ui.sh soal-grid` | **20/20 lulus, exit 0** di Chrome sungguhan — di antaranya: kepala kolom bawaan sudah bernama (`Soal`, `Jawaban`) dan isian `#tabel-kolom` **tidak ada lagi** · `Tambah kolom` → 3 kolom dengan sel di tiap baris · sel kosong ditandai `perlu-kunci` (2 → 1 setelah kuncinya diisi) · **pratinjau murid memakai renderer yang sama** (sel r1c2 = 1 kotak isian) · teka silang: satu kotak = satu huruf, `#` menjadikan kotak hitam dan bisa dikembalikan · sinonim uraian **tersimpan sebagai peta kata → alias** (`{"fotosintesis":["rambut getar","silia"]}`) · susunan kuis menyimpan **ketiga soal yang disusun lewat grid** (`{"jumlah":3,"tipe":["tabel_isian","teka_silang_mini","uraian"]}`) · **ponsel 390 px**: grid tabel 9 kolom menggulir di dalam bungkusnya dengan **geser halaman 0 px**, begitu pula grid teka silang 12 kolom |
+| `bash docs/jalankan-smoke-ui.sh kuis-manual` | **15/15 lulus, exit 0** — jalur tulis-soal-lewat-editor tidak rusak |
+| `bash docs/jalankan-smoke-ui.sh slice03` | **16/16 lulus, exit 0** — termasuk "Simpan & lanjut" & mapel baru dari editor |
+| `bash docs/jalankan-smoke-ui.sh susun` | **51/51 lulus, exit 0** — termasuk susunan kuis & setelan satu tombol (A.84) |
+| `node --check docs/smoke-ui-soal-grid.mjs` | lolos sebelum dijalankan |
+
+### A.86.4 Batasan jujur
+
+- **Kontrol negatif tidak dijalankan** untuk putaran ini: yang membuktikan perbaikan adalah tes & harness
+  **baru** (yang pasti merah atas kode lama: `#tabel-kolom`, `#silang-grid`, dan `#soal-sinonim-uraian`
+  **ada** sebelum perubahan — dan sekarang ketiganya diuji "tidak ada"), bukan perbandingan A/B atas kode
+  lama yang dijalankan ulang.
+- **Tiga tipe itu saja yang berubah bentuk pembuatannya.** Tipe lain sudah berbaris sejak awal; pemilik
+  produk menyebut "mungkin soal lain juga", jadi kalau masih ada tipe lain yang terasa buruk, itu pekerjaan
+  berikutnya — bukan klaim bahwa semuanya sudah ditelusuri satu per satu di sini.
+- **Daftar jawaban yang memang berbentuk daftar tetap diketik berkoma** (mis. "jawaban diterima"), begitu
+  pula kata negasi di isian singkat: itu isi jawaban, bukan bentuk soal. Kalau guru ingin satu jawaban
+  diterima yang **mengandung koma**, belum ada jalur khusus untuk itu.
+- **Isian rumpang sengaja dibiarkan begitu**: bentuknya sudah GUI (satu baris per lubang dengan kotak
+  "Jawaban diterima lubang n" + tombol "Tambah lubang"), tetapi **posisi** lubangnya masih berupa penanda
+  `{{n}}` yang diselipkan ke dalam kalimat — kalimatnya sendiri tetap teks. Itu memang bentuk soal "kalimat
+  berlubang", jadi putaran ini tidak mengubahnya; penandaan lubang dengan menyorot kata akan jadi pekerjaan
+  tersendiri.
+- **Sapuan penuh harness tidak diulang.** Yang dijalankan putaran ini: `soal-grid` (baru), `kuis-manual`,
+  `slice03`, `susun` + `./verify.sh`. Harness `editor`/`materi`/`kuis-materi`/`perjalanan` (editor materi &
+  pustaka media, A.85) **tidak** dijalankan di sini dan tidak diklaim hijau oleh putaran ini.
+- **Rendering murid tidak disentuh** — halaman pengerjaan sudah memakai renderer tabel/teka silang/uraian
+  yang sama sejak tipe-tipe itu dibuat; yang berubah hanya cara guru menyusunnya.
+- `docs/word/*.docx` belum diekspor ulang untuk putaran ini.
+
+### A.86.5 Berkas
+
+- **Frontend aplikasi:** `src/sections/question/EditorSoal.jsx`, `src/sections/question/tipeSoal.js`,
+  `src/theme/theme.css`. **Tidak ada** berkas backend/realtime yang diubah.
+- **Frontend uji (Vitest, lokasi terpusat):** `src/__tests__/sections/question/guiGridEditor.test.jsx`
+  (baru, 15 tes — menguji lewat DOM editor dan **memeriksa muatan `onSimpan`**), 
+  `src/__tests__/sections/question/gridSoalEditor.test.js` (baru, 19 tes — helper murni).
+- **Docs/harness:** `docs/smoke-ui-soal-grid.mjs` (baru, 21 pemeriksaan), `docs/penjelasan-fitur.md`
+  (bagian 2), `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (bagian ini).
+
+## A.87 — Tombol hapus grid, jenis berkas unggahan, dan pembuatan soal yang visual (14 Oktober 2026)
+
+### A.87.1 Permintaan & tafsirnya
+
+Tiga permintaan pemilik produk dalam satu putaran, semuanya soal **cara guru
+menyusun soal** — bukan aturan baru:
+
+1. *"teka silang mini yang tempat sampahnya sangat amat jelek UI-nya perbaiki"* →
+   tombol hapus di grid editor dinilai jelek.
+2. *"jenis berkas yang boleh diunggah itu jangan buat manual diketik, buat opsi
+   banyak … pakai itu, makanya boleh semua, hingga tertentu saja"* → pemilih jenis
+   berkas, bukan teks bebas.
+3. *"menjodohkan layout-nya sangat jelek dan gak berurutan dan sudah dipakai,
+   perbaiki. Buat pengurutan urutan dll langsung visual gak perlu ketik lagi, ini
+   pattern utama: utamakan visual, jangan banyak biarkan user mengetik manual …
+   agar lebih mudah dan tidak banyak human error"* → pengurutan dan penyambungan
+   pasangan disusun visual.
+
+### A.87.2 Yang berubah
+
+**1. Tombol hapus di dalam grid (tabel isian & teka silang).**
+
+Sebelumnya tiap baris menumpuk **nomor + tombol hapus merah penuh**. Tombolnya
+48 px (`min-height` bawaan), sementara kotak soalnya 52 px — dan karena tombolnya
+di bawah nomor, sel gutter menjadi lebih tinggi daripada kotaknya, sehingga baris
+grid tertarik melar. Terukur di peramban pada kode lama: sel 52 px, gutter 64 px.
+Sekarang:
+
+- nomor dan tombol hapus duduk dalam **satu baris setinggi kotaknya** (terukur
+  `sel=52px gutter=52px`);
+- tombolnya berbentuk **hantu** — ikon samar, tanpa isi warna, dan warna bahaya
+  baru muncul saat disorot/difokus. Terukur `background-color: rgba(0, 0, 0, 0)`
+  untuk tombol baris maupun kolom (dulu kotak merah penuh);
+- hapus kolom pindah ke **baris kaki tabel** berlabel "Hapus kolom" (dulu
+  menumpuk di tiap kepala kolom), dan halaman kaki itu ikut menjadi bagian dari
+  pengukuran.
+
+Bentuk hantu yang sama dipakai **semua tombol hapus baris di editor soal**
+(18 tombol "Hapus …": pilihan, kata, posisi, sinonim, butir rubrik, petunjuk,
+dst.) supaya editor tidak lagi penuh kotak merah.
+
+**2. Jenis berkas tugas unggah dipilih dari daftar.**
+
+Daftarnya (`JENIS_BERKAS_TUGAS`) dicerminkan dari apa yang benar-benar bisa
+dikirim murid (`sections/attempt/UnggahLampiran.jsx`: foto, rekaman diri, berkas)
+dan dari klasifikasi isi berkas di server
+(`Sections/Material/Services/KlasifikasiBerkas.php`: gambar JPG/PNG/GIF/WEBP,
+PDF, video MP4/WEBM, suara MP3/WAV/OGG, arsip & dokumen kantor):
+*Semua jenis berkas · Foto/gambar (JPG, PNG) · Dokumen PDF · Video (MP4, WEBM) ·
+Suara (MP3, WAV) · Word/Excel/PowerPoint*.
+
+- **Tugas unggah baru sudah memilih "Semua jenis berkas"** (dulu kolomnya kosong
+  dan harus diketik).
+- "Semua" tidak bisa digabung pilihan lain; mencentang pilihan lain melepasnya.
+- Kalimat yang dikirim ke server tetap satu teks (`konten.jenis_berkas`, batas 120
+  karakter) — **kontrak backend tidak berubah**, dan murid membaca kalimat yang
+  sama seperti sebelumnya (mis. "Dokumen PDF, Suara (MP3/WAV)"). Editor
+  menampilkan baris "Murid membaca: …" supaya guru melihat kalimat akhirnya.
+- Soal **lama** yang menyimpan teks bebas dibaca ulang lewat kata kunci
+  (`pilihanJenisBerkas`): "Foto JPG atau PNG" → centang *Foto/gambar*. Teks yang
+  **tidak** dikenali (mis. "coretan pensil") sengaja **tidak** diterjemahkan
+  menjadi "semua" — editor meminta guru memilih ulang, karena memperlonggar
+  aturan tanpa sepengetahuan guru justru berbahaya.
+
+**3. Mengurutkan & urut gambar disusun visual (▲/▼).**
+
+Dulu tiap baris punya **kotak nomor urut** yang harus diketik; dua baris bisa
+bernomor sama dan nomor yang terlewat baru ketahuan dari galat server. Sekarang
+urutan disusun dengan memindahkan barisnya; nomor tiap baris dihitung sendiri
+(`geserBarisPosisi` menulis ulang `posisi` menjadi 1..n, tanpa kembar, tanpa
+lubang), dan di ujung daftar tombolnya mati. Baris paling atas = paling awal;
+`kunci.urutan` mengikuti urutan yang dilihat guru, sementara murid tetap menerima
+itemnya **teracak** (server mengacak `item`/`opsi` per attempt — tidak berubah).
+
+**4. Menjodohkan & hubung kata: papan penyambung tersendiri.**
+
+Dulu satu baris memuat kode + isian teks + **pemilih pasangan** + tombol hapus
+berjejal di kolom selebar setengah layar, sehingga isian teks dan pemilihnya
+sama-sama sempit; dan pilihan yang **sudah dipakai** tetap bisa dipilih lagi,
+sehingga guru baru tahu dari galat server ("sudah dipakai"). Sekarang:
+
+- kolom kiri/kanan hanya berisi itemnya;
+- penyambungan dilakukan di **papan jodoh** di bawahnya — satu baris per item
+  kiri, urut dari atas, berbentuk "K1 Paru-paru → N1
+  Alat pernapasan" + pemilih berlebar sendiri;
+- opsi kanan yang sudah dipakai **mati** dan sebabnya tertulis di opsi itu
+  sendiri ("N1 — … (sudah dipakai K1)"), bukan menunggu galat server;
+- ada penghitung **"n dari m tersambung"** dan kalimat "Masih ada n item kiri yang
+  belum dipasangkan", jadi pasangan yang belum lengkap terlihat tanpa menekan
+  simpan dulu;
+- melepas pasangan membuang entri petanya (`lepasPasangan`), bukan menyisakan
+  nilai kosong, sehingga peta yang tersimpan sama seperti soal yang belum pernah
+  dipasangkan.
+
+Aturan "satu kanan untuk satu kiri" ada di helper murni (`pasangkanKanan`), bukan
+di UI: memilih kanan yang sudah dipakai **tidak mengubah peta** — bukan karena
+tombolnya kebetulan mati.
+
+### A.87.3 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root, kode final) | **SEMUA HIJAU (exit 0)** — Pest **404 lulus / 4039 asersi** · Redis wajib **9/65** · Pint bersih · checkJs exit 0 · ESLint **0 error** (2 peringatan lama) · Vitest **103 berkas / 970 tes** · realtime **20** |
+| `npx vitest run src/__tests__/sections/question/jenisBerkasTugas.test.jsx` (baru) | **14 lulus** — helper jenis berkas + editor: "Semua jenis berkas" tercentang otomatis, memilih PDF mengganti "semua", gabungan pilihan menyusun kalimat, teks lama "Foto JPG atau PNG" dicentang ulang, teks tak dikenal **tidak** jadi "semua", dan **muatan `onSimpan` benar-benar dikirim** (`jenis_berkas = 'Dokumen PDF'`) |
+| `npx vitest run src/__tests__/sections/question/pembuatanVisual.test.jsx` (baru) | **14 lulus** — `geserBarisPosisi` merapikan nomor yang kembar/bolong, ujung daftar tidak berubah, `pasangkanKanan` menolak kanan yang sudah dipakai, `lepasPasangan` membuang entri; di DOM: tidak ada kotak nomor urut, ▲/▼ memindah baris, `konten.item` + `kunci.urutan` = urutan yang dilihat guru, opsi kanan terpakai `disabled` + "sudah dipakai K1", penghitung tersambung berubah, `kunci.pasangan` tersimpan |
+| `docs/jalankan-smoke-ui.sh soal-grid` (Chrome sungguhan, 390 px) | **27/27 lulus, exit 0** (20 → 27). Tujuh pemeriksaan baru: **gutter setinggi kotak** (`sel=52px gutter=52px`) · **tombol hapus tanpa isi warna** (`rgba(0, 0, 0, 0)` di baris & kolom) · hapus tiap baris/kolom tetap ada + kaki berlabel "Hapus kolom" · **mengurutkan**: 0 kotak nomor, ▲ memindah baris lalu nomor baris jadi 1, geser halaman 0 px · **menjodohkan**: papan 1 dan 2 baris, "2 tersambung", N1 **mati** dengan teks "(sudah dipakai K1)", geser 0 px · melepas pasangan → "1 tersambung" + "Masih ada 1 item kiri yang belum dipasangkan." |
+| `docs/jalankan-smoke-ui.sh kuis-manual` · `slice03` · `susun` | **15/15** · **16/16** · **51/51 lulus, exit 0** — jalur tulis-soal, susun kuis, dan penerbitan tidak rusak oleh perubahan editor |
+| `node --check docs/smoke-ui-soal-grid.mjs` | lolos sebelum dijalankan |
+
+### A.87.4 Batasan jujur
+
+- **Pemeriksaan peramban untuk mengurutkan & menjodohkan hanya mengukur
+  tampilan & interaksinya** (tombol ▲/▼, baris papan, opsi yang mati, penghitung,
+  geser 0 px). Yang membuktikan **muatan tersimpan** untuk kedua tipe itu adalah
+  tes Vitest (`konten.item` + `kunci.urutan`, `kunci.pasangan`), bukan peramban —
+  harness tidak menambah dua soal baru ke server supaya kuis uji tetap tiga soal
+  seperti sebelumnya.
+- **Jenis berkas tidak diuji di peramban** putaran ini (harness tidak menulis
+  tugas unggah); buktinya tes Vitest + checkJs/Pint.
+- **Kontrol negatif A/B tidak dijalankan.** Yang membuktikan perbaikan adalah
+  pemeriksaan **baru** yang pasti merah atas kode lama (kotak nomor urut masih
+  ada, gutter 64 px, opsi N1 masih bisa dipilih, tombol hapus merah penuh).
+- **Teks lama yang tak terbaca tetap bisa disimpan apa adanya** sampai guru
+  memilih ulang (pilihannya hanya dinampakkan sebagai catatan). Sengaja: mengubah
+  aturan unggahan soal lama tanpa sepengetahuan guru lebih berbahaya. Kalau nanti
+  diinginkan "wajib dipilih ulang", itu keputusan produk tersendiri.
+- **Permintaan lain yang belum dikerjakan** dan masih menunggu kejelasan pemilik
+  produk: (a) *"buat catatan dapat dilihat langsung"*, dan (b) *"buat teknik
+  koreksi bisa dipilih — ada yang terkunci manual, ada otomatis dan manual dan
+  teks"*. Yang (b) menyentuh perilaku penilaian di server, jadi tidak dikerjakan
+  atas tafsiran sendiri.
+- Sapuan penuh seluruh harness tidak diulang; yang dijalankan putaran ini:
+  `soal-grid` (27), `kuis-manual` (15), `slice03` (16), `susun` (51) +
+  `./verify.sh`.
+- `docs/word/*.docx` belum diekspor ulang untuk entri ini.
+
+### A.87.5 Berkas
+
+- **Frontend aplikasi:** `src/sections/question/EditorSoal.jsx` (tombol hapus
+  hantu di seluruh editor, kaki tabel untuk hapus kolom, papan jodoh, pengurut
+  ▲/▼, pemilih jenis berkas), `src/sections/question/tipeSoal.js`
+  (`JENIS_BERKAS_TUGAS`, `MAKS_JENIS_BERKAS`, `pilihanJenisBerkas`,
+  `teksJenisBerkas`, `centangJenisBerkas`, `geserBarisPosisi`, `pemakaiKanan`,
+  `pasangkanKanan`, `lepasPasangan`; bawaan `jenisBerkas` soal baru),
+  `src/sections/question/validasi.js` (pesan & batas jenis berkas),
+  `src/theme/theme.css` (gutter grid, `.editor-hapus`, `.pilihan-jenis-berkas`,
+  `.papan-jodoh`/`.baris-jodoh`, `.baris-urut`/`.pengurut`).
+  **Tidak ada** berkas backend/realtime yang diubah.
+- **Frontend uji (Vitest, lokasi terpusat):**
+  `src/__tests__/sections/question/jenisBerkasTugas.test.jsx` (baru, 14 tes),
+  `src/__tests__/sections/question/pembuatanVisual.test.jsx` (baru, 14 tes).
+- **Docs/harness:** `docs/smoke-ui-soal-grid.mjs` (+7, 20 → 27),
+  `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`,
+  `docs/laporan-pengujian.md` (bagian ini).
+
+---
+
+## A.88 — Catatan murid di halaman koreksi, teknik koreksi per jenis soal, dan dokumen kantor di materi (14 Oktober 2026)
+
+### A.88.1 Permintaan & tafsirnya
+
+Tiga permintaan pemilik produk pada putaran ini:
+
+1. *"catatan saat guru melihat hasil kerja murid (mungkin kecurangan dll)"* —
+   catatan kecurangan harus terlihat **di halaman tempat guru menilai**, bukan
+   hanya di Monitor Ulangan.
+2. *"teknik koreksi bisa dipilih — semua tipe soal, namun ingat banyak yang hanya
+   bisa manual, ada yang bisa manual/otomatis, ada yang bisa lebih (teks)"* —
+   guru memilih cara mengoreksi, dan pilihannya harus jujur mengikuti apa yang
+   mesin benar-benar bisa kerjakan.
+3. *"dalam materi gak hanya menerima video, namun menerima ppt pdf docx dll;
+   jangan malah dibuat bisa download"* — bahan ajar berbentuk dokumen harus
+   diterima dan ditampilkan, bukan dipaksa menjadi unduhan `.upload`.
+
+### A.88.2 Yang berubah
+
+**1. Catatan kecurangan murid tampil di halaman Koreksi manual.**
+
+Antrean koreksi (`KoreksiService::antrean`) kini membawa `catatan_attempt`: per
+attempt, jumlah catatan (dihitung dengan agregat SQL, jadi selalu utuh), berapa
+yang belum ditinjau, skor risiko tertinggi, dan rincian **terbaru** (dibatasi 200
+baris total & 8 per murid supaya payload tidak meledak pada kuis besar — sisanya
+disebut jumlahnya). Halaman koreksi menampilkan lencana "n catatan" di baris
+antrean dan panel catatan murid di atas soal yang sedang dinilai, lengkap dengan
+tingkat risiko (ambang sama dengan Monitor: ≥8 perlu ditanya, ≥6 diperhatikan),
+waktu server, dan tautan **Tinjau di Monitor Ulangan**.
+
+Catatan tetap append-only: halaman koreksi hanya **membaca**. Meninjau
+(valid/tidak valid) tetap di Monitor Ulangan, karena keputusan itu butuh alasan
+dan tercatat di audit.
+
+**2. Teknik koreksi dipilih per jenis soal (`kunci.teknik_koreksi`).**
+
+Enum baru `TeknikKoreksi` (otomatis · otomatis teks · manual) dan tabel
+`TipeSoal::teknikKoreksiTersedia()`:
+
+| Jenis soal | Pilihan teknik | Bawaan |
+| --- | --- | --- |
+| Tugas unggah | Manual saja (terkunci) | Manual |
+| Isian singkat, uraian | Otomatis (teks) · Manual | Otomatis (teks) |
+| 19 jenis lainnya | Otomatis · Manual | Otomatis |
+
+- Pilihannya disimpan di **`kunci`**, bukan `konten`, sehingga tidak pernah ikut
+  ke perangkat murid (payload murid tanpa kunci sudah dijaga tes lama).
+- Pilihan yang tidak bisa ditepati **ditolak server** saat menyimpan soal
+  (`RegistryTipeSoal::galatTeknikKoreksi`, 422) dan ditampilkan sebagai radion
+  yang tidak pernah muncul di editor; mengganti jenis soal merapikan pilihan yang
+  tidak lagi tersedia (`gantiJenis`) alih-alih menabrak 422 saat menyimpan.
+- Penilaian (`PenilaiSoal`) menghormati pilihannya: **Manual** membuat jawaban
+  benar pun masuk antrean koreksi guru (bukan dinilai 0 diam-diam), **Otomatis
+  teks** memakai jalur teks, **Otomatis** jalur kunci pasti. Soal lama tanpa
+  bidang ini tetap berperilaku persis seperti sebelumnya.
+- Bawaan tidak ikut ditulis ke `kunci`, jadi kunci soal yang sudah ada tidak
+  berubah bentuk (dibuktikan di tes dan di smoke: `kunci=["sel"]`).
+
+**3. Materi menerima PDF, Word, PowerPoint, dan Excel — dan menampilkannya.**
+
+- `KategoriBerkas` mendapat kategori baru **`Dokumen`** (label "Dokumen kantor").
+  Paket OOXML (`docx`/`xlsx`/`pptx`) sekarang dikenali dari daftar isi zip-nya
+  (`[Content_Types].xml` + `word/`/`xl/`/`ppt/`), jadi tidak lagi disamakan dengan
+  arsip zip biasa. `KlasifikasiBerkas::KEPALA_BYTE` (8192) dibaca pemanggil karena
+  daftar isi itu ada beberapa kilobyte setelah kepala — sebelumnya hanya 16 byte.
+  Arah salahnya tetap aman: paket yang tidak terbaca jatuh kembali ke `zip`
+  (unduhan `.upload`), dan dokumen lama bergaya OLE (.doc/.ppt/.xls) sengaja tetap
+  tidak digolongkan dokumen karena bisa membawa makro VBA.
+- Penyajiannya kini berlapis (`KategoriBerkas::sajian()` → `sajian` di payload):
+  **`semat`** (gambar/video/suara/PDF tampil di halaman), **`dokumen`** (dokumen
+  kantor disajikan dengan nama & tipe aslinya, tombol "Buka dokumen"),
+  **`unduh`** (arsip & berkas tak dikenal tetap `.upload`), **`tautan`** (alamat
+  luar). Berkas disimpan dengan ekstensi aslinya (`.pptx`), bukan `.upload`.
+- **PDF kini tampil di dalam halaman** (bingkai `iframe` ber-tinggi
+  `min(70vh, 40rem)` + tautan "buka di tab baru") di layar materi murid dan di
+  halaman penjelasan setelah kuis — dulu hanya tautan yang membuka tab baru.
+- Pemilih berkas di editor materi menyebut jenis yang diterima (gambar, video,
+  suara, PDF, .docx, .pptx, .xlsx) supaya tidak lagi disangka "hanya video".
+
+### A.88.3 Verifikasi
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| `./verify.sh` | **SEMUA HIJAU** — Pest **412 passed (4162 assertions)** · Redis wajib 9/65 · Pint 384 berkas · checkJs · ESLint **0 error** (2 peringatan lama `react-hooks/incompatible-library`) · Vitest **107 berkas / 1002 tes** · realtime 20 |
+| `docs/jalankan-smoke-ui.sh soal-grid` (Chrome sungguhan) | **30/30** (27 → 30): uraian menawarkan dua teknik dengan bawaan `otomatis_teks`; "Manual (guru)" benar-benar tersimpan (`kunci.teknik_koreksi=manual`); soal yang memakai bawaan tidak menambah bidang teknik (`kunci=["sel"]`) |
+| `docs/jalankan-smoke-ui.sh slice06` (Chrome sungguhan) | **30/30** (29 → 30): catatan kecurangan murid tampil di halaman koreksi (`panel=1`, kategori "Pindah tab" terbaca, tautan ke Monitor ada) |
+
+Tes baru: `backend/tests/Feature/TeknikKoreksiTest.php` (5 tes — tabel pilihan per
+jenis, penolakan pilihan yang tidak bisa ditepati, jawaban benar yang tetap masuk
+antrean saat teknik manual, soal lama tetap otomatis, uraian otomatis-teks →
+manual), +1 tes di `Slice06Test` (catatan per attempt) dan +2 di `Slice08Test`
+(dokumen kantor & zip biasa); `src/__tests__/sections/question/teknikKoreksi.test.js`
+(9), `editorTeknikKoreksi.test.jsx` (6), `sections/material/sajianBerkas.test.js`
+(7), `sections/material/penjelasanKuisSajian.test.jsx` (4), serta tes `scoring`
+untuk catatan antrean.
+
+### A.88.4 Berkas
+
+- **Backend:** `Sections/Question/Enums/TeknikKoreksi.php` (baru),
+  `Enums/TipeSoal.php`, `Registry/RegistryTipeSoal.php`,
+  `Sections/Scoring/Services/PenilaiSoal.php`, `Scoring/Services/KoreksiService.php`,
+  `Material/Enums/KategoriBerkas.php`, `Material/Services/KlasifikasiBerkas.php`,
+  `Material/Services/PenyimpananMateri.php`, `Material/Services/ProgresMateriService.php`,
+  `Material/Http/Resources/UnggahanResource.php`,
+  `Attempt/Http/Resources/UnggahanJawabanResource.php`,
+  `tests/Feature/TeknikKoreksiTest.php` (baru), `Slice06Test.php`, `Slice08Test.php`.
+- **Frontend:** `sections/question/teknikKoreksi.js` (baru), `tipeSoal.js`,
+  `validasi.js`, `EditorSoal.jsx`, `sections/scoring/api.js`, `tampilan.js`,
+  `HalamanKoreksi.jsx`, `sections/material/sajianBerkas.js` (baru), `api.js`,
+  `EditorMateri.jsx`, `HalamanMateriMurid.jsx`, `PemutarMateri.jsx`,
+  `sections/attempt/lampiran.js`, `UnggahLampiran.jsx`, `theme/theme.css`,
+  dan lima berkas tes baru/diperbarui.
+- **Docs/harness:** `docs/smoke-ui-soal-grid.mjs` (+3, 27 → 30),
+  `docs/smoke-ui-slice06.mjs` (+2, 29 → 30, termasuk satu kejadian kecurangan
+  sungguhan dari sisi murid), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`,
+  `docs/laporan-pengujian.md` (bagian ini).

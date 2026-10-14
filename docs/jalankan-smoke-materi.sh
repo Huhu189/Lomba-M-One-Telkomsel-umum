@@ -14,7 +14,8 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 ROOT="$(pwd)"
 
-# Kolom baru `materials.rasio` perlu ada di DB dev sebelum harness jalan.
+# Skema terbaru perlu ada di DB dev sebelum harness jalan (mis. migrasi 14 Okt 2026
+# yang menghapus kolom `materials.rasio`).
 ( cd "$ROOT/backend" && php artisan migrate --force ) || {
   echo "migrasi gagal"
   exit 1

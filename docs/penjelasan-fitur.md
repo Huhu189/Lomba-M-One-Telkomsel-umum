@@ -69,6 +69,41 @@ untuk menjawabnya (pilihan ganda: opsinya; menjodohkan/hubung kata: dua kolomnya
 letak kata: kata **dan** kolom posisinya) — soal tidak lagi tampil kosong hanya karena server tidak ikut
 mengirim salah satu daftar itu.
 
+Catatan tampilan (lanjutan, 14 Oktober 2026): tiga tipe yang bentuk soalnya paling "berbentuk" disusun
+dengan **menggambar bentuknya**, bukan dengan mengetik bentuknya sebagai teks. **Tabel isian** tampil
+sebagai tabel sungguhan — nama kolom diketik di kepala kolomnya, tiap sel punya kotaknya sendiri, ada
+tombol **Tambah kolom**/**Tambah baris** dan tombol hapus di tiap baris/kolom, dan sel yang **kosong tanpa
+jawaban diterima** ditandai (guru langsung melihat bagian yang belum lengkap). **Teka silang mini**
+digambar sebagai papan kotak: satu kotak satu huruf, tombol ■ menjadikan sebuah kotak hitam dan bisa
+dikembalikan, dan baris/kolomnya bisa ditambah atau dihapus. **Sinonim uraian** disusun baris demi baris
+(kata kunci + alias), bukan sebagai baris teks "kata = alias". Batas minimum (tabel minimal satu kolom,
+teka silang minimal 2 × 2) diucapkan **dengan sebabnya** saat guru mencoba melewatinya, jadi tidak ada
+tombol yang diam. Pratinjau di sisi kanan memakai **renderer murid yang sama**, sehingga bentuk yang
+dilihat guru persis bentuk yang dilihat anak — dan di layar ponsel grid-grid itu menggulir **di dalam
+kotaknya sendiri**, halaman tidak ikut bergeser mendatar.
+
+Catatan tampilan (lanjutan lagi, 14 Oktober 2026): pembuatan soal dibuat **serba visual** supaya guru
+sedikit mungkin mengetik dan tidak gampang salah. **Mengurutkan** dan **urut gambar** tidak lagi meminta
+nomor urut diketik — barisnya disusun dengan tombol ▲/▼, dan nomornya dihitung sendiri (jadi tidak
+mungkin ada nomor kembar atau terlewat). **Menjodohkan** dan **hubung kata** menyambung pasangannya di
+**papan tersendiri** di bawah kolom item: satu baris per item kiri berisi "K1 Paru-paru → N1 Alat
+pernapasan", ada penghitung "n dari m tersambung", dan item kanan yang **sudah dipakai** ditandai serta
+**tidak bisa dipilih dua kali** — sebabnya tertulis di pilihannya ("sudah dipakai K1"), bukan menunggu
+galat dari server. Untuk **tugas unggah**, jenis berkas yang boleh diunggah kini **dipilih dari daftar**
+(semua jenis, foto, PDF, video, suara, dokumen Word/Excel/PowerPoint) — tidak ada lagi teks bebas yang
+harus diketik; tugas baru pun sudah memilih "Semua jenis berkas", dan editor memperlihatkan kalimat yang
+akan dibaca murid. Tombol hapus di dalam grid editor juga tidak lagi berwujud kotak merah penuh: ikonnya
+samar dan merah hanya saat disorot, dengan lebar yang tidak lagi menarik tinggi baris gridnya.
+
+Sejak 14 Oktober 2026 guru juga memilih **teknik koreksi** tiap soal di kartu **3. Pengaturan soal**
+("Otomatis", "Otomatis (teks)", atau "Manual (guru)"). Pilihannya tidak bebas tanpa batas — aplikasi hanya
+menawarkan yang benar-benar bisa dikerjakan: **tugas unggah** selalu manual (tidak ada kunci yang bisa
+dicocokkan mesin), **isian singkat dan uraian** boleh otomatis dengan toleransi ejaan/kata kunci atau
+manual, dan tipe lain boleh otomatis (kunci pasti) atau manual bila guru ingin menilai sendiri. Memilih
+"Manual" berarti **jawaban benar pun menunggu koreksi guru** — tidak ada nilai otomatis yang dipaksakan
+(bukan dihukum nol), dan pilihannya tersimpan di kunci soal sehingga tidak pernah ikut ke perangkat murid.
+Soal lama tidak berubah perilakunya: tanpa pilihan, aplikasi memakai bawaan tiap tipe.
+
 ---
 
 ## 3. Pemahaman per tema
@@ -233,6 +268,15 @@ tertentu ia **naik tingkat** (Pendaki Pemula → Pendaki Terlatih → Penjelajah
 pengumuman yang muncul hanya setelah server mengirim keadaan terbaru. Peta selalu disertai daftar pos dalam
 teks, jadi pembaca layar dan layar sempit mendapat informasi yang sama persis.
 
+Sejak 14 Oktober 2026 materi **tidak lagi hanya video atau gambar**. Guru boleh mengunggah PDF, Word (.docx),
+PowerPoint (.pptx), dan Excel (.xlsx) lalu memakainya sebagai klip media atau media penjelasan. Berkasnya
+disimpan dalam bentuk aslinya (nama dan tipe tidak diganti), gambar/video/suara/PDF tampil **langsung di
+halaman** (PDF di dalam bingkai baca, tidak perlu diunduh dulu), dan dokumen Word/PowerPoint/Excel
+ditawarkan sebagai **"Buka dokumen"** — dibuka aplikasi dokumen anak dengan nama aslinya, bukan diunduh
+sebagai berkas samar bernama `.upload` yang tidak bisa dibuka. Yang tetap tidak boleh ditampilkan langsung
+hanyalah berkas yang memang berbahaya (arsip, berkas tak dikenal): itu **selalu** diunduh sebagai `.upload`,
+seperti sebelumnya. Pemanggilan jenis berkasnya ditentukan dari **isi** berkas, bukan dari namanya.
+
 ### Mengapa aman
 Urutan blok ditegakkan server, bukan dari perangkat murid. Materi disajikan lewat tautan bertanda tangan yang kedaluwarsa, bukan folder terbuka. Layar guru hanya mengirim instruksi konten — murid tidak bisa mengirim layar palsu ke guru. Tema dan pos hanyalah **tampilan**: boleh-tidaknya membuka langkah tetap diputus server, dan hanya langkah wajib yang menghitung kenaikan.
 
@@ -261,7 +305,14 @@ adalah guru memilih apa yang tampil di perangkat murid, bukan aplikasi menebak p
 Tiga hal sekaligus: penghalang sederhana saat ulangan (anti-paste, anti-pindah tab, dan lainnya), cara tahu murid mana yang perangkatnya hidup tapi diam saja, dan layar pemantauan guru secara langsung.
 
 ### Cara kerjanya
-Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Di server, kehadiran satu kelas disimpan sebagai satu hash Redis per kuis, sehingga setiap request murid hanya menulis satu medan miliknya sendiri — biayanya tidak tumbuh seiring jumlah anak di kelas, dan dua anak yang menyimpan jawaban bersamaan tidak saling menimpa. Monitor Ulangan (dulu bernama "Live Monitor") menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang. Nama dan lencana jalur datanya diganti 12 Oktober 2026: layar guru tidak lagi memajang jargon teknis ("Langsung (SSE)" / "Polling 5 detik") karena yang penting bagi guru adalah papan pantauannya, bukan cara datanya datang; koneksi langsungnya tetap bekerja seperti semula.
+Semua penghalang **mati secara bawaan** dan guru yang menyalakan lewat pengaturan.
+
+Catatan itu kini juga terlihat **di tempat guru menilai**: sejak 14 Oktober 2026 halaman **Koreksi manual**
+menampilkan catatan murid yang sedang dinilainya (jumlah, tingkat risiko, waktu, dan rincian terbarunya)
+langsung di atas jawaban yang dibuka — guru tidak perlu lagi pindah ke Monitor Ulangan dan mencari nama
+anaknya. Catatan tetap **bahan tanya, bukan bukti**: memutuskan sebuah catatan valid atau tidak tetap
+dilakukan di Monitor Ulangan, dan setiap peninjauan butuh alasan serta tercatat di audit (catatannya sendiri
+bersifat tak bisa dihapus dan tak bisa diubah isinya). Panel di halaman koreksi hanya membaca. Saat menyala: menempel jawaban dari luar diblok dan dicatat, pindah tab dicatat satu kali per kepergian, buka layar penuh yang keluar diberi peringatan. Semua kejadian hanya **catatan untuk guru** — bukan hukuman otomatis. Presence bekerja hemat data: klien tidak mengirim detak jantung terus-menerus; status dihitung dari aktivitas normal murid, jadi hemat kuota dan ramah sinyal lemah. Di server, kehadiran satu kelas disimpan sebagai satu hash Redis per kuis, sehingga setiap request murid hanya menulis satu medan miliknya sendiri — biayanya tidak tumbuh seiring jumlah anak di kelas, dan dua anak yang menyimpan jawaban bersamaan tidak saling menimpa. Monitor Ulangan (dulu bernama "Live Monitor") menampilkan siapa sedang mengerjakan apa, progres, dan catatan kejadian — mengalir tanpa muat ulang. Nama dan lencana jalur datanya diganti 12 Oktober 2026: layar guru tidak lagi memajang jargon teknis ("Langsung (SSE)" / "Polling 5 detik") karena yang penting bagi guru adalah papan pantauannya, bukan cara datanya datang; koneksi langsungnya tetap bekerja seperti semula.
 
 ### Mengapa aman
 Kami jujur: **deteksi di browser bisa diakali**, dan aplikasi ini tidak pernah mengklaim "tahan 100%". Karena itu catatannya berfungsi sebagai bahan tinjauan guru (valid / tidak valid / menunggu), bukan vonis. Kalau perlindungannya error, ulangan **tetap jalan** (fail-open) — proteksi tidak boleh mengorbankan ujian.

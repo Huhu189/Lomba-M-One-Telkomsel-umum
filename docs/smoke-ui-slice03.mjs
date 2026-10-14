@@ -353,15 +353,15 @@ async function main() {
     `fetch('/api/v1/kuis', { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json()).then((d) => d.find((k) => k.judul === 'Latihan Operasi Hitung (draf)').id)`,
   )
 
-  // Menyimpan info & jadwal membawa guru ke langkah 2 (bank soal + susunan).
-  // Susunan disimpan oleh tombol "Lanjut: tinjau", publikasi dari langkah 3.
+  // Sejak 14 Oktober 2026 ketiga bagian tampil sekaligus (satu halaman), jadi
+  // bank soal langsung ada tanpa tombol pindah bagian. Susunan disimpan oleh
+  // tombol "Simpan susunan", dan "Publikasikan kuis" menyimpan draf + susunan
+  // lebih dulu — urutan yang dulu dijamin tiga langkah berurutan.
   const susunanAwal = await evalJs(`document.querySelectorAll('.pilih-soal').length`)
   await evalJs(
     `[...document.querySelectorAll('.pilih-soal')].slice(0, 2).forEach((b) => { if (b.getAttribute('aria-checked') !== 'true') b.click() })`,
   )
   await sleep(600)
-  await evalJs(`__alat.klikTeks('Lanjut: tinjau')`)
-  await sleep(2200)
   await evalJs(`__alat.klikTeks('Publikasikan kuis')`)
   await sleep(2600)
 

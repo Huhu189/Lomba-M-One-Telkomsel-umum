@@ -491,7 +491,7 @@ async function main() {
       },
     ]
 
-    const sinkron = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', { rasio: '16:9', blok })
+    const sinkron = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', { blok })
     catat('guru menyimpan materi audit', sinkron.status === 200, `status ${sinkron.status}`)
     await apiJson(`/v1/materi/${idMateri}/publikasi`, 'POST')
 

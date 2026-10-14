@@ -8,7 +8,7 @@
 // Yang diukur mesin, bukan selera:
 //   1. halaman bergeser mendatar (overflow dokumen) — harus 0 px;
 //   2. elemen di dalam editor yang menembus tepi kanan layar;
-//   3. tiap bagian editor (sidebar, kanvas, bilah rasio, playback, timeline,
+//   3. tiap bagian editor (sidebar, kanvas, playback, timeline,
 //      inspector) benar-benar muat di layar;
 //   4. inspector klip terpilih tidak memotong/meluberkan isinya;
 //   5. sasaran sentuh < 44 px pada lebar sentuh (ponsel & tablet).
@@ -135,7 +135,10 @@ window.__ukurEditor = function () {
   }
 
   const bagian = {}
-  for (const sel of ['.nle', '.nle-sidebar', '.nle-kerja', '.nle-canvas', '.nle-bilah', '.nle-playback', '.nle-timeline', '.nle-inspector']) {
+  // Catatan 14 Oktober 2026: .nle-bilah (bilah "Rasio bingkai") sudah dihapus
+  // dari editor, jadi tidak lagi masuk daftar bagian yang harus ada. Komentar ini
+  // hidup DI DALAM template literal alat ukur — jangan memakai backtick di sini.
+  for (const sel of ['.nle', '.nle-sidebar', '.nle-kerja', '.nle-canvas', '.nle-playback', '.nle-timeline', '.nle-inspector']) {
     bagian[sel] = kotak(sel)
   }
 
@@ -400,7 +403,6 @@ async function main() {
     ]
 
     const sinkron = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', {
-      rasio: '16:9',
       tema: { kode: 'mendaki-gunung', nama: 'AUDIT Pendakian' },
       blok,
     })
@@ -632,12 +634,183 @@ async function main() {
         info(`sasaran sentuh < 44px [${namaVp}] (alat editor di layar besar, bukan target sentuh)`, teksM.tombolKecil)
       }
 
+      // Tombol ✕ di timeline (14 Oktober 2026): klip media/blok bisa langsung
+      // dihapus dari timeline, tidak perlu mencari inspector dulu. Ukurannya ikut
+      // diperiksa — di lebar sentuh ia harus jadi sasaran 44 px, dan di laptop
+      // cukup kecil supaya tidak menutupi klip sebelahnya.
+      await evalJs(`document.querySelectorAll('.nle-klip')[0].click(); true`)
+      await sleep(400)
+      const sebelumHapus = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+      const ukuranHapus = await evalJs(`(() => {
+        const t = document.querySelector('.nle-klip-hapus')
+        if (t === null) return null
+        const k = t.getBoundingClientRect()
+        return { w: Math.round(k.width), h: Math.round(k.height), label: t.getAttribute('aria-label') }
+      })()`)
+      const ukuranHapusCukup =
+        ukuranHapus !== null && (vp.sentuh ? ukuranHapus.w >= 44 && ukuranHapus.h >= 44 : ukuranHapus.w > 0 && ukuranHapus.h > 0)
+      catat(
+        `timeline: tombol ✕ punya sasaran sentuh yang memadai [${namaVp}]`,
+        ukuranHapusCukup,
+        ukuranHapus === null ? 'tombol tidak ada' : `${ukuranHapus.w}×${ukuranHapus.h} px · "${ukuranHapus.label}"`,
+      )
+      await evalJs(`document.querySelector('.nle-klip-hapus')?.click(); true`)
+      await sleep(600)
+      const sesudahHapus = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+      catat(
+        `timeline: tombol ✕ menghapus klip terpilih [${namaVp}]`,
+        ukuranHapus !== null && sesudahHapus === sebelumHapus - 1,
+        `${sebelumHapus} → ${sesudahHapus} klip`,
+      )
+
       catat(
         `editor: tidak ada media bersuara yang diputar [${namaVp}]`,
         teksM.mediaBersuara.length === 0,
         JSON.stringify(teksM.mediaBersuara),
       )
     }
+
+    // --- Tombol Delete di papan tombol (14 Oktober 2026) ---
+    // Klip bisa dibuang tanpa mencari tombol ✕: cukup pilih klipnya lalu tekan
+    // Delete/Backspace. Yang dijaga di sini dua hal — tombolnya benar-benar
+    // membuang klip yang sedang terpilih, dan saat fokus sedang di kolom isian
+    // tombolnya TIDAK ikut membuang klip (guru mungkin hanya meralat nama pos).
+    await ukurPerangkat(VIEWPORT.laptop)
+    await buka(`/materi/${idMateri}/editor`, 'Timeline materi')
+    const siapPapanTombol = await tunggu(`document.querySelectorAll('.nle-klip').length >= 3`, 20000)
+    // Klipnya diberi fokus lebih dulu (klik tetikus sungguhan juga memindahkan
+    // fokus ke tombol klip) — papan tombol hanya berlaku di dalam editor.
+    await evalJs(`(() => { const el = document.querySelector('.nle-klip-media'); el.focus(); el.click(); return true })()`)
+    await tunggu(`document.querySelector('.nle-klip-aktif') !== null`, 8000)
+    const klipTerpilih = await evalJs(
+      `(() => { const el = document.querySelector('.nle-klip-aktif'); return el ? el.className.replace(/\\s+/g, ' ').trim() : null })()`,
+    )
+    const sebelumTombol = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
+    await sleep(400)
+    const sesudahTombol = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    catat(
+      'papan tombol: Delete membuang klip media yang sedang dipilih',
+      siapPapanTombol && String(klipTerpilih).includes('nle-klip-media') && sesudahTombol === sebelumTombol - 1,
+      `klip aktif ${klipTerpilih ?? '—'} · ${sebelumTombol} → ${sesudahTombol} klip`,
+    )
+
+    await evalJs(`(() => { const el = document.querySelector('.nle-klip-teks'); el.focus(); el.click(); return true })()`)
+    await tunggu(`document.querySelector('#nle-fase') !== null`, 8000)
+    const sebelumKetik = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    await evalJs(`document.querySelector('#nle-fase').focus(); true`)
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
+    await sleep(400)
+    const sesudahKetik = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    catat(
+      'papan tombol: Delete saat fokus di kolom isian tidak membuang klip',
+      sesudahKetik === sebelumKetik,
+      `${sebelumKetik} → ${sesudahKetik} klip`,
+    )
+
+    // --- Pembuangan berkas pustaka dari editor (14 Oktober 2026) ---
+    // "Hapus berkas" membuang BERKAS-nya, bukan cuma klipnya. Rantai penuhnya diuji
+    // di sini: berkas sungguhan diunggah → dipakai satu klip → dibuang lewat UI
+    // (dengan dialog konfirmasi yang menyebut dampaknya) → berkas hilang dari
+    // pustaka, klipnya hilang dari timeline, dan susunan yang tertinggal tetap
+    // tersimpan (bukti tidak ada rujukan berkas yang mati).
+    const pngSatuPiksel =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=='
+    const ukuranPng = await evalJs(`atob('${pngSatuPiksel}').length`)
+    const mulaiBerkas = await apiJson(`/v1/materi/${idMateri}/unggahan`, 'POST', {
+      nama: 'audit-pustaka.png',
+      ukuran: ukuranPng,
+    })
+    const kodeBerkas = String(mulaiBerkas.isi?.kode ?? '')
+    const kirimBerkas = await apiJson(`/v1/unggahan/${kodeBerkas}/potongan/0`, 'PUT', {
+      isi_base64: pngSatuPiksel,
+    })
+    const selesaiBerkas = await apiJson(`/v1/unggahan/${kodeBerkas}/selesai`, 'POST')
+    const pasangBerkas = await apiJson(`/v1/materi/${idMateri}/blok`, 'PUT', {
+      tema: { kode: 'mendaki-gunung', nama: 'AUDIT Pendakian' },
+      blok: [
+        {
+          tipe: 'media',
+          wajib: true,
+          isi: { unggahan_kode: kodeBerkas, keterangan: 'AUDIT berkas pustaka' },
+          track: 0,
+          mulai_detik: 0,
+          durasi_detik: 8,
+        },
+        { tipe: 'teks', wajib: true, isi: { teks: 'AUDIT sisa sesudah berkas dibuang.' }, track: 0, mulai_detik: 8, durasi_detik: 8 },
+      ],
+    })
+    catat(
+      'berkas pustaka audit siap dipakai klip',
+      mulaiBerkas.status === 201 && kirimBerkas.status === 200 && selesaiBerkas.status === 200 && pasangBerkas.status === 200,
+      `unggahan ${mulaiBerkas.status} · potongan ${kirimBerkas.status} · selesai ${selesaiBerkas.status} · simpan ${pasangBerkas.status}`,
+    )
+
+    await buka(`/materi/${idMateri}/editor`, 'Pustaka media')
+    const adaPustaka = await tunggu(`document.querySelector('.pustaka-media') !== null`, 15000)
+    const barisBerkas = await evalJs(`(() => {
+      const baris = [...document.querySelectorAll('.pustaka-media li')].find((li) => li.textContent.includes('audit-pustaka.png'))
+      if (!baris) return null
+      const tombol = [...baris.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Hapus berkas')
+      if (!tombol) return { teks: baris.textContent.replace(/\\s+/g, ' ').trim(), w: 0, h: 0 }
+      const kotak = tombol.getBoundingClientRect()
+      return { teks: baris.textContent.replace(/\\s+/g, ' ').trim(), w: Math.round(kotak.width), h: Math.round(kotak.height) }
+    })()`)
+    catat(
+      'pustaka media: tiap berkas punya tombol "Hapus berkas" dengan sasaran sentuh memadai',
+      adaPustaka && barisBerkas !== null && barisBerkas.w > 0 && barisBerkas.h >= 43.5,
+      barisBerkas === null ? 'baris berkas tidak ditemukan' : `${barisBerkas.w}×${barisBerkas.h} px · "${barisBerkas.teks}"`,
+    )
+
+    await evalJs(`(() => {
+      const baris = [...document.querySelectorAll('.pustaka-media li')].find((li) => li.textContent.includes('audit-pustaka.png'))
+      ;[...baris.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Hapus berkas').click()
+      return true
+    })()`)
+    const dialogMuncul = await tunggu(`document.querySelector('dialog[open]') !== null`, 8000)
+    const isiDialog = await evalJs(
+      `(() => { const d = document.querySelector('dialog[open]'); return d ? d.innerText.replace(/\\s+/g, ' ').trim() : '' })()`,
+    )
+    catat(
+      'buang berkas lewat konfirmasi yang lebih dulu menyebut dampaknya',
+      dialogMuncul && isiDialog.includes('1 klip media'),
+      isiDialog.slice(0, 150),
+    )
+
+    const klipSebelumBuang = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    await evalJs(`(() => {
+      const d = document.querySelector('dialog[open]')
+      ;[...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Buang berkas').click()
+      return true
+    })()`)
+    const pustakaBersih = await tunggu(
+      `!document.body.innerText.includes('audit-pustaka.png')`,
+      15000,
+    )
+    const klipSesudahBuang = await evalJs(`document.querySelectorAll('.nle-klip').length`)
+    catat(
+      'buang berkas: berkasnya hilang dari pustaka & klip medianya hilang dari timeline',
+      pustakaBersih && klipSesudahBuang === klipSebelumBuang - 1,
+      `pustaka ${pustakaBersih ? 'bersih' : 'masih memuat berkas'} · ${klipSebelumBuang} → ${klipSesudahBuang} klip`,
+    )
+
+    const sesudahBuang = await apiJson(`/v1/materi/${idMateri}`)
+    const blokServer = sesudahBuang.isi?.blok ?? []
+    const berkasServer = sesudahBuang.isi?.unggahan ?? []
+    catat(
+      'buang berkas: server ikut membersihkan blok & baris unggahannya',
+      blokServer.length === 1 &&
+        blokServer.every((satu) => satu.tipe !== 'media') &&
+        !berkasServer.some((satu) => satu.kode === kodeBerkas),
+      `${blokServer.length} blok tersisa (${blokServer.map((satu) => satu.tipe).join(', ') || '—'}) · ${berkasServer.length} berkas di pustaka`,
+    )
+    catat(
+      'buang berkas: editor tidak lagi mengaku ada perubahan yang belum disimpan',
+      !(await evalJs(`(document.body.innerText || '').includes('Belum tersimpan')`)),
+      'badge "Belum tersimpan" tidak muncul',
+    )
   } finally {
     const bersih = await bersihkan()
     catat('materi/kuis/soal audit dihapus kembali', bersih.status === 200, bersih.sisa)
