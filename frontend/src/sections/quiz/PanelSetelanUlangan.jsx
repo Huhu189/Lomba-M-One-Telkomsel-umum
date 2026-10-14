@@ -14,6 +14,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ambilPengaturan, simpanPengaturan } from '../settings/api.js'
+import { KUNCI_TAMU } from './setelanSesi.js'
 import { pesanGalatApi } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
@@ -196,6 +197,23 @@ export default function PanelSetelanUlangan({ kuisId }) {
                       <span className="saklar-setelan-teks">{info.nilai ? 'Aktif' : 'Nonaktif'}</span>
                     </label>
                   </div>
+                )}
+
+                {/*
+                  Pintu tamu dijelaskan di tempatnya (14 Oktober 2026).
+
+                  Guru yang sudah menyalakan "Izinkan siswa tamu" masih melihat
+                  muridnya "dipaksa masuk": pintu tamu memang baru terbuka untuk
+                  kuis yang **sudah diterbitkan** (`TamuService::kuisTerbuka`),
+                  dan saklar ini tidak mengatakan itu. Catatan ini dipasang persis
+                  di bawah saklarnya supaya sebabnya ketemu tanpa bertanya.
+                */}
+                {kunci === KUNCI_TAMU && (
+                  <p className="small teks-lembut mb-0 w-100">
+                    {info.nilai
+                      ? 'Murid tanpa akun cukup menulis namanya di halaman masuk — atau langsung dari tautan ulangan yang kamu bagikan. Pintunya baru terbuka setelah kuis ini diterbitkan; kuis draf belum membuka pintu tamu.'
+                      : 'Selama mati, murid tanpa akun tidak bisa ikut. Pintu tamu juga hanya berlaku untuk kuis yang sudah diterbitkan.'}
+                  </p>
                 )}
 
                 {info.tipe === 'integer' && (

@@ -940,6 +940,43 @@ ditutup sampai sandinya dibuat).
 
 ---
 
+## 24. Materi yang benar-benar ditampilkan (14 Oktober 2026)
+
+### Apa ini
+Bahan ajar guru di halaman **Materi** tidak lagi berhenti di tombol unduh. Dua bentuk materi yang tadinya
+cuma "bisa dibuka" kini tampil di halaman murid:
+
+- **Dokumen kantor** (`.docx`, `.pptx`, `.xlsx`) — isinya dibaca di peramban lalu ditampilkan sebagai teks,
+  butir/deret slide, tabel, dan gambar.
+- **Klip tautan** (YouTube/Drive) — videonya benar-benar dipasang sebagai bingkai di halaman, lengkap dengan
+  kuis sisipan yang bisa ditumpukkan di atasnya.
+
+### Cara kerjanya
+Berkas OOXML sebetulnya arsip ZIP berisi XML, dan `jszip` sudah dipakai proyek ini, jadi
+`pratinjauOOXML.js` membuka `word/document.xml`, `ppt/slides/*.xml`, atau `xl/worksheets/*.xml`, membaca
+paragraf, butir, tabel, gambar, dan string bersama Excel, lalu digambar `PratinjauDokumen.jsx` di dalam
+kotak setinggi `min(70vh, 40rem)` (kepalanya lengket) supaya tombol "Tandai selesai" tidak terdorong jauh ke
+bawah. Byte gambar dijadikan URL objek sekali per berkas dan dilepas saat pratinjaunya berganti.
+
+Untuk klip tautan, alamat bingkai tetap **dihitung server** (`Registry\TautanMedia` → `media.sematan`,
+youtube-nocookie atau Drive preview); klien tidak pernah menyusun alamat bingkai sendiri, jadi guru tidak
+bisa menyelipkan bingkai dari host sembarang. Karena klip tautan tidak memberi `currentTime`, kuis sisipan di
+dalamnya dibuka lewat daftar tombol seperti sebelumnya.
+
+Batas yang jelas: pratinjau ini teks, tabel, dan gambar — bukan tata letak, animasi, bagan, atau rumus.
+Tautan ke berkas aslinya selalu disediakan di bawah pratinjau, dan format kantor lama (`.doc`/`.ppt`/`.xls`)
+tetap memakai tombol "Buka dokumen" seperti dulu supaya tidak ada materi yang hilang dari layar.
+
+Satu keluhan lain ikut ditutup: kuis yang disisipkan ke blok **teks/gambar** dulu tidak bisa dibuka murid,
+padahal bagian itu tidak bisa ditutup selama kuis wajibnya belum selesai. Sekarang latihan itu ditawarkan di
+bawah bacaannya (tidak menumpuk di atas media — tidak ada yang sedang diputar), sedangkan pada video dan klip
+tautan panelnya tetap menumpuk di atas medianya seperti kuis di dalam video.
+
+Status: **sudah bisa dipakai** (14 unit test pembaca OOXML + 5 test komponen pratinjau + 3 test halaman materi
+murid; `npm run check`, ESLint, dan 1.063 test frontend hijau).
+
+---
+
 ## Batasan jujur
 
 **Yang sengaja TIDAK kami lakukan:**

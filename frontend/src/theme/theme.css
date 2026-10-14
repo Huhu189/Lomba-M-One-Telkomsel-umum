@@ -4203,6 +4203,32 @@ a {
   box-shadow: var(--bayangan);
 }
 
+/*
+ * Tautan siswa (14 Oktober 2026): tombol + kotak tautan yang dipakai di bar
+ * lengket halaman susun kuis DAN di baris aksi detail kuis. Bentuknya satu
+ * baris yang boleh melipat, kotaknya selebar baris supaya tautan panjang tetap
+ * terbaca utuh dan tidak mendorong tombol keluar layar di HP.
+ */
+.tautan-siswa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.tautan-siswa-kotak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  flex: 1 1 100%;
+}
+
+.tautan-siswa-kotak input {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
 /* Pil pelompat bagian: nomor + nama, tinggi tetap ≥48 px supaya nyaman ditekan.
  * Bagian yang sedang dilihat ditandai aria-current="step" (bukan hanya warna);
  * pil ini TIDAK menyembunyikan isi, hanya memindahkan pandangan ke bagiannya. */
@@ -4899,6 +4925,128 @@ a {
   background: var(--kartu);
   border: 1px solid var(--garis);
   border-radius: var(--radius-kecil);
+}
+
+/*
+ * Pratinjau dokumen kantor di halaman murid (14 Oktober 2026).
+ *
+ * Bahan ajar guru sering berupa PowerPoint/Word, dan peramban tidak bisa
+ * menggambarnya sendiri. Isinya dibaca di peramban (lihat `pratinjauOOXML.js`)
+ * lalu ditampilkan di kotak ini — teks, butir, tabel, gambar — supaya murid
+ * tidak perlu mengunduh dulu hanya untuk membaca.
+ *
+ * Tingginya dibatasi `min(70vh, 40rem)` dengan gulir sendiri supaya pratinjau
+ * panjang tidak mendorong tombol "lanjut/selesai" jauh ke bawah, dan kepalanya
+ * lengket supaya jelas berkas mana yang sedang dibaca.
+ */
+.pratinjau-dokumen {
+  display: grid;
+  gap: var(--sp-2);
+  max-height: min(70vh, 40rem);
+  margin-block: 0.4rem;
+  padding: var(--sp-3);
+  overflow: auto;
+  color: var(--teks);
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.pratinjau-dokumen-kepala {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  padding-bottom: var(--sp-1);
+  background: var(--kartu-lembut);
+}
+
+.pratinjau-dokumen-lencana {
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  color: var(--teks-di-aksen);
+  background: var(--sorot-hangat);
+  border-radius: 999px;
+}
+
+.pratinjau-dokumen-nama {
+  font-size: var(--fs-meta);
+  color: var(--teks-lembut);
+}
+
+.pd-isi > * + * {
+  margin-top: var(--sp-2);
+}
+
+.pd-paragraf {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.pd-judul {
+  margin: 0;
+  font-weight: 700;
+}
+
+.pd-butir {
+  margin: 0;
+  padding-left: var(--sp-5);
+}
+
+.pd-tabel-gulir {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.pd-tabel-gulir table {
+  font-size: var(--fs-meta);
+}
+
+.pd-gambar {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-kecil);
+}
+
+.pd-slide {
+  display: grid;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-slide-satu {
+  padding-left: var(--sp-3);
+  border-left: 3px solid var(--aksen);
+}
+
+.pd-slide-nomor {
+  margin: 0;
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--teks-lembut);
+  text-transform: uppercase;
+}
+
+.pd-slide-judul {
+  margin: 0;
+  font-weight: 700;
+}
+
+.pd-lembar + .pd-lembar {
+  margin-top: var(--sp-3);
+}
+
+.pd-lembar-nama {
+  margin: 0 0 var(--sp-1);
+  font-weight: 600;
 }
 
 /* ==========================================================================

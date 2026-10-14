@@ -138,6 +138,10 @@ export const skemaProgresBlok = z.object({
           mime: z.string().optional(),
           ukuran_manusia: z.string().optional(),
           url: z.string().optional(),
+          // Alamat bingkai resmi (youtube-nocookie/Drive) yang dihitung SERVER
+          // bila media penjelasannya klip tautan; tanpa ini bingkainya tidak
+          // bisa dipasang dan penjelasan hanya jadi teks kosong.
+          sematan: z.string().nullable().optional(),
           tersedia: z.boolean().optional(),
         })
         .nullable()

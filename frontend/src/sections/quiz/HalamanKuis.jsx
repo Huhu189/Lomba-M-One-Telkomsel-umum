@@ -34,7 +34,6 @@ import {
   IkonPensil,
   IkonSilang,
   IkonTambah,
-  IkonTautan,
   IkonTongSampah,
 } from '../../icons.jsx'
 import { RUTE, ruteKuisDetail } from '../../routes.js'
@@ -56,7 +55,7 @@ import {
 } from './api.js'
 import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from './status.js'
 import { BAGIAN_KUIS, kelengkapanKuis, ringkasJadwal, siapTerbit, totalPoin } from './susunKuis.js'
-import { LABEL_SUMBER, catatanTautan, ringkasSetelan, tautanSiswa } from './setelanSesi.js'
+import { LABEL_SUMBER, ringkasSetelan } from './setelanSesi.js'
 import { ambilPengaturan } from '../settings/api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
@@ -69,6 +68,7 @@ import KosongData from '../../shared/ui/KosongData.jsx'
 import LangkahPil from '../../shared/ui/LangkahPil.jsx'
 import SetelanUlangan from './SetelanUlangan.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
+import TautanSiswa from './TautanSiswa.jsx'
 import { Tombol, TombolIkon, TombolTaut } from '../../shared/ui/Tombol.jsx'
 
 const nilaiAwal = {
@@ -167,7 +167,6 @@ export default function HalamanKuis() {
   // Tautan siswa dibuat atas permintaan (bukan tampil terus) supaya langkah
   // tinjau tetap ringkas; sekali ditekan, ia tetap tampil sampai halaman
   // ditutup supaya guru bisa menyalinnya berkali-kali.
-  const [tautanTampil, setTautanTampil] = useState(false)
 
   const daftarKuis = useQuery({ queryKey: ['kuis'], queryFn: ambilKuis })
   const mapel = useQuery({ queryKey: ['mapel'], queryFn: ambilMapel })
@@ -552,24 +551,10 @@ export default function HalamanKuis() {
   })
   const bisaTerbit = siapTerbit(kelengkapan)
 
-  // Ringkasan setelan + tautan siswa untuk langkah tinjau. Seluruh aturannya ada
-  // di `setelanSesi.js` (murni, diuji Vitest); di sini hanya dipanggil.
+  // Ringkasan setelan sesi (proteksi, izin tamu, aturan lain) untuk kepala bar
+  // lengket dan langkah tinjau. Seluruh aturannya ada di `setelanSesi.js`
+  // (murni, diuji Vitest); di sini hanya dipanggil.
   const ringkas = ringkasSetelan(setelanSesi.data)
-  const tautan = tautanSiswa(editor?.slug ?? '', typeof window === 'undefined' ? '' : window.location.origin)
-  const catatan = catatanTautan({ status: editor?.status ?? 'draf', tamuAktif: ringkas.tamu.aktif })
-
-  /** Salin tautan siswa; bila peramban menolak, katakan apa adanya — jangan diam. */
-  async function salinTautan() {
-    if (tautan === '') return
-
-    try {
-      if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('tanpa klip papan')
-      await navigator.clipboard.writeText(tautan)
-      tampilkanToast('sukses', 'Tautan siswa disalin.')
-    } catch {
-      tampilkanToast('info', 'Peramban ini tidak mengizinkan salin otomatis. Salin tautannya dari kotak di bawah.')
-    }
-  }
 /** Label & warna lencana status kuis di kepala halaman editor. */
 const LABEL_STATUS = /** @type {Record<string, string>} */ ({ draf: 'Draf', publikasi: 'Terbit', arsip: 'Diarsipkan' })
 const JENIS_STATUS = /** @type {Record<string, string>} */ ({
@@ -620,6 +605,11 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
             Draf tersimpan otomatis sebelum terbit — terbitkan kapan pun kamu siap.
           </span>
           <div className="d-flex flex-wrap gap-2 ms-md-auto">
+            {/* Tautan siswa di bar lengket (14 Oktober 2026): guru mengeluh
+                harus menggulir jauh ke langkah 3 hanya untuk menyalin tautan
+                yang mau dibagikan ke grup kelas. Bar ini menempel di bawah
+                kepala halaman, jadi tautannya terjangkau dari posisi mana pun. */}
+            <TautanSiswa slug={editor.slug} status={editor.status} tamuAktif={ringkas.tamu.aktif} />
             <Tombol
               varian="tepi"
               ukuran="sedang"
@@ -1173,42 +1163,20 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                       </li>
                     </ul>
 
-                    <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
-                      <Tombol
-                        ukuran="sedang"
-                        varian="tepi"
-                        ikon={IkonTautan}
-                        onClick={() => setTautanTampil(true)}
-                      >
-                        Buat tautan siswa
-                      </Tombol>
-                      {tautanTampil && (
-                        <Tombol ukuran="sedang" onClick={() => void salinTautan()}>
-                          Salin tautan
-                        </Tombol>
-                      )}
+                    {/**
+                     * Tempat kedua tautan siswa: langkah publikasi. Guru yang
+                     * sedang meninjau di sini memang mau membagikannya, jadi
+                     * tautannya ikut ada di sini juga — komponen yang sama
+                     * dengan bar lengket di atas (satu penerapan, satu perilaku).
+                     */}
+                    <div className="mt-3">
+                      <TautanSiswa
+                        slug={editor.slug}
+                        status={editor.status}
+                        tamuAktif={ringkas.tamu.aktif}
+                        label="Buat tautan siswa"
+                      />
                     </div>
-
-                    {tautanTampil && (
-                      <div className="mt-2">
-                        <input
-                          className="form-control form-control-sm"
-                          readOnly
-                          value={tautan}
-                          aria-label="Tautan untuk siswa"
-                          onFocus={(e) => e.target.select()}
-                        />
-                        {catatan.map((satu) => (
-                          <p key={satu} className="teks-lembut small mb-0 mt-1">
-                            {satu}
-                          </p>
-                        ))}
-                        <p className="teks-lembut small mb-0 mt-1">
-                          Tautan ini bekerja untuk murid berakun (lalu “Kerjakan sekarang”) dan untuk
-                          siswa tamu bila pintunya dibuka di atas.
-                        </p>
-                      </div>
-                    )}
                   </>
                 )}
               </section>

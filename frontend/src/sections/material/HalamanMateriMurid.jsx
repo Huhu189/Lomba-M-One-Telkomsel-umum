@@ -18,7 +18,8 @@ import KuisSisipan from './KuisSisipan.jsx'
 import PemutarMateri, { PenjelasanKuis } from './PemutarMateri.jsx'
 import PetaPerjalanan from './PetaPerjalanan.jsx'
 import { kenaikanUntuk } from './perjalanan.js'
-import { labelDokumen, namaBerkas, sajianBerkas } from './sajianBerkas.js'
+import PratinjauDokumen from './PratinjauDokumen.jsx'
+import { sajianBerkas } from './sajianBerkas.js'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import {
   bolehDibuka,
@@ -138,8 +139,24 @@ export default function HalamanMateriMurid() {
     : 0
 
   // Cara menyajikan media blok yang sedang dibuka (lihat `sajianBerkas`):
-  // `semat` tampil di halaman, `dokumen` dibuka, `unduh` diunduh.
+  // `semat` tampil di halaman, `dokumen` ditampilkan isinya, `unduh` diunduh,
+  // `tautan` hanya bisa dibuka.
   const cara = sajianBerkas(blokAktif?.media ?? null)
+
+  // Blok ini diputar pemutarnya sendiri: berkas video, atau **klip tautan**
+  // (YouTube/Drive) yang alamat bingkainya dihitung server (`sematan`).
+  // Sisipan kuisnya sudah tersedia di dalam pemutar itu (menumpuk di media),
+  // jadi tidak didaftar dua kali di bawah.
+  const pakaiPemutar =
+    blokAktif?.media?.sematan != null ||
+    (blokAktif?.media?.mime?.startsWith('video/') ?? false)
+
+  // Latihan sisipan milik blok yang sedang dibuka. Dulu hanya pemutar video yang
+  // bisa membukanya; pada blok teks/gambar latihannya tak pernah terjangkau
+  // sehingga murid tidak bisa menutup bagian itu (14 Okt 2026).
+  const sisipanBlok = blokAktif
+    ? (progres.data?.blok ?? []).filter((satu) => satu.host_id === blokAktif.block_id)
+    : []
 
   return (
     <div className="container py-4">
@@ -247,6 +264,16 @@ export default function HalamanMateriMurid() {
                       {blokAktif.media.tersedia === false && (
                         <Banner jenis="peringatan">Berkas ini belum tersedia.</Banner>
                       )}
+                      {/* Klip tautan: sebutkan asalnya di atas pemutarnya supaya murid
+                          tahu ini video dari luar, bukan berkas materi. */}
+                      {blokAktif.media.tersedia !== false &&
+                        blokAktif.media.sumber === 'tautan' && (
+                          <p className="small teks-lembut mb-2">
+                            {blokAktif.media.kategori_label ?? 'Tautan'} ·{' '}
+                            {blokAktif.media.nama ?? 'tautan'}
+                          </p>
+                        )}
+
                       {blokAktif.media.tersedia !== false && cara === 'semat' && (
                         <>
                           {blokAktif.media.mime?.startsWith('image/') && (
@@ -256,7 +283,10 @@ export default function HalamanMateriMurid() {
                               className="img-fluid rounded-3"
                             />
                           )}
-                          {blokAktif.media.mime?.startsWith('video/') && progres.data && (
+                          {/* Berkas video ATAU klip tautan (YouTube/Drive): keduanya
+                              diputar pemutar yang sama supaya kuis sisipannya bisa
+                              menumpuk di atas media, seperti sisipan di dalam video. */}
+                          {pakaiPemutar && progres.data && (
                             <PemutarMateri
                               key={blokAktif.block_id}
                               blok={blokAktif}
@@ -288,26 +318,36 @@ export default function HalamanMateriMurid() {
                           )}
                         </>
                       )}
+                      {/* Dokumen kantor (Word/PowerPoint/Excel) dibaca isinya di
+                          peramban dan ditampilkan di halaman — murid tidak perlu
+                          mengunduh dulu untuk membacanya. */}
                       {blokAktif.media.tersedia !== false && cara === 'dokumen' && (
-                        <div>
-                          <a
-                            href={blokAktif.media.url}
-                            className="btn btn-tepi"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Buka dokumen {labelDokumen(blokAktif.media)} ({namaBerkas(blokAktif.media)})
-                          </a>
-                          <p className="small teks-lembut mb-0 mt-2">
-                            Dokumen {labelDokumen(blokAktif.media)} tidak bisa ditampilkan langsung di
-                            halaman; berkasnya terbuka di aplikasi dokumenmu dengan nama aslinya.
-                          </p>
-                        </div>
+                        <PratinjauDokumen berkas={blokAktif.media} />
                       )}
                       {blokAktif.media.tersedia !== false && cara === 'unduh' && (
                         <a href={blokAktif.media.url} className="btn btn-tepi" download>
                           Unduh berkas ({blokAktif.media.kategori_label})
                         </a>
+                      )}
+                      {/* Tautan halaman biasa (bukan YouTube/Drive dan bukan berkas
+                          media): tidak bisa disematkan di halaman, tapi tidak boleh
+                          hilang tanpa jejak — murid tetap harus bisa membukanya. */}
+                      {blokAktif.media.tersedia !== false && cara === 'tautan' && (
+                        <div>
+                          <a
+                            className="btn btn-tepi"
+                            href={blokAktif.media.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Buka {blokAktif.media.kategori_label ?? 'tautan'} (
+                            {blokAktif.media.nama ?? 'tautan'})
+                          </a>
+                          <p className="small teks-lembut mb-0 mt-2">
+                            Alamat ini tidak bisa ditampilkan di dalam halaman materi; halamannya terbuka
+                            di tab baru.
+                          </p>
+                        </div>
                       )}
                       {blokAktif.media.keterangan && (
                         <p className="small teks-lembut mt-2 mb-0">{blokAktif.media.keterangan}</p>
@@ -345,6 +385,28 @@ export default function HalamanMateriMurid() {
                     </div>
                   )}
 
+                  {/* Latihan sisipan pada blok teks/gambar/PDF: ditampilkan di
+                      bawah bacaannya (tidak menumpuk di atas media seperti pada
+                      video), karena tidak ada yang sedang diputar. */}
+                  {blokAktif.tipe !== 'kuis' && !pakaiPemutar && sisipanBlok.length > 0 && (
+                    <div className="mt-3">
+                      <p className="small fw-semibold mb-2">Latihan di bagian ini</p>
+                      <div className="d-flex flex-wrap gap-2">
+                        {sisipanBlok.map((satu) => (
+                          <Tombol
+                            key={satu.block_id}
+                            varian={satu.wajib ? 'utama' : 'tepi'}
+                            ukuran="sedang"
+                            memuat={buka.isPending}
+                            onClick={() => buka.mutate(satu.block_id)}
+                          >
+                            {satu.status === 'selesai' ? 'Buka ulang' : 'Kerjakan'}: {satu.tipe_label}
+                          </Tombol>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {blokAktif.tipe !== 'kuis' && (
                     <Tombol
                       memuat={selesai.isPending}
@@ -359,7 +421,8 @@ export default function HalamanMateriMurid() {
                   )}
                   {sisaSisipan > 0 && (
                     <p className="small teks-lembut mt-2 mb-0">
-                      Jawab {sisaSisipan} kuis wajib di dalam video dulu.
+                      Jawab {sisaSisipan} kuis wajib{' '}
+                      {pakaiPemutar ? 'di dalam video' : 'di bagian ini'} dulu.
                     </p>
                   )}
                 </div>

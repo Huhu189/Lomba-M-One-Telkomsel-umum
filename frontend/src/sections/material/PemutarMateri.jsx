@@ -27,14 +27,15 @@ import { bukaBlok, selesaikanBlok } from './api.js'
 import { gayaMedia, tampilanKlip } from './editorMateri.js'
 import KuisSisipan from './KuisSisipan.jsx'
 import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from './pemutarMateri.js'
-import { labelDokumen, namaBerkas, sajianBerkas } from './sajianBerkas.js'
+import PratinjauDokumen from './PratinjauDokumen.jsx'
+import { sajianBerkas } from './sajianBerkas.js'
 
 /**
  * Penjelasan guru yang muncul SETELAH kuis selesai (opsional).
  *
  * Teks ditampilkan apa adanya (baris baru dipertahankan), media memakai aturan
  * yang sama dengan blok media: gambar/video/suara/PDF tampil di halaman,
- * dokumen kantor dibuka, dan arsip diunduh (lihat `sajianBerkas`). Tidak ada
+ * dokumen kantor ditampilkan isinya, dan arsip diunduh (lihat `sajianBerkas`). Tidak ada
  * kunci jawaban di sini — penjelasan ditulis guru dan tidak masuk penilaian.
  *
  * @param {{ penjelasan: import('./api.js').DataIsiBlok['penjelasan'] }} props
@@ -99,17 +100,35 @@ export function PenjelasanKuis({ penjelasan }) {
         </div>
       )}
 
-      {tersedia && cara === 'dokumen' && (
+      {/* Word/PowerPoint/Excel dibaca isinya di peramban dan ditampilkan di sini:
+          penjelasan guru tidak berhenti di tombol unduh. */}
+      {/* Klip tautan (YouTube/Drive): bingkainya dihitung SERVER (`media.sematan`),
+          jadi klien tidak pernah menyusun alamat bingkai sendiri. */}
+      {tersedia && cara === 'semat' && media.sematan != null && (
         <div>
-          <a className="btn btn-tepi btn-sedang" href={media.url} target="_blank" rel="noreferrer">
-            Buka dokumen {labelDokumen(media)} ({(namaBerkas(media) || '').slice(0, 60)})
+          <iframe
+            className="pm-penjelasan-dokumen"
+            src={media.sematan}
+            title={`Media penjelasan: ${media.nama ?? 'tautan'}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+          <a className="taut-sentuh small" href={media.url} target="_blank" rel="noreferrer">
+            Buka di tab baru
           </a>
-          <p className="small teks-lembut mb-0 mt-1">
-            Peramban tidak bisa menampilkan dokumen {labelDokumen(media)} langsung; berkasnya terbuka
-            di aplikasi dokumenmu dengan nama aslinya.
-          </p>
         </div>
       )}
+
+      {/* Tautan halaman biasa: tidak bisa disematkan, tapi tetap bisa dibuka. */}
+      {tersedia && cara === 'tautan' && (
+        <a className="btn btn-tepi btn-sedang" href={media.url} target="_blank" rel="noreferrer">
+          Buka {media.kategori_label ?? 'tautan'} ({media.nama ?? 'tautan'})
+        </a>
+      )}
+
+      {tersedia && cara === 'dokumen' && <PratinjauDokumen berkas={media} />}
 
       {tersedia && cara === 'unduh' && (
         <a className="btn btn-tepi btn-sedang" href={media.url} download>

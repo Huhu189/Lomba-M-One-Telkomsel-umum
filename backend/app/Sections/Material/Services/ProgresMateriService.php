@@ -364,7 +364,8 @@ class ProgresMateriService
             // berkas tak dikenal tetap unduhan `.upload`.
             'tampil_langsung' => $unggahan->kategori->bolehTampilLangsung(),
             // `semat` (gambar/video/audio/PDF tampil di halaman), `dokumen`
-            // (Word/Excel/PowerPoint: tombol "Buka dokumen"), `unduh`.
+            // (Word/Excel/PowerPoint: isinya dibaca & ditampilkan di halaman sejak
+            // 14 Oktober 2026 — lihat frontend `PratinjauDokumen.jsx`), `unduh`.
             'sajian' => $unggahan->kategori->sajian(),
             'mime' => $unggahan->mime,
             'ukuran' => $unggahan->ukuran_total,

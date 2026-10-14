@@ -64,6 +64,26 @@ async function tenang() {
   })
 }
 
+/**
+ * Tunggu sampai `teks` muncul di halaman.
+ *
+ * Satu tik `tenang()` TIDAK cukup dan tidak bisa diandalkan: React Query
+ * menyiarkan hasil kueri di batching-nya sendiri, jadi kadang lampiran baru
+ * terpasang beberapa tik kemudian. Dulu tes ini menunggu satu tik lalu langsung
+ * memeriksa, sehingga di bawah beban (seluruh suite berjalan paralel) ia
+ * sesekali gagal — kegagalan yang menyesatkan, karena aplikasinya baik-baik saja.
+ * @param {string} teks
+ */
+async function tungguTeks(teks) {
+  for (let tik = 0; tik < 50; tik += 1) {
+    if ((wadah.textContent ?? '').includes(teks)) return
+
+    await tenang()
+  }
+
+  throw new Error(`Teks "${teks}" tidak muncul di panel lampiran`)
+}
+
 beforeEach(() => {
   daftarLampiran.mockReset()
   wadah = document.createElement('div')
@@ -123,7 +143,8 @@ describe('UnggahLampiran — terlipat di soal biasa', () => {
         },
       ],
     })
-    await tenang()
+
+    await tungguTeks('jawaban.png')
 
     expect(wadah.textContent).toContain('jawaban.png')
   })

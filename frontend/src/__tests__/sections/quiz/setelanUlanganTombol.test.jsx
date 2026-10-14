@@ -135,4 +135,18 @@ describe('SetelanUlangan (satu tombol)', () => {
     // Tombol tutup disediakan di kepala panel (fokus & Esc ditangani PanelForm).
     expect(tombol('Tutup setelan ulangan')).not.toBeNull()
   })
+
+  it('menjelaskan kapan pintu tamu benar-benar terbuka', async () => {
+    pasang()
+    await tungguTeks('2/8 aktif')
+
+    act(() => tombol('Setelan ulangan')?.click())
+    await tungguTeks('Izinkan siswa tamu')
+
+    // Guru yang mengeluh "sudah dinyalakan tapi murid tetap dipaksa masuk"
+    // harus menemukan sebabnya di panel ini, bukan lewat bertanya.
+    const teks = wadah.textContent ?? ''
+    expect(teks).toContain('cukup menulis namanya di halaman masuk')
+    expect(teks).toContain('baru terbuka setelah kuis ini diterbitkan')
+  })
 })

@@ -28,6 +28,7 @@ import { IkonPanahKiri } from '../../icons.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
 import SetelanUlangan from './SetelanUlangan.jsx'
+import TautanSiswa from './TautanSiswa.jsx'
 import { ambilKuisDetail } from './api.js'
 import { urlEksporNilai } from '../report/api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
@@ -94,9 +95,15 @@ export default function HalamanKuisDetail() {
                 <div className="mb-2">
                   <TombolTaut to={ruteKerjakanKuis(data.id)}>Kerjakan sekarang</TombolTaut>
                 </div>
-              )}
-
-              <div className="d-flex flex-wrap gap-2 my-3">                  <TombolTaut varian="tepi" to={rutePeringkat(data.slug)}>Peringkat</TombolTaut>
+              )}              <div className="d-flex flex-wrap gap-2 my-3">
+                {/*
+                  Tautan siswa di baris aksi paling atas (14 Oktober 2026):
+                  halaman ini yang dibuka guru setelah kuisnya terbit, dan
+                  tautan untuk dibagikan ke grup kelas harus ada di sini — bukan
+                  hanya di langkah publikasi editor yang panjang.
+                */}
+                {sebagaiGuru && <TautanSiswa slug={data.slug} status={data.status} />}
+                <TombolTaut varian="tepi" to={rutePeringkat(data.slug)}>Peringkat</TombolTaut>
                 {sebagaiGuru && (
                   <TombolTaut varian="tepi" to={ruteLaporanKuis(data.slug)}>Laporan per tema</TombolTaut>
                 )}

@@ -5,12 +5,13 @@
  * Permintaan pemilik produk: materi jangan "hanya video" — PDF, Word,
  * PowerPoint, dan Excel harus ikut tampil, dan jangan malah dijadikan unduhan
  * `.upload`. Yang diuji di sini: PDF ditampilkan di dalam halaman, dokumen
- * kantor ditawarkan sebagai "Buka dokumen" (bukan "Unduh"), dan berkas yang
- * memang berisiko tetap diunduh.
+ * kantor **ditampilkan isinya** (bukan disuruh diunduh), dan berkas yang memang
+ * berisiko tetap diunduh.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import JSZip from 'jszip'
 import { PenjelasanKuis } from '../../../sections/material/PemutarMateri.jsx'
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)
@@ -49,6 +50,32 @@ function pasang(isiMedia) {
   })
 }
 
+/**
+ * Berkas PowerPoint kecil berisi satu slide berjudul.
+ * @param {string} judul
+ */
+async function pptxBerjudul(judul) {
+  const zip = new JSZip()
+  zip.file(
+    'ppt/slides/slide1.xml',
+    `<?xml version="1.0"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>${judul}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`,
+  )
+  return zip.generateAsync({ type: 'arraybuffer' })
+}
+
+/**
+ * Menunggu pratinjau selesai dibaca & digambar.
+ * @param {() => boolean} cek
+ */
+async function tungguSampai(cek) {
+  for (let i = 0; i < 60; i += 1) {
+    if (cek()) return
+    await act(async () => {
+      await new Promise((selesai) => setTimeout(selesai, 5))
+    })
+  }
+}
+
 beforeEach(() => {
   wadah = document.createElement('div')
   document.body.appendChild(wadah)
@@ -58,19 +85,24 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   wadah.remove()
+  vi.unstubAllGlobals()
 })
 
 describe('PenjelasanKuis · penyajian dokumen', () => {
-  it('dokumen kantor ditawarkan sebagai “Buka dokumen”, bukan unduhan', () => {
+  it('isi PowerPoint ditampilkan di halaman, bukan disuruh diunduh', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, arrayBuffer: async () => await pptxBerjudul('Bagian Tumbuhan') })))
+
     pasang(media({}))
+    await tungguSampai(() => (wadah.textContent ?? '').includes('Bagian Tumbuhan'))
 
     const teks = wadah.textContent ?? ''
 
-    expect(teks).toContain('Buka dokumen PowerPoint')
+    expect(teks).toContain('Pratinjau PowerPoint')
+    expect(teks).toContain('Bagian Tumbuhan')
     expect(teks).toContain('Bahan Ajar.pptx')
     // Tidak ada tombol unduh dan tidak ada pemutar — peramban tidak bisa
-    // merender PowerPoint.
-    expect(teks).not.toContain('Unduh')
+    // merender PowerPoint, jadi isinya dibaca dan digambar sendiri.
+    expect(wadah.querySelector('a[download]')).toBeNull()
     expect(wadah.querySelector('iframe')).toBeNull()
   })
 
