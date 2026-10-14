@@ -32,6 +32,11 @@ import {
   IkonTipeUraian,
   IkonTipeUrutGambar,
 } from '../../icons.jsx'
+import {
+  teknikKoreksiBawaan,
+  teknikKoreksiDariState,
+  teknikKoreksiSah,
+} from './teknikKoreksi.js'
 
 /** Nilai tipe soal — harus sama persis dengan enum backend. */
 export const TIPE = {
@@ -206,6 +211,114 @@ export const MAKS_BUTIR_RUBRIK = 10
 export const MAKS_SISI_SILANG = 12
 export const MAKS_PETUNJUK_SILANG = 12
 export const MIN_HURUF_SILANG = 2
+
+/**
+ * Jenis berkas tugas unggah yang **dikenali aplikasi** — pilihan guru, bukan
+ * teks bebas (14 Oktober 2026, permintaan pemilik produk: "jenis berkas yang
+ * boleh diunggah itu jangan buat manual diketik, buat opsi banyak").
+ *
+ * Daftarnya dicerminkan dari apa yang benar-benar bisa dikirim murid
+ * (`sections/attempt/UnggahLampiran.jsx`: foto, rekaman diri, berkas) dan dari
+ * klasifikasi isi berkas di server
+ * (`Sections/Material/Services/KlasifikasiBerkas.php`), jadi tidak ada pilihan
+ * yang menjanjikan jenis berkas yang tidak bisa diunggah. `semua` sengaja
+ * ditaruh paling depan: banyak tugas memang bebas jenis berkas, dan dulu itu
+ * harus diketik sendiri.
+ *
+ * `cocok` dipakai untuk membaca soal LAMA yang masih menyimpan teks bebas
+ * (mis. "Foto JPG atau PNG") supaya centangnya tidak hilang saat guru membuka
+ * soal itu lagi.
+ *
+ * @type {{ nilai: string, label: string, teks: string, cocok: string[] }[]}
+ */
+export const JENIS_BERKAS_TUGAS = [
+  { nilai: 'semua', label: 'Semua jenis berkas', teks: 'Semua jenis berkas', cocok: [] },
+  {
+    nilai: 'gambar',
+    label: 'Foto atau gambar (JPG, PNG)',
+    teks: 'Foto (JPG/PNG)',
+    cocok: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'foto', 'gambar', 'image', 'kanvas'],
+  },
+  { nilai: 'pdf', label: 'Dokumen PDF', teks: 'Dokumen PDF', cocok: ['pdf'] },
+  {
+    nilai: 'video',
+    label: 'Video (MP4, WEBM)',
+    teks: 'Video (MP4/WEBM)',
+    cocok: ['mp4', 'webm', 'video', 'film'],
+  },
+  {
+    nilai: 'suara',
+    label: 'Suara (MP3, WAV)',
+    teks: 'Suara (MP3/WAV)',
+    cocok: ['mp3', 'wav', 'ogg', 'suara', 'audio', 'rekam', 'voice'],
+  },
+  {
+    nilai: 'kantor',
+    label: 'Word, Excel, atau PowerPoint',
+    teks: 'Word/Excel/PowerPoint',
+    cocok: ['docx', 'xls', 'xlsx', 'ppt', 'office', 'word', 'excel', 'powerpoint', 'zip', 'rar', '7z'],
+  },
+]
+
+/** Batas panjang `konten.jenis_berkas` (cermin PenanganTugasUnggah). */
+export const MAKS_JENIS_BERKAS = 120
+
+/**
+ * Pilihan yang tercentang dari teks `jenis_berkas` yang tersimpan.
+ *
+ * Soal baru menyimpan kalimat yang disusun dari centangnya, tetapi soal LAMA
+ * menyimpan teks bebas, jadi teksnya dicocokkan dengan kata kunci tiap pilihan.
+ * Teks yang tidak dikenali mengembalikan daftar **kosong** — editor lalu
+ * meminta guru memilih ulang, bukan diam-diam memperlonggar aturannya.
+ *
+ * @param {unknown} teks
+ * @returns {string[]}
+ */
+export function pilihanJenisBerkas(teks) {
+  const bersih = teksAman(teks).toLowerCase()
+
+  if (bersih === '') return []
+  if (bersih.includes('semua') || bersih.includes('apa saja')) return ['semua']
+
+  return JENIS_BERKAS_TUGAS.filter(
+    (satu) => satu.nilai !== 'semua' && satu.cocok.some((kata) => bersih.includes(kata)),
+  ).map((satu) => satu.nilai)
+}
+
+/**
+ * Kalimat `jenis_berkas` yang dibaca murid dari pilihan guru, dalam urutan
+ * `JENIS_BERKAS_TUGAS`. Daftar kosong = belum ada pilihan (server menolaknya).
+ *
+ * @param {string[]} pilihan
+ * @returns {string}
+ */
+export function teksJenisBerkas(pilihan) {
+  const daftar = JENIS_BERKAS_TUGAS.filter((satu) => pilihan.includes(satu.nilai))
+
+  if (daftar.length === 0) return ''
+  if (daftar.some((satu) => satu.nilai === 'semua')) return 'Semua jenis berkas'
+
+  return daftar.map((satu) => satu.teks).join(', ')
+}
+
+/**
+ * Centang/hapus centang satu pilihan. `semua` tidak bisa digabung dengan
+ * pilihan lain: mencentangnya menggantikan yang lain, dan mencentang yang lain
+ * melepas `semua`.
+ *
+ * @param {string[]} pilihan
+ * @param {string} nilai
+ * @returns {string[]}
+ */
+export function centangJenisBerkas(pilihan, nilai) {
+  if (nilai === 'semua') return pilihan.includes('semua') ? [] : ['semua']
+
+  const tanpaSemua = pilihan.filter((satu) => satu !== 'semua')
+
+  return tanpaSemua.includes(nilai)
+    ? tanpaSemua.filter((satu) => satu !== nilai)
+    : [...tanpaSemua, nilai]
+}
 
 /** Batas panjang teks MathML (cermin BantuanKonten::galatMatematika). */
 export const MAKS_MATEMATIKA = 2000
@@ -399,6 +512,111 @@ export function selSilangDariGrid(teks) {
 }
 
 /**
+ * Matriks kotak grid silang untuk editor: tiap baris daftar satu karakter
+ * (`#` kotak hitam, huruf = huruf jawaban, `.` belum diberi huruf).
+ * @param {string} teks
+ * @returns {string[][]}
+ */
+export function kotakSilangDariGrid(teks) {
+  return barisSilang(teks).map((baris) => [...baris])
+}
+
+/**
+ * Kebalikannya: matriks kotak menjadi teks grid (satu baris per baris).
+ * @param {string[][]} kotak
+ * @returns {string}
+ */
+export function gridDariKotakSilang(kotak) {
+  return kotak.map((baris) => baris.join('')).join('\n')
+}
+
+/**
+ * Samakan panjang semua baris grid: validasi dan backend menuntut tiap baris
+ * sama panjang, jadi baris yang lebih pendek diberi kotak kosong `.`.
+ * @param {string[][]} kotak
+ * @returns {string[][]}
+ */
+export function samakanPanjangSilang(kotak) {
+  const lebar = kotak.reduce((maks, baris) => Math.max(maks, baris.length), 0)
+
+  return kotak.map((baris) => [...baris, ...[...Array(lebar - baris.length)].map(() => '.')])
+}
+
+/**
+ * Ubah satu kotak grid silang. Nilai baru boleh huruf jawaban, `#` (kotak
+ * hitam), atau `.` (kotak yang belum diberi huruf).
+ * @param {string} teks @param {number} baris @param {number} kolom @param {string} nilai
+ * @returns {string}
+ */
+export function ubahKotakSilang(teks, baris, kolom, nilai) {
+  const kotak = kotakSilangDariGrid(teks)
+
+  if (kotak[baris]?.[kolom] === undefined) return teks
+
+  kotak[baris][kolom] = nilai
+
+  return gridDariKotakSilang(samakanPanjangSilang(kotak))
+}
+
+/**
+ * Tambah satu baris grid di ujung bawah. Lebarnya mengikuti baris yang ada;
+ * grid kosong dimulai dari `lebarBawaan` kolom supaya tombolnya tetap berguna
+ * (validasi menuntut minimal 2 × 2).
+ * @param {string} teks @param {number} [lebarBawaan]
+ * @returns {string|null}
+ */
+export function tambahBarisSilang(teks, lebarBawaan = 2) {
+  const kotak = samakanPanjangSilang(kotakSilangDariGrid(teks))
+  const lebar = kotak[0]?.length ?? lebarBawaan
+
+  if (kotak.length + 1 > MAKS_SISI_SILANG || lebar > MAKS_SISI_SILANG) return null
+
+  return gridDariKotakSilang([...kotak, [...Array(lebar)].map(() => '.')])
+}
+
+/**
+ * Tambah satu kolom grid di ujung kanan, tiap baris ikut memanjang.
+ * @param {string} teks
+ * @returns {string|null}
+ */
+export function tambahKolomSilang(teks) {
+  const kotak = samakanPanjangSilang(kotakSilangDariGrid(teks))
+
+  if (kotak.length === 0) return null
+  if (kotak[0].length + 1 > MAKS_SISI_SILANG) return null
+
+  return gridDariKotakSilang(kotak.map((baris) => [...baris, '.']))
+}
+
+/**
+ * Hapus satu baris grid. Dua baris terakhir dipertahankan: di bawah itu bukan
+ * teka silang lagi menurut validasi.
+ * @param {string} teks @param {number} index
+ * @returns {string|null}
+ */
+export function hapusBarisSilang(teks, index) {
+  const kotak = kotakSilangDariGrid(teks)
+
+  if (kotak.length <= 2 || index < 0 || index >= kotak.length) return null
+
+  return gridDariKotakSilang(kotak.filter((_, posisi) => posisi !== index))
+}
+
+/**
+ * Hapus satu kolom grid; dua kolom terakhir dipertahankan.
+ * @param {string} teks @param {number} index
+ * @returns {string|null}
+ */
+export function hapusKolomSilang(teks, index) {
+  const kotak = samakanPanjangSilang(kotakSilangDariGrid(teks))
+  const lebar = kotak[0]?.length ?? 0
+
+  if (lebar <= 2 || index < 0 || index >= lebar) return null
+
+  return gridDariKotakSilang(kotak.map((baris) => baris.filter((_, posisi) => posisi !== index)))
+}
+
+/**
  * Daftar kode sel sebuah petunjuk dari sel awal + panjangnya.
  * @param {string} mulai kode sel awal ("baris,kolom")
  * @param {unknown} panjang
@@ -465,6 +683,162 @@ export function pisahKata(teks) {
 }
 
 /**
+ * Daftar nama kolom tabel isian (tanpa nama kosong).
+ *
+ * Nama kolom disimpan sebagai satu teks berkoma (`state.kolom`) supaya materi
+ * lama tetap terbaca; helper di sekitar sini yang membuatnya bisa disunting
+ * sebagai **kolom sungguhan** di editor (14 Okt 2026).
+ *
+ * @param {Pick<StateSoal, 'kolom'>} state
+ * @returns {string[]}
+ */
+export function kolomTabel(state) {
+  return pisahKata(state.kolom)
+}
+
+/**
+ * Ganti nama satu kolom tabel. Koma dibuang dari namanya: daftar kolom disimpan
+ * sebagai teks berkoma, jadi satu koma di nama kolom akan menciptakan kolom baru
+ * yang tidak pernah dikehendaki guru.
+ *
+ * @param {Pick<StateSoal, 'kolom'>} state
+ * @param {number} index
+ * @param {string} teks
+ * @returns {string} teks kolom yang baru
+ */
+export function kolomTabelDiganti(state, index, teks) {
+  const daftar = kolomTabel(state)
+
+  if (index < 0 || index >= daftar.length) return state.kolom
+
+  daftar[index] = teks.replace(/,/g, ' ').trimStart()
+
+  return daftar.map((satu) => satu.trim()).join(', ')
+}
+
+/**
+ * Tambah satu kolom tabel: nama bawaannya ikut ditulis supaya guru langsung bisa
+ * menggantinya, dan tiap baris mendapat satu sel kosong baru.
+ *
+ * Kode sel dijaga **unik di seluruh tabel** (bukan hanya unik di dalam satu
+ * baris): server menolak dua sel berkode sama. Kode sel adalah identitas
+ * (`r{nomor}c{kolom}`), bukan posisi — karena itu kolom yang dihapus tidak
+ * memaksa kode sel lain berubah, dan kunci jawaban sel lain tetap menempel.
+ *
+ * `null` berarti batas `MAKS_SEL` sudah tercapai — pemanggil menonaktifkan
+ * tombolnya, bukan menambah diam-diam lalu ditolak server.
+ *
+ * @param {Pick<StateSoal, 'kolom'|'barisTabel'>} state
+ * @returns {{ kolom: string, barisTabel: any[] }|null}
+ */
+export function tambahKolomTabel(state) {
+  const daftar = kolomTabel(state)
+  const kolomBaru = daftar.length + 1
+  const totalSel = state.barisTabel.reduce((jumlah, baris) => jumlah + baris.sel.length, 0)
+
+  if (totalSel + Math.max(1, state.barisTabel.length) > MAKS_SEL) return null
+
+  const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+
+  return {
+    kolom: [...daftar, `Kolom ${kolomBaru}`].join(', '),
+    barisTabel: state.barisTabel.map((baris) => {
+      let nomor = 1
+      while (dipakai.has(`r${nomor}c${kolomBaru}`)) nomor += 1
+
+      const kode = `r${nomor}c${kolomBaru}`
+      dipakai.add(kode)
+
+      return { ...baris, sel: [...baris.sel, { kode, teks: '' }] }
+    }),
+  }
+}
+
+/**
+ * Hapus satu kolom tabel beserta selnya di **setiap** baris, dan kunci jawaban
+ * yang menempel pada sel-sel itu.
+ *
+ * Kolom terakhir tidak boleh dihapus (tabel tanpa kolom bukan tabel).
+ *
+ * @param {Pick<StateSoal, 'kolom'|'barisTabel'|'kunciSel'>} state
+ * @param {number} index
+ * @returns {{ kolom: string, barisTabel: any[], kunciSel: Record<string, string> }|null}
+ */
+export function hapusKolomTabel(state, index) {
+  const daftar = kolomTabel(state)
+
+  if (daftar.length <= 1 || index < 0 || index >= daftar.length) return null
+
+  const dibuang = new Set(
+    state.barisTabel.map((baris) => baris.sel[index]?.kode).filter((kode) => typeof kode === 'string'),
+  )
+
+  return {
+    kolom: daftar.filter((_, posisi) => posisi !== index).join(', '),
+    barisTabel: state.barisTabel.map((baris) => ({
+      ...baris,
+      sel: baris.sel.filter((_, posisi) => posisi !== index),
+    })),
+    kunciSel: Object.fromEntries(
+      Object.entries(state.kunciSel).filter(([kode]) => !dibuang.has(kode)),
+    ),
+  }
+}
+
+/**
+ * Tambah satu baris tabel: tiap kolom yang ada mendapat satu sel kosong.
+ *
+ * `null` berarti tidak ada kolom sama sekali atau batas `MAKS_SEL` tercapai —
+ * pemanggil menonaktifkan tombolnya, bukan menambah lalu ditolak server.
+ *
+ * @param {Pick<StateSoal, 'kolom'|'barisTabel'>} state
+ * @returns {{ barisTabel: any[] }|null}
+ */
+export function tambahBarisTabel(state) {
+  const daftar = kolomTabel(state)
+  const totalSel = state.barisTabel.reduce((jumlah, baris) => jumlah + baris.sel.length, 0)
+
+  if (daftar.length === 0 || totalSel + daftar.length > MAKS_SEL) return null
+
+  const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+  let nomor = 1
+  while (daftar.some((_, kolom) => dipakai.has(`r${nomor}c${kolom + 1}`))) nomor += 1
+
+  return {
+    barisTabel: [
+      ...state.barisTabel,
+      {
+        id: idBerikut('R', state.barisTabel),
+        sel: daftar.map((_, kolom) => ({ kode: `r${nomor}c${kolom + 1}`, teks: '' })),
+      },
+    ],
+  }
+}
+
+/**
+ * Hapus satu baris tabel beserta kunci jawaban sel-selnya.
+ *
+ * Baris terakhir tidak boleh dihapus (tabel tanpa baris bukan tabel).
+ *
+ * @param {Pick<StateSoal, 'barisTabel'|'kunciSel'>} state
+ * @param {number} index
+ * @returns {{ barisTabel: any[], kunciSel: Record<string, string> }|null}
+ */
+export function hapusBarisTabel(state, index) {
+  if (state.barisTabel.length <= 1 || index < 0 || index >= state.barisTabel.length) return null
+
+  const sisa = state.barisTabel.filter((_, posisi) => posisi !== index)
+  const kode = new Set(sisa.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
+
+  return {
+    barisTabel: sisa,
+    kunciSel: Object.fromEntries(
+      Object.entries(state.kunciSel).filter(([kodeSel]) => kode.has(kodeSel)),
+    ),
+  }
+}
+
+/**
  * Baris sinonim uraian (`kata = alias, alias`) menjadi peta untuk kunci
  * `sinonim: { kata: [alias, …] }`.
  * @param {string} teks
@@ -497,6 +871,82 @@ export function teksDariSinonimUraian(nilai) {
   return Object.entries(/** @type {Record<string, unknown>} */ (nilai))
     .map(([kata, alias]) => `${kata} = ${Array.isArray(alias) ? alias.map(String).join(', ') : ''}`)
     .join('\n')
+}
+
+/**
+ * Baris sinonim uraian dalam bentuk yang bisa disunting sebagai **baris** di
+ * editor (`kata` + `alias`), bukan sebagai teks mentah.
+ *
+ * Sumber kebenarannya tetap satu baris teks "kata = alias" supaya data lama
+ * terbaca; fungsi di sekitar sini hanya membuatnya bisa diketik per bidang.
+ * Baris yang masih kosong tetap dibawa (tidak dibuang) supaya guru bisa
+ * mengetiknya tanpa barisnya hilang sendiri.
+ *
+ * @param {unknown} teks
+ * @returns {{ kata: string, alias: string }[]}
+ */
+export function barisSinonimUraian(teks) {
+  return teksAman(teks)
+    .split('\n')
+    .filter((baris) => baris.trim() !== '')
+    .map((baris) => {
+      // Hanya SATU spasi pemisah yang dibuang di tiap sisi — spasi yang diketik
+      // guru di dalam kata ("rambut getar") harus tetap ada, kalau tidak
+      // mengetik spasi terasa dimakan sendiri.
+      const pisah = baris.indexOf('=')
+      const kata = pisah === -1 ? baris : baris.slice(0, pisah)
+      const alias = pisah === -1 ? '' : baris.slice(pisah + 1)
+
+      return { kata: kata.replace(/ $/, ''), alias: alias.replace(/^ /, '') }
+    })
+}
+
+/**
+ * Kebalikannya: daftar baris sinonim uraian menjadi teks yang disimpan.
+ * @param {{ kata: string, alias: string }[]} baris
+ * @returns {string}
+ */
+export function teksDariBarisSinonimUraian(baris) {
+  return baris.map((satu) => `${satu.kata} = ${satu.alias}`).join('\n')
+}
+
+/**
+ * Ubah satu bidang (`kata`/`alias`) pada satu baris sinonim uraian.
+ * @param {unknown} teks
+ * @param {number} index
+ * @param {'kata'|'alias'} bidang
+ * @param {string} nilai
+ * @returns {string}
+ */
+export function ubahBarisSinonimUraian(teks, index, bidang, nilai) {
+  const baris = barisSinonimUraian(teks)
+
+  if (baris[index] === undefined) return teksAman(teks)
+
+  baris[index] = { ...baris[index], [bidang]: nilai }
+
+  return teksDariBarisSinonimUraian(baris)
+}
+
+/**
+ * Tambah satu baris sinonim uraian di ujung bawah.
+ * @param {unknown} teks
+ * @returns {string}
+ */
+export function tambahBarisSinonimUraian(teks) {
+  return teksDariBarisSinonimUraian([...barisSinonimUraian(teks), { kata: '', alias: '' }])
+}
+
+/**
+ * Hapus satu baris sinonim uraian.
+ * @param {unknown} teks
+ * @param {number} index
+ * @returns {string}
+ */
+export function hapusBarisSinonimUraian(teks, index) {
+  const baris = barisSinonimUraian(teks).filter((_, posisi) => posisi !== index)
+
+  return teksDariBarisSinonimUraian(baris)
 }
 
 /**
@@ -577,6 +1027,7 @@ export function idBerikut(prefix, daftar) {
  *   pembahasan: string,
  *   skor: string,
  *   aktif: boolean,
+ *   teknikKoreksi: string,
  * }} StateSoal
  */
 
@@ -671,7 +1122,10 @@ export function stateSoalKosong() {
       { id: 'K2', teks: '' },
     ],
     petaKlasifikasi: {},
-    kolom: '',
+    // Nama kolom bawaan: grid tabel di editor menampilkannya sebagai kepala
+    // tabel yang bisa langsung diganti, dan tabel tanpa nama kolom ditolak
+    // validasi — jadi jangan mulai dari daftar kosong (14 Oktober 2026).
+    kolom: 'Soal, Jawaban',
     barisTabel: [
       {
         id: 'R1',
@@ -694,13 +1148,19 @@ export function stateSoalKosong() {
     benarHotspot: [],
     jamJam: '7',
     jamMenit: '0',
-    jenisBerkas: '',
+    // Tugas unggah baru mulai dari "Semua jenis berkas": guru tinggal
+    // mempersempit bila perlu (14 Oktober 2026). Sebelumnya kolom ini kosong
+    // dan harus DIKETIK sendiri.
+    jenisBerkas: 'Semua jenis berkas',
     rubrik: [{ butir: '', poin: '1' }],
     gridSilang: '...\n...\n...',
     petunjukSilang: [{ arah: 'mendatar', nomor: '1', teks: '', mulai: '0,0', panjang: '3' }],
     pembahasan: '',
     skor: '10',
     aktif: true,
+    // Cara mengoreksi soal ini. Bawaannya mengikuti jenis soal (14 Oktober
+    // 2026) — lihat sections/question/teknikKoreksi.js.
+    teknikKoreksi: teknikKoreksiBawaan(TIPE.pilihanGanda),
   })
 }
 
@@ -832,7 +1292,32 @@ export function kontenDariState(state) {
  * @param {StateSoal} state
  * @returns {Record<string, unknown>}
  */
+/**
+ * Kunci jawaban dari state editor, **termasuk** pilihan teknik koreksi guru.
+ *
+ * `teknik_koreksi` hanya ditulis bila guru memilih yang BUKAN bawaan jenis
+ * soalnya: kunci soal lama tidak berubah bentuk, dan bawaannya selalu dibaca
+ * ulang dari jenis soalnya (di server: `TeknikKoreksi::untuk`).
+ *
+ * @param {StateSoal} state
+ * @returns {Record<string, unknown>}
+ */
 export function kunciDariState(state) {
+  const kunci = kunciIsi(state)
+
+  if (teknikKoreksiDariState(state) !== teknikKoreksiBawaan(state.tipe)) {
+    kunci.teknik_koreksi = state.teknikKoreksi
+  }
+
+  return kunci
+}
+
+/**
+ * Isi kunci per jenis soal (tanpa teknik koreksi).
+ * @param {StateSoal} state
+ * @returns {Record<string, unknown>}
+ */
+function kunciIsi(state) {
   if (state.tipe === TIPE.benarSalah) return { benar: state.benar }
   if (state.tipe === TIPE.menjodohkan) return { pasangan: { ...state.pasangan } }
   if (state.tipe === TIPE.mengurutkan) return { urutan: urutanDariItem(state.item) }
@@ -895,6 +1380,97 @@ export function petaJawabanDariRekaman(rekaman) {
   }
 
   return peta
+}
+
+/**
+ * Pindahkan satu baris daftar ke atas (-1) atau ke bawah (+1) lalu tulis ulang
+ * `posisi` semua baris (1 paling awal).
+ *
+ * 14 Oktober 2026 — pemilik produk: "buat pengurutan urutan dll langsung
+ * visual gak perlu ketik lagi". Sebelumnya guru mengetik angka urut di tiap
+ * baris, yang mudah salah (dua baris bernomor sama, atau ada nomor yang tidak
+ * dipakai) — dengan memindahkan barisnya, urutan yang dilihat guru **adalah**
+ * urutan benarnya, dan nomornya dihitung sendiri. Daftar baru selalu punya
+ * posisi 1..n tanpa lubang dan tanpa kembar; di ujung daftar, daftar aslinya
+ * dikembalikan apa adanya.
+ *
+ * @template {{ posisi: string }} T
+ * @param {T[]} daftar
+ * @param {number} index
+ * @param {number} arah
+ * @returns {T[]}
+ */
+export function geserBarisPosisi(daftar, index, arah) {
+  const tujuan = index + arah
+
+  if (tujuan < 0 || tujuan >= daftar.length) return daftar
+
+  const baru = [...daftar]
+  const dipindah = baru.splice(index, 1)[0]
+  baru.splice(tujuan, 0, dipindah)
+
+  return /** @type {T[]} */ (
+    baru.map((satu, posisi) => ({ ...satu, posisi: String(posisi + 1) }))
+  )
+}
+
+/**
+ * Peta "kanan ini dipakai kiri mana" dari peta pasangan (kiri → kanan).
+ * Dipakai dua tempat: menandai item kanan yang **sudah dipakai** di papan jodoh
+ * (dulu pilihan yang sudah terpakai masih bisa dipilih lagi sehingga guru baru
+ * tahu dari galat server), dan memeriksa bentrok sebelum memasangkan.
+ *
+ * @param {Record<string, string>} peta
+ * @returns {Record<string, string>}
+ */
+export function pemakaiKanan(peta) {
+  /** @type {Record<string, string>} */
+  const hasil = {}
+
+  for (const [kiri, kanan] of Object.entries(peta)) {
+    if (kanan !== '') hasil[kanan] = kiri
+  }
+
+  return hasil
+}
+
+/**
+ * Pasangkan satu item kiri ke satu item kanan. Dua aturan di sini yang mencegah
+ * human error: (1) satu item kanan hanya boleh dipakai **satu** kiri — peta
+ * yang dikembalikan tidak berubah bila kanannya sudah dipakai kiri lain; (2)
+ * memasangkan ulang kiri yang sama mengganti pasangannya, bukan menambah.
+ *
+ * @param {Record<string, string>} peta
+ * @param {string} kiriId
+ * @param {string} kananId
+ * @returns {Record<string, string>}
+ */
+export function pasangkanKanan(peta, kiriId, kananId) {
+  if (kiriId === '' || kananId === '') return peta
+
+  const pemakai = pemakaiKanan(peta)
+
+  if (pemakai[kananId] !== undefined && pemakai[kananId] !== kiriId) return peta
+
+  return { ...peta, [kiriId]: kananId }
+}
+
+/**
+ * Lepaskan pasangan satu item kiri. Entrinya **dibuang**, bukan dikosongkan:
+ * peta yang tersimpan jadi sama seperti soal yang belum pernah dipasangkan,
+ * sehingga validasi tidak perlu membedakan "belum diisi" dari "dikosongkan".
+ *
+ * @param {Record<string, string>} peta
+ * @param {string} kiriId
+ * @returns {Record<string, string>}
+ */
+export function lepasPasangan(peta, kiriId) {
+  if (peta[kiriId] === undefined) return peta
+
+  const baru = { ...peta }
+  delete baru[kiriId]
+
+  return baru
 }
 
 /**
@@ -989,6 +1565,11 @@ export function stateDariSoal(soal) {
   state.pembahasan = soal.pembahasan ?? ''
   state.skor = String(soal.skor)
   state.aktif = soal.aktif
+  // Soal lama (sebelum pilihan teknik koreksi) tidak punya bidang ini: jatuh ke
+  // bawaan jenis soalnya, jadi perilakunya tetap sama seperti sebelumnya.
+  state.teknikKoreksi = teknikKoreksiSah(soal.tipe, kunci.teknik_koreksi)
+    ? teksAman(kunci.teknik_koreksi)
+    : teknikKoreksiBawaan(soal.tipe)
 
   if (soal.tipe === TIPE.pilihanGanda) {
     const opsi = daftarAman(konten.opsi)

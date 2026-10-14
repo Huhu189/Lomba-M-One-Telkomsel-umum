@@ -9,8 +9,9 @@
  * 2. **Rekaman diri** — tombolnya baru aktif setelah izin dicentang, kamera
  *    diminta hanya saat anak menekan tombol (bukan otomatis), dan server tetap
  *    menolak bila sekolah belum menyalakan izin rekam.
- * 3. **Berkas** — server mengklasifikasi isinya; yang berisiko/tidak dikenal
- *    disajikan sebagai unduhan `.upload`.
+ * 3. **Berkas** — server mengklasifikasi isinya; gambar/PDF dan dokumen kantor
+ *    (Word/PowerPoint/Excel) disajikan apa adanya, sedangkan arsip dan berkas
+ *    tak dikenal tetap unduhan `.upload`.
  *
  * Semua tombol mati begitu waktu ulangan habis; server menolaknya juga.
  */
@@ -19,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
+import { sajianBerkas } from '../material/sajianBerkas.js'
 import {
   DURASI_REKAM_MAKS,
   bolehUnggahLampiran,
@@ -311,7 +313,9 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
               <span className="small flex-grow-1">
                 {satu.nama_asli ?? satu.jenis_label} · {satu.ukuran_manusia}
                 {satu.durasi_detik ? ` · ${satu.durasi_detik}s` : ''}
-                {satu.tampil_langsung ? '' : ' · diunduh sebagai berkas aman'}
+                {/* Berkas yang bukan gambar/PDF/Word tetap disajikan sebagai
+                 * unduhan `.upload` — itu yang dimaksud "berkas aman". */}
+                {sajianBerkas(satu) === 'unduh' ? ' · diunduh sebagai berkas aman' : ''}
               </span>
               {satu.url && (
                 <a className="small" href={satu.url} target="_blank" rel="noreferrer">

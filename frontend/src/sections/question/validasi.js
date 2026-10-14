@@ -32,6 +32,7 @@ import {
   MAKS_RENTANG_GARIS,
   MAKS_AREA_HOTSPOT,
   MAKS_BUTIR_RUBRIK,
+  MAKS_JENIS_BERKAS,
   MAKS_SISI_SILANG,
   MAKS_PETUNJUK_SILANG,
   MIN_HURUF_SILANG,
@@ -44,7 +45,13 @@ import {
   petaJawabanDariRekaman,
   urutanDariItem,
   urutanDariItemGambar,
+  LABEL_TIPE,
 } from './tipeSoal.js'
+import {
+  LABEL_TEKNIK,
+  TEKNIK_DIKENAL,
+  teknikKoreksiUntuk,
+} from './teknikKoreksi.js'
 
 /** Tag: nama 2–80 (unik per sekolah di server), deskripsi opsional. */
 export const skemaTagForm = z.object({
@@ -126,7 +133,45 @@ export function validasiSoal(state) {
   if (state.tipe === TIPE.tugasUnggah) galat.push(...validasiTugasUnggah(state))
   if (state.tipe === TIPE.tekaSilangMini) galat.push(...validasiTekaSilangMini(state))
 
+  galat.push(...galatTeknikKoreksi(state))
+
   return galat
+}
+
+/**
+ * Teknik koreksi yang tidak dikenal (14 Oktober 2026).
+ *
+ * Yang diperiksa di sini **hanya** nilai yang bukan teknik mana pun, bukan
+ * pilihan yang kebetulan tidak tersedia untuk jenis soal itu. Sebabnya:
+ *
+ * - muatan yang dikirim ke server dibangun lewat `teknikKoreksiDariState`, yang
+ *   sudah mengembalikan pilihan ke bawaan jenis soalnya bila pilihannya tidak
+ *   sah — jadi nilai yang tidak tersedia tidak pernah ikut terkirim;
+ * - editor pun tidak bisa menghasilkan keadaan itu: pilihan radio-nya selalu
+ *   berasal dari jenis soal yang aktif, dan mengganti jenis merapikan pilihannya
+ *   (`gantiJenis`).
+ *
+ * Menolaknya di sini justru akan mengunci guru dari soal yang sebenarnya bisa
+ * disimpan (mis. soal lama yang tipe-nya diganti di luar editor). Server tetap
+ * tegas, karena di sana permintaan seperti itu memang tidak bisa ditepati
+ * (`RegistryTipeSoal::galatTeknikKoreksi`).
+ *
+ * @param {import('./tipeSoal.js').StateSoal} state
+ * @returns {string[]}
+ */
+function galatTeknikKoreksi(state) {
+  const dipilih = state.teknikKoreksi
+
+  if (dipilih === undefined || dipilih === '') return []
+  if (typeof dipilih === 'string' && TEKNIK_DIKENAL.includes(dipilih)) return []
+
+  const tersedia = teknikKoreksiUntuk(state.tipe)
+    .map((satu) => LABEL_TEKNIK[satu] ?? satu)
+    .join(' atau ')
+
+  return [
+    `Teknik koreksi itu tidak dikenal untuk ${LABEL_TIPE[state.tipe] ?? 'jenis soal ini'}. Pilih ${tersedia} atau biarkan kosong (memakai bawaan).`,
+  ]
 }
 
 /** Skema Zod kunci tipe gelombang 2. */
@@ -389,10 +434,12 @@ function validasiBacaJam(state) {
 function validasiTugasUnggah(state) {
   const galat = []
 
+  // Jenis berkas kini dipilih dari daftar di editor (bukan teks bebas), jadi
+  // pesannya mengarah ke centangnya; teks panjang hanya mungkin dari soal lama.
   if (state.jenisBerkas.trim() === '') {
-    galat.push('Tugas unggah wajib menyebut jenis berkas yang boleh diunggah.')
-  } else if (state.jenisBerkas.trim().length > 120) {
-    galat.push('Jenis berkas maksimal 120 karakter.')
+    galat.push('Pilih minimal satu jenis berkas yang boleh diunggah.')
+  } else if (state.jenisBerkas.trim().length > MAKS_JENIS_BERKAS) {
+    galat.push(`Jenis berkas maksimal ${MAKS_JENIS_BERKAS} karakter.`)
   }
 
   if (state.rubrik.length === 0) galat.push('Tugas unggah wajib punya minimal satu butir rubrik.')

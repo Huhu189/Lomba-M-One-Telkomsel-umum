@@ -19,6 +19,7 @@ import { IkonTambah, IkonTipeIsianSingkat, IkonTongSampah } from '../../icons.js
 import RendererSoal from './render/RendererSoal.jsx'
 import {
   DAFTAR_TIPE,
+  JENIS_BERKAS_TUGAS,
   LABEL_TIPE,
   MAKS_AREA_HOTSPOT,
   MAKS_BUTIR_RUBRIK,
@@ -46,15 +47,44 @@ import {
   MIN_PERNYATAAN,
   TIPE,
   TIPE_TANPA_TEKS,
+  barisSinonimUraian,
+  centangJenisBerkas,
+  hapusBarisSilang,
+  hapusBarisSinonimUraian,
+  hapusBarisTabel,
+  hapusKolomSilang,
+  hapusKolomTabel,
   idBerikut,
+  geserBarisPosisi,
   ikonTipe,
+  kolomTabel,
+  kotakSilangDariGrid,
+  lepasPasangan,
   muatanDariState,
   nomorLubangDariTeks,
-  pisahKata,
+  pasangkanKanan,
+  pemakaiKanan,
+  pilihanJenisBerkas,
+  samakanPanjangSilang,
   selDariPetunjuk,
   stateDariSoal,
   stateSoalKosong,
+  tambahBarisSilang,
+  tambahBarisSinonimUraian,
+  tambahBarisTabel,
+  tambahKolomSilang,
+  tambahKolomTabel,
+  teksJenisBerkas,
+  ubahBarisSinonimUraian,
+  ubahKotakSilang,
 } from './tipeSoal.js'
+import {
+  pilihanTeknikKoreksi,
+  teknikKoreksiBawaan,
+  teknikKoreksiDariState,
+  teknikKoreksiSah,
+  teknikTerkunci,
+} from './teknikKoreksi.js'
 import { kelengkapanSoal, siapSoal, validasiSoal } from './validasi.js'
 // Ringkasan kunci yang sama dipakai halaman Koreksi — satu cara membaca kunci
 // untuk semua tipe soal, jadi guru melihat kesimpulan yang konsisten.
@@ -83,8 +113,78 @@ function ikonJenis(tipe, ukuran = 22) {
  *   judul: string,
  * }} props
  */
+/**
+ * Tombol pengurut satu baris (▲ naik / ▼ turun).
+ *
+ * Guru menyusun urutannya dengan **memindahkan barisnya**, bukan mengetik angka
+ * (14 Oktober 2026). Karena nomornya dihitung dari posisi baris, tidak mungkin
+ * ada dua baris bernomor sama atau nomor yang terlewat; tombolnya mati di ujung
+ * daftar supaya tidak ada baris yang diam-diam hilang saat ditekan.
+ *
+ * @param {{
+ *   nama: string,
+ *   index: number,
+ *   jumlah: number,
+ *   onGeser: (index: number, arah: number) => void,
+ * }} props
+ */
+function PengurutBaris({ nama, index, jumlah, onGeser }) {
+  return (
+    <div className="pengurut" role="group" aria-label={`Urutan ${nama}`}>
+      <Tombol
+        varian="tepi"
+        ukuran="sedang"
+        className="pengurut-tombol"
+        aria-label={`Naikkan ${nama} ke atas`}
+        disabled={index === 0}
+        onClick={() => onGeser(index, -1)}
+      >
+        ▲
+      </Tombol>
+      <Tombol
+        varian="tepi"
+        ukuran="sedang"
+        className="pengurut-tombol"
+        aria-label={`Turunkan ${nama} ke bawah`}
+        disabled={index === jumlah - 1}
+        onClick={() => onGeser(index, 1)}
+      >
+        ▼
+      </Tombol>
+    </div>
+  )
+}
+
+/**
+ * Penyusun pasangan (menjodohkan & hubung kata).
+ *
+ * 14 Oktober 2026 — pemilik produk: "menjodohkan layout-nya sangat jelek dan
+ * gak berurutan dan sudah dipakai". Dua sebabnya diperbaiki di sini:
+ *
+ * 1. **Pemilih pasangan dipindah keluar dari baris yang sempit.** Dulu tiap
+ *    baris memuat kode + isian teks + pemilih + tombol hapus berjejal dalam satu
+ *    kolom setengah layar, sehingga isian teks dan pemilihnya sama-sama sempit.
+ *    Sekarang kolom kiri/kanan hanya berisi itemnya, dan penyambungan dilakukan
+ *    di papan tersendiri di bawahnya — satu baris per item kiri, urut dari atas.
+ * 2. **Item kanan yang sudah dipakai tidak bisa dipilih lagi.** Dulu pilihan
+ *    yang sudah terpakai tetap bisa dipilih, jadi guru baru tahu dari galat
+ *    server ("sudah dipakai"). Sekarang opsi itu mati dan sebabnya tertulis
+ *    beserta siapa pemakainya, dan ada penghitung "n dari m tersambung" supaya
+ *    pasangan yang belum lengkap terlihat tanpa menunggu galat.
+ *
+ * @param {{
+ *   state: import('./tipeSoal.js').StateSoal,
+ *   ubah: (perubahan: Partial<import('./tipeSoal.js').StateSoal>) => void,
+ *   namaPeta: 'pasangan'|'sambungan',
+ *   judul: string,
+ * }} props
+ */
 function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
   const peta = state[namaPeta]
+  // Siapa pemakai tiap item kanan — dipakai untuk mematikan opsi yang sudah
+  // terpakai dan menyebut pemakainya di labelnya.
+  const pemakai = pemakaiKanan(peta)
+  const tersambung = state.kiri.filter((satu) => (peta[satu.id] ?? '') !== '').length
 
   /** @param {Record<string, string>} baru */
   function simpanPeta(baru) {
@@ -125,6 +225,11 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
         {judul} (minimal {MIN_ITEM})
       </legend>
 
+      <p className="teks-lembut small">
+        Tulis item kiri dan kanan lebih dulu, lalu sambungkan pasangannya di papan bawah. Item kanan yang
+        sudah dipakai tidak bisa dipilih dua kali.
+      </p>
+
       <div className="row g-2">
         <div className="col-md-6">
           <h3 className="fw-bold fs-6 teks-lembut">Kiri</h3>
@@ -138,23 +243,10 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
                 onChange={(e) => ubahKiri(index, e.target.value)}
                 placeholder="Contoh: Paru-paru"
               />
-              <select
-                className="form-select jodoh-pilih"
-                aria-label={`Pasangan kiri ${satu.id}`}
-                value={peta[satu.id] ?? ''}
-                onChange={(e) => simpanPeta({ ...peta, [satu.id]: e.target.value })}
-              >
-                <option value="">Pasangan…</option>
-                {state.kanan.map((pasang) => (
-                  <option key={pasang.id} value={pasang.id}>
-                    {pasang.id} — {pasang.teks || '(belum diisi)'}
-                  </option>
-                ))}
-              </select>
               <TombolIkon
                 label={`Hapus item kiri ${satu.id}`}
                 ikon={IkonTongSampah}
-                varian="bahaya"
+                className="editor-hapus"
                 disabled={state.kiri.length <= MIN_ITEM}
                 onClick={() => hapusKiri(index)}
               />
@@ -186,7 +278,7 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
               <TombolIkon
                 label={`Hapus item kanan ${satu.id}`}
                 ikon={IkonTongSampah}
-                varian="bahaya"
+                className="editor-hapus"
                 disabled={state.kanan.length <= MIN_ITEM}
                 onClick={() => hapusKanan(index)}
               />
@@ -202,6 +294,84 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
             Tambah kanan
           </Tombol>
         </div>
+      </div>
+
+      {/*
+        Papan penyambung: satu baris per item kiri, urut dari atas. Isinya
+        disusun "kiri → kanan" supaya bentuk pasangannya terbaca sekali lihat,
+        dan pemilihnya punya lebar sendiri (bukan berjejal di baris item).
+      */}
+      <div className="papan-jodoh mt-3">
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <h3 className="fw-bold fs-6 teks-lembut mb-0">Sambungkan pasangan</h3>
+          <span
+            className={`badge-status ${tersambung === state.kiri.length ? 'sukses' : 'peringatan'}`}
+            data-jodoh-tersambung={tersambung}
+          >
+            {tersambung} dari {state.kiri.length} tersambung
+          </span>
+        </div>
+
+        {state.kiri.map((satu) => {
+          const dipilih = peta[satu.id] ?? ''
+          const terpilih = state.kanan.find((pasang) => pasang.id === dipilih)
+
+          return (
+            <div
+              key={`jodoh-${satu.id}`}
+              className={`baris-jodoh${dipilih === '' ? '' : ' tersambung'}`}
+              data-jodoh={satu.id}
+            >
+              <span className="baris-jodoh-sisi">
+                <span className="kotak-huruf" aria-hidden="true">{satu.id}</span>
+                <span className="teks-patah">{satu.teks.trim() === '' ? '(belum diisi)' : satu.teks}</span>
+              </span>
+              <span className="baris-jodoh-panah" aria-hidden="true">→</span>
+              <span className="baris-jodoh-sisi">
+                {terpilih ? (
+                  <>
+                    <span className="kotak-huruf" aria-hidden="true">{terpilih.id}</span>
+                    <span className="teks-patah">
+                      {terpilih.teks.trim() === '' ? '(belum diisi)' : terpilih.teks}
+                    </span>
+                  </>
+                ) : (
+                  <span className="baris-jodoh-kosong">belum dipasangkan</span>
+                )}
+              </span>
+              <select
+                className="form-select jodoh-pilih"
+                aria-label={`Pasangan kiri ${satu.id}`}
+                value={dipilih}
+                onChange={(e) => {
+                  const nilai = e.target.value
+                  simpanPeta(
+                    nilai === '' ? lepasPasangan(peta, satu.id) : pasangkanKanan(peta, satu.id, nilai),
+                  )
+                }}
+              >
+                <option value="">Belum dipasangkan</option>
+                {state.kanan.map((pasang) => {
+                  const pemakaiLain = pemakai[pasang.id]
+                  const sudahDipakai = pemakaiLain !== undefined && pemakaiLain !== satu.id
+
+                  return (
+                    <option key={pasang.id} value={pasang.id} disabled={sudahDipakai}>
+                      {pasang.id} — {pasang.teks.trim() === '' ? '(belum diisi)' : pasang.teks}
+                      {sudahDipakai ? ` (sudah dipakai ${pemakaiLain})` : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )
+        })}
+
+        {tersambung < state.kiri.length && (
+          <p className="teks-lembut small mb-0 mt-2" role="status">
+            Masih ada {state.kiri.length - tersambung} item kiri yang belum dipasangkan.
+          </p>
+        )}
       </div>
     </fieldset>
   )
@@ -264,6 +434,13 @@ export default function EditorSoal({
   // "Simpan lalu buat soal berikutnya" — satu centang untuk menyusun rangkaian
   // soal tanpa keluar-masuk editor tiap nomor.
   const [lanjutSerupa, setLanjutSerupa] = useState(false)
+  // Sebab tombol hapus tidak membuang apa pun (mis. pilihan sudah di batas
+  // minimum). Diucapkan di barisnya supaya tombol itu tidak terasa rusak.
+  const [pesanOpsi, setPesanOpsi] = useState('')
+  // Sebab yang sama untuk tabel isian (batas sel, baris/kolom terakhir) dan
+  // grid teka silang (batas sisi) — diucapkan di bawah alatnya.
+  const [pesanTabel, setPesanTabel] = useState('')
+  const [pesanSilang, setPesanSilang] = useState('')
 
   const tambahMapel = useMutation({
     mutationFn: async () =>
@@ -303,10 +480,39 @@ export default function EditorSoal({
   const terkunci = soal?.terkunci === true
 
   /**
+   * Pilihan jenis berkas tugas unggah yang tercentang, dibaca dari teks yang
+   * tersimpan. Soal lama masih berisi teks bebas, jadi teksnya dicocokkan
+   * dengan kata kunci tiap pilihan (lihat `JENIS_BERKAS_TUGAS`); teks yang
+   * tidak dikenali jadi daftar kosong dan guru diminta memilih ulang.
+   */
+  const jenisBerkasTerpilih = pilihanJenisBerkas(state.jenisBerkas)
+
+  /**
    * @param {Partial<import('./tipeSoal.js').StateSoal>} perubahan
    */
   function ubah(perubahan) {
     setState((lama) => ({ ...lama, ...perubahan }))
+  }
+
+  /**
+   * Ganti jenis soal **beserta** pilihan teknik koreksinya.
+   *
+   * Pilihan teknik berbeda per jenis (mis. "Otomatis (teks)" hanya ada untuk
+   * isian singkat & uraian), jadi pilihan lama yang tidak lagi sah dikembalikan
+   * ke bawaan jenis barunya. Tanpa ini, guru yang berpindah jenis hanya melihat
+   * galat "teknik koreksi itu tidak tersedia" saat menyimpan — padahal yang
+   * salah bukan pilihannya, hanya jenis soalnya yang berganti (14 Oktober 2026).
+   *
+   * @param {string} tipe
+   */
+  function gantiJenis(tipe) {
+    setState((lama) => ({
+      ...lama,
+      tipe,
+      teknikKoreksi: teknikKoreksiSah(tipe, lama.teknikKoreksi)
+        ? lama.teknikKoreksi
+        : teknikKoreksiBawaan(tipe),
+    }))
   }
 
   /** @param {number} index @param {string} teks */
@@ -316,12 +522,34 @@ export default function EditorSoal({
 
   function tambahOpsi() {
     if (state.opsi.length >= MAKS_OPSI) return
+    setPesanOpsi('')
     ubah({ opsi: [...state.opsi, { id: idBerikut('O', state.opsi), teks: '' }] })
   }
 
-  /** @param {number} index */
+  /**
+   * Buang satu pilihan jawaban.
+   *
+   * Di batas minimum tombolnya tetap **menjawab** (14 Oktober 2026): dulu ia
+   * `disabled` dan fungsinya `return` diam-diam, jadi guru yang menekannya tidak
+   * mendapat apa-apa — tombolnya terasa rusak sampai ia menambah pilihan lain.
+   * Sekarang sebabnya diucapkan di barisnya, dan pilihan yang sudah ada tidak
+   * ikut terbuang.
+   *
+   * @param {number} index
+   */
   function hapusOpsi(index) {
-    if (state.opsi.length <= MIN_OPSI) return
+    const minimum = state.tipe === TIPE.pilihanGandaKompleks ? MIN_OPSI_KOMPLEKS : MIN_OPSI
+
+    if (state.opsi.length <= minimum) {
+      const pesan =
+        `Pilihan jawaban minimal ${minimum}. Tambah satu pilihan dulu (tombol “Tambah pilihan”), ` +
+        'baru pilihan lain bisa dibuang.'
+      setPesanOpsi(pesan)
+      tampilkanToast('info', pesan)
+      return
+    }
+
+    setPesanOpsi('')
     const sisa = state.opsi.filter((_, posisi) => posisi !== index)
     const jawaban = sisa.some((satu) => satu.id === state.jawaban) ? state.jawaban : (sisa[0]?.id ?? '')
     ubah({ opsi: sisa, jawaban })
@@ -410,11 +638,20 @@ export default function EditorSoal({
     })
   }
 
-  /** @param {number} index @param {string} posisi */
-  function ubahPosisi(index, posisi) {
-    ubah({
-      item: state.item.map((satu, nomor) => (nomor === index ? { ...satu, posisi } : satu)),
-    })
+  /**
+   * Pindahkan baris item naik/turun. Urutan visual di sini **adalah** urutan
+   * benar: nomor tiap baris dihitung sendiri (lihat `geserBarisPosisi`), jadi
+   * tidak ada angka yang bisa tertukar atau terlewat (14 Oktober 2026).
+   * @param {number} index
+   * @param {number} arah
+   */
+  function geserItemUrut(index, arah) {
+    ubah({ item: geserBarisPosisi(state.item, index, arah) })
+  }
+
+  /** @param {number} index @param {number} arah */
+  function geserGambarUrut(index, arah) {
+    ubah({ itemGambar: geserBarisPosisi(state.itemGambar, index, arah) })
   }
 
   /** @param {number} index */
@@ -473,13 +710,10 @@ export default function EditorSoal({
    * Urut gambar: item bergambar + nomor urut benar.
    * @param {number} index
    * @param {string} media
-   * @param {string} posisi
    */
-  function ubahItemGambar(index, media, posisi) {
+  function ubahMediaGambar(index, media) {
     ubah({
-      itemGambar: state.itemGambar.map((satu, nomor) =>
-        nomor === index ? { ...satu, media, posisi } : satu,
-      ),
+      itemGambar: state.itemGambar.map((satu, nomor) => (nomor === index ? { ...satu, media } : satu)),
     })
   }
 
@@ -582,73 +816,109 @@ export default function EditorSoal({
     ubah({ kotak: state.kotak.filter((_, posisi) => posisi !== index), petaKlasifikasi: peta })
   }
 
-  /** Jumlah kolom tabel dari teks kolom yang dipisah koma. */
+  /**
+   * Jumlah kolom tabel. Namanya diambil dari `state.kolom`, dan bila soal lama
+   * belum menyimpan nama kolom, jumlahnya mengikuti sel terpanjang — supaya
+   * tabel yang sudah punya sel tidak tampil kosong.
+   */
   function jumlahKolomTabel() {
-    return pisahKata(state.kolom).length
+    const selTerpanjang = state.barisTabel.reduce((maks, baris) => Math.max(maks, baris.sel.length), 0)
+
+    return Math.max(kolomTabel(state).length, selTerpanjang)
   }
 
   /**
-   * Ubah daftar nama kolom; kolom baru langsung disiapkan sebagai sel kosong di
-   * tiap baris supaya guru tidak menambah sel satu per satu.
-   * @param {string} teks
+   * Nama kolom yang tampil di kepala tabel. Kolom tanpa nama mendapat nama
+   * bawaan, dan nama bawaan itu **ikut disimpan** begitu ada tindakan yang
+   * menyentuh tabel (`ubahTabel`), jadi menyimpan tidak pernah gagal hanya
+   * karena kepala tabel belum diberi nama.
    */
-  function ubahKolom(teks) {
-    const jumlah = pisahKata(teks).length
-    const perluTambah = jumlah > 0 && state.barisTabel.some((baris) => baris.sel.length < jumlah)
+  function namaKolomTabel() {
+    const daftar = kolomTabel(state)
 
-    if (!perluTambah) {
-      ubah({ kolom: teks })
+    return [...Array(jumlahKolomTabel())].map((_, kolom) => daftar[kolom] ?? `Kolom ${kolom + 1}`)
+  }
+
+  /**
+   * State tabel dengan nama kolom yang sudah dimaterialkan — semua tindakan
+   * tabel lewat sini supaya nama bawaan tidak hilang lagi.
+   */
+  function stateTabel() {
+    return { ...state, kolom: namaKolomTabel().join(', ') }
+  }
+
+  /**
+   * Jalankan pembuat tabel murni; bila batasnya tercapai, sebabnya diucapkan di
+   * bawah tabel — tombol yang tidak bereaksi lebih buruk daripada pesan jelas.
+   * @param {{ kolom?: string, barisTabel?: any[], kunciSel?: Record<string, string> }|null} hasil
+   * @param {string} sebab
+   */
+  function terapkanTabel(hasil, sebab) {
+    if (hasil === null) {
+      setPesanTabel(sebab)
       return
     }
 
-    const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
-    const barisTabel = state.barisTabel.map((baris) => {
-      const sel = [...baris.sel]
-
-      for (let posisi = sel.length; posisi < jumlah; posisi += 1) {
-        let nomor = 1
-        while (dipakai.has(`r${nomor}c${posisi + 1}`)) nomor += 1
-        const kode = `r${nomor}c${posisi + 1}`
-        dipakai.add(kode)
-        sel.push({ kode, teks: '' })
-      }
-
-      return { ...baris, sel }
-    })
-
-    ubah({ kolom: teks, barisTabel })
+    setPesanTabel('')
+    ubah(hasil)
   }
 
-  function tambahBarisTabel() {
-    const jumlah = jumlahKolomTabel()
-    const totalSel = state.barisTabel.reduce((jumlahSel, baris) => jumlahSel + baris.sel.length, 0)
-    if (jumlah === 0 || totalSel + jumlah > MAKS_SEL) return
+  /** Jumlah sel seluruh tabel (batas server {MAKS_SEL}). */
+  function jumlahSelTabel() {
+    return state.barisTabel.reduce((jumlah, baris) => jumlah + baris.sel.length, 0)
+  }
 
-    const dipakai = new Set(state.barisTabel.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
-    let nomor = 1
-    while ([...Array(jumlah)].some((_, kolom) => dipakai.has(`r${nomor}c${kolom + 1}`))) nomor += 1
+  function tambahKolomTabelBaru() {
+    const hasil = tambahKolomTabel(stateTabel())
 
-    ubah({
-      barisTabel: [
-        ...state.barisTabel,
-        {
-          id: idBerikut('R', state.barisTabel),
-          sel: [...Array(jumlah)].map((_, kolom) => ({ kode: `r${nomor}c${kolom + 1}`, teks: '' })),
-        },
-      ],
-    })
+    if (hasil === null) {
+      setPesanTabel(`Tabel isian maksimal ${MAKS_SEL} sel. Hapus baris atau kolom dulu.`)
+      return
+    }
+
+    // Tabel tanpa baris tidak akan menampilkan sel apa pun, jadi kolom pertama
+    // langsung disertai satu baris kosong.
+    const digabung = { ...stateTabel(), ...hasil }
+    const baris = digabung.barisTabel.length === 0 ? tambahBarisTabel(digabung) : null
+
+    setPesanTabel('')
+    ubah(baris === null ? hasil : { ...hasil, ...baris })
+  }
+
+  function tambahBarisTabelBaru() {
+    terapkanTabel(
+      tambahBarisTabel(stateTabel()),
+      jumlahKolomTabel() === 0
+        ? 'Tambah kolom dulu supaya barisnya punya sel.'
+        : `Tabel isian maksimal ${MAKS_SEL} sel. Hapus baris atau kolom dulu.`,
+    )
+  }
+
+  /** @param {number} kolom */
+  function hapusKolomTabelKe(kolom) {
+    terapkanTabel(hapusKolomTabel(stateTabel(), kolom), 'Tabel wajib punya minimal satu kolom.')
   }
 
   /** @param {number} index */
-  function hapusBarisTabel(index) {
-    if (state.barisTabel.length <= 1) return
+  function hapusBarisTabelKe(index) {
+    terapkanTabel(hapusBarisTabel(state, index), 'Tabel wajib punya minimal satu baris.')
+  }
 
-    const sisa = state.barisTabel.filter((_, posisi) => posisi !== index)
-    const kode = new Set(sisa.flatMap((baris) => baris.sel.map((sel) => sel.kode)))
-    const kunciSel = Object.fromEntries(
-      Object.entries(state.kunciSel).filter(([kodeSel]) => kode.has(kodeSel)),
-    )
-    ubah({ barisTabel: sisa, kunciSel })
+  /**
+   * Nama satu kolom. Koma dibuang dari namanya (nama kolom disimpan sebagai
+   * teks berkoma), dan nama yang dikosongkan kembali ke nama bawaannya supaya
+   * jumlah kolom tidak bergeser.
+   * @param {number} kolom @param {string} teks
+   */
+  function ubahNamaKolom(kolom, teks) {
+    const nama = namaKolomTabel()
+    const bersih = teks.replace(/,/g, ' ').trimStart()
+
+    if (kolom < 0 || kolom >= nama.length) return
+
+    nama[kolom] = bersih.trim() === '' ? `Kolom ${kolom + 1}` : bersih
+    setPesanTabel('')
+    ubah({ kolom: nama.map((satu) => satu.trim()).join(', ') })
   }
 
   /**
@@ -668,6 +938,96 @@ export default function EditorSoal({
   /** @param {string} kode @param {string} teks */
   function ubahKunciSel(kode, teks) {
     ubah({ kunciSel: { ...state.kunciSel, [kode]: teks } })
+  }
+
+  /** Grid teka silang sebagai matriks kotak (lebar baris sudah disamakan). */
+  function kotakSilang() {
+    return samakanPanjangSilang(kotakSilangDariGrid(state.gridSilang))
+  }
+
+  /**
+   * Isi satu kotak silang dari ketikan: `#` jadi kotak hitam, huruf jadi huruf
+   * jawaban, dan apa pun yang lain jadi kotak kosong.
+   * @param {string} teks
+   * @returns {string}
+   */
+  function isiKotakSilang(teks) {
+    const bersih = teks.replace(/\s+/g, '')
+
+    if (bersih === '#') return '#'
+
+    const huruf = bersih.slice(-1)
+
+    return /[a-zA-Z]/.test(huruf) ? huruf : '.'
+  }
+
+  /** @param {number} baris @param {number} kolom @param {string} nilai */
+  function ubahKotakGridSilang(baris, kolom, nilai) {
+    setPesanSilang('')
+    ubah({ gridSilang: ubahKotakSilang(state.gridSilang, baris, kolom, nilai) })
+  }
+
+  function tambahBarisGridSilang() {
+    const baru = tambahBarisSilang(state.gridSilang)
+
+    if (baru === null) {
+      setPesanSilang(`Grid teka silang maksimal ${MAKS_SISI_SILANG} baris.`)
+      return
+    }
+
+    setPesanSilang('')
+    ubah({ gridSilang: baru })
+  }
+
+  function tambahKolomGridSilang() {
+    const baru = tambahKolomSilang(state.gridSilang)
+
+    if (baru === null) {
+      setPesanSilang(
+        kotakSilang().length === 0
+          ? 'Tambah baris dulu supaya kolomnya punya kotak.'
+          : `Grid teka silang maksimal ${MAKS_SISI_SILANG} kolom.`,
+      )
+      return
+    }
+
+    setPesanSilang('')
+    ubah({ gridSilang: baru })
+  }
+
+  /** @param {number} index */
+  function hapusBarisGridSilang(index) {
+    const baru = hapusBarisSilang(state.gridSilang, index)
+
+    if (baru === null) {
+      setPesanSilang('Teka silang wajib punya minimal 2 baris.')
+      return
+    }
+
+    setPesanSilang('')
+    ubah({ gridSilang: baru })
+  }
+
+  /** @param {number} index */
+  function hapusKolomGridSilang(index) {
+    const baru = hapusKolomSilang(state.gridSilang, index)
+
+    if (baru === null) {
+      setPesanSilang('Teka silang wajib punya minimal 2 kolom.')
+      return
+    }
+
+    setPesanSilang('')
+    ubah({ gridSilang: baru })
+  }
+
+  /**
+   * Sinonim uraian sebagai baris kata + alias; kolom kanan tetap satu-satunya
+   * sumber data, jadi bentuk yang dikirim ke server tidak berubah.
+   * @param {number} index @param {'kata'|'alias'} bidang @param {string} nilai
+   */
+  function ubahSinonimUraian(index, bidang, nilai) {
+    ubah({ sinonimUraian: ubahBarisSinonimUraian(state.sinonimUraian, index, bidang, nilai) })
   }
 
   /**
@@ -876,7 +1236,7 @@ export default function EditorSoal({
                         aria-checked={aktif}
                         className="petak-tipe-tombol"
                         onClick={() => {
-                          ubah({ tipe: tipe.nilai })
+                          gantiJenis(tipe.nilai)
                           if (jenisRef.current) jenisRef.current.open = false
                         }}
                       >
@@ -976,12 +1336,18 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus pilihan ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
-                      disabled={state.opsi.length <= MIN_OPSI}
+                      className="editor-hapus"
                       onClick={() => hapusOpsi(index)}
                     />
                   </div>
                 ))}
+
+                {pesanOpsi !== '' && (
+                  <p className="baris-opsi-catatan mb-2" role="status">
+                    <span aria-hidden="true">ℹ</span>
+                    <span>{pesanOpsi}</span>
+                  </p>
+                )}
 
                 <Tombol
                   varian="tepi"
@@ -1071,7 +1437,7 @@ export default function EditorSoal({
                         <TombolIkon
                           label={`Hapus kata ${satu.id}`}
                           ikon={IkonTongSampah}
-                          varian="bahaya"
+                          className="editor-hapus"
                           disabled={state.kata.length <= MIN_ITEM}
                           onClick={() => hapusKata(index)}
                         />
@@ -1102,7 +1468,7 @@ export default function EditorSoal({
                         <TombolIkon
                           label={`Hapus posisi ${satu.id}`}
                           ikon={IkonTongSampah}
-                          varian="bahaya"
+                          className="editor-hapus"
                           disabled={state.posisi.length <= MIN_ITEM}
                           onClick={() => hapusPosisiKata(index)}
                         />
@@ -1152,7 +1518,7 @@ export default function EditorSoal({
                       <TombolIkon
                         label={`Hapus jawaban baku ${index + 1}`}
                         ikon={IkonTongSampah}
-                        varian="bahaya"
+                        className="editor-hapus"
                         disabled={state.jawabanBaku.length <= 1}
                         onClick={() => hapusJawabanBaku(index)}
                       />
@@ -1243,7 +1609,7 @@ export default function EditorSoal({
                       <TombolIkon
                         label={`Hapus kata kunci ${index + 1}`}
                         ikon={IkonTongSampah}
-                        varian="bahaya"
+                        className="editor-hapus"
                         disabled={state.kataKunci.length <= 1}
                         onClick={() => hapusKataKunci(index)}
                       />
@@ -1271,50 +1637,102 @@ export default function EditorSoal({
                       />
                     </div>
                   </div>
+                  {/*
+                    Sinonim disusun sebagai baris kata + alias (14 Oktober 2026);
+                    teks "kata = alias" hanya bentuk simpannya, bukan cara guru
+                    mengetiknya.
+                  */}
                   <div className="col-md-8">
-                    <div className="bidang">
-                      <label className="form-label" htmlFor="soal-sinonim-uraian">
-                        Sinonim kata kunci <span className="teks-lembut fw-normal">tiap baris: kata = alias, alias</span>
-                      </label>
-                      <textarea
-                        id="soal-sinonim-uraian"
-                        className="form-control"
-                        rows={2}
-                        value={state.sinonimUraian}
-                        onChange={(e) => ubah({ sinonimUraian: e.target.value })}
-                        placeholder="fotosintesis = asimilasi"
-                      />
-                    </div>
+                    <h3 className="fw-bold fs-6 teks-lembut">Sinonim kata kunci</h3>
+
+                    {barisSinonimUraian(state.sinonimUraian).length === 0 && (
+                      <p className="teks-lembut small">
+                        Belum ada sinonim. Tekan “Tambah sinonim” lalu tulis kata kunci dan ejaan
+                        lain yang juga dianggap benar.
+                      </p>
+                    )}
+
+                    {barisSinonimUraian(state.sinonimUraian).map((satu, index) => (
+                      <div key={`sinonim-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <input
+                          className="form-control form-control-sm sinonim-kata"
+                          aria-label={`Kata kunci sinonim ${index + 1}`}
+                          value={satu.kata}
+                          onChange={(e) => ubahSinonimUraian(index, 'kata', e.target.value)}
+                          placeholder="Kata kunci, mis. fotosintesis"
+                        />
+                        <span className="teks-lembut">=</span>
+                        <input
+                          className="form-control form-control-sm flex-grow-1"
+                          aria-label={`Sinonim kata kunci ${index + 1}`}
+                          value={satu.alias}
+                          onChange={(e) => ubahSinonimUraian(index, 'alias', e.target.value)}
+                          placeholder="Sinonim, mis. asimilasi (pisah koma)"
+                        />
+                        <TombolIkon
+                          label={`Hapus sinonim ${index + 1}`}
+                          ikon={IkonTongSampah}
+                          className="editor-hapus"
+                          onClick={() =>
+                            ubah({ sinonimUraian: hapusBarisSinonimUraian(state.sinonimUraian, index) })
+                          }
+                        />
+                      </div>
+                    ))}
+
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      ikon={IkonTambah}
+                      onClick={() =>
+                        ubah({ sinonimUraian: tambahBarisSinonimUraian(state.sinonimUraian) })
+                      }
+                    >
+                      Tambah sinonim
+                    </Tombol>
                   </div>
                 </div>
               </fieldset>
             )}
 
+            {/*
+              Mengurutkan digambar sebagai daftar yang **berurutan dari atas**
+              (14 Oktober 2026, permintaan pemilik produk: "buat pengurutan
+              urutan dll langsung visual gak perlu ketik lagi"). Dulu tiap baris
+              punya kotak angka urut yang harus diketik — dua baris bisa bernomor
+              sama dan nomor yang terlewat baru ketahuan dari galat server.
+            */}
             {state.tipe === TIPE.mengurutkan && (
               <fieldset className="mt-2">
-                <legend className="fw-bold fs-6">Item + nomor urut benar (minimal {MIN_ITEM})</legend>
+                <legend className="fw-bold fs-6">
+                  Item dalam urutan yang benar ({MIN_ITEM}–{MAKS_OPSI})
+                </legend>
+                <p className="teks-lembut small">
+                  Baris paling atas = paling awal. Pindahkan barisnya pakai tombol ▲/▼ — tidak ada nomor
+                  yang perlu diketik. Murid menerima itemnya dalam urutan acak.
+                </p>
 
                 {state.item.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <input
-                      className="form-control form-control-sm urut-posisi"
-                      type="number"
-                      min={1}
-                      max={state.item.length}
-                      aria-label={`Nomor urut item ${satu.id}`}
-                      value={satu.posisi}
-                      onChange={(e) => ubahPosisi(index, e.target.value)}
-                    />
+                  <div key={satu.id} className="baris-urut">
+                    <span className="kotak-huruf" aria-hidden="true">
+                      {index + 1}
+                    </span>
                     <input
                       className="form-control flex-grow-1"
                       aria-label={`Teks item ${satu.id}`}
                       value={satu.teks}
                       onChange={(e) => ubahItem(index, e.target.value)}
                     />
+                    <PengurutBaris
+                      nama={`item ${satu.id}`}
+                      index={index}
+                      jumlah={state.item.length}
+                      onGeser={geserItemUrut}
+                    />
                     <TombolIkon
                       label={`Hapus item ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.item.length <= MIN_ITEM}
                       onClick={() => hapusItem(index)}
                     />
@@ -1372,12 +1790,18 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus pilihan ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
-                      disabled={state.opsi.length <= MIN_OPSI_KOMPLEKS}
+                      className="editor-hapus"
                       onClick={() => hapusOpsi(index)}
                     />
                   </div>
                 ))}
+
+                {pesanOpsi !== '' && (
+                  <p className="baris-opsi-catatan mb-2" role="status">
+                    <span aria-hidden="true">ℹ</span>
+                    <span>{pesanOpsi}</span>
+                  </p>
+                )}
 
                 <Tombol
                   varian="tepi"
@@ -1429,7 +1853,7 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus pernyataan ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.pernyataan.length <= MIN_PERNYATAAN}
                       onClick={() => hapusPernyataan(index)}
                     />
@@ -1525,7 +1949,7 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus gambar ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.opsiGambar.length <= MIN_GAMBAR}
                       onClick={() => hapusOpsiGambar(index)}
                     />
@@ -1547,31 +1971,35 @@ export default function EditorSoal({
             {state.tipe === TIPE.urutGambar && (
               <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
-                  Gambar + nomor urut benar ({MIN_GAMBAR}–{MAKS_GAMBAR})
+                  Gambar dalam urutan yang benar ({MIN_GAMBAR}–{MAKS_GAMBAR})
                 </legend>
+                <p className="teks-lembut small">
+                  Baris paling atas = paling awal. Pindahkan barisnya pakai tombol ▲/▼ — tidak ada nomor
+                  yang perlu diketik. Murid menerima gambarnya dalam urutan acak.
+                </p>
 
                 {state.itemGambar.map((satu, index) => (
-                  <div key={satu.id} className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <input
-                      className="form-control form-control-sm urut-posisi"
-                      type="number"
-                      min={1}
-                      max={state.itemGambar.length}
-                      aria-label={`Nomor urut gambar ${satu.id}`}
-                      value={satu.posisi}
-                      onChange={(e) => ubahItemGambar(index, satu.media, e.target.value)}
-                    />
+                  <div key={satu.id} className="baris-urut">
+                    <span className="kotak-huruf" aria-hidden="true">
+                      {index + 1}
+                    </span>
                     <input
                       className="form-control flex-grow-1"
                       aria-label={`Alamat gambar ${satu.id}`}
                       value={satu.media}
-                      onChange={(e) => ubahItemGambar(index, e.target.value, satu.posisi)}
+                      onChange={(e) => ubahMediaGambar(index, e.target.value)}
                       placeholder="/media/gambar.png"
+                    />
+                    <PengurutBaris
+                      nama={`gambar ${satu.id}`}
+                      index={index}
+                      jumlah={state.itemGambar.length}
+                      onGeser={geserGambarUrut}
                     />
                     <TombolIkon
                       label={`Hapus gambar ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.itemGambar.length <= MIN_GAMBAR}
                       onClick={() => hapusItemGambar(index)}
                     />
@@ -1691,7 +2119,7 @@ export default function EditorSoal({
                       <TombolIkon
                         label={`Hapus item ${satu.id}`}
                         ikon={IkonTongSampah}
-                        varian="bahaya"
+                        className="editor-hapus"
                         disabled={state.itemKlasifikasi.length <= MIN_ITEM}
                         onClick={() => hapusItemKlasifikasi(index)}
                       />
@@ -1727,7 +2155,7 @@ export default function EditorSoal({
                       <TombolIkon
                         label={`Hapus kotak ${satu.id}`}
                         ikon={IkonTongSampah}
-                        varian="bahaya"
+                        className="editor-hapus"
                         disabled={state.kotak.length <= MIN_KOTAK}
                         onClick={() => hapusKotak(index)}
                       />
@@ -1747,92 +2175,146 @@ export default function EditorSoal({
               </>
             )}
 
+            {/*
+              Tabel isian disusun lewat grid (14 Oktober 2026). Sebelumnya nama
+              kolom diketik sebagai teks berkoma dan tiap baris berupa kartu
+              bertumpuk, sehingga guru tidak pernah melihat bentuk tabelnya dan
+              jumlah kolom mudah meleset dari jumlah sel.
+            */}
             {state.tipe === TIPE.tabelIsian && (
               <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">
-                  Kolom, baris, dan jawaban sel (maksimal {MAKS_SEL} sel)
+                  Tabel {jumlahKolomTabel()} kolom × {state.barisTabel.length} baris
+                  <span className="teks-lembut fw-normal">
+                    {' '}
+                    ({jumlahSelTabel()} dari maksimal {MAKS_SEL} sel)
+                  </span>
                 </legend>
 
-                <div className="bidang">
-                  <label className="form-label" htmlFor="tabel-kolom">
-                    Nama kolom (pisahkan dengan koma)
-                  </label>
-                  <input
-                    id="tabel-kolom"
-                    className="form-control"
-                    value={state.kolom}
-                    onChange={(e) => ubahKolom(e.target.value)}
-                    placeholder="Soal, Hasil"
-                  />
+                <p className="teks-lembut small">
+                  Tulis bagian tabel yang sudah ada isinya (mis. soal atau judul). Sel yang dibiarkan
+                  kosong jadi tempat murid mengisi — tulis jawaban yang diterima untuk sel itu.
+                </p>
+
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    ikon={IkonTambah}
+                    onClick={tambahKolomTabelBaru}
+                  >
+                    Tambah kolom
+                  </Tombol>
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    ikon={IkonTambah}
+                    onClick={tambahBarisTabelBaru}
+                  >
+                    Tambah baris
+                  </Tombol>
                 </div>
 
-                {jumlahKolomTabel() === 0 ? (
-                  <p className="teks-lembut small mt-2">
-                    Isi nama kolom dulu supaya sel tabel muncul.
-                  </p>
-                ) : (
-                  <p className="teks-lembut small mt-2">
-                    Isi jawaban yang diterima untuk sel kosong (beberapa jawaban dipisah koma).
+                {pesanTabel !== '' && <p className="status-salah small mb-2">{pesanTabel}</p>}
+
+                <div className="tabel-editor-bungkus">
+                  <table className="tabel-editor">
+                    <thead>
+                      <tr>
+                        <th scope="col" className="tabel-editor-nomor">
+                          <span className="sr-saja">Baris</span>
+                        </th>
+                        {namaKolomTabel().map((nama, kolom) => (
+                          <th key={`kolom-${kolom}`} scope="col">
+                            <input
+                              className="form-control form-control-sm tabel-editor-kepala"
+                              aria-label={`Nama kolom ${kolom + 1}`}
+                              value={nama}
+                              onChange={(e) => ubahNamaKolom(kolom, e.target.value)}
+                              placeholder={`Kolom ${kolom + 1}`}
+                            />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.barisTabel.map((baris, index) => (
+                        <tr key={baris.id}>
+                          <th scope="row" className="tabel-editor-nomor">
+                            <span className="editor-grid-nomor">{index + 1}</span>
+                            <TombolIkon
+                              className="editor-hapus"
+                              label={`Hapus baris ${index + 1}`}
+                              ikon={IkonTongSampah}
+                              onClick={() => hapusBarisTabelKe(index)}
+                            />
+                          </th>
+                          {baris.sel.map((sel, kolom) => {
+                            const kosong = sel.teks.trim() === ''
+                            const adaKunci = (state.kunciSel[sel.kode] ?? '').trim() !== ''
+
+                            return (
+                              <td
+                                key={sel.kode}
+                                className={kosong && !adaKunci ? 'tabel-editor-sel perlu-kunci' : 'tabel-editor-sel'}
+                              >
+                                <input
+                                  className="form-control form-control-sm"
+                                  aria-label={`Teks baris ${index + 1} kolom ${kolom + 1}`}
+                                  value={sel.teks}
+                                  onChange={(e) => ubahSelTabel(index, kolom, e.target.value)}
+                                  placeholder="Teks (kosongkan agar murid mengisi)"
+                                />
+                                {kosong && (
+                                  <input
+                                    className="form-control form-control-sm mt-1 tabel-editor-kunci"
+                                    aria-label={`Jawaban diterima baris ${index + 1} kolom ${kolom + 1}`}
+                                    value={state.kunciSel[sel.kode] ?? ''}
+                                    onChange={(e) => ubahKunciSel(sel.kode, e.target.value)}
+                                    placeholder="Jawaban diterima (pisah koma)"
+                                  />
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                    {/*
+                      Hapus kolom pindah ke baris kaki tabel (14 Oktober 2026,
+                      permintaan pemilik produk: "tempat sampahnya sangat amat
+                      jelek"). Dulu tiap kepala kolom memuat tombol merah 48 px
+                      bertumpuk dengan nama kolomnya, jadi barisnya tertarik
+                      tinggi. Sekarang semua tombol hapus memakai bentuk hantu
+                      yang sama dengan gutter baris.
+                    */}
+                    {namaKolomTabel().length > 0 && (
+                      <tfoot>
+                        <tr>
+                          <td className="editor-grid-hapus-label">
+                            <span className="teks-lembut small">Hapus kolom</span>
+                          </td>
+                          {namaKolomTabel().map((_, kolom) => (
+                            <td key={`hapus-kolom-${kolom}`} className="editor-grid-hapus-sel">
+                              <TombolIkon
+                                className="editor-hapus"
+                                label={`Hapus kolom ${kolom + 1}`}
+                                ikon={IkonTongSampah}
+                                onClick={() => hapusKolomTabelKe(kolom)}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {jumlahKolomTabel() === 0 && (
+                  <p className="teks-lembut small">
+                    Tabel ini belum punya kolom — tekan “Tambah kolom” untuk mulai menyusun.
                   </p>
                 )}
-
-                {state.barisTabel.map((baris, index) => (
-                  <div key={baris.id} className="kartu-soft p-3 mt-3">
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                      <span className="badge-status info">Baris {index + 1}</span>
-                      <TombolIkon
-                        label={`Hapus baris ${index + 1}`}
-                        ikon={IkonTongSampah}
-                        varian="bahaya"
-                        disabled={state.barisTabel.length <= 1}
-                        onClick={() => hapusBarisTabel(index)}
-                      />
-                    </div>
-
-                    <div className="row g-2">
-                      {baris.sel.map((sel, kolom) => (
-                        <div key={sel.kode} className="col-md-6">
-                          <div className="bidang">
-                            <label className="form-label" htmlFor={`tabel-${sel.kode}`}>
-                              {pisahKata(state.kolom)[kolom] ?? `Kolom ${kolom + 1}`}
-                            </label>
-                            <input
-                              id={`tabel-${sel.kode}`}
-                              className="form-control"
-                              value={sel.teks}
-                              onChange={(e) => ubahSelTabel(index, kolom, e.target.value)}
-                              placeholder="Teks tabel (kosongkan agar murid mengisi)"
-                            />
-                            {sel.teks.trim() === '' && (
-                              <input
-                                className="form-control mt-2"
-                                aria-label={`Jawaban diterima sel ${sel.kode}`}
-                                value={state.kunciSel[sel.kode] ?? ''}
-                                onChange={(e) => ubahKunciSel(sel.kode, e.target.value)}
-                                placeholder="Jawaban diterima (pisah koma)"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                <Tombol
-                  varian="tepi"
-                  ukuran="sedang"
-                  ikon={IkonTambah}
-                  disabled={
-                    jumlahKolomTabel() === 0 ||
-                    state.barisTabel.reduce((jumlah, baris) => jumlah + baris.sel.length, 0) +
-                      jumlahKolomTabel() >
-                      MAKS_SEL
-                  }
-                  onClick={tambahBarisTabel}
-                >
-                  Tambah baris
-                </Tombol>
               </fieldset>
             )}
 
@@ -1952,7 +2434,7 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus area ${satu.id}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.areaHotspot.length <= 1}
                       onClick={() => hapusAreaHotspot(index)}
                     />
@@ -2011,17 +2493,54 @@ export default function EditorSoal({
               <fieldset className="mt-2">
                 <legend className="fw-bold fs-6">Berkas dan rubrik penilaian</legend>
 
-                <div className="bidang">
-                  <label className="form-label" htmlFor="tugas-jenis">Jenis berkas yang boleh diunggah</label>
-                  <input
-                    id="tugas-jenis"
-                    className="form-control"
-                    maxLength={120}
-                    value={state.jenisBerkas}
-                    onChange={(e) => ubah({ jenisBerkas: e.target.value })}
-                    placeholder="Foto JPG atau PNG"
-                  />
-                </div>
+                {/*
+                  Jenis berkas dipilih dari daftar yang benar-benar dikenali
+                  aplikasi (14 Oktober 2026, permintaan pemilik produk: "jangan
+                  buat manual diketik, buat opsi banyak"). Dulu guru mengetik
+                  teks bebas, sehingga jenis berkas yang ditulis bisa tidak
+                  pernah cocok dengan yang bisa diunggah murid.
+                */}
+                <fieldset className="bidang">
+                  <legend className="form-label">Jenis berkas yang boleh diunggah</legend>
+                  <p className="teks-lembut small">
+                    Pilih dari daftar — tidak ada yang perlu diketik. Pilih “Semua jenis berkas”
+                    kalau tugasnya bebas.
+                  </p>
+
+                  <div className="pilihan-jenis-berkas">
+                    {JENIS_BERKAS_TUGAS.map((satu) => (
+                      <label key={satu.nilai} className="form-check" htmlFor={`tugas-jenis-${satu.nilai}`}>
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id={`tugas-jenis-${satu.nilai}`}
+                          checked={jenisBerkasTerpilih.includes(satu.nilai)}
+                          onChange={() =>
+                            ubah({
+                              jenisBerkas: teksJenisBerkas(
+                                centangJenisBerkas(jenisBerkasTerpilih, satu.nilai),
+                              ),
+                            })
+                          }
+                        />
+                        <span className="form-check-label">{satu.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {jenisBerkasTerpilih.length === 0 && state.jenisBerkas.trim() !== '' && (
+                    <p className="baris-opsi-catatan small mt-2 mb-0" role="status">
+                      Soal ini dulu menyebut “{state.jenisBerkas.trim()}”. Pilih ulang jenis
+                      berkasnya di atas supaya murid membaca aturan yang sama.
+                    </p>
+                  )}
+
+                  {state.jenisBerkas.trim() !== '' && (
+                    <p className="teks-lembut small mb-0 mt-2">
+                      Murid membaca: <strong>{state.jenisBerkas}</strong>
+                    </p>
+                  )}
+                </fieldset>
 
                 {state.rubrik.map((satu, index) => (
                   <div key={`rubrik-${index}`} className="d-flex flex-wrap align-items-center gap-2 mb-1">
@@ -2044,7 +2563,7 @@ export default function EditorSoal({
                     <TombolIkon
                       label={`Hapus butir rubrik ${index + 1}`}
                       ikon={IkonTongSampah}
-                      varian="bahaya"
+                      className="editor-hapus"
                       disabled={state.rubrik.length <= 1}
                       onClick={() => hapusRubrik(index)}
                     />
@@ -2063,26 +2582,116 @@ export default function EditorSoal({
               </fieldset>
             )}
 
+            {/*
+              Grid teka silang digambar sebagai kotak-kotak yang bisa diketik
+              (14 Oktober 2026). Sebelumnya guru menulis grid sebagai teks
+              ('kucing\n#n#i#t') sehingga bentuk teka silangnya hanya terlihat
+              setelah disimpan.
+            */}
             {state.tipe === TIPE.tekaSilangMini && (
               <fieldset className="mt-2">
-                <legend className="fw-bold fs-6">Grid teka silang</legend>
-                <div className="bidang">
-                  <label className="form-label" htmlFor="silang-grid">
-                    Satu baris per baris kotak
-                  </label>
-                  <textarea
-                    id="silang-grid"
-                    className="form-control silang-grid-teks"
-                    rows={4}
-                    value={state.gridSilang}
-                    onChange={(e) => ubah({ gridSilang: e.target.value })}
-                    placeholder={'kucing\n#n#i#t'}
-                  />
-                  <span className="teks-lembut small">
-                    Tulis huruf jawaban untuk kotak yang diisi murid dan tanda # untuk kotak hitam (maksimal{' '}
-                    {MAKS_SISI_SILANG} × {MAKS_SISI_SILANG}).
+                <legend className="fw-bold fs-6">
+                  Grid teka silang
+                  <span className="teks-lembut fw-normal">
+                    {' '}
+                    (maksimal {MAKS_SISI_SILANG} × {MAKS_SISI_SILANG})
                   </span>
+                </legend>
+
+                <p className="teks-lembut small">
+                  Ketik huruf jawaban pada kotak yang diisi murid. Tekan tombol ■ di kotak untuk
+                  menjadikannya kotak hitam penyekat, dan tekan ■ pada kotak hitam untuk
+                  mengembalikannya jadi kotak huruf.
+                </p>
+
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  <Tombol varian="tepi" ukuran="sedang" ikon={IkonTambah} onClick={tambahBarisGridSilang}>
+                    Tambah baris
+                  </Tombol>
+                  <Tombol varian="tepi" ukuran="sedang" ikon={IkonTambah} onClick={tambahKolomGridSilang}>
+                    Tambah kolom
+                  </Tombol>
                 </div>
+
+                {pesanSilang !== '' && <p className="status-salah small mb-2">{pesanSilang}</p>}
+
+                <div className="silang-editor-bungkus">
+                  <table className="silang-editor">
+                    <tbody>
+                      {kotakSilang().map((baris, r) => (
+                        <tr key={`baris-silang-${r}`}>
+                          <th scope="row" className="silang-editor-nomor">
+                            <span className="editor-grid-nomor">{r + 1}</span>
+                            <TombolIkon
+                              className="editor-hapus"
+                              label={`Hapus baris ${r + 1}`}
+                              ikon={IkonTongSampah}
+                              onClick={() => hapusBarisGridSilang(r)}
+                            />
+                          </th>
+                          {baris.map((isi, c) =>
+                            isi === '#' ? (
+                              <td key={`kotak-${r}-${c}`} className="silang-editor-sel hitam">
+                                <button
+                                  type="button"
+                                  className="silang-editor-hitam"
+                                  aria-label={`Kotak hitam baris ${r + 1} kolom ${c + 1} — kembalikan jadi kotak huruf`}
+                                  onClick={() => ubahKotakGridSilang(r, c, '.')}
+                                >
+                                  ■
+                                </button>
+                              </td>
+                            ) : (
+                              <td key={`kotak-${r}-${c}`} className="silang-editor-sel">
+                                <input
+                                  className="silang-editor-isian"
+                                  type="text"
+                                  maxLength={1}
+                                  aria-label={`Huruf jawaban baris ${r + 1} kolom ${c + 1}`}
+                                  value={isi === '.' ? '' : isi}
+                                  onChange={(e) => ubahKotakGridSilang(r, c, isiKotakSilang(e.target.value))}
+                                />
+                                <button
+                                  type="button"
+                                  className="silang-editor-hitam"
+                                  aria-label={`Jadikan kotak hitam baris ${r + 1} kolom ${c + 1}`}
+                                  onClick={() => ubahKotakGridSilang(r, c, '#')}
+                                >
+                                  ■
+                                </button>
+                              </td>
+                            ),
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                    {kotakSilang().length > 0 && (
+                      <tfoot>
+                        <tr>
+                          <td className="editor-grid-hapus-label">
+                            <span className="teks-lembut small">Hapus kolom</span>
+                          </td>
+                          {kotakSilang()[0].map((_, kolom) => (
+                            <td key={`hapus-kolom-${kolom}`} className="editor-grid-hapus-sel">
+                              <TombolIkon
+                                className="editor-hapus"
+                                label={`Hapus kolom ${kolom + 1}`}
+                                ikon={IkonTongSampah}
+                                onClick={() => hapusKolomGridSilang(kolom)}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {kotakSilang().length === 0 && (
+                  <p className="teks-lembut small">
+                    Grid masih kosong — tekan “Tambah baris” untuk mulai menggambar teka silang.
+                  </p>
+                )}
               </fieldset>
             )}
 
@@ -2133,7 +2742,7 @@ export default function EditorSoal({
                         <TombolIkon
                           label={`Hapus petunjuk ${arah} ${index + 1}`}
                           ikon={IkonTongSampah}
-                          varian="bahaya"
+                          className="editor-hapus"
                           onClick={() => hapusPetunjukSilang(index)}
                         />
                       </div>
@@ -2283,6 +2892,46 @@ export default function EditorSoal({
                 </div>
               </div>
             </div>
+
+            {/*
+              Teknik koreksi (14 Oktober 2026): guru memilih cara soal ini dinilai.
+              Pilihannya mengikuti jenis soal — lihat sections/question/teknikKoreksi.js
+              — dan hasilnya ikut ke `kunci`, jadi tidak pernah sampai ke perangkat murid.
+            */}
+            <fieldset className="mt-3" data-teknik={teknikKoreksiDariState(state)}>
+              <legend className="form-label mb-1">Teknik koreksi</legend>
+              <p className="teks-lembut small mb-2">
+                Cara jawaban murid dinilai. {teknikTerkunci(state.tipe)
+                  ? 'Jenis soal ini hanya bisa dinilai manual.'
+                  : 'Pilihan yang tersedia mengikuti jenis soal yang kamu pilih.'}
+              </p>
+
+              {pilihanTeknikKoreksi(state.tipe).map((satu) => (
+                <div className="form-check mb-2" key={satu.nilai}>
+                  <input
+                    className="form-check-input"
+                    type="radio"
+                    name="teknik-koreksi"
+                    id={`teknik-${satu.nilai}`}
+                    value={satu.nilai}
+                    checked={teknikKoreksiDariState(state) === satu.nilai}
+                    disabled={terkunci || teknikTerkunci(state.tipe)}
+                    onChange={() => ubah({ teknikKoreksi: satu.nilai })}
+                  />
+                  <label className="form-check-label" htmlFor={`teknik-${satu.nilai}`}>
+                    <strong>{satu.label}</strong>
+                    {satu.bawaan && <span className="badge-status lembut ms-2">bawaan</span>}
+                    <span className="teks-lembut small d-block">{satu.keterangan}</span>
+                  </label>
+                </div>
+              ))}
+
+              {terkunci && (
+                <p className="teks-lembut small mb-0">
+                  Teknik koreksi terkunci selama kuis berjalan (sepakat dengan kunci jawaban dan skor).
+                </p>
+              )}
+            </fieldset>
 
             <div className="form-check form-switch mt-3">
               <input
