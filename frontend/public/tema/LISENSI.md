@@ -27,20 +27,35 @@ Dua berkas berikut menyusul pada putaran A.50, keduanya juga dilukis di repo ini
 
 | Berkas | Aset | Pembuat | Lisensi | Sumber | Ukuran akhir |
 | --- | --- | --- | --- | --- | --- |
-| `pulau.svg` | "Pelayaran Harta Karun" — dilukis untuk proyek ini, **dirombak total pada A.73** | tim proyek ini + 2 ikon CC0 (peti & karang, lihat tabel di bawah) | **CC0 / domain publik** | ikon CC0: lihat "Aset CC0 yang dipakai" di bawah | 21,2 KB · viewBox 1600×900, atribut 1600×900 |
+| `pulau.svg` | "Pelayaran Harta Karun" — dilukis untuk proyek ini, **dirombak total pada A.73** | tim proyek ini (peti harta karun & karang **digambar di repo** sejak 14 Okt 2026 — ikon CC0 pihak ketiga yang dulu dirujuk tidak pernah tersisip, lihat catatan di bawah) | **CC0 / domain publik** | tidak ada berkas asal; gambar disusun di sini | 23,2 KB · viewBox 1600×900, atribut 1600×900 |
 | `angkasa.svg` | "Menjelajah Luar Angkasa" — dilukis untuk proyek ini, **dirombak total pada A.73** | tim proyek ini + 3 ikon CC0 (roket, Mars, bintang, lihat tabel di bawah) | **CC0 / domain publik** | ikon CC0: lihat "Aset CC0 yang dipakai" di bawah | 17,0 KB · viewBox 1600×900, atribut 1600×900 |
 
 ## Aset CC0 yang dipakai (putaran A.73)
 
-Latar `pulau.svg` dan `angkasa.svg` dirombak total pada A.73, dan kali ini **lima ikon CC0 dari luar repo** benar-benar disisipkan (bukan hanya jadi rujukan). Semuanya dari Wikimedia Commons dengan lisensi **CC0 1.0 (public domain dedication)** — boleh dipakai, diubah, dan disebarkan tanpa izin tambahan maupun syarat atribusi; atribusinya ditulis di sini sebagai jejak, bukan kewajiban.
+Latar `pulau.svg` dan `angkasa.svg` dirombak total pada A.73, dan **tiga ikon CC0 dari luar repo** benar-benar disisipkan (bukan hanya jadi rujukan). Ketiganya dari Wikimedia Commons dengan lisensi **CC0 1.0 (public domain dedication)** — boleh dipakai, diubah, dan disebarkan tanpa izin tambahan maupun syarat atribusi; atribusinya ditulis di sini sebagai jejak, bukan kewajiban.
+
+> **Koreksi 14 Oktober 2026.** Dua ikon yang semula direncanakan untuk `pulau.svg` —
+> **peti harta karun** (`Open chest with treasure and sparkles Pinhead icon.svg`, @viglino) dan
+> **karang** (`Coral Pinhead icon.svg`, Quincy Morgan), keduanya CC0 Wikimedia Commons —
+> **ternyata tidak pernah benar-benar tersisip**. Yang tertinggal di berkas itu hanya penanda teks
+> `{{CC0:peti}}` dan `{{CC0:karang}}`, dan peramban tidak menggambar teks di dalam SVG: petinya
+> memang tidak pernah tampak sejak A.73, jadi mulut goa harta karun kosong. Sejak 14 Okt 2026 kedua
+> benda itu **digambar di repo ini** (karya sendiri, CC0) dan penanda teksnya dibuang. Sumber asli
+> tetap dicatat di sini supaya tidak dicoba dua kali; pagar `__tests__/theme/latarTema.test.js`
+> sekarang menolak berkas latar yang masih memuat penanda `{{…}}`.
 
 | Berkas sumber | Dipakai untuk | Pembuat | Lisensi | Sumber |
 | --- | --- | --- | --- | --- |
 | `Rocketship Pinhead icon.svg` | roket di landasan (`angkasa.svg`) | Maki contributors | CC0 | <https://commons.wikimedia.org/wiki/File:Rocketship_Pinhead_icon.svg> |
 | `Star Pinhead icon.svg` | satu bintang besar (`angkasa.svg`) | Maki contributors | CC0 | <https://commons.wikimedia.org/wiki/File:Star_Pinhead_icon.svg> |
 | `Mars Pinhead icon.svg` | planet Mars kecil (`angkasa.svg`) | Quincy Morgan | CC0 | <https://commons.wikimedia.org/wiki/File:Mars_Pinhead_icon.svg> |
-| `Open chest with treasure and sparkles Pinhead icon.svg` | peti harta karun di mulut goa (`pulau.svg`) | GitHub user @viglino, Viglino contributors | CC0 | <https://commons.wikimedia.org/wiki/File:Open_chest_with_treasure_and_sparkles_Pinhead_icon.svg> |
-| `Coral Pinhead icon.svg` | karang di laut (`pulau.svg`) | Quincy Morgan | CC0 | <https://commons.wikimedia.org/wiki/File:Coral_Pinhead_icon.svg> |
+
+**Rencana yang batal dipakai** (bukan aset yang ada di berkas mana pun hari ini; lihat koreksi di atas):
+
+| Berkas sumber | Rencananya untuk | Pembuat | Lisensi | Sumber |
+| --- | --- | --- | --- | --- |
+| `Open chest with treasure and sparkles Pinhead icon.svg` | peti harta karun di mulut goa (`pulau.svg`) — **tidak pernah tersisip**, kini digambar di repo | GitHub user @viglino, Viglino contributors | CC0 | <https://commons.wikimedia.org/wiki/File:Open_chest_with_treasure_and_sparkles_Pinhead_icon.svg> |
+| `Coral Pinhead icon.svg` | karang di laut (`pulau.svg`) — **tidak pernah tersisip**, kini digambar di repo | Quincy Morgan | CC0 | <https://commons.wikimedia.org/wiki/File:Coral_Pinhead_icon.svg> |
 
 Cara memasukkannya (supaya bisa diperiksa ulang, bukan diklaim): berkas CC0 diunduh apa adanya, lalu **koordinatnya didatar-kan** — perintah `H`/`V`/`S` diubah menjadi `L`/`C`, dan `transform` grup dibakar ke koordinat absolut. Alasannya teknis: pagar mutu `__tests__/theme/latarTema.test.js` membaca koordinat **mentah** tiap `path`/`circle`/`ellipse`/`rect`/`polygon` dan hanya mengerti `M`/`L`/`C`/`Z`. Karena itu pula berkas akhir ini **tidak memuat satu pun `transform`** (diperiksa: nol). Warnanya ditimpa ke palet tema masing-masing, jadi tidak ada ikon hitam nyasar di latar siang.
 
@@ -50,7 +65,7 @@ Yang **tidak** dipakai, dan alasannya (supaya tidak diulang tanpa hasil):
 - **Ikon satu warna untuk benda utama.** Palem, ikan, dan Venus sempat dicoba, tetapi hanya ikon siluet (satu path, satu warna) — dipakai sebagai pohon/perahu akan terbaca seperti stempel, bukan ilustrasi. Pohon kelapa karena itu digambar di repo (lihat `buat-palem` di catatan A.73), sedangkan ikon siluet hanya dipakai untuk benda yang memang wajar jadi siluet (roket, peti, karang, bintang, Mars).
 - **Berkas lama tema ini sendiri** sudah dihapus dari riwayat kerja (diganti, bukan disimpan berdampingan) — versi sebelumnya tetap bisa diambil dari riwayat git repo ini.
 
-Catatan berkas `pulau.svg` (**196 bentuk, 83 warna** setelah A.73): langit siang dengan matahari bersinar, awan, pulau jauh, laut berlapis tiga, pantai berpasir diagonal, rimba kelapa bertingkat **dengan enam pohon kelapa yang digambar di koordinat absolut** (tanpa transform, lihat A.73), tanjung batu berikut goa, dermaga kayu, perahu layar, dan karang berwarna. Pos tema ini berdiri di `dermaga`, `perahu`, `karang`, `pantai`, `hutan`, dan `goa` — lihat `RUTE_TEMA.pulau`. Tempat pos yang ditandai `id` ada **enam**, tetapi jangan terkecoh bentuk penandanya: `dermaga`, `perahu`, `karang`, dan `goa` ditulis sebagai `<g id="…">`, sedangkan `pantai` dan `hutan` hanya bisa ditandai pada `<path id="…">` karena bidangnya satu path. Pagar bentuk di `__tests__/theme/latarTema.test.js` karena itu membaca **kedua** bentuk penanda (lihat catatan di kepala berkas SVG).
+Catatan berkas `pulau.svg` (**206 bentuk, 83 warna** setelah 14 Okt 2026): langit siang dengan matahari bersinar, awan, pulau jauh, laut berlapis tiga, pantai berpasir diagonal, rimba kelapa bertingkat **dengan enam pohon kelapa yang digambar di koordinat absolut** (tanpa transform, lihat A.73), tanjung batu berikut goa **yang kakinya turun sampai pasir pantai** (pangkalnya dulu berhenti di y = 432 sementara pasir mulai di y = 500 — batu goa terbaca melayang 68 px di atas darat, dan butir emas di bawahnya jatuh di laut), **peti harta karun yang kini benar-benar tampak** di mulut goa, dermaga kayu, perahu layar, dan karang berwarna. Pos tema ini berdiri di `dermaga`, `perahu`, `karang`, `pantai`, `hutan`, dan `goa` — lihat `RUTE_TEMA.pulau`. Tempat pos yang ditandai `id` ada **enam**, tetapi jangan terkecoh bentuk penandanya: `dermaga`, `perahu`, `karang`, dan `goa` ditulis sebagai `<g id="…">`, sedangkan `pantai` dan `hutan` hanya bisa ditandai pada `<path id="…">` karena bidangnya satu path. Pagar bentuk di `__tests__/theme/latarTema.test.js` karena itu membaca **kedua** bentuk penanda (lihat catatan di kepala berkas SVG).
 
 Catatan berkas `angkasa.svg` (**164 bentuk, 78 warna** setelah A.73): langit malam tiga tingkat, pita galaksi menyilang, tiga nebula berwarna, ~60 bintang (sebagian berkilau empat sudut), dua bintang jatuh, satelit kecil, komet, Bumi berawan, sabuk asteroid, Saturnus bercincin (cincin depannya digambar **terpisah** di atas bola planet), Bulan berkawah dengan halo, dan kompleks peluncuran (dermaga, menara, tangki, roket, asap) di kiri bawah. Kelima tempat pos (`landasan`, `bumi`, `asteroid`, `saturnus`, `bulan`) ditandai `<g id="…">`. Ini satu-satunya latar yang **sengaja gelap** — jalur peta bawaan (pekat, untuk latar terang) tenggelam di atasnya, jadi tema ini memakai jalur versi terang lewat aturan `.jelajah[data-adegan='angkasa']` di `theme.css`. Posnya berdiri di `landasan`, `bumi`, `asteroid`, `saturnus`, dan `bulan`.
 

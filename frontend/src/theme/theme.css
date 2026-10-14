@@ -1002,6 +1002,27 @@ a {
   background-color: var(--garis);
 }
 
+/*
+ * Saat halaman masuk dibuka dari tautan ulangan (14 Oktober 2026), formulir akun
+ * sekolah DILIPAT di bawah pintu tamu: anak yang tidak punya akun tidak lagi
+ * disodori kolom email/kata sandi lebih dulu. Pemisahnya dibuat seperti tautan
+ * supaya jelas bisa dibuka, bukan judul yang mati.
+ */
+.auth-lipat-akun > summary.auth-pemisah {
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 600;
+  color: var(--teks);
+}
+
+.auth-lipat-akun > summary.auth-pemisah::marker {
+  color: var(--aksen);
+}
+
+.auth-lipat-akun[open] > summary.auth-pemisah {
+  margin-bottom: var(--sp-3);
+}
+
 /* Blok "masuk sebagai siswa tamu" di halaman masuk: satu pemisah + satu isian. */
 .auth-tamu {
   text-align: start;
@@ -1624,12 +1645,87 @@ a {
   font-size: 1.15rem;
 }
 
-.jodoh-pilih {
-  max-width: 16rem;
+/*
+ * Penyambung pasangan (menjodohkan & hubung kata) — 14 Oktober 2026.
+ * Pemilihnya dulu berjejal di dalam baris item sehingga isian teks dan
+ * pemilihnya sama-sama sempit; sekarang ia pindah ke papan tersendiri di bawah
+ * kolom kiri/kanan, satu baris per item kiri.
+ */
+.papan-jodoh {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--garis, #cbd5e1);
+  border-radius: var(--radius-kecil);
+  background-color: var(--sorot-lembut, #f1f5f9);
 }
 
-.urut-posisi {
-  width: 5rem;
+.baris-jodoh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-kecil);
+  background-color: var(--putih, #fff);
+  border: 1px solid var(--garis, #cbd5e1);
+}
+
+/* Pasangan yang sudah tersambung ditandai di sisi kirinya: guru bisa menghitung
+   sendiri berapa yang belum, tanpa membaca daftar kelengkapan. */
+.baris-jodoh.tersambung {
+  border-inline-start: 4px solid var(--status-benar, #16a34a);
+}
+
+.baris-jodoh-sisi {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.baris-jodoh-panah {
+  color: var(--teks-lembut, #64748b);
+  font-weight: 700;
+}
+
+.baris-jodoh-kosong {
+  color: var(--teks-lembut, #64748b);
+  font-style: italic;
+}
+
+.baris-jodoh .jodoh-pilih {
+  flex: 0 1 18rem;
+  max-width: 100%;
+}
+
+/*
+ * Pengurut urutan (mengurutkan & urut gambar) — 14 Oktober 2026: guru
+ * memindahkan barisnya dengan ▲/▼, bukan mengetik nomor urut. Tombolnya 44 px
+ * (sasaran sentuh tetap besar) tetapi sempit supaya barisnya tetap ringkas.
+ */
+.baris-urut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.pengurut {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-inline-start: auto;
+}
+
+.pengurut-tombol {
+  min-width: 2.75rem;
+  padding-inline: 0.5rem;
+}
+
+.jodoh-pilih {
+  max-width: 16rem;
 }
 
 /* ---------- Tipe soal baru (Objektif 1, gelombang 1) ---------- */
@@ -1799,6 +1895,125 @@ a {
 
 .tabel-isian .form-control {
   min-height: 44px;
+}
+
+/* Grid penyusun tabel isian di editor (14 Oktober 2026): guru melihat bentuk
+   tabelnya saat menyusun — kepala kolom, baris bernomor, dan tiap sel bisa
+   langsung diketik. Sebelumnya nama kolom diketik sebagai teks berkoma. */
+/* Grid lebar TIDAK boleh menggeser seluruh halaman di ponsel (standar: tanpa
+   gulir mendatar). `overflow-x: auto` saja tidak cukup: ukuran min-content grid
+   masih naik ke leluhurnya, dan terukur halaman bergeser 196 px di 390 px dan
+   290 px saat grid teka silang selebar 12 kolom. `contain: paint` memutus
+   rambatan ukuran itu — jadi yang bergulir benar-benar hanya bungkus gridnya. */
+.tabel-editor-bungkus,
+.silang-editor-bungkus {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  contain: paint;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.tabel-editor {
+  border-collapse: collapse;
+  min-width: 20rem;
+}
+
+.tabel-editor th,
+.tabel-editor td {
+  border: 1px solid var(--garis, #cbd5e1);
+  padding: 0.35rem;
+  vertical-align: top;
+}
+
+.tabel-editor thead th {
+  background-color: var(--sorot-lembut, #f1f5f9);
+}
+
+/* Kolom mengikuti lebar bungkusnya, bukan lebar bawaan kotak isian (input punya
+   lebar intrinsik ±20 karakter yang menahan tabel tetap lebar di ponsel). */
+.tabel-editor .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * Gutter grid penyusun soal (nomor baris + tombol hapus) dipakai bersama oleh
+ * tabel isian dan teka silang.
+ *
+ * 14 Oktober 2026 — pemilik produk: "teka silang mini yang tempat sampahnya
+ * sangat amat jelek UI-nya". Sebelumnya tiap baris menumpuk nomor + tombol hapus
+ * merah penuh; tombol 48 px itu lebih tinggi daripada kotak soalnya, sehingga
+ * sel gutter menarik tinggi barisnya (grid terlihat melar) dan seluruh kolom
+ * kiri teka silang terbaca sebagai deretan tempat sampah, ditambah sederet
+ * tempat sampah lagi di baris kakinya. Sekarang nomor dan tombol hapus duduk
+ * dalam SATU baris setinggi kotaknya, dan tombolnya berbentuk **hantu**: ikon
+ * samar, tanpa kotak berwarna, dan warna bahaya baru muncul saat disorot atau
+ * difokus. Baris kaki hanya berisi tombol hantu untuk hapus kolom.
+ */
+.silang-editor-nomor,
+.tabel-editor-nomor {
+  width: 4.25rem;
+  padding: 0 0.15rem;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  background-color: var(--sorot-lembut, #f1f5f9);
+  font-weight: 700;
+}
+
+.editor-grid-nomor {
+  min-width: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sel kiri baris kaki: "Hapus kolom" (bukan kotak nomor). */
+.editor-grid-hapus-label {
+  width: 4.25rem;
+  padding: 0 0.25rem;
+  text-align: right;
+  vertical-align: middle;
+  line-height: 1.1;
+}
+
+.editor-grid-hapus-sel {
+  padding: 0;
+  text-align: center;
+}
+
+/* Tombol hapus bentuk hantu di dalam grid: 44 px tetap (sasaran sentuh tidak
+   mengecil) tetapi tanpa isi warna — hanya ikon samar yang menyala merah saat
+   disorot/difokus. */
+.editor-hapus.btn-ikon {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--teks-lembut, #64748b);
+}
+
+.editor-hapus.btn-ikon:hover:not(:disabled),
+.editor-hapus.btn-ikon:focus-visible {
+  background-color: color-mix(in srgb, var(--status-salah) 12%, transparent);
+  border-color: color-mix(in srgb, var(--status-salah) 55%, transparent);
+  color: var(--status-salah);
+}
+
+.tabel-editor-kepala {
+  font-weight: 700;
+}
+
+.tabel-editor-sel .tabel-editor-kunci {
+  font-style: italic;
+}
+
+/* Sel kosong yang belum punya jawaban diterima: penanda lunak, bukan galat —
+   daftar kelengkapan yang tetap menjadi penentu boleh-tidaknya disimpan. */
+.tabel-editor-sel.perlu-kunci {
+  background-color: var(--peringatan-lembut, #fffbeb);
 }
 
 /* Garis bilangan: SVG buatan sendiri, tiap tick bisa diketuk/dijangkau keyboard. */
@@ -2050,6 +2265,15 @@ a {
   letter-spacing: 0.35em;
 }
 
+/* Pilihan jenis berkas tugas unggah (14 Oktober 2026): kotak centang yang
+   berbaris dan bisa dibungkus, bukan isian teks bebas yang harus diketik. */
+.pilihan-jenis-berkas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.25rem;
+}
+
 .silang-nomor-input {
   max-width: 4.5rem;
 }
@@ -2061,6 +2285,59 @@ a {
 .silang-panjang-input {
   max-width: 4.5rem;
 }
+
+/* Grid teka silang di editor (14 Oktober 2026): kotak digambar seperti papan
+   sungguhan, huruf diketik langsung di kotaknya, dan tombol ■ menukar kotak
+   huruf ↔ kotak hitam. Sebelumnya grid ditulis sebagai teks ('kucing\n#n#i#t'). */
+.silang-editor {
+
+  border-collapse: collapse;
+}
+
+.silang-editor-sel {
+  position: relative;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border: 1px solid var(--garis, #cbd5e1);
+}
+
+.silang-editor-sel.hitam {
+  background-color: #1f2937;
+}
+
+.silang-editor-isian {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background-color: transparent;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.silang-editor-hitam {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  color: #94a3b8;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.silang-editor-sel.hitam .silang-editor-hitam {
+  color: #f8fafc;
+}
+
+/* Gutter teka silang memakai aturan bersama dengan tabel isian — lihat
+   `.silang-editor-nomor, .tabel-editor-nomor` di blok grid tabel di atas. */
 
 /* Tugas unggah: pengingat jenis berkas. */
 .tugas-unggah-jenis {
@@ -2539,12 +2816,14 @@ a {
   border-radius: var(--radius);
 }
 
-/* Bingkai dengan rasio TERKUNCI: lebar mengikuti tinggi tersedia, tidak pernah
- * melar. Apa pun yang lebih besar dari bingkai dipotong, bukan meluber. */
+/* Bingkai 16:9 TETAP (14 Oktober 2026): guru tidak lagi memilih rasio — latar
+ * tema digambar 1600×900, jadi bingkai lain hanya memotong gambar tema.
+ * Lebar mengikuti tinggi tersedia, tidak pernah melar; apa pun yang lebih besar
+ * dari bingkai dipotong, bukan meluber. */
 .nle-bingkai {
   position: relative;
-  width: min(100%, calc((var(--tinggi-canvas) - 1rem) * var(--r, 1.7778)));
-  aspect-ratio: var(--r, 1.7778);
+  width: min(100%, calc((var(--tinggi-canvas) - 1rem) * 16 / 9));
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #000;
   border-radius: var(--radius-kecil);
@@ -2581,15 +2860,8 @@ a {
   background: rgba(0, 0, 0, 0.55);
 }
 
-/* Bilah rasio + tombol segmen. */
-.nle-bilah {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  align-items: center;
-}
-
-.nle-segmen,
+/* Tombol kecil di editor. Catatan 14 Oktober 2026: bilah “Rasio bingkai”
+ * (`.nle-bilah` + `.nle-segmen`) dihapus — bingkai kini tetap 16:9. */
 .nle-tool-kecil {
   padding: 0.2rem 0.6rem;
   font-size: 0.8rem;
@@ -2597,12 +2869,6 @@ a {
   background: var(--kartu);
   border: 1px solid var(--garis);
   border-radius: 999px;
-}
-
-.nle-segmen.aktif {
-  color: var(--putih);
-  background: var(--aktif);
-  border-color: var(--aktif);
 }
 
 .nle-tool-kuis {
@@ -2956,6 +3222,43 @@ a {
   outline-offset: 1px;
 }
 
+/* Tombol ✕ penghapus klip terpilih, berdiri tepat di sebelah kanan kotak klip.
+ *
+ * Sengaja DI LUAR kotak klip dan diberi celah 0,25rem: klipnya sendiri sebuah
+ * `<button>`, jadi kontrol bersarang di dalamnya tidak sah dan kliknya tidak
+ * sampai — dan tanda pangkas `|` duduk tepat di tepi klip, jadi tombol yang
+ * menempel di tepi akan terbaca sebagai kontrol yang sama. */
+.nle-klip-hapus {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 2rem;
+  margin-inline-start: 0.25rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--teks);
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+  cursor: pointer;
+}
+
+.nle-klip-hapus:hover {
+  color: var(--putih);
+  background: var(--status-salah);
+  border-color: var(--status-salah);
+}
+
+.nle-klip-hapus:focus-visible {
+  outline: 2px solid var(--cincin-fokus);
+  outline-offset: 1px;
+}
+
 /* Playhead vertikal + kepalanya. */
 .nle-playhead {
   position: absolute;
@@ -3071,7 +3374,6 @@ a {
   .nle-template,
   .nle-pemilih-baris,
   .nle-menu button,
-  .nle-segmen,
   .nle-tool-kecil {
     min-height: 44px;
   }
@@ -3098,6 +3400,12 @@ a {
 
   .nle-klip,
   .nle-pangkas-grup {
+    height: 2.75rem;
+  }
+
+  /* Tombol ✕ di timeline juga jadi sasaran sentuh 44 px. */
+  .nle-klip-hapus {
+    width: 2.75rem;
     height: 2.75rem;
   }
 }
@@ -3450,6 +3758,11 @@ a {
 .tabel-data .kolom-aksi {
   text-align: end;
   white-space: nowrap;
+  /* Kolom aksi selebar isinya, bukan selebar sisa ruang tabel (14 Oktober 2026).
+   * Tanpa ini lebar kolom bisa jatuh di bawah kebutuhan dua tombol, sehingga
+   * tombol hapus terdorong ke baris kedua dan tiap baris tabel jadi dua kali
+   * lebih tinggi — tombol yang sama terlihat "tidak pas". */
+  width: 1%;
 }
 
 /* Kolom progres Monitor Ulangan: batang + teks butuh lebar tetap. */
@@ -3459,7 +3772,9 @@ a {
 
 .tabel-data .aksi-baris {
   display: flex;
-  flex-wrap: wrap;
+  /* Tombol aksi satu baris, selalu. Kalau ruangnya sempit, yang bergeser adalah
+   * tabelnya (mendatar), bukan tombolnya menumpuk ke bawah. */
+  flex-wrap: nowrap;
   gap: var(--sp-2);
   justify-content: flex-end;
 }
@@ -3574,10 +3889,12 @@ a {
   .tabel-data .kolom-aksi {
     text-align: start;
     white-space: normal;
+    width: auto;
   }
 
   .tabel-data .aksi-baris {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -3813,11 +4130,32 @@ a {
   color: var(--putih);
 }
 
-/* ---------- Langkah bersusun: susun kuis tiga langkah (papan 10) ---------- */
+/* ---------- Penyusunan kuis satu halaman: pil pelompat + bar aksi lengket ---------- */
 
-/* Pil langkah: nomor + nama, tinggi tetap ≥48 px supaya nyaman ditekan.
- * Langkah aktif ditandai aria-current="step" (bukan hanya warna) karena nomor
- * ikut berubah tampilan; pembaca layar tetap membaca urutannya. */
+/*
+ * Bar aksi lengket di halaman susun kuis (14 Oktober 2026). Halaman ini satu
+ * halaman utuh berisi tiga bagian, jadi tombol Simpan/Terbitkan harus tetap
+ * terjangkau tanpa menggulir ke bawah: bar-nya menempel di bawah kepala halaman
+ * sambil menggulir. Latarnya opak supaya teks di bawahnya tidak menembus.
+ */
+.bar-susun {
+  position: sticky;
+  top: var(--sp-2);
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--kartu);
+  border: 1.5px solid var(--garis);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+}
+
+/* Pil pelompat bagian: nomor + nama, tinggi tetap ≥48 px supaya nyaman ditekan.
+ * Bagian yang sedang dilihat ditandai aria-current="step" (bukan hanya warna);
+ * pil ini TIDAK menyembunyikan isi, hanya memindahkan pandangan ke bagiannya. */
 .pil-langkah {
   display: inline-flex;
   gap: var(--sp-3);
@@ -3859,7 +4197,7 @@ a {
   background-color: var(--teks-di-panel);
 }
 
-/* Baris soal yang bisa dicentang (bank soal di langkah susun). Tombol, bukan
+/* Baris soal yang bisa dicentang (bank soal di bagian susun). Tombol, bukan
  * kotak centang kecil: seluruh baris jadi sasaran sentuh ≥44 px. */
 .pilih-soal {
   display: flex;
@@ -4086,6 +4424,40 @@ a {
 .baris-opsi.kunci {
   background-color: var(--sorot-hangat);
   border-color: var(--aksen);
+}
+
+/*
+ * Satu baris pilihan = lingkaran kunci · isian teks · tombol hapus, dalam SATU
+ * baris (14 Oktober 2026).
+ *
+ * `.form-control` bawaannya `width: 100%`, dan di dalam wadah ber-`flex-wrap` itu
+ * membuat isian mengambil satu baris penuh untuk dirinya sendiri: tombol hapus
+ * terdorong ke baris ketiga, sendirian di kiri — barisnya jadi 138 px untuk satu
+ * pilihan dan terlihat berantakan. Lebarnya kini mengikuti sisa ruang.
+ */
+.baris-opsi .form-control {
+  width: auto;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.baris-opsi .btn-ikon {
+  flex: none;
+}
+
+/* Catatan saat guru menekan tombol hapus padahal pilihannya sudah di batas
+ * minimum — umpan balik yang jelas, bukan tombol yang diam. */
+.baris-opsi-catatan {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--teks);
+  background-color: var(--sorot-hangat);
+  border-inline-start: 3px solid var(--aksen);
+  border-radius: var(--radius-kecil);
 }
 
 .pilih-opsi {
@@ -4399,12 +4771,12 @@ a {
 
 .pm-bingkai {
   position: relative;
-  width: min(100%, calc(75vh * var(--r, 1.7778)));
+  width: min(100%, calc(75vh * 16 / 9));
   margin-inline: auto;
   overflow: hidden;
   background: #000;
   border-radius: var(--radius);
-  aspect-ratio: var(--r, 1.7778);
+  aspect-ratio: 16 / 9;
 }
 
 .pm-kuis {
@@ -4448,6 +4820,28 @@ a {
   display: block;
   width: 100%;
   margin-block: 0.4rem;
+}
+
+/*
+ * Dokumen PDF di halaman murid (14 Oktober 2026).
+ *
+ * Kenapa di dalam bingkai dan bukan tombol "buka di tab baru": guru dan murid
+ * di sekolah sering memakai ponsel; membuka tab baru berarti berkasnya lebih
+ * dulu diunduh lalu dicari di folder unduhan. Bingkai ini menampilkan PDF-nya
+ * di tempat, dan tautan "buka di tab baru" tetap ada sebagai cadangan.
+ *
+ * Tingginya dibatasi `min(70vh, 40rem)` supaya di layar pendek bingkainya tidak
+ * mendorong tombol "lanjut" jauh ke bawah.
+ */
+.materi-dokumen,
+.pm-penjelasan-dokumen {
+  display: block;
+  width: 100%;
+  height: min(70vh, 40rem);
+  margin-block: 0.4rem;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
 }
 
 /* ==========================================================================
@@ -5339,9 +5733,11 @@ a {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, 0.06) 100%);
 }
 
-/* Penanda pos = kemah (tenda) di jalur pendakian. Kotaknya sendiri transparan;
-   bentuk tendanya digambar SVG supaya punya garis tepi putih (tetap terlihat
-   di latar terang maupun gelap) dan pintunya bisa dibedakan dari atapnya. */
+/* Penanda pos: kotaknya transparan, BENTUKNYA mengikuti tema perjalanan
+   (`PenandaPos` + `BENTUK_POS` di `PetaPerjalanan.jsx`) — kemah di jalur
+   pendakian, perahu di pelayaran harta karun, roket di jalur antariksa.
+   Warnanya tetap warna pos itu (`--pos-warna`), jadi identitas pos tidak
+   hilang walau bentuknya berbeda antar tema. */
 .jelajah-pos {
   position: absolute;
   z-index: 1;
@@ -5350,23 +5746,25 @@ a {
   transform: translate(-50%, -50%);
 }
 
-.jelajah-pos-kemah {
+.jelajah-pos-bentuk {
   display: block;
   width: 100%;
   height: 100%;
-  /* Bayangan lembut supaya tendanya tidak menempel rata di latar. */
+  /* Bayangan lembut supaya penandanya tidak menempel rata di latar. */
   filter: drop-shadow(0 0.12rem 0.16rem rgba(15, 23, 42, 0.3));
 }
 
-.jelajah-pos-kemah-atap {
+/* Badan penanda (atap kemah, lambung perahu, badan roket): garis tepi putih
+   supaya tetap terlihat di latar terang maupun gelap. */
+.jelajah-pos-badan {
   fill: var(--pos-warna, var(--teks-lembut));
   stroke: var(--putih);
   stroke-width: 1.8;
   stroke-linejoin: round;
 }
 
-/* Pintu tenda: versi lebih terang dari warna tendanya. */
-.jelajah-pos-kemah-pintu {
+/* Bagian terang penanda: pintu kemah, layar perahu, jendela & semburan roket. */
+.jelajah-pos-terang {
   fill: rgba(255, 255, 255, 0.32);
 }
 
@@ -5395,15 +5793,17 @@ a {
 }
 
 /* Pos yang sedang ditempuh ditandai CAHAYA, bukan cincin kotak: bentuk
-   penandanya tenda, jadi cincin `outline` akan menggambar kotak di sekitarnya. */
-.jelajah-pos[data-status='dibuka'] .jelajah-pos-kemah {
+   penandanya bukan bulatan, jadi cincin `outline` akan menggambar kotak di
+   sekitarnya. */
+.jelajah-pos[data-status='dibuka'] .jelajah-pos-bentuk {
   filter:
     drop-shadow(0 0 0.3rem rgba(14, 165, 233, 0.95))
     drop-shadow(0 0.12rem 0.16rem rgba(15, 23, 42, 0.3));
 }
 
-/* Pos opsional ditandai POLA (bukan hanya warna): garis tendanya putus-putus. */
-.jelajah-pos[data-jenis='opsional'] .jelajah-pos-kemah-atap {
+/* Pos opsional ditandai POLA (bukan hanya warna): garis badan penandanya
+   putus-putus. */
+.jelajah-pos[data-jenis='opsional'] .jelajah-pos-badan {
   stroke-dasharray: 2.6 1.8;
 }
 

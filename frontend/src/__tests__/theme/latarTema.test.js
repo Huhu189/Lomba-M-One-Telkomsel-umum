@@ -200,6 +200,15 @@ function baca(mentah) {
 }
 
 /**
+ * Luas kotak batas satu bentuk — perkiraan besar bidangnya.
+ * @param {Bentuk} bentuk
+ * @returns {number}
+ */
+function luasKotak(bentuk) {
+  return (bentuk.kotak[2] - bentuk.kotak[0]) * (bentuk.kotak[3] - bentuk.kotak[1])
+}
+
+/**
  * Kotak batas sekumpulan bentuk.
  * @param {Bentuk[]} daftar
  * @returns {[number, number, number, number]}
@@ -211,6 +220,20 @@ function kotakGabungan(daftar) {
     Math.max(...daftar.map((b) => b.kotak[2])),
     Math.max(...daftar.map((b) => b.kotak[3])),
   ]
+}
+
+/**
+ * Garis **atas** sekumpulan bentuk di sekitar satu x (px): titik paling atas di
+ * antara titik-titik bentuk itu yang berjarak ≤ 40 px dari x. Dipakai untuk
+ * membandingkan kaki sebuah benda dengan permukaan yang ada di bawahnya.
+ *
+ * @param {Bentuk[]} daftar
+ * @param {number} x
+ * @returns {number} `Infinity` bila tidak ada titik di sekitar x
+ */
+function atasPada(daftar, x) {
+  const dekat = daftar.flatMap((bentuk) => bentuk.titik).filter((t) => Math.abs(t.x - x) <= 40)
+  return dekat.length === 0 ? Infinity : Math.min(...dekat.map((t) => t.y))
 }
 
 /**
@@ -368,6 +391,15 @@ describe('bentuk berkas latar tema', () => {
       ).toEqual([])
     })
 
+    it(`${nama}: tidak ada penanda aset yang belum digambar`, () => {
+      // `{{CC0:peti}}` dan `{{CC0:karang}}` pernah tertinggal di `pulau.svg`:
+      // peramban tidak menggambar teks di dalam SVG, jadi kedua benda itu
+      // tidak pernah tampak walau komentarnya mengaku sudah disisipkan. Pagar
+      // ini menutup celah itu — bentuknya tetap lolos aturan lain.
+      const isi = mentah.replace(/<!--[\s\S]*?-->/g, '')
+      expect(isi.match(/\{\{[^}]*\}\}/g) ?? []).toEqual([])
+    })
+
     it(`${nama}: warnanya sesuai sifat temanya (terang vs gelap)`, () => {
       const terang = LATAR.find((l) => l.nama === nama)?.terang
       const bidang = palet(mentah)
@@ -458,6 +490,44 @@ describe('pos mendarat di latar temanya', () => {
       expect(gagal).toEqual([])
     })
   }
+
+  it('pulau: kaki tanjung goa sampai ke pasir pantai (batu tidak melayang di atas air)', () => {
+    // Keluhan pemilik produk 14 Okt 2026: *"yang harta karun jangan yang kubah
+    // harta karunnya di udara"*. Pangkal tanjung `goa` dulu berhenti di y = 432
+    // sementara laut mulai di y ≈ 440 — celah langit 8 px di bawah batunya. Tes
+    // ini mengukur jarak kaki tanjung ke garis pasir **di x tempat pos "Goa
+    // Harta Karun" berdiri**, jadi berkas yang melayang kembali akan merah.
+    const { lebar, tinggi, grup } = baca(mentahPulau)
+    const titik = RUTE_TEMA.pulau.find((satu) => satu.di === 'goa')
+    const x = ((titik?.x ?? 0) / 100) * lebar
+    const y = ((titik?.y ?? 0) / 100) * tinggi
+    const goa = grup.get('goa') ?? []
+    const pantai = grup.get('pantai') ?? []
+
+    // Yang diukur **badan tanjungnya**, bukan seluruh isi grup: peti, batu-batu
+    // kecil, dan butir emas di dalam grup itu bisa saja sudah menyentuh pasir
+    // sementara batunya masih melayang. Badan tanjung = bentuk terluas di grup
+    // yang memuat titik pos "Goa Harta Karun".
+    const badan = [...goa]
+      .filter((b) => b.kotak[0] <= x && x <= b.kotak[2] && b.kotak[1] <= y && y <= b.kotak[3])
+      .sort((a, b) => luasKotak(b) - luasKotak(a))[0]
+
+    const bawahBadan = badan === undefined ? NaN : badan.kotak[3]
+    const atasPasir = atasPada(pantai, x)
+
+    const melayang =
+      badan !== undefined && bawahBadan >= atasPasir
+        ? []
+        : [
+            badan === undefined
+              ? 'badan tanjung tidak ketemu di grup goa'
+              : `badan tanjung berhenti di y ${Math.round(bawahBadan)} padahal pasir pantai sudah mulai ` +
+                `di y ${Math.round(atasPasir)} di x ${Math.round(x)} — celah ` +
+                `${Math.round(atasPasir - bawahBadan)} px di bawah batu`,
+          ]
+
+    expect(melayang).toEqual([])
+  })
 
   it('rute tiap tema naik (y makin kecil) dan tidak meleset keluar panggung', () => {
     for (const [nama, rute] of Object.entries(RUTE_TEMA)) {

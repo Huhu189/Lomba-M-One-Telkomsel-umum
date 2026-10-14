@@ -8,10 +8,13 @@
   kelapa, tanjung batu yang memuat goa harta karun, dermaga kayu, perahu layar,
   dan karang berwarna di laut.
 
-  Tiga benda CC0 dari luar repo (diunduh ulang, koordinatnya didatar-kan supaya
-  tidak ada transform di berkas ini — sumber, pembuat, dan lisensinya di
-  LISENSI.md): peti harta karun di mulut goa, dan karang di laut. Pohon kelapa,
-  dermaga, perahu, pantai, dan tanjung digambar di sini (karya sendiri, CC0).
+  Peti harta karun di mulut goa dan karang di laut digambar di sini (karya
+  sendiri, CC0) — sama seperti pohon kelapa, dermaga, perahu, pantai, dan
+  tanjung. Dua ikon CC0 pihak ketiga yang dulu dirujuk di berkas ini (peti &
+  karang) ternyata **tidak pernah benar-benar tersisip**: yang tertinggal hanya
+  penanda teks `{{CC0:peti}}` dan `{{CC0:karang}}`, dan peramban tidak menggambar
+  teks di dalam SVG — jadi petinya memang tidak pernah tampak. Sejak 14 Okt 2026
+  kedua benda itu digambar di repo dan penanda teksnya dibuang (dijaga tes).
 
   Bentuknya mengikuti rute pos tema ini (`RUTE_TEMA.pulau` di
   `frontend/src/sections/material/perjalanan.js`): tiap pos berdiri DI ATAS
@@ -25,8 +28,16 @@
                                         → pos "Pantai Berpasir"  (62%, 62%) = (992,558)
   - `hutan`    (bidang rimba + teras + kelapa, px 840–1660 × 396–980)
                                         → pos "Hutan Kelapa"     (74%, 50%) = (1184,450)
-  - `goa`      (tanjung batu + mulut goa + peti, px 1130–1450 × 224–560)
-                                        → pos "Goa Harta Karun"  (80%, 41%) = (1280,369)
+  - `goa`      (tanjung batu + kaki darat + mulut goa + peti,
+                px 1046–1538 × 224–574) → pos "Goa Harta Karun"  (80%, 41%) = (1280,369)
+
+  Kaki tanjung itu penting: pangkal batu `goa` **turun sampai pasir pantai**
+  (y ≈ 574) sejak 14 Okt 2026. Sebelumnya pangkalnya berhenti di y = 432
+  sementara laut mulai di y ≈ 440 dan pasir pantai baru di y = 500 pada x pos
+  goa — jadi ada celah langit 8 px (dan 68 px sampai garis pasir) di bawah
+  batunya, terbaca sebagai kubah yang melayang di udara, dan butir-butir emas di
+  bawah goa (y 486–516) malah jatuh di laut. Pagar mutunya ada di
+  `frontend/src/__tests__/theme/latarTema.test.js` ("kaki tanjung sampai ke pasir").
 
   Latar ini **terang** supaya jalur pekat peta dan tenda pos di atasnya tetap
   terbaca; pagar mutunya ada di `frontend/src/__tests__/theme/latarTema.test.js`
@@ -238,18 +249,18 @@
     </g>
   </g>
 
-  <!-- Tanjung batu + mulut goa + peti harta karun. -->
+  <!-- Tanjung batu + kaki darat + mulut goa + peti harta karun. -->
   <g id="goa">
-    <path fill="#9b93a8" d="M1130 432 C 1150 350 1190 280 1260 250 C 1330 222 1402 250 1432 300 C 1452 340 1448 396 1440 432 Z"/>
+    <path fill="#9b93a8" d="M1130 432 C 1150 350 1190 280 1260 250 C 1330 222 1402 250 1432 300 C 1452 340 1448 396 1440 432 C 1492 470 1518 512 1538 556 C 1420 578 1300 574 1280 574 C 1180 574 1088 568 1046 556 C 1078 514 1116 472 1130 432 Z"/>
     <path fill="#b6aec2" d="M1198 288 C 1246 258 1316 256 1362 286 C 1300 300 1250 312 1198 288 Z"/>
-    <path fill="#7a7387" d="M1150 432 C 1170 372 1200 324 1246 300 C 1300 330 1360 344 1432 336 C 1436 372 1440 406 1440 432 Z"/>
-    <path fill="#2b1d14" d="M1226 432 C 1226 372 1252 332 1292 328 C 1332 324 1356 366 1356 432 Z"/>
+    <path fill="#7a7387" d="M1146 488 C 1170 400 1200 324 1246 300 C 1300 330 1360 344 1432 336 C 1440 380 1448 434 1454 488 Z"/>
+    <path fill="#2b1d14" d="M1226 470 C 1226 380 1252 332 1292 328 C 1332 324 1356 380 1356 470 Z"/>
     <path fill="#4a3b2c" d="M1246 356 L1252 386 L1238 388 Z"/>
     <path fill="#4a3b2c" d="M1330 352 L1336 384 L1322 386 Z"/>
-    <path fill="#3a2c20" d="M1288 432 L1292 398 L1300 398 L1304 432 Z"/>
-    <path fill="#c8c0d2" d="M1226 432 C 1226 372 1252 332 1292 328 L1292 344 C 1262 348 1242 384 1242 432 Z"/>
-    <path fill="#8f8799" d="M1108 440 C 1130 420 1160 412 1186 418 C 1162 432 1134 444 1108 452 Z"/>
-    <path fill="#6f6880" d="M1436 452 C 1452 436 1476 430 1494 436 C 1478 450 1458 458 1436 462 Z"/>
+    <path fill="#3a2c20" d="M1288 470 L1292 398 L1300 398 L1304 470 Z"/>
+    <path fill="#c8c0d2" d="M1226 470 C 1226 380 1252 332 1292 328 L1292 344 C 1262 348 1242 388 1242 470 Z"/>
+    <path fill="#8f8799" d="M1108 500 C 1130 480 1160 472 1186 478 C 1162 492 1134 504 1108 512 Z"/>
+    <path fill="#6f6880" d="M1436 512 C 1452 496 1476 490 1494 496 C 1478 510 1458 518 1436 522 Z"/>
     <g fill="#ffd166">
       <circle cx="1204" cy="486" r="13"/>
       <circle cx="1240" cy="500" r="10"/>
@@ -266,7 +277,16 @@
       <path d="M1156 356 L1164 380 L1188 388 L1164 396 L1156 420 L1148 396 L1124 388 L1148 380 Z"/>
       <path d="M1412 372 L1418 390 L1436 396 L1418 402 L1412 420 L1406 402 L1388 396 L1406 390 Z"/>
     </g>
-{{CC0:peti}}
+    <!-- Peti harta karun: digambar di repo (CC0), duduk di kaki tanjung tepat di
+         mulut goa. Butir-butir emas di bawahnya kini jatuh di BATU tanjung,
+         bukan di laut seperti sebelum kakinya turun ke pasir. -->
+    <rect x="1244" y="452" width="116" height="62" fill="#8d5a2c"/>
+    <path fill="#c98d4e" d="M1238 452 C 1258 420 1346 420 1366 452 L1366 470 L1238 470 Z"/>
+    <rect x="1288" y="440" width="28" height="74" fill="#e0a83c"/>
+    <circle cx="1302" cy="486" r="11" fill="#fff3c4"/>
+    <circle cx="1302" cy="486" r="5" fill="#a9773a"/>
+    <path fill="#ffd166" d="M1224 424 L1229 442 L1247 447 L1229 452 L1224 470 L1219 452 L1201 447 L1219 442 Z"/>
+    <path fill="#ffd166" d="M1376 428 L1380 443 L1395 447 L1380 451 L1376 466 L1372 451 L1357 447 L1372 443 Z"/>
   </g>
 
   <!-- Dermaga kayu: dek, tiang, tali, dan peti. -->
@@ -318,7 +338,11 @@
     <path fill="#4fb27a" d="M652 750 C 648 716 664 686 688 674 C 680 704 682 728 690 750 Z"/>
     <path fill="#43a06c" d="M710 750 C 706 722 718 696 740 686 C 732 712 734 732 742 750 Z"/>
     <path fill="#5cbf86" d="M850 748 C 846 720 858 694 880 684 C 872 710 874 730 882 748 Z"/>
-{{CC0:karang}}
+    <!-- Karang (digambar di repo, CC0): ikon CC0 pihak ketiga yang dulu dirujuk
+         di sini tidak pernah tersisip, jadi yang ada hanya penanda teksnya. -->
+    <path fill="#ff7a9c" d="M660 752 C 650 724 654 698 666 682 C 676 668 692 666 702 678 C 712 690 712 706 706 722 C 718 710 736 710 744 722 C 752 734 748 748 740 752 Z"/>
+    <path fill="#ff9a5c" d="M690 752 C 688 730 696 712 712 704 C 708 728 704 742 698 752 Z"/>
+    <circle cx="668" cy="694" r="6" fill="#ffd166"/>
     <ellipse cx="836" cy="686" rx="34" ry="20" fill="#ffd166"/>
     <path fill="#ff8f4a" d="M870 686 L900 668 L898 704 Z"/>
     <circle cx="826" cy="680" r="4" fill="#3a2c20"/>

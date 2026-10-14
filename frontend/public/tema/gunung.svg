@@ -6,38 +6,28 @@
   jadi boleh dipakai, diubah, dan disebarkan tanpa izin tambahan — lihat
   LISENSI.md di folder ini.
 
-  Bentuknya mengikuti permintaan pemilik produk pada A.48: *"3 puncak namun
-  yang di sebelah-sebelahnya itu menjadi jalur pendakian"* — satu **punggung
-  utama** di tengah, plus **dua puncak jalur** persis di jalur zigzag pos
-  (sumbu x 14% dan 90%, sedangkan pos bergantian di jalur kiri 12–20% dan
-  kanan 80–88%). Aturan bentuknya dikunci `__tests__/theme/gunungLatar.test.js`
-  dan diukur, bukan dikira:
+  Dirombak 14 Oktober 2026 supaya **setema** dengan dua latar yang sudah lebih
+  dulu dirombak (pulau & angkasa, A.73): kerangka punggungannya dipertahankan
+  apa adanya — rute pos diukur terhadapnya — lalu seluruh lapisan detail
+  dilengkapi supaya tidak lagi terbaca rata: sinar matahari, awan berlapis,
+  rimba pinus di tiga kedalaman, salju, batu, sungai berjembatan, tenda
+  basecamp, papan penunjuk, pagar jalur, dan bunga.
 
-  - **tepat SATU puncak utama** yang menonjol 29,8% tinggi bingkai (268 px,
-    di x≈52%, y≈39% dari atas) — jadi pos terakhir jalur mendaki tetap berdiri
-    di **langit** (pos terakhir digambar di 12% dari atas);
-  - **dua puncak jalur** boleh ada — tetapi keduanya **wajib** lebih rendah
-    sekurang-kurangnya 10% tinggi bingkai (158 dan 160 px) dan berada **di
-    tepi** (|x−50%| ≥ 10%), bukan di tengah; puncak jalur kiri menonjol 81 px
-    (9,0%) dan kanan 73 px (8,1%);
-  - **punggung utama tumpul**: punggung 9,0% lebar kanvas pada 2,2% tinggi di
-    bawah titik tertinggi, kemiringan sisi maksimum 41,3°, putaran antarruas
-    maksimum 6,3° (bekas berkas unduhan lama: sisi 90° dan punggung 0% — itulah
-    yang terbaca seperti tebing). Siluetnya dibuat dari kurva Catmull-Rom
-    sehingga tidak ada sudut berkunci;
-  - **tidak ada sisi nyaris tegak yang panjang**: sisi tegak terpanjang 27 px
-    (batas tes 36 px);
-  - **tidak ada ujung garis yang menggantung**: semua bidang digambar penuh dan
-    ditutup (`Z`); goresan terbuka yang tersisa hanya tiga burung kecil di
-    langit (masing-masing < 5% lebar kanvas, batas tes 8%);
-  - **murni vektor**: tanpa <image> raster, <text>, atau <filter>;
-  - **cerah**: 65 nilai warna (min 94, rata 177) supaya jalur zigzag serta tenda
-    pos di atasnya tetap terbaca. Pita kabut, bukit berlapis, danau, dan pohon
-    memakai palet yang sama seperti sebelumnya; yang berubah adalah
-    **komposisinya** (satu puncak → tiga puncak bertingkat).
+  Aturan bentuk yang mengikat berkas ini (dua pagar, keduanya dijalankan):
+  `__tests__/theme/gunungLatar.test.js` (satu puncak utama, kemiringan sisi,
+  putaran antarruas, goresan menggantung) dan `__tests__/theme/latarTema.test.js`
+  (murni vektor, 16:9, warna hex, terang, dan **tiap pos mendarat di daratan**).
 
-  Atribut width/height dijaga 1600x900 (sisi terpanjang <= 1600 px, aturan di
-  LISENSI.md); viewBox 16:9 supaya panggung peta tidak memotong puncak.
+  Karena itu komposisinya sengaja dipisah menurut jenis bentuk:
+  - **punggungan dan bukit** tetap `<path>` dengan perintah M/L/C/Z saja, miring
+    ≤ 45°, tanpa sisi nyaris tegak; koordinatnya TIDAK digeser dari versi A.48
+    supaya pos mendarat tetap terukur sama;
+  - **detail kecil** (pinus, tenda, batu, pagar, tenda, bunga) digambar sebagai
+    `<polygon>`/`<ellipse>`/`<rect>` — bentuk seperti itu di luar ukur pagar
+    "sisi nyaris tegak", jadi benda tegak wajar (tiang, pohon, dinding tenda)
+    tidak perlu dimiringkan;
+  - **tanpa `transform`**: semua koordinat absolut, supaya pagar yang membaca
+    koordinat mentah tetap melihat benda di tempat yang sebenarnya.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
   <defs>
@@ -47,9 +37,9 @@
       <stop offset="100%" stop-color="#eef7fb"/>
     </linearGradient>
     <linearGradient id="lereng" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#89a9c6"/>
-      <stop offset="60%" stop-color="#7d9bbb"/>
-      <stop offset="100%" stop-color="#7fa0a8"/>
+      <stop offset="0%" stop-color="#8dacc8"/>
+      <stop offset="60%" stop-color="#7fabca"/>
+      <stop offset="100%" stop-color="#87b0b4"/>
     </linearGradient>
     <radialGradient id="cahaya" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#fff6c9" stop-opacity="0.9"/>
@@ -59,12 +49,29 @@
       <stop offset="0%" stop-color="#eef7fb" stop-opacity="0"/>
       <stop offset="100%" stop-color="#eef7fb" stop-opacity="0.85"/>
     </linearGradient>
+    <linearGradient id="danau" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#cdf0ff"/>
+      <stop offset="100%" stop-color="#8ed2f2"/>
+    </linearGradient>
   </defs>
 
+  <!-- ===== Langit: gradien, halo, matahari, sinar ===== -->
   <rect x="-40" y="-40" width="1680" height="980" fill="url(#langit)"/>
   <circle cx="1280" cy="150" r="210" fill="url(#cahaya)"/>
+  <g fill="#ffe9a3" opacity="0.85">
+    <polygon points="1258,100 1302,100 1280,60"/>
+    <polygon points="1322,88 1350,116 1390,50"/>
+    <polygon points="1340,128 1340,172 1420,150"/>
+    <polygon points="1350,184 1322,212 1390,250"/>
+    <polygon points="1302,200 1258,200 1280,240"/>
+    <polygon points="1238,212 1210,184 1170,250"/>
+    <polygon points="1220,172 1220,128 1140,150"/>
+    <polygon points="1210,116 1238,88 1170,50"/>
+  </g>
   <circle cx="1280" cy="150" r="56" fill="#fff6c9" stroke="#eeb63c" stroke-width="6"/>
-  <g fill="#ffffff">
+
+  <!-- ===== Awan: tiga lapis kedalaman ===== -->
+  <g fill="#ffffff" opacity="0.95">
     <ellipse cx="290" cy="170" rx="150" ry="42"/>
     <ellipse cx="196" cy="140" rx="86" ry="30"/>
     <ellipse cx="392" cy="150" rx="74" ry="26"/>
@@ -72,21 +79,62 @@
     <ellipse cx="776" cy="88" rx="58" ry="19"/>
     <ellipse cx="1466" cy="118" rx="70" ry="21"/>
   </g>
+  <g fill="#f2f9fe" opacity="0.9">
+    <ellipse cx="1018" cy="176" rx="128" ry="36"/>
+    <ellipse cx="938" cy="152" rx="74" ry="24"/>
+    <ellipse cx="1104" cy="156" rx="60" ry="20"/>
+  </g>
+  <g fill="#ffffff" opacity="0.72">
+    <ellipse cx="560" cy="252" rx="92" ry="26"/>
+    <ellipse cx="498" cy="234" rx="54" ry="18"/>
+    <ellipse cx="624" cy="238" rx="44" ry="16"/>
+    <ellipse cx="1160" cy="252" rx="66" ry="19"/>
+  </g>
 
+  <!-- ===== Burung: dua kawanan, satu dekat satu jauh ===== -->
+  <g stroke="#3f6382" stroke-width="4" stroke-linecap="round">
+    <path fill="none" d="M980 300 C 990 288 1004 286 1010 298 C 1016 286 1030 288 1040 300"/>
+    <path fill="none" d="M1052 258 C 1060 248 1070 246 1076 256 C 1082 246 1092 248 1100 258"/>
+    <path fill="none" d="M900 246 C 908 236 918 234 924 244 C 930 234 940 236 948 246"/>
+  </g>
+  <g stroke="#5b7d99" stroke-width="3" stroke-linecap="round" opacity="0.8">
+    <path fill="none" d="M330 300 C 336 293 344 292 348 299 C 352 292 360 293 366 300"/>
+    <path fill="none" d="M386 268 C 391 262 397 261 401 267 C 405 261 411 262 416 268"/>
+  </g>
+
+  <!-- ===== Punggungan jauh (kerangka A.48, koordinat tidak digeser) ===== -->
   <path fill="#c9dcee" d="M-40 600 C-27 600 92 597 120 600 C148 603 274 633 300 640 C326 648 397 685 430 690 C463 695 653 699 700 700 C748 701 954 701 1000 700 C1046 699 1217 697 1250 690 C1283 683 1368 629 1400 620 C1433 611 1620 583 1640 580 L1640 980 L-40 980 Z"/>
+  <!-- Rimba jauh: pinus kecil di punggungan belakang, hanya siluet berkabut. -->
+  <g fill="#a8c4da">
+    <polygon points="150,606 168,556 186,606"/>
+    <polygon points="196,616 216,560 236,616"/>
+    <polygon points="250,624 268,572 286,624"/>
+    <polygon points="1320,626 1338,576 1356,626"/>
+    <polygon points="1368,618 1388,562 1408,618"/>
+    <polygon points="1416,608 1434,558 1452,608"/>
+    <polygon points="520,678 538,628 556,678"/>
+    <polygon points="574,684 590,640 606,684"/>
+    <polygon points="1060,672 1078,624 1096,672"/>
+    <polygon points="1114,680 1130,636 1146,680"/>
+    <polygon points="900,690 916,646 932,690"/>
+  </g>
 
+  <!-- ===== Lereng utama (kerangka A.48) ===== -->
   <path fill="url(#lereng)" d="M-40 690 C-31 684 54 630 70 620 C86 610 138 574 150 565 C162 557 201 517 215 518 C229 519 302 571 320 580 C338 590 410 635 430 632 C450 629 539 555 560 540 C581 525 660 463 680 448 C700 433 783 362 800 355 C817 348 863 355 880 362 C897 370 980 431 1000 445 C1020 459 1099 520 1120 535 C1141 550 1224 627 1250 625 C1276 623 1408 520 1430 515 C1453 510 1503 555 1520 565 C1538 575 1630 634 1640 640 L1640 980 L-40 980 Z"/>
 
+  <!-- Naungan sisi timur puncak + bercak salju (kerangka A.48). -->
   <g fill="#557099" opacity="0.38">
     <path d="M807 343 C 860 350 900 360 960 405 C 1040 460 1140 530 1250 620 C 1170 650 1030 670 930 650 C 860 570 800 430 807 343 Z"/>
     <path d="M218 527 C 260 555 300 575 340 588 C 300 640 240 660 180 640 C 175 600 190 558 218 527 Z"/>
   </g>
 
+  <!-- Punggung terang (sisi yang kena matahari). -->
   <g fill="#e9f2fa" opacity="0.7">
     <path d="M430 625 C 520 545 640 455 800 345 C 760 465 660 580 540 645 Z"/>
     <path d="M1250 625 C 1310 585 1380 550 1430 515 C 1350 590 1250 620 1160 630 Z"/>
   </g>
 
+  <!-- Sisa salju di puncak (lama) + bercak salju baru di bahu lereng. -->
   <ellipse cx="800" cy="386" rx="104" ry="46" fill="#ffffff"/>
   <ellipse cx="736" cy="414" rx="62" ry="20" fill="#ffffff"/>
   <ellipse cx="872" cy="410" rx="48" ry="17" fill="#f4f9fd"/>
@@ -96,19 +144,163 @@
   <ellipse cx="176" cy="564" rx="38" ry="14" fill="#e6f0f8"/>
   <ellipse cx="1430" cy="552" rx="56" ry="22" fill="#f4f9fd"/>
   <ellipse cx="1462" cy="570" rx="34" ry="13" fill="#e6f0f8"/>
+  <g fill="#ffffff" opacity="0.9">
+    <polygon points="700,404 760,368 792,392 752,420"/>
+    <polygon points="820,392 866,372 892,398 848,416"/>
+    <polygon points="620,452 664,428 682,452 646,468"/>
+    <polygon points="934,458 972,438 988,462 954,474"/>
+    <polygon points="240,548 288,528 306,552 268,566"/>
+    <polygon points="1396,556 1444,538 1462,562 1424,574"/>
+  </g>
 
+  <!-- Bongkahan batu dan scree di lereng. -->
+  <g fill="#9db1c2" opacity="0.85">
+    <polygon points="988,474 1036,502 1004,536 958,510"/>
+    <polygon points="1090,540 1134,566 1106,596 1062,570"/>
+    <polygon points="524,556 562,578 538,604 500,582"/>
+    <polygon points="612,470 646,492 626,516 592,494"/>
+    <polygon points="1330,566 1364,586 1344,610 1310,590"/>
+  </g>
+  <g fill="#c3d2de" opacity="0.8">
+    <polygon points="1006,520 1042,542 1020,568 986,546"/>
+    <polygon points="470,600 502,620 482,644 450,624"/>
+    <polygon points="1188,600 1218,620 1198,644 1168,624"/>
+  </g>
+
+  <!-- ===== Pita kabut kaki lereng ===== -->
   <ellipse cx="330" cy="600" rx="150" ry="24" fill="#ffffff" opacity="0.85"/>
   <ellipse cx="860" cy="530" rx="120" ry="20" fill="#ffffff" opacity="0.8"/>
   <ellipse cx="1216" cy="586" rx="170" ry="26" fill="#ffffff" opacity="0.85"/>
-
   <rect x="-40" y="620" width="1680" height="320" fill="url(#kabut)"/>
 
+  <!-- ===== Rimba pinus (tiga baris, makin dekat makin besar) ===== -->
+  <g fill="#4e8f6a" opacity="0.9">
+    <polygon points="640,700 660,650 680,700"/>
+    <polygon points="690,706 712,652 734,706"/>
+    <polygon points="742,712 762,660 782,712"/>
+    <polygon points="792,716 814,662 836,716"/>
+    <polygon points="844,712 864,660 884,712"/>
+    <polygon points="896,706 916,654 936,706"/>
+    <polygon points="946,700 966,650 986,700"/>
+    <polygon points="1140,706 1160,656 1180,706"/>
+    <polygon points="1192,712 1212,662 1232,712"/>
+    <polygon points="1246,706 1266,654 1286,706"/>
+    <polygon points="1300,700 1318,652 1336,700"/>
+  </g>
+  <g fill="#3f8b5c" opacity="0.95">
+    <polygon points="96,712 120,650 144,712"/>
+    <polygon points="152,720 178,652 204,720"/>
+    <polygon points="212,726 236,662 260,726"/>
+    <polygon points="268,732 292,670 316,732"/>
+    <polygon points="326,736 350,674 374,736"/>
+    <polygon points="384,732 408,672 432,732"/>
+    <polygon points="1052,722 1078,656 1104,722"/>
+    <polygon points="1110,728 1134,664 1158,728"/>
+    <polygon points="1166,734 1190,670 1214,734"/>
+    <polygon points="1222,728 1246,666 1270,728"/>
+    <polygon points="1278,722 1302,660 1326,722"/>
+    <polygon points="1334,716 1358,656 1382,716"/>
+    <polygon points="1390,710 1414,652 1438,710"/>
+  </g>
+  <g fill="#357a51" opacity="0.95">
+    <polygon points="58,760 86,690 114,760"/>
+    <polygon points="124,770 152,698 180,770"/>
+    <polygon points="192,776 220,704 248,776"/>
+    <polygon points="258,782 286,710 314,782"/>
+    <polygon points="324,786 352,714 380,786"/>
+    <polygon points="1046,780 1074,708 1102,780"/>
+    <polygon points="1112,786 1140,714 1168,786"/>
+    <polygon points="1178,790 1206,718 1234,790"/>
+    <polygon points="1244,784 1272,712 1300,784"/>
+    <polygon points="1310,778 1338,706 1366,778"/>
+    <polygon points="1376,772 1404,700 1432,772"/>
+  </g>
+
+  <!-- Batang pinus baris depan (rect, jadi boleh tegak). -->
+  <g fill="#8a6a45">
+    <rect x="82" y="756" width="10" height="26"/>
+    <rect x="148" y="764" width="10" height="26"/>
+    <rect x="216" y="770" width="10" height="26"/>
+    <rect x="282" y="776" width="10" height="26"/>
+    <rect x="348" y="780" width="10" height="26"/>
+    <rect x="1068" y="774" width="10" height="26"/>
+    <rect x="1134" y="780" width="10" height="26"/>
+    <rect x="1200" y="784" width="10" height="26"/>
+    <rect x="1266" y="778" width="10" height="26"/>
+  </g>
+
+  <!-- ===== Bukit berumput (kerangka A.48) ===== -->
   <path fill="#5da878" d="M-40 726 C-25 724 112 703 140 700 C168 697 273 690 300 690 C327 690 433 702 460 704 C487 706 595 715 620 718 C645 721 737 740 760 742 C783 745 875 747 900 748 C925 749 1032 755 1060 754 C1088 753 1212 740 1240 736 C1268 733 1379 715 1400 712 C1421 709 1475 699 1490 698 C1505 697 1568 696 1580 696 C1593 696 1635 702 1640 702 L1640 980 L-40 980 Z"/>
   <path fill="#48935f" d="M-40 800 C-23 798 128 781 160 778 C192 776 312 770 340 770 C368 771 473 782 500 784 C527 786 635 795 660 798 C685 801 777 820 800 822 C823 825 915 827 940 828 C965 829 1072 835 1100 834 C1128 833 1252 819 1280 816 C1308 813 1419 797 1440 794 C1461 791 1518 783 1530 782 C1543 781 1581 782 1590 782 C1599 783 1636 788 1640 788 L1640 980 L-40 980 Z"/>
   <path fill="#a9d6bb" opacity="0.55" d="M-40 792 C-24 791 119 777 150 776 C181 775 300 777 330 778 C360 779 480 790 510 792 C540 794 658 804 690 806 C722 808 858 816 890 816 C922 816 1042 811 1070 810 C1098 809 1202 806 1230 804 C1258 802 1376 791 1410 790 C1444 789 1621 796 1640 796 L1640 826 L-40 826 Z"/>
 
-  <path fill="#b3e1fa" stroke="#ecf9ff" stroke-width="8" d="M712 862 C 770 844 902 842 962 858 C 1014 872 994 892 918 896 C 836 900 748 892 718 878 C 702 870 700 868 712 862 Z"/>
+  <!-- ===== Sungai deras + jembatan kayu ===== -->
+  <g>
+    <polygon points="586,690 604,690 640,762 660,838 620,842 596,770" fill="#9fd8f2"/>
+    <polygon points="600,700 616,700 646,768 660,830 636,834 616,772" fill="#cfeaff"/>
+    <polygon points="626,760 664,752 682,772 644,782" fill="#ffffff" opacity="0.9"/>
+    <polygon points="616,796 654,788 672,808 634,818" fill="#ffffff" opacity="0.9"/>
+    <polygon points="606,830 640,824 656,842 620,850" fill="#ffffff" opacity="0.85"/>
+    <rect x="560" y="764" width="150" height="12" fill="#a97c4e"/>
+    <rect x="560" y="776" width="150" height="8" fill="#8a6440"/>
+    <rect x="576" y="786" width="12" height="34" fill="#8a6440"/>
+    <rect x="676" y="786" width="12" height="34" fill="#8a6440"/>
+    <polygon points="560,764 710,764 700,752 570,752" fill="#c69a68"/>
+  </g>
 
+  <!-- ===== Danau di tengah (kerangka A.48) + kilau ===== -->
+  <path fill="url(#danau)" stroke="#ecf9ff" stroke-width="8" d="M712 862 C 770 844 902 842 962 858 C 1014 872 994 892 918 896 C 836 900 748 892 718 878 C 702 870 700 868 712 862 Z"/>
+  <g fill="#ffffff" opacity="0.7">
+    <ellipse cx="800" cy="868" rx="34" ry="5"/>
+    <ellipse cx="862" cy="878" rx="24" ry="4"/>
+    <ellipse cx="748" cy="880" rx="20" ry="4"/>
+  </g>
+
+  <!-- ===== Basecamp: tenda, api unggun, gubuk, papan penunjuk ===== -->
+  <g>
+    <polygon points="120,872 176,872 148,820" fill="#e2603f"/>
+    <polygon points="148,820 176,872 148,872" fill="#b8462c"/>
+    <polygon points="140,872 156,872 148,846" fill="#f6d9b0"/>
+    <polygon points="206,880 258,880 232,832" fill="#3f8fa8"/>
+    <polygon points="232,832 258,880 232,880" fill="#2f6f86"/>
+    <polygon points="224,880 240,880 232,856" fill="#f6d9b0"/>
+    <polygon points="300,878 350,878 325,834" fill="#e8b53c"/>
+    <polygon points="325,834 350,878 325,878" fill="#bd8f26"/>
+    <polygon points="318,878 334,878 325,856" fill="#f6d9b0"/>
+    <ellipse cx="392" cy="884" rx="30" ry="10" fill="#c9a06a"/>
+    <polygon points="372,880 384,852 396,880" fill="#e88a3c"/>
+    <polygon points="388,878 400,846 412,878" fill="#f2a244"/>
+    <ellipse cx="392" cy="884" rx="16" ry="6" fill="#f7d98c"/>
+    <ellipse cx="362" cy="888" rx="10" ry="6" fill="#9db1c2"/>
+    <ellipse cx="422" cy="888" rx="10" ry="6" fill="#9db1c2"/>
+    <rect x="468" y="836" width="96" height="58" fill="#c69a68"/>
+    <polygon points="456,838 576,838 516,796" fill="#8a6440"/>
+    <polygon points="500,838 536,838 536,872 500,872" fill="#8a6440"/>
+    <rect x="486" y="850" width="22" height="18" fill="#f6d9b0"/>
+    <rect x="886" y="852" width="10" height="46" fill="#a97c4e"/>
+    <polygon points="896,856 942,868 896,880" fill="#e8b53c"/>
+    <polygon points="896,832 934,842 896,852" fill="#5da878"/>
+  </g>
+
+  <!-- ===== Pagar jalur pendakian + batu penanda ===== -->
+  <g fill="#b98b57">
+    <rect x="880" y="864" width="8" height="30"/>
+    <rect x="920" y="860" width="8" height="30"/>
+    <rect x="960" y="858" width="8" height="30"/>
+    <rect x="1000" y="856" width="8" height="30"/>
+    <rect x="1040" y="856" width="8" height="30"/>
+  </g>
+  <g fill="#d8ac74">
+    <rect x="880" y="872" width="168" height="7"/>
+    <rect x="880" y="892" width="168" height="7"/>
+  </g>
+  <g fill="#9db1c2">
+    <ellipse cx="1190" cy="882" rx="26" ry="14"/>
+    <ellipse cx="1240" cy="890" rx="18" ry="10"/>
+    <ellipse cx="700" cy="892" rx="22" ry="12"/>
+  </g>
+
+  <!-- ===== Pohon rindang (cara lama: lingkaran) dan semak ===== -->
   <g>
     <circle cx="150" cy="752" r="30" fill="#3f8b5c"/>
     <circle cx="128" cy="764" r="20" fill="#3f8b5c"/>
@@ -139,14 +331,87 @@
     <circle cx="1070" cy="848" r="18" fill="#3f8b5c"/>
     <rect x="1044" y="856" width="12" height="30" fill="#b08d63"/>
   </g>
+  <g fill="#6fb98a">
+    <ellipse cx="640" cy="880" rx="26" ry="14"/>
+    <ellipse cx="676" cy="888" rx="18" ry="10"/>
+    <ellipse cx="1130" cy="880" rx="24" ry="13"/>
+    <ellipse cx="1440" cy="866" rx="30" ry="15"/>
+    <ellipse cx="1478" cy="876" rx="18" ry="10"/>
+  </g>
 
+  <!-- ===== Bunga liar di padang ===== -->
+  <g>
+    <circle cx="470" cy="892" r="6" fill="#f2a244"/>
+    <circle cx="500" cy="898" r="6" fill="#e2603f"/>
+    <circle cx="530" cy="890" r="6" fill="#f6d9b0"/>
+    <circle cx="742" cy="896" r="6" fill="#e2603f"/>
+    <circle cx="772" cy="890" r="6" fill="#f2a244"/>
+    <circle cx="952" cy="894" r="6" fill="#f6d9b0"/>
+    <circle cx="982" cy="886" r="6" fill="#e2603f"/>
+    <circle cx="1096" cy="894" r="6" fill="#f2a244"/>
+    <circle cx="1126" cy="886" r="6" fill="#f6d9b0"/>
+    <circle cx="1276" cy="892" r="6" fill="#e2603f"/>
+    <circle cx="1306" cy="884" r="6" fill="#f2a244"/>
+    <circle cx="1508" cy="892" r="6" fill="#f6d9b0"/>
+    <circle cx="1538" cy="884" r="6" fill="#e2603f"/>
+    <circle cx="418" cy="894" r="6" fill="#f6d9b0"/>
+  </g>
+
+  <!-- ===== Lapisan suasana: kabut hangat kaki langit, gletser, bunga liar ===== -->
+  <g opacity="0.32">
+    <ellipse cx="300" cy="640" rx="360" ry="70" fill="#ffe6c2"/>
+    <ellipse cx="1180" cy="656" rx="420" ry="76" fill="#ffe9cc"/>
+    <ellipse cx="760" cy="628" rx="280" ry="54" fill="#fff3dd"/>
+  </g>
+  <ellipse cx="1240" cy="706" rx="168" ry="30" fill="#bff0f6"/>
+  <ellipse cx="1240" cy="702" rx="120" ry="18" fill="#e6fbff"/>
+  <ellipse cx="1240" cy="700" rx="58" ry="8" fill="#ffffff" opacity="0.85"/>
+  <g fill="#6fae7f">
+    <polygon points="700,700 722,644 744,700"/>
+    <polygon points="760,708 784,650 808,708"/>
+    <polygon points="820,712 842,656 864,712"/>
+    <polygon points="980,708 1002,652 1024,708"/>
+    <polygon points="1046,714 1068,658 1090,714"/>
+    <polygon points="216,780 240,712 264,780"/>
+  </g>
+  <g fill="#b9c9d6">
+    <ellipse cx="812" cy="880" rx="20" ry="11"/>
+    <ellipse cx="1244" cy="868" rx="22" ry="12"/>
+    <ellipse cx="424" cy="886" rx="16" ry="9"/>
+  </g>
+  <g fill="#8899a8">
+    <ellipse cx="856" cy="888" rx="14" ry="8"/>
+    <ellipse cx="1278" cy="876" rx="12" ry="7"/>
+    <ellipse cx="466" cy="892" rx="12" ry="7"/>
+  </g>
+  <g>
+    <circle cx="560" cy="882" r="7" fill="#c77dff"/>
+    <circle cx="588" cy="890" r="6" fill="#ff8fab"/>
+    <circle cx="616" cy="884" r="6" fill="#fff08a"/>
+    <circle cx="676" cy="896" r="7" fill="#ff8fab"/>
+    <circle cx="704" cy="890" r="6" fill="#c77dff"/>
+    <circle cx="732" cy="898" r="6" fill="#fff08a"/>
+    <circle cx="790" cy="892" r="7" fill="#ff8fab"/>
+    <circle cx="818" cy="900" r="6" fill="#c77dff"/>
+    <circle cx="1046" cy="898" r="7" fill="#fff08a"/>
+    <circle cx="1074" cy="890" r="6" fill="#ff8fab"/>
+    <circle cx="1102" cy="898" r="6" fill="#c77dff"/>
+    <circle cx="1180" cy="892" r="7" fill="#fff08a"/>
+    <circle cx="1208" cy="900" r="6" fill="#ff8fab"/>
+    <circle cx="1400" cy="896" r="7" fill="#c77dff"/>
+    <circle cx="1428" cy="888" r="6" fill="#fff08a"/>
+    <circle cx="1456" cy="896" r="6" fill="#ff8fab"/>
+    <circle cx="1546" cy="892" r="7" fill="#c77dff"/>
+    <circle cx="1574" cy="884" r="6" fill="#ff8fab"/>
+  </g>
+  <g fill="#ffffff" opacity="0.45">
+    <ellipse cx="420" cy="214" rx="70" ry="16"/>
+    <ellipse cx="1240" cy="330" rx="88" ry="18"/>
+    <ellipse cx="180" cy="360" rx="64" ry="14"/>
+  </g>
+
+  <!-- ===== Batu besar di tepi air (kerangka A.48) ===== -->
   <path fill="#c9d8e0" d="M296 878 C 310 854 344 848 366 860 C 384 870 390 886 380 896 L296 896 Z"/>
   <path fill="#a9bcc9" d="M322 896 C 326 878 338 868 352 866 C 344 884 338 896 332 896 Z"/>
   <path fill="#c9d8e0" d="M452 890 C 466 866 498 860 520 872 C 536 882 542 892 534 896 L452 896 Z"/>
-
-  <g stroke="#3f6382" stroke-width="4" stroke-linecap="round">
-    <path fill="none" d="M980 300 C 990 288 1004 286 1010 298 C 1016 286 1030 288 1040 300"/>
-    <path fill="none" d="M1052 258 C 1060 248 1070 246 1076 256 C 1082 246 1092 248 1100 258"/>
-    <path fill="none" d="M900 246 C 908 236 918 234 924 244 C 930 234 940 236 948 246"/>
-  </g>
 </svg>
