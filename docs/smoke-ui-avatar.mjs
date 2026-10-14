@@ -37,7 +37,10 @@ import { crc32, deflateSync } from 'node:zlib'
 
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_GURU = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
 const SANDI_UJI = 'Passw0rd!Aman'
 

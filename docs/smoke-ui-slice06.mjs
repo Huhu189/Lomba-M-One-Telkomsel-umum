@@ -10,7 +10,10 @@
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_GURU = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
 const ALASAN = 'Jawaban benar secara konsep walau katanya belum lengkap'
 const TANDA_SOAL = 'SMOKE-06'
@@ -232,23 +235,43 @@ async function main() {
     })()`)
 
   const keluar = () => apiJson('/v1/auth/keluar', 'POST')
-  const atur = (kunci, nilai) => apiJson('/v1/pengaturan', 'PUT', { lingkup: 'sekolah', kunci, nilai })
+
+  /**
+   * Setel saklar pengaturan untuk KUIS UJI ini.
+   *
+   * Sejak 14 Oktober 2026 lapis **sekolah/kelas** tidak bisa diubah siapa pun
+   * lewat API (`PengaturanPolicy`): satu guru tidak memutuskan untuk seluruh
+   * sekolah (K-05), dan kepala sekolah tidak menyusun ulangan. Kebutuhan harness
+   * ini (retry + batas percobaan untuk satu ulangan) memang milik lapis kuis.
+   *
+   * Balasan `PUT` me-resolusi pengaturan dari PARAMETER kueri, bukan dari
+   * `lingkup` di badannya, jadi nilainya dibaca ulang lewat GET dengan `kuis_id`.
+   */
+  const atur = async (kunci, nilai) => {
+    const simpan = await apiJson('/v1/pengaturan', 'PUT', {
+      lingkup: 'kuis', lingkup_id: idKuisUji, kunci, nilai,
+    })
+    const baca = await apiJson(`/v1/pengaturan?kuis_id=${idKuisUji}`)
+
+    return { status: simpan.status, isi: baca.isi }
+  }
 
   const mulai = new Date(Date.now() - 60_000).toISOString()
   const selesai = new Date(Date.now() + 3_600_000).toISOString()
 
   /** @type {number[]} */ const idSoalUji = []
   let idKuisUji = 0
-  /** @type {Record<string, boolean|number>} */ let pengaturanAwal = {}
 
-  /** Pulihkan pengaturan + hapus data uji (saat lulus maupun saat gagal). */
+  /**
+   * Hapus data uji (saat lulus maupun saat gagal).
+   *
+   * Pengaturan tidak perlu dipulihkan: saklarnya menempel pada kuis uji di lapis
+   * kuis, jadi ikut hilang bersama kuisnya. Dulu (saat lapis sekolah masih bisa
+   * diubah) nilai sekolah wajib dikembalikan karena mengikat seluruh sekolah.
+   */
   const bersihkan = async () => {
     await keluar()
     await masuk(AKUN_GURU)
-
-    for (const [kunci, nilai] of Object.entries(pengaturanAwal)) {
-      if (nilai !== undefined && nilai !== null) await atur(kunci, nilai)
-    }
 
     let status = 0
     if (idKuisUji > 0) status = (await apiJson(`/v1/kuis/${idKuisUji}`, 'DELETE')).status
@@ -264,21 +287,11 @@ async function main() {
   await buka('/masuk')
   catat('login guru lewat API', (await masuk(AKUN_GURU)).status === 200)
 
-  const pengaturanSekarang = await apiJson('/v1/pengaturan')
-  pengaturanAwal = {
-    retry: pengaturanSekarang.isi?.pengaturan?.retry?.nilai,
-    batas_percobaan: pengaturanSekarang.isi?.pengaturan?.batas_percobaan?.nilai,
-  }
-
   const daftarMurid = await apiJson('/v1/murid?per_page=100')
   const muridUji = (daftarMurid.isi?.data ?? []).find((satu) => satu.email === AKUN_MURID.email)
   const daftarMapel = await apiJson('/v1/mapel')
   const mapelId = (daftarMapel.isi ?? []).find((satu) => satu.nama === 'Matematika')?.id
   if (!muridUji || !mapelId) throw new Error('murid uji atau mapel Matematika tidak ada di DB dev — jalankan seeder')
-
-  const retryBuka = await atur('retry', true)
-  await atur('batas_percobaan', 99)
-  catat('guru menyalakan retry supaya murid bisa mengerjakan berkali-kali', retryBuka.status === 200)
 
   try {
     for (const soal of cetakSoal) {
@@ -337,6 +350,16 @@ async function main() {
       'kuis disusun dari empat tipe baru lalu diterbitkan',
       susun.status === 200 && Number(susun.isi?.jumlah_soal) === cetakSoal.length && terbit.status === 200,
       `kuis ${idKuisUji} · jumlah soal ${susun.isi?.jumlah_soal}`,
+    )
+
+    // Retry + batas percobaan disetel untuk KUIS ini (lapis kuis), bukan untuk
+    // seluruh sekolah: itu jalur yang tersisa dan jalur yang dipakai guru.
+    const retryBuka = await atur('retry', true)
+    await atur('batas_percobaan', 99)
+    catat(
+      'guru menyalakan retry untuk kuis uji supaya murid bisa mengerjakan berkali-kali',
+      retryBuka.status === 200 && retryBuka.isi?.pengaturan?.retry?.nilai === true,
+      `retry=${retryBuka.isi?.pengaturan?.retry?.nilai} · sumber=${retryBuka.isi?.pengaturan?.retry?.sumber}`,
     )
 
     await buka(`/kuis/${idKuisUji}`)

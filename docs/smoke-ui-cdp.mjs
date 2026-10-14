@@ -47,6 +47,10 @@ async function main() {
     return r.result.value
   }
 
+  // Kredensial di harness ini memakai akun GURU: sejak 14 Oktober 2026 peran
+  // `admin` (kepala sekolah) hanya melihat, jadi aksi guru (impor murid, susun
+  // kuis) pasti ditolak untuknya. Jalur kepala sekolah diuji di
+  // `docs/smoke-ui-admin.mjs`.
   // 1) buka halaman app, lalu login lewat API yang sama dengan yang dipakai UI
   await send('Page.navigate', { url: 'http://localhost:5173/masuk' }, sessionId)
   await sleep(4000)
@@ -58,7 +62,7 @@ async function main() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': token },
-      body: JSON.stringify({ email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }),
+      body: JSON.stringify({ email: 'guru1@sekolah.test', password: 'password12' }),
     })
     return { status: res.status, body: (await res.json()).user?.role ?? null }
   })()`)

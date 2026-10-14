@@ -32,7 +32,10 @@ import { unlinkSync, writeFileSync } from 'node:fs'
 
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_GURU = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 
 const TANDA = String(Date.now()).slice(-6)
 const KELAS_ADA = '6A'
@@ -268,7 +271,7 @@ async function main() {
       await sleep(20_000)
       masuk = await apiJson('/v1/auth/masuk', 'POST', AKUN_GURU)
     }
-    cek('guru masuk · admin@sekolah.test', masuk?.status === 200, `status ${masuk?.status}`)
+    cek('guru masuk · guru1@sekolah.test', masuk?.status === 200, `status ${masuk?.status}`)
 
     // ---------- 1. Halaman impor ----------
     await buka('/murid/impor')

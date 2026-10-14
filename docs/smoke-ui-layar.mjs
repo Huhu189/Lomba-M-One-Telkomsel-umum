@@ -28,7 +28,10 @@
 // (dijalankan oleh `docs/jalankan-smoke-ui.sh layar`).
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_GURU = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
 
 const TANDA = String(Date.now()).slice(-6)
@@ -199,7 +202,7 @@ async function main() {
   try {
     const guru = await pasang(ctxGuru)
     const masukGuru = await guru.masuk(AKUN_GURU)
-    cek('guru masuk · admin@sekolah.test', masukGuru?.status === 200, `status ${masukGuru?.status}`)
+    cek('guru masuk · guru1@sekolah.test', masukGuru?.status === 200, `status ${masukGuru?.status}`)
 
     // ---------- Persiapan: soal + kuis kelas murid uji ----------
     const daftarMurid = await guru.apiJson('/v1/murid?per_page=100')

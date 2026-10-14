@@ -10,7 +10,10 @@
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_GURU = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
 
 /** Tag tema untuk soal uji (dipakai laporan tema & remedial). */
@@ -142,7 +145,29 @@ async function main() {
       return { status: res.status, isi: await res.json().catch(() => null) }
     })()`)
 
-  const atur = (kunci, nilai) => apiJson('/v1/pengaturan', 'PUT', { lingkup: 'sekolah', kunci, nilai })
+  /**
+   * Setel satu saklar pengaturan untuk KUIS UJI ini.
+   *
+   * Sejak 14 Oktober 2026 lapis **sekolah/kelas** tidak lagi bisa diubah siapa
+   * pun lewat API (lihat `PengaturanPolicy`): satu guru tidak boleh memutuskan
+   * untuk seluruh sekolah (K-05), dan kepala sekolah tidak menyusun ulangan.
+   * Kontrol yang nyata ada di lapis **kuis** milik guru pemiliknya (S-05) — dan
+   * itulah yang dipakai guru dari panel setelan di halaman kuisnya.
+   */
+  const atur = async (kunci, nilai) => {
+    const simpan = await apiJson('/v1/pengaturan', 'PUT', {
+      lingkup: 'kuis', lingkup_id: idKuisUji, kunci, nilai,
+    })
+
+    // Balasan `PUT` me-resolusi pengaturan dari PARAMETER kueri (`kuis_id`), bukan
+    // dari `lingkup` di badannya — tanpa `kuis_id` ia menjawab nilai lapis
+    // sekolah, dan pemeriksaan di bawah akan melihat nilai yang salah. Jadi yang
+    // dibaca di sini adalah GET untuk kuis uji itu sendiri: sekaligus bukti
+    // nilainya benar-benar tersimpan dan teresolusi lewat lapis kuis.
+    const baca = await apiJson(`/v1/pengaturan?kuis_id=${idKuisUji}`)
+
+    return { status: simpan.status, isi: baca.isi }
+  }
 
   const mulai = new Date(Date.now() - 60_000).toISOString()
   const selesai = new Date(Date.now() + 3_600_000).toISOString()
@@ -150,16 +175,18 @@ async function main() {
   /** @type {number[]} */ const idSoalUji = []
   let idKuisUji = 0
   let idTagUji = 0
-  /** @type {Record<string, boolean|number>} */ let pengaturanAwal = {}
 
-  /** Pulihkan pengaturan + hapus data uji (saat lulus maupun saat gagal). */
+  /**
+   * Hapus data uji (saat lulus maupun saat gagal).
+   *
+   * Pengaturan tidak perlu dipulihkan lagi: saklarnya kini menempel pada kuis
+   * uji di lapis kuis, jadi ikut hilang bersama kuisnya. Dulu (saat lapis
+   * sekolah masih bisa diubah) harness ini wajib memulihkan nilai sekolah karena
+   * perubahan itu mengikat seluruh sekolah.
+   */
   const bersihkan = async () => {
     await apiJson('/v1/auth/keluar', 'POST')
     await masuk(AKUN_GURU)
-
-    for (const [kunci, nilai] of Object.entries(pengaturanAwal)) {
-      if (nilai !== undefined && nilai !== null) await atur(kunci, nilai)
-    }
 
     let status = 0
     if (idKuisUji > 0) status = (await apiJson(`/v1/kuis/${idKuisUji}`, 'DELETE')).status
@@ -178,13 +205,6 @@ async function main() {
   // ---------- 1. Guru menyiapkan ulangan uji ----------
   await buka('/masuk')
   catat('login guru lewat API', (await masuk(AKUN_GURU)).status === 200)
-
-  const pengaturanSekarang = await apiJson('/v1/pengaturan')
-  pengaturanAwal = {
-    retry: pengaturanSekarang.isi?.pengaturan?.retry?.nilai,
-    batas_percobaan: pengaturanSekarang.isi?.pengaturan?.batas_percobaan?.nilai,
-    ranking: pengaturanSekarang.isi?.pengaturan?.ranking?.nilai,
-  }
 
   const daftarMurid = await apiJson('/v1/murid?per_page=100')
   const muridUji = (daftarMurid.isi?.data ?? []).find((satu) => satu.email === AKUN_MURID.email)
@@ -415,7 +435,7 @@ async function main() {
     const beres = await bersihkan()
     const sisaKuis = idKuisUji > 0 ? await apiJson(`/v1/kuis/${idKuisUji}`) : { status: 404 }
     catat(
-      'ulangan, soal, dan tag uji dihapus + pengaturan dipulihkan',
+      'ulangan, soal, tag, dan saklar pengaturan uji ikut terhapus',
       beres.status === 200 && (sisaKuis.status === 404 || sisaKuis.status === 403),
       `${beres.sisa} · baca ulang kuis ${sisaKuis.status}`,
     )

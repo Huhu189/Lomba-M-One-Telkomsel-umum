@@ -169,9 +169,21 @@ export default function HalamanAkunSekolah() {
       }
     }
 
-    /** @param {Event} e */
+    /**
+     * Esc menutup lapisan TERATAS dulu: menunya, bukan panelnya.
+     *
+     * Panel ini memuat alasan dan sandi yang sudah diketik admin; kalau Esc
+     * langsung menutup panelnya, pekerjaan yang sudah ditulis hilang hanya karena
+     * admin ingin membatalkan pilihan menunya. `preventDefault()` di sini mematikan
+     * aksi bawaan Escape pada `<dialog>` (menutup dialog) — tanpa itu, `onCancel`
+     * di `PanelForm` tetap ikut menutup panelnya.
+     * @param {Event} e
+     */
     const tutupDenganEsc = (e) => {
-      if (e instanceof KeyboardEvent && e.key === 'Escape') setMenuAksiTerbuka(false)
+      if (e instanceof KeyboardEvent && e.key === 'Escape') {
+        e.preventDefault()
+        setMenuAksiTerbuka(false)
+      }
     }
 
     document.addEventListener('pointerdown', tutupDiLuar)

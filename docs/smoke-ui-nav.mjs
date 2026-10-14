@@ -8,7 +8,10 @@
 // Prasyarat: backend 8000, vite 5173, dan Chrome --remote-debugging-port=9333.
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN = { email: 'guru1@sekolah.test', password: 'password12' }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -98,7 +101,7 @@ async function main() {
     await sleep(20_000)
     login = await masukSekali()
   }
-  cek('login guru lewat API', login.status === 200 && login.role === 'admin', `status ${login.status}`)
+  cek('login guru lewat API', login.status === 200 && login.role === 'guru', `status ${login.status}`)
 
   // ---------- 1. Layar kecil: hamburger + laci + aksi kartu ----------
   await ukuran(390, 844, true)

@@ -1167,3 +1167,54 @@ panel (Batal · Minta token · Simpan), perubahan itu tinggal dibalik tanpa meny
 tampilannya baru Vitest jsdom + bundel. Rincian lengkap: `docs/laporan-pengujian.md` **A.76**.
 
 **Komit:** `a66a06b` (61 berkas, di atas `12b29cf`) sudah di-push ke `origin/main`.
+
+## 19. A.77 — jalur kepala sekolah diperiksa di peramban + harness guru pindah akun (14 Oktober 2026)
+
+**Permintaan:** jalankan aplikasinya dan periksa **jalur kepala sekolah** (dasbor, kelola akun, halaman
+baca) di layar sempit **dan** lebar, lalu perbaiki yang rusak.
+
+**Yang dikerjakan:**
+
+- **Harness baru `docs/smoke-ui-admin.mjs` (39 pemeriksaan)** — satu-satunya harness yang memang milik
+  peran `admin`. Ia mengukur dua ukuran (1280×800 dan emulasi perangkat 390×844 @3 + UA Android + sentuhan):
+  tanpa gulir mendatar di 10 halaman, tanpa elemen menembus tepi, huruf isi ≥ 14 px, tabel lebar digulir di
+  pembungkusnya, dan target sentuh ≥ 44 px untuk **242 kontrol** di ponsel. Ia juga memastikan menu peran
+  benar (Dasbor Sekolah + Kelola Akun, tanpa Impor Murid / Avatar), halaman baca benar-benar tanpa tombol
+  tulis (kelas/murid/bank soal/kuis/materi) tetapi tetap punya jalan bacanya (“Lihat detail”, ekspor CSV,
+  monitor ulangan), `/avatar` dan `/murid/impor` dialihkan, dan — paling penting — **server** yang menolak:
+  `PUT /v1/kelas/{id}` & `POST /v1/kelas` → 403, `GET /v1/admin/monitor` & `/v1/admin/akun` & `/v1/kuis` → 200.
+- **Perbaikan aplikasi (temuan harness baru):** Esc di menu “…” panel kelola akun **ikut menutup panelnya**
+  karena aksi bawaan `<dialog>` (`onCancel` di `PanelForm`). Panel itu memuat alasan dan kata sandi yang
+  sudah diketik; `HalamanAkunSekolah.jsx` kini `preventDefault()` saat menunya terbuka, jadi Esc hanya
+  membuang lapisan teratas. Dibuktikan ulang di peramban: 39/39.
+- **31 harness guru dipindah ke akun guru sungguhan** (`guru1@sekolah.test`) — semuanya masih masuk sebagai
+  `admin@sekolah.test`, dan sejak A.76 peran itu tidak boleh menulis (bukti: `smoke-ui-kelas` 14/17 sebagai
+  admin). Empat di antaranya (`slice05`, `slice06`, `setelan-sesi`, `tamu`) juga menyetel pengaturan lapis
+  **sekolah** yang sudah tertutup bagi semua orang sejak A.76, jadi pindah ke lapis **kuis** — termasuk
+  membuat satu kuis terbit kecil sebagai pintu tamu untuk `setelan-sesi` dan `tamu`.
+- **`tamu` diperkuat** (9 → 10 pemeriksaan): sekarang memeriksa dulu bahwa pintu tamu **tertutup sebelum
+  diuji**. Alasannya nyata: perbaikan akun guru di atas menyingkap kuis terbit sisa (kuis 313 “Pintu tamu
+  uji …”, `izinkan_tamu=true`) dari run lama yang gagal menghapus kuisnya; selama sisa itu ada, pemeriksaan
+  pembersihan merah karena sebab yang salah. Sisa itu beserta soal & baris `settings`-nya sudah dibersihkan
+  dari DB dev.
+
+**Bukti:** 32 harness dijalankan pada pohon ini; semua hijau kecuali dua yang dilaporkan terbuka
+(`luring`: 5 merah di antara 16 pemeriksaan yang sempat berjalan, lalu harness berhenti di langkah “Selesai”;
+`auth` 24/25 dengan 3 langkah dilewati karena backend yang hidup memakai mailer `.env`).
+Angka lengkapnya di `docs/laporan-pengujian.md` **A.77.4**. Frontend: ESLint 0 error · checkJs bersih ·
+Vitest 87 berkas/821 tes.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- `KuisService::hapus()` **tidak** membuang baris `settings` milik kuis yang dihapus (hanya melepas soal
+  lalu menghapus kuisnya). Baris yatim itu tidak membuka apa pun (`TamuService::kuisTerbuka()` menelusuri
+  kuis terbit yang benar-benar ada), tetapi DB-nya kotor dan `PengaturanService` bisa menyajikan nilai
+  yatim bila sebuah id kuis pernah dipakai lagi. **Belum diperbaiki** — menyentuh jalur hapus kuis.
+- Jalur **luring murid** (`HalamanKerjakan` saat koneksi putus → “Lanjutkan dari salinan di perangkat”)
+  sedang merah di harness, dan **tidak** disentuh putaran ini: lihat A.77.5.
+
+**Sisa:** `luring` (5 merah) perlu ditelusuri; harness `auth` perlu dijalankan tanpa backend `.env` yang
+hidup supaya langkah emailnya benar-benar terbukti. Rincian lengkap: `docs/laporan-pengujian.md` **A.77**.
+
+**Komit:** “Uji jalur kepala sekolah di peramban sungguhan dan pindahkan harness guru ke akun guru”
+(35 berkas, di atas `64f48e5`) — **belum di-push**; hash terakhirnya lewat `git log -1 --oneline`.

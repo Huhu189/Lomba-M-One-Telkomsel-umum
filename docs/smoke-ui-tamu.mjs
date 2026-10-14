@@ -9,7 +9,10 @@
 // (jalankan lewat `docs/jalankan-smoke-ui.sh tamu`).
 const CDP = 'http://127.0.0.1:9333'
 const APP = 'http://localhost:5173'
-const AKUN_ADMIN = { email: 'admin@sekolah.test', password: 'Passw0rd!Aman' }
+// Peran `admin` (kepala sekolah) HANYA MELIHAT sejak 14 Okt 2026, jadi harness guru
+// memakai akun guru sungguhan (guru1@sekolah.test) — bukan akun admin seperti dulu.
+// Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
+const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const KUNCI_PERANGKAT = 'ulangan:perangkat-tamu'
 const NAMA_TAMU = 'Tamu Smoke Perangkat'
 const NOMOR_HP_SALAH = 'bukan-perangkat-123456'
@@ -64,6 +67,10 @@ async function endpoint() {
 }
 
 async function main() {
+  /** Id kuis/soal pintu tamu uji — dihapus kembali di bagian bersih-bersih. */
+  let kuisTamuId = 0
+  let soalTamuId = 0
+
   const ws = new WebSocket(await endpoint())
   await new Promise((res, rej) => {
     ws.onopen = res
@@ -152,21 +159,93 @@ async function main() {
     return { status: 429 }
   }
 
-  // ---------- 0. Guru/admin membuka pintu tamu (lapis sekolah, dikembalikan di akhir) ----------
-  await buka('/masuk')
-  const masukAdmin = await masuk(AKUN_ADMIN)
-  catat('login admin lewat API', masukAdmin.status === 200, `status ${masukAdmin.status}`)
+  /**
+   * Siapkan satu kuis TERBIT yang membuka pintu tamu untuk guru ini.
+   *
+   * Formulir "masuk sebagai siswa tamu" hanya tampil bila ada kuis terbit yang
+   * membuka pintunya (atau lapis sekolah menyala — dan lapis itu tidak bisa
+   * diubah siapa pun lewat API sejak 14 Oktober 2026, lihat `PengaturanPolicy`).
+   *
+   * @returns {Promise<number>} id kuis (0 bila gagal disiapkan)
+   */
+  const siapkanKuisTamu = async () => {
+    const mapel = await apiJson('/v1/mapel')
+    const kelas = await apiJson('/v1/kelas')
+    const mapelId = (Array.isArray(mapel.isi) ? mapel.isi : (mapel.isi?.data ?? []))[0]?.id
+    const kelasId = (Array.isArray(kelas.isi) ? kelas.isi : (kelas.isi?.data ?? []))[0]?.id
+    if (!mapelId || !kelasId) return 0
 
-  const bukaTamu = await apiJson('/v1/pengaturan', 'PUT', {
-    lingkup: 'sekolah',
-    kunci: 'izinkan_tamu',
-    nilai: true,
-  })
+    const soal = await apiJson('/v1/soal', 'POST', {
+      subject_id: mapelId,
+      tipe: 'pilihan_ganda',
+      konten: {
+        teks: 'Soal pintu tamu (smoke mode tamu).',
+        opsi: [
+          { id: 'a', teks: 'A' },
+          { id: 'b', teks: 'B' },
+        ],
+      },
+      kunci: { jawaban: 'a' },
+      skor: 1,
+    })
+    if (soal.status !== 201) return 0
+    soalTamuId = soal.isi.id
+
+    const kuis = await apiJson('/v1/kuis', 'POST', {
+      judul: `Pintu tamu uji ${Date.now()}`,
+      subject_id: mapelId,
+      class_id: kelasId,
+      durasi_menit: 10,
+      mulai_at: new Date(Date.now() - 60_000).toISOString(),
+      selesai_at: new Date(Date.now() + 3_600_000).toISOString(),
+    })
+    if (kuis.status !== 201) return 0
+    kuisTamuId = kuis.isi.id
+
+    await apiJson(`/v1/kuis/${kuisTamuId}/soal`, 'PUT', { soal: [soalTamuId] })
+    const terbit = await apiJson(`/v1/kuis/${kuisTamuId}/publikasi`, 'POST')
+    if (terbit.status !== 200) return 0
+
+    const pintu = await apiJson('/v1/pengaturan', 'PUT', {
+      lingkup: 'kuis', lingkup_id: kuisTamuId, kunci: 'izinkan_tamu', nilai: true,
+    })
+
+    return pintu.status === 200 ? kuisTamuId : 0
+  }
+
+  // ---------- 0. Guru membuka pintu tamu lewat satu kuis terbit miliknya ----------
+  //
+  // Dulu di sini ada `PUT /v1/pengaturan` lingkup SEKOLAH oleh admin. Sejak
+  // 14 Oktober 2026 lapis sekolah/kelas tidak bisa diubah siapa pun lewat API
+  // (`PengaturanPolicy`), jadi pintunya dibuka di lapis KUIS — jalur yang memang
+  // dipakai guru: `TamuService::tersedia()` menyala begitu ada kuis terbit yang
+  // membuka pintunya.
+  await buka('/masuk')
+  const masukGuru = await masuk(AKUN_GURU)
+  catat('login guru lewat API', masukGuru.status === 200, `status ${masukGuru.status}`)
+
+  // Pintu tamu harus TERTUTUP sebelum kita membukanya sendiri. Kalau tidak, ada
+  // kuis terbit yang tertinggal dari jalan sebelumnya dan pemeriksaan terakhir
+  // ("mode tamu kembali mati") akan gagal karena sisa itu — bukan karena
+  // bersih-bersih run ini. Dulu guru yang gagal menghapus kuisnya meninggalkan
+  // kuis terbit permanen; `KuisService::hapus()` juga tidak membuang baris
+  // `settings` kuis yang dihapus, jadi keadaan awal ini memang perlu diperiksa.
+  const infoTamuAwal = await apiJson('/v1/tamu')
+  catat(
+    'pintu tamu tertutup sebelum diuji (tidak ada kuis terbit sisa)',
+    infoTamuAwal.isi?.diizinkan === false,
+    infoTamuAwal.isi?.diizinkan === false
+      ? 'diizinkan=false'
+      : 'diizinkan=true — ada kuis TERBIT yang masih membuka mode tamu (sisa jalan gagal?). '
+        + 'Tutup/hapus kuis itu dulu, atau pemeriksaan pembersihan di bawah akan ikut merah.',
+  )
+
+  const kuisTamu = await siapkanKuisTamu()
   const infoTamu = await apiJson('/v1/tamu')
   catat(
-    'admin membuka pintu tamu untuk sekolah',
-    bukaTamu.status === 200 && infoTamu.isi?.diizinkan === true,
-    `PUT ${bukaTamu.status} · diizinkan=${infoTamu.isi?.diizinkan}`,
+    'guru membuka pintu tamu lewat satu kuis terbit',
+    kuisTamu > 0 && infoTamu.isi?.diizinkan === true,
+    kuisTamu > 0 ? `kuis ${kuisTamu} · diizinkan=${infoTamu.isi?.diizinkan}` : 'gagal menyiapkan kuis (mapel/kelas tidak ada di DB dev?)',
   )
 
   await apiJson('/v1/auth/keluar', 'POST')
@@ -242,19 +321,22 @@ async function main() {
   catat('kode perangkat bentuk aneh ditolak validasi (422)', kodeNgawur === 422, `status ${kodeNgawur}`)
 
   // ---------- Bersih-bersih ----------
+  // Pintu tamunya ditutup dengan menghapus kuisnya: saklarnya menempel pada kuis
+  // itu, dan kuis terbit yang tertinggal akan terus menyalakan mode tamu di
+  // sekolah ini.
   await apiJson('/v1/auth/keluar', 'POST')
   await buka('/masuk')
-  await masuk(AKUN_ADMIN)
-  const matikan = await apiJson('/v1/pengaturan', 'PUT', {
-    lingkup: 'sekolah',
-    kunci: 'izinkan_tamu',
-    nilai: false,
-  })
+  await masuk(AKUN_GURU)
+
+  const hapusKuis = kuisTamuId > 0 ? await apiJson(`/v1/kuis/${kuisTamuId}`, 'DELETE') : { status: 0 }
+  const hapusSoal = soalTamuId > 0 ? await apiJson(`/v1/soal/${soalTamuId}`, 'DELETE') : { status: 0 }
   const infoTamuAkhir = await apiJson('/v1/tamu')
   catat(
-    'pintu tamu dikembalikan ke keadaan semula (mati)',
-    matikan.status === 200 && infoTamuAkhir.isi?.diizinkan === false,
-    `diizinkan=${infoTamuAkhir.isi?.diizinkan}`,
+    'kuis pintu tamu dihapus sehingga mode tamu kembali mati',
+    (hapusKuis.status === 204 || hapusKuis.status === 200) &&
+      hapusSoal.status === 200 &&
+      infoTamuAkhir.isi?.diizinkan === false,
+    `kuis=${hapusKuis.status} soal=${hapusSoal.status} · diizinkan=${infoTamuAkhir.isi?.diizinkan}`,
   )
 
   await apiJson('/v1/auth/keluar', 'POST')

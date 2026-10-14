@@ -6742,3 +6742,134 @@ Uji baru menjaga pagar, bukan hanya jalur bahagia:
   `sections/cheat/HalamanMonitor.jsx` · `sections/admin/BerandaAdmin.jsx`, `HalamanAkunSekolah.jsx` ·
   `__tests__/halaman.test.js`, `__tests__/sections/admin/halamanAkunSekolah.test.jsx`.
 - **Komit:** `a66a06b` (61 berkas) di atas `12b29cf`, sudah **di-push** ke `origin/main`.
+
+## A.77 — Jalur kepala sekolah diperiksa di peramban + harness guru pindah ke akun guru (14 Oktober 2026)
+
+### A.77.1 Permintaan
+
+Jalankan aplikasinya, periksa **tampilan jalur kepala sekolah** (dasbor, kelola akun, halaman baca) di layar
+sempit **dan** lebar, lalu perbaiki yang rusak. Pemeriksaan tata letak yang dipercaya hanya yang diukur di
+peramban sungguhan — Vitest jsdom tidak melihat lebar, target sentuh, maupun gulir mendatar.
+
+### A.77.2 Harness baru: `docs/smoke-ui-admin.mjs` (39 pemeriksaan)
+
+Dijalankan lewat `docs/jalankan-smoke-ui.sh admin` (skrip itu menyalakan backend/vite/realtime/Chrome yang
+belum hidup). Yang diperiksa, semuanya angka/teks yang diukur dari DOM dan API:
+
+- **Masuk sebagai kepala sekolah** (`admin@sekolah.test`) dan perannya memang `admin`.
+- **Dua ukuran**: 1280×800 (desktop) dan emulasi perangkat 390×844 @3 dengan UA Android + sentuhan. Di
+  keduanya: tidak ada gulir mendatar di 10 halaman, tidak ada elemen menembus tepi kanan, huruf teks isi
+  ≥ 14 px, tabel lebar digulir di pembungkusnya; di ukuran ponsel target sentuh ≥ 44 px untuk **242 kontrol**.
+- **Menu peran**: panel samping (dan laci di ponsel) memuat *Dasbor Sekolah* + *Kelola Akun*, dan **tidak**
+  menawarkan *Impor Murid* / *Moderasi Avatar*.
+- **Halaman baca**: Kelas tanpa tombol tambah/ubah/hapus + catatan “Hanya melihat.” · Murid tanpa
+  tambah/impor tetapi **tetap** punya “Ekspor CSV” · Bank soal tanpa “Tambah soal” · Kuis tanpa “Buat kuis”
+  tetapi punya “Lihat detail” · Materi tanpa “Buat & buka editor”.
+- **Jalur baca yang jadi tugasnya**: Monitor Ulangan terbuka (dan tanpa tombol *Valid*/*Tidak valid*, dengan
+  catatan hanya-melihat) · `/pengaturan` tetap halaman akun sendiri · `/avatar` dan `/murid/impor` dialihkan
+  ke beranda.
+- **Panel kelola akun**: menu baris menampilkan tiga tindakan sebagai teks · **tiga pil tindakan sudah tidak
+  ada**, diganti satu tombol “…” berteks (pilihan `Ubah email` / `Setel ulang kata sandi` / `Status akun`,
+  yang aktif ditandai) · memilih tindakan menutup menu dan mengganti isi panel · **Esc menutup menunya tanpa
+  menutup panelnya** · di ponsel panelnya muat (tanpa gulir mendatar, 7 isian semuanya ≥ 44 px).
+- **Server yang memutuskan, dari sesi peramban itu**: `PUT /v1/kelas/{id}` dan `POST /v1/kelas` → **403**,
+  sedangkan `GET /v1/admin/monitor`, `GET /v1/admin/akun`, dan `GET /v1/kuis` → **200**.
+
+### A.77.3 Yang rusak, dan perbaikannya
+
+1. **Esc di menu “…” panel ikut menutup panelnya** (temuan harness baru, merah di percobaan pertama). Panel itu
+   memuat alasan dan kata sandi yang sudah diketik admin; Esc seharusnya membuang lapisan teratas dulu.
+   `HalamanAkunSekolah.jsx` kini memanggil `preventDefault()` pada keydown Escape saat menunya terbuka,
+   sehingga aksi bawaan `<dialog>` (menutup dialog lewat `onCancel` di `PanelForm`) tidak jalan. Dibuktikan
+   ulang di peramban: 39/39 lulus.
+2. **Seluruh harness guru masih masuk sebagai `admin@sekolah.test`** — dan sejak A.76 peran itu tidak boleh
+   menulis data akademik. Bukti nyata: `smoke-ui-kelas` **14/17** sebagai admin (panel tambah kelas tidak
+   terbuka, kelas uji tidak terbuat). Ke-31 harness guru dipindahkan ke akun guru sungguhan
+   (`guru1@sekolah.test`) beserta catatan tiga baris di tiap berkas yang menjelaskan alasannya, dan jalur
+   kepala sekolah kini diuji terpisah di `smoke-ui-admin.mjs`.
+3. **Empat harness menyetel pengaturan lapis sekolah** (`slice05`, `slice06`, `setelan-sesi`, `tamu`), padahal
+   lapis sekolah/kelas memang tidak bisa diubah siapa pun lewat API sejak A.76 (`PengaturanPolicy`). Semuanya
+   dipindah ke **lapis kuis** — jalur yang memang dipakai guru — termasuk membuat **satu kuis terbit kecil
+   yang membuka pintu tamu** untuk `setelan-sesi` dan `tamu` (formulir tamu di halaman masuk menyala begitu
+   ada kuis terbit yang membukanya), lalu menghapusnya kembali beserta soalnya.
+4. **Dua staleness yang ikut terbuka** saat memperbaiki (3): balasan `PUT /v1/pengaturan` me-resolusi
+   pengaturan dari **parameter kueri**, bukan dari `lingkup` di badannya — harness sekarang membaca ulang
+   lewat `GET /v1/pengaturan?kuis_id=`; dan tautan siswa sudah memakai **slug** sejak slice “slug dipakai
+   seluruh layar kuis”, jadi `setelan-sesi` membandingkan tautannya dengan slug kuis (bukan id angka).
+5. **`tamu` diperkuat karena perbaikan (2) memakan dirinya sendiri.** Sebelum akunnya dipindah, guru yang
+   seharusnya menghapus kuis pintu tamunya gagal (403 sebagai admin), sehingga **satu kuis TERBIT dengan
+   `izinkan_tamu=true` tertinggal** — kuis 313 “Pintu tamu uji 1791935647522”. Selama sisa itu ada,
+   pemeriksaan terakhir `tamu` (“mode tamu kembali mati”) merah **bukan** karena bersih-bersih run ini,
+   dan hal yang sama akan menimpa siapa pun yang menjalankan harness itu di DB yang sudah kotor.
+   Dua tindakan: (a) `tamu` kini memeriksa **keadaan awal** — “pintu tamu tertutup sebelum diuji“ — supaya
+   sisa lama dilaporkan sebagai pemeriksaan tersendiri beserta petunjuk cara membereskannya, bukan
+   tercampur dengan hasil run ini (`tamu` jadi **10 pemeriksaan**); dan (b) kuis sisa 313 beserta baris
+   `settings`-nya dan soal “Soal pintu tamu” dibersihkan dari DB dev. Setelah itu `tamu` **10/10**.
+   Catatan yang ikut terungkap: **`KuisService::hapus()` tidak membuang baris `settings` milik kuis yang
+   dihapus** (ia hanya melepas soal lalu menghapus kuisnya), jadi hapus kuis meninggalkan baris pengaturan
+   yatim — 5 baris `izinkan_tamu=true` untuk kuis yang sudah tidak ada masih tersisa di DB dev. Itu tidak
+   membuka pintu tamu (`TamuService::kuisTerbuka()` menelusuri kuis terbit yang benar-benar ada), tetapi
+   DB-nya kotor; **tidak diubah** putaran ini karena menyentuh jalur hapus kuis di luar permintaan.
+6. `HalamanAkunSekolah.jsx` ikut mendapat uji jsdom tambahan dari A.76 (menu “…” panel) yang tetap hijau.
+
+### A.77.4 Bukti (dijalankan, bukan klaim)
+
+Sapuan penuh **32 harness** dijalankan berurutan pada pohon ini (`docs/jalankan-smoke-ui.sh <nama>`), dengan
+backend/vite/realtime yang sudah hidup dan Redis menjawab `PONG`:
+
+| Harness | Hasil | Harness | Hasil |
+| --- | --- | --- | --- |
+| **admin (baru)** | **39/39** | kelas | 17/17 |
+| murid | 18/18 | impor-murid | 29/29 |
+| nav | 14/14 | mobile (412×915 @2.625) | 17/17 |
+| sidebar | 9/9 | palet-sidebar | 58/58 |
+| bilah-atas | 10/10 | mapel | 32/32 |
+| materi | 27/27 | editor | 44/44 |
+| perjalanan | 69/69 | durasi-klip | 19/19 |
+| kuis-manual | 15/15 | kuis-materi | 48/48 |
+| soal-berubah | 19/19 | susun | 44/44 |
+| setelan-sesi | 24/24 | pengaturan | 12/12 |
+| slice03 | 9/9 | slice04 | 18/18 |
+| slice05 | 20/20 | slice06 | 28/28 |
+| slice07 | 21/21 | layar | 34/34 |
+| tim | 31/31 | avatar | 44/44 |
+| tamu | 10/10 | cdp | lulus |
+| auth | **24/25** (lihat A.77.5) | luring | **5 gagal** (lihat A.77.5) |
+
+Pagar mutu lain pada pohon yang sama: ESLint **0 error** (2 warning lama `watch()` RHF) · checkJs bersih ·
+Vitest **87 berkas / 821 tes** · peramban kepala sekolah dan halaman-halaman bacanya sesuai A.77.2.
+
+### A.77.5 Batasan jujur — satu gagal lama, satu gagal lingkungan
+
+- **`smoke-ui-luring`: 5 merah dari 16 pemeriksaan yang sempat berjalan** (harnessnya berhenti di tengah,
+  lihat di bawah) — “soal masih terbuka dari salinan perangkat saat
+  luring”, “jawaban yang diketik saat luring tetap tampil setelah kembali ke soal”, “jam perangkat
+  dimundurkan 1 jam tidak menambah sisa waktu”, “jawaban luring terkirim ke server begitu koneksi kembali”,
+  dan “riwayat menandai semua jawaban terkirim”; sesudahnya harness berhenti dengan `tombol tidak ada:
+  Selesai`. **Tidak diperbaiki di sini.** Hasilnya sama dengan profil Chrome yang dikosongkan (bukan sisa
+  localStorage), dan jalur yang gagal — fallback salinan perangkat di `HalamanKerjakan` saat luring — tidak
+  disentuh oleh perubahan A.76/A.77. Belum dipastikan apakah kegagalan ini sudah ada sebelum putaran ini
+  (harness ini terakhir tercatat **22/22 di A.66**, 13 Oktober 2026), jadi diperlakukan sebagai **temuan terbuka**,
+  bukan “hijau”. Temuan ini **di luar jalur kepala sekolah** yang diminta diperiksa putaran ini.
+- **`smoke-ui-auth`: 24/25 dengan 3 langkah dilewati** — satu-satunya yang merah adalah “surat verifikasi
+  benar-benar dikirim & tautannya terbaca dari log”, dan tiga langkah “buka tautan dari email” dilewati.
+  Penyebabnya lingkungan: backend yang sudah hidup memakai `.env` (mailer smtp), sedangkan harness ini
+  butuh `MAIL_MAILER=log` yang hanya dipasang bila `docs/jalankan-smoke-ui.sh auth` menyalakan backendnya
+  sendiri. Untuk membuktikannya perlu mematikan backend yang sedang jalan dulu.
+- **Verifikasi peramban ini memakai DB dev yang sudah berisi data** (31 kelas, ~300 kuis) dan satu akun guru
+  seeder; harness-harness itu membuat lalu menghapus datanya sendiri, tetapi baris `settings` untuk kuis uji
+  yang sudah dihapus tetap tertinggal (tidak terpakai karena resolusi selalu lewat kuis → kelas → sekolah).
+- **Tata letak diuji pada dua ukuran** (1280 dan 390). Layar antara (tablet, 700–1024 px) tidak diperiksa.
+
+### A.77.6 Berkas
+
+- **Baru:** `docs/smoke-ui-admin.mjs` (39 pemeriksaan).
+- **Diubah:** 31 harness guru (`docs/smoke-ui-*.mjs`) — akun `guru1@sekolah.test`, beberapa pindah ke lapis
+  kuis, `setelan-sesi` (+`apiGuru`, `siapkanKuisTamu`, tautan slug) dan `tamu` (+`siapkanKuisTamu`,
+  +pemeriksaan keadaan awal “pintu tamu tertutup sebelum diuji”).
+- **Data dev dibersihkan:** kuis sisa 313 “Pintu tamu uji …” (terbit, `izinkan_tamu=true`) + baris
+  `settings`-nya + soal “Soal pintu tamu”, yaitu peninggalan run `tamu` sebelum akunnya dipindah ke guru.
+- **Diubah (aplikasi):** `frontend/src/sections/admin/HalamanAkunSekolah.jsx` (Esc menu “…” tidak lagi
+  menutup panelnya).
+- **Komit:** `…` “Uji jalur kepala sekolah di peramban sungguhan dan pindahkan harness guru ke akun guru”
+  (35 berkas, di atas `64f48e5`) — **belum di-push**.
