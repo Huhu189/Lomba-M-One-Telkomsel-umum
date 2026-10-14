@@ -6,6 +6,7 @@ namespace App\Sections\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Sections\Auth\Http\Requests\BuatSandiRequest;
 use App\Sections\Auth\Http\Requests\GantiSandiRequest;
 use App\Sections\Auth\Http\Requests\PerbaruiAkunRequest;
 use App\Sections\Auth\Http\Resources\UserResource;
@@ -31,6 +32,30 @@ class AkunController extends Controller
         $user = $request->user();
 
         return new UserResource($akun->perbaruiNama($user, (string) $request->input('name')));
+    }
+
+    /**
+     * Buat kata sandi pertama (hanya untuk akun dari tombol Google, yang dibuat
+     * server dengan sandi acak — lihat `AkunService::setelSandiPertama`).
+     *
+     * Halaman `/buat-sandi` memakainya: satu langkah sekali seumur akun, supaya
+     * sesudahnya murid tidak pernah ditanya kata sandi lagi selama sesinya hidup.
+     */
+    public function buatSandiPertama(BuatSandiRequest $request, AkunService $akun): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $akun->setelSandiPertama(
+            $user,
+            (string) $request->input('password'),
+            $request->hasSession() ? $request->session()->getId() : null,
+        );
+
+        return response()->json([
+            'message' => 'Kata sandimu tersimpan. Sekarang akunmu bisa dipakai di perangkat lain juga.',
+            'user' => new UserResource($user->refresh()),
+        ]);
     }
 
     /**

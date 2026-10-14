@@ -66,6 +66,43 @@ class AkunService
     }
 
     /**
+     * Buat kata sandi PERTAMA untuk akun yang lahir dari tombol Google.
+     *
+     * Akun itu dibuat server dengan sandi acak yang tidak pernah diberitahukan
+     * ke siapa pun, jadi tidak ada sandi lama yang bisa (atau perlu) dibuktikan.
+     * Penjaganya adalah penanda `perlu_buat_sandi` itu sendiri: begitu sandi
+     * dibuat, penanda padam dan rute ini menolak dipakai lagi — jalur ganti
+     * sandi tetap wajib menyertakan sandi lama.
+     *
+     * Sesi lain diakhiri seperti pada ganti sandi (sesi yang sedang dipakai
+     * dibiarkan hidup supaya murid tidak terlempar keluar di tengah langkah).
+     *
+     * @throws ValidationException
+     */
+    public function setelSandiPertama(User $user, string $sandiBaru, ?string $sesiSekarang = null): User
+    {
+        $this->pastikanPunyaAkun($user);
+
+        if (! $user->perluBuatSandi()) {
+            throw ValidationException::withMessages([
+                'password' => 'Kata sandi akun ini sudah dibuat. Pakai "Ganti kata sandi" kalau mau menggantinya.',
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => $sandiBaru,
+            // Akun ini sekarang punya sandi sendiri: lapisan "buat sandi dulu"
+            // (middleware `sandi-disetel`) ikut padam dengan sendirinya.
+            'perlu_buat_sandi' => false,
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        $this->akhiriSesiLain($user, $sesiSekarang);
+
+        return $user->refresh();
+    }
+
+    /**
      * Akun siswa tamu masuk lewat kode perangkat dan tidak punya kata sandi, jadi
      * tidak ada setelan akun yang bisa diubahnya — lebih baik ditolak dengan jelas
      * daripada menyimpan kata sandi yang tidak pernah dipakai untuk masuk.

@@ -271,6 +271,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(12)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
         });
 
+        // Masuk lewat Google (14 Oktober 2026). Token Google-nya diverifikasi
+        // secara kriptografis, jadi ini BUKAN permukaan brute-force seperti jalur
+        // sandi — batasnya semata menahan klien yang mengirim berulang-ulang.
+        // Kuncinya per IP dan sengaja longgar: satu kelas di balik NAT sekolah
+        // bisa menekan tombol Google hampir bersamaan di jam pelajaran mulai.
+        RateLimiter::for('google', function (Request $request) {
+            return Limit::perMinute(120)->by((string) $request->ip());
+        });
+
         // Kelola akun dari panel admin (14 Okt 2026). Tiap panggilan menulis satu
         // baris token/audit, jadi batasnya per AKUN admin — bukan per IP sekolah
         // (satu sekolah = satu alamat). Longgar karena admin memang bisa

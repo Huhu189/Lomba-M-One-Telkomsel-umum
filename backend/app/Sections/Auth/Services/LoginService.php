@@ -39,6 +39,16 @@ class LoginService
             $gagal();
         }
 
+        // Akun yang lahir dari tombol Google belum punya kata sandi sendiri
+        // (sandi acak server tidak pernah diberitahukan ke siapa pun), jadi
+        // jalur sandi memang bukan jalannya — murid masuk lewat tombol Google
+        // dan membuat kata sandinya sekali di `/buat-sandi`. Diperiksa SETELAH
+        // sandi cocok supaya pesan khusus ini tidak pernah muncul dari percobaan
+        // menebak (tidak ada info baru yang bocor lewat sini).
+        if ($user->perluBuatSandi()) {
+            $gagal();
+        }
+
         if ($user->alasanAkunDitolak() !== null) {
             // Pesan sama persis dengan kredensial salah agar tidak bisa dipakai menebak status akun.
             $gagal();

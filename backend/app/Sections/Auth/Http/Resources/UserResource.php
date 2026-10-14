@@ -31,6 +31,13 @@ class UserResource extends JsonResource
             // Akun siswa tamu (tanpa login): klien perlu tahu untuk menampilkan
             // lencana "tamu" dan menyembunyikan menu yang butuh akun sekolah.
             'isTamu' => $this->isTamu(),
+            // Akun dari tombol Google yang belum punya kata sandi sendiri:
+            // klien mengarahkan ke langkah `/buat-sandi` (server juga menolak
+            // rute lain lewat middleware `sandi-disetel`).
+            'perluBuatSandi' => $this->perluBuatSandi(),
+            // Penanda ringan untuk halaman akun: akun ini memang bisa masuk
+            // lewat Google, jadi tombolnya layak ditawarkan di sana.
+            'punyaGoogle' => $this->terhubungGoogle(),
         ];
     }
 }

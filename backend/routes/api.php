@@ -11,6 +11,7 @@ use App\Sections\Attempt\Http\Controllers\UnggahanJawabanController;
 use App\Sections\Auth\Http\Controllers\AkunController;
 use App\Sections\Auth\Http\Controllers\AuthController;
 use App\Sections\Auth\Http\Controllers\CekSesiController;
+use App\Sections\Auth\Http\Controllers\GoogleAuthController;
 use App\Sections\Auth\Http\Controllers\PasswordResetController;
 use App\Sections\Auth\Http\Controllers\VerifyEmailController;
 use App\Sections\Avatar\Http\Controllers\AvatarController;
@@ -58,6 +59,18 @@ Route::prefix('v1')->group(function (): void {
             ->name('auth.kirim-ulang-verifikasi-publik');
     });
 
+    // Masuk & daftar lewat Google (14 Oktober 2026) — satu pintu untuk keduanya:
+    // murid baru langsung dibuatkan akunnya, yang emailnya sudah terdaftar
+    // ditautkan ke akun itu (lihat `GoogleAuthService`). Endpoint ini SENGAJA di
+    // luar grup `throttle:auth`: limiter itu berkunci per IP+email, sedangkan di
+    // sini email baru diketahui SETELAH token diperiksa. Limiter `google`
+    // berkunci per IP dan longgar — tokennya diverifikasi secara kriptografis,
+    // jadi batas ini menahan kiriman berulang dari klien, bukan menebak sandi.
+    Route::get('/auth/google', [GoogleAuthController::class, 'info'])->name('auth.google.info');
+    Route::post('/auth/google', [GoogleAuthController::class, 'masuk'])
+        ->middleware('throttle:google')
+        ->name('auth.google');
+
     // Siswa tamu (tanpa akun): cukup nama, ditentukan guru lewat pengaturan
     // `izinkan_tamu`. Throttle-nya SENDIRI (T1), bukan `auth`: limiter `auth`
     // berkunci per IP+email, sehingga semua tamu dari satu sekolah berbagi satu
@@ -95,8 +108,10 @@ Route::prefix('v1')->group(function (): void {
         ->middleware(['signed:relative', 'throttle:berkas'])
         ->name('jawaban.berkas');
 
-    // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak 'akun-aktif').
-    Route::middleware(['auth:sanctum', 'akun-aktif'])->group(function (): void {
+    // Jalur beresin sesi + data induk (wajib masuk; akun tidak layak ditolak
+    // 'akun-aktif', dan akun dari Google yang belum bersandi ditahan
+    // 'sandi-disetel' sampai ia membuat kata sandinya sendiri).
+    Route::middleware(['auth:sanctum', 'akun-aktif', 'sandi-disetel'])->group(function (): void {
         Route::post('/auth/keluar', [AuthController::class, 'keluar'])->name('auth.keluar');
         Route::get('/auth/saya', [AuthController::class, 'saya'])->name('auth.saya');
         Route::post('/auth/kirim-ulang-verifikasi', [AuthController::class, 'kirimUlangVerifikasi'])
@@ -110,6 +125,12 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/akun/sandi', [AkunController::class, 'gantiSandi'])
             ->middleware('throttle:sandi')
             ->name('akun.sandi');
+        // Kata sandi PERTAMA untuk akun dari tombol Google (sekali seumur akun).
+        // Throttle `sandi` sama dengan ganti sandi: satu akun hanya butuh sekali,
+        // jadi percobaan berulang-ulang dari sesi yang tertinggal justru mencurigakan.
+        Route::put('/akun/sandi-pertama', [AkunController::class, 'buatSandiPertama'])
+            ->middleware('throttle:sandi')
+            ->name('akun.sandi-pertama');
 
         // Sekolah (satu baris).
         Route::get('/sekolah', [SekolahController::class, 'show'])->name('sekolah.show');

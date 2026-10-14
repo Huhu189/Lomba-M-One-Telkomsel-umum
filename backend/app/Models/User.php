@@ -17,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'status', 'role', 'is_tamu'])]
+#[Fillable(['name', 'email', 'password', 'status', 'role', 'is_tamu', 'google_id', 'perlu_buat_sandi'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -46,6 +46,11 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'is_tamu' => false,
+        // Akun biasa sudah punya kata sandi sendiri; hanya akun yang dibuat
+        // lewat Google yang menyala. Lihat `perluBuatSandi()`. Nilainya
+        // dihadirkan di memori supaya user hasil `create()` tanpa kolom ini
+        // tidak melempar MissingAttributeException (model ketat).
+        'perlu_buat_sandi' => false,
     ];
 
     protected $casts = [
@@ -53,6 +58,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'status' => UserStatus::class,
         'is_tamu' => 'boolean',
+        'perlu_buat_sandi' => 'boolean',
     ];
 
     /**
@@ -125,6 +131,35 @@ class User extends Authenticatable
     public function bolehMengubahAkademik(): bool
     {
         return $this->isGuru() && ! $this->hanyaMelihat();
+    }
+
+    /**
+     * Akun ini pernah/gampang masuk lewat Google (`sub` Google tersimpan).
+     */
+    public function terhubungGoogle(): bool
+    {
+        // Dibaca dari array atribut mentah, bukan `$this->google_id`: bila kolom
+        // baru ini belum ada di database (kode ter-deploy sebelum `php artisan
+        // migrate` dijalankan), pembacaan atribut biasa melempar
+        // MissingAttributeException dan SELURUH aplikasi balas 500.
+        return ($this->attributes['google_id'] ?? null) !== null;
+    }
+
+    /**
+     * Akun ini BELUM punya kata sandi miliknya sendiri.
+     *
+     * Terjadi pada akun yang dibuat lewat tombol Google: server menaruh sandi
+     * acak 40 karakter yang tidak pernah diberitahukan ke siapa pun, sehingga
+     * jalur "masuk dengan kata sandi" memang tidak bisa dipakai sampai murid
+     * membuat kata sandinya sendiri (`/buat-sandi`).
+     */
+    public function perluBuatSandi(): bool
+    {
+        // Sama seperti `terhubungGoogle()`: dibaca dari atribut mentah supaya
+        // user lama (baris dari tabel yang kolomnya belum dimigrasi) tidak
+        // membuat halaman mana pun balas 500 — akun yang sudah ada dianggap
+        // sudah punya kata sandinya sendiri.
+        return (bool) ($this->attributes['perlu_buat_sandi'] ?? false);
     }
 
     /**

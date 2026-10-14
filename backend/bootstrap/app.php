@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\EnsureAccountUsable;
+use App\Http\Middleware\PastikanSandiDisetel;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -31,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Akun suspended/pending/dihapus ditolak (dipasang SETELAH auth di rute).
         $middleware->alias([
             'akun-aktif' => EnsureAccountUsable::class,
+            // Akun dari tombol Google wajib membuat kata sandinya sendiri sekali
+            // di awal sebelum memakai aplikasi (14 Oktober 2026).
+            'sandi-disetel' => PastikanSandiDisetel::class,
         ]);
 
         // Proxy tepercaya (K-06) TIDAK dipasang di sini: callback ini berjalan
