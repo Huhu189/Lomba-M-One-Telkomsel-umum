@@ -8078,3 +8078,28 @@ untuk catatan antrean.
   `docs/smoke-ui-slice06.mjs` (+2, 29 → 30, termasuk satu kejadian kecurangan
   sungguhan dari sisi murid), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`,
   `docs/laporan-pengujian.md` (bagian ini).
+
+### A.88.5 Commit & ekspor dokumen (14 Oktober 2026)
+
+Seluruh pekerjaan yang menumpuk (A.74–A.88) dikomit kecil-kecil, dengan urutan
+backend dulu supaya tiap commit bisa dijalankan sendiri:
+
+| Commit | Isi |
+| --- | --- |
+| `bd5cbac` | Materi: kategori dokumen kantor, `sajian`, tautan media, pustaka berkas, kolom rasio dihapus |
+| `f0a74d2` | `TeknikKoreksi` per jenis soal + catatan murid di antrean koreksi |
+| `6f6e9e5` | `POST /kuis/{kuis}/pulihkan` untuk kuis yang diarsipkan |
+| `8e83a47` | Editor & pemutar materi memakai `sajian`/`tampil_langsung` dari server |
+| `700cef8` | Editor soal: grid tabel/silang/sinonim, jenis berkas dari daftar, teknik koreksi |
+| `d0a233a` | Kuis satu halaman + panel catatan murid di layar koreksi |
+| `bb0900f` | Halaman masuk dari tautan ulangan menampilkan formulir tamu lebih dulu |
+| `3994d77` | Gaya papan jodoh, grid soal, panel dokumen, lipatan akun, latar tema |
+| `ad6ba41` | Entri ini, handoff, harness, log mentah, dan `docs/word/*.docx` |
+
+Sesudah seluruh commit itu, `./verify.sh` dijalankan ulang di pohon bersih:
+**SEMUA HIJAU (exit 0)** — Pest 412 lulus (4162 asersi) · Redis wajib 9/65 · Pint ·
+checkJs · ESLint 0 error · Vitest 107 berkas / 1002 tes · realtime 20 lulus.
+`docs/export-word.sh` juga dijalankan penuh: `log-mentah.docx` (gabungan tiga
+sesi) 3,8 MB → **10,1 MB**, `laporan-pengujian.docx` 266 KB, `penjelasan-fitur.docx`
+65 KB, plus `AGENT.docx` dan `jurnal-prompt.docx`. Kesembilan commit **belum
+di-push** (`origin/main = fd3636a`); push butuh izin pemilik produk.

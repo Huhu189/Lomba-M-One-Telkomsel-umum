@@ -65,15 +65,18 @@ git status --short && git diff --stat
 git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 ```
 
-Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.73**):
+Keadaan saat handoff ini diperbarui (**14 Okt 2026, sesudah putaran A.88**):
 
-- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`). Sesi ini berisi **A.70** (patch kinerja + rekam
-  diri), **A.71** (log mentah + perapian `docs/`), **A.72** (A.61–A.69 dikomit), dan **A.73** (latar tema
-  Luar Angkasa & Harta Karun dirombak total) — `git log --oneline 6811c2c..HEAD` untuk daftarnya.
-- **Push sesi ini SUDAH dilakukan:** 18 commit (A.65–A.72) terkirim ke `origin/main` → `fea68b8`, diperiksa
-  terhadap server lewat `git ls-remote origin refs/heads/main` (cocok dengan `git rev-parse HEAD` saat itu).
-  Yang **belum** di-push sekarang hanyalah commit A.73 ke atasnya (`git rev-list --count origin/main..HEAD`
-  — angka pastinya ambil dari perintah itu, jangan ditulis tetap di sini).
+- **`HEAD = ad6ba41`** (*"Catat putaran ini di handoff, laporan pengujian, dan ekspor Word"*). Putaran
+  **A.84–A.88** (14 Okt 2026) sudah dikomit dalam **sembilan commit** bertema: materi (dokumen kantor +
+  tautan + pustaka berkas), teknik koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip,
+  editor materi (frontend), editor soal (grid + jenis berkas + teknik koreksi), kuis satu halaman +
+  layar koreksi (frontend), halaman masuk dari tautan ulangan, tema + gaya, dan dokumentasi. Daftar
+  lengkap: `git log --oneline fd3636a..HEAD`.
+- **`origin/main = fd3636a`** → **9 commit lokal belum di-push** (`git rev-list --count origin/main..HEAD`).
+  Push butuh izin pemilik produk.
+- **Working tree BERSIH** (`git status --short` kosong) sesudah commit dokumentasi itu; semua pekerjaan
+  A.74–A.88 yang dulu menumpuk sudah ikut dikomit di sembilan commit tersebut.
 - **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
   dalam enam commit bertema: slug kuis (backend), slug di seluruh layar + pil saring, bank soal bertahap,
   halaman akun + setelan per kuis, bundel per halaman, dan penjelasan fitur. Daftar lengkap ada di
@@ -84,8 +87,10 @@ Keadaan saat handoff ini diperbarui (**13 Okt 2026, sesudah putaran A.73**):
     diverifikasi hijau adalah yang sekarang: `./verify.sh` **SEMUA HIJAU**.
 - **Jangan ikut dikomit:** arsip/zip, `.agents/`, `.claude/`, `.DS_Store`. `frontend/dist/` memang sudah
   diabaikan (`.gitignore`), jadi hasil `npm run build` aman untuk pengukuran.
-- **`docs/word/*.docx` belum disegarkan** untuk A.68–A.71 (termasuk `log-mentah.docx` yang sumbernya kini
-  gabungan transkrip semua sesi) — lihat papan pending 0.6 butir 3.
+- **`docs/word/*.docx` SUDAH disegarkan (14 Okt 2026)** lewat `docs/export-word.sh`: `log-mentah.docx`
+  3,8 MB → **10,1 MB** (sumbernya kini gabungan transkrip **tiga** sesi, termasuk sesi 412 MB),
+  `laporan-pengujian.docx` 250 KB → 266 KB, `penjelasan-fitur.docx` 63 KB → 65 KB, plus `AGENT.docx` dan
+  `jurnal-prompt.docx`. Log mentah ikut diekspor ulang (sesi `2026-10-13T12-30-29.489Z` kini **96 pesan**).
 
 ### 0.3 Nyalakan layanan & gerbang mutu
 
@@ -1687,14 +1692,15 @@ tidak banyak human error"*.
   tanpa sepengetahuan guru lebih berbahaya daripada satu langkah tambahan.
 - **Koma di nama kolom tabel masih dibuang** (nama kolom disimpan sebagai teks berkoma) — lihat A.86.
 
-**Bukti:** `./verify.sh` **SEMUA HIJAU (exit 0)** — Pest 404/4039 · Redis wajib 9/65 · Pint · checkJs ·
-ESLint 0 error · Vitest **103 berkas / 970 tes** · realtime 20. Tes baru: `jenisBerkasTugas.test.jsx`
+**Bukti:** `./verify.sh` **SEMUA HIJAU (exit 0)** — Pest **412 lulus (4162 asersi)** · Redis wajib 9/65 ·
+Pint · checkJs · ESLint 0 error · Vitest **107 berkas / 1002 tes** · realtime 20. Tes baru: `jenisBerkasTugas.test.jsx`
 **14** dan `pembuatanVisual.test.jsx` **14** (keduanya memeriksa **muatan `onSimpan`**, bukan hanya
 layar). Peramban: `soal-grid` **27/27** · regresi `kuis-manual` 15/15 · `slice03` 16/16 · `susun` 51/51.
 
 **Sisa/batasan:** kontrol negatif A/B tidak dijalankan; pemeriksaan peramban untuk mengurutkan &
 menjodohkan hanya tampilan/interaksi (muatan tersimpan dibuktikan Vitest); jalur jenis berkas tidak diuji
-peramban; sapuan penuh harness tidak diulang; `docs/word/*.docx` belum diekspor ulang. **Ketiga permintaan
+peramban; sapuan penuh harness tidak diulang. `docs/word/*.docx` **sudah** diekspor ulang dan seluruh
+pekerjaan A.84–A.88 **sudah dikomit** (sembilan commit, lihat 0.2). **Ketiga permintaan
 pemilik produk putaran ini sudah dikerjakan** (lihat 0.6a dan `laporan-pengujian.md` **A.88**): catatan
 murid tampil di halaman koreksi, teknik koreksi bisa dipilih per jenis soal, dan materi menerima
 dokumen kantor (PDF/Word/PowerPoint/Excel) tanpa dipaksa unduh `.upload`.
@@ -1726,4 +1732,7 @@ dokumen kantor (PDF/Word/PowerPoint/Excel) tanpa dipaksa unduh `.upload`.
   dokumen (peramban tidak bisa merender OOXML tanpa pustaka penampil pihak ketiga). Kalau nanti mau
   pratinjau in-app, pilihannya: pustaka penampil di klien, atau konversi ke PDF di server (butuh
   LibreOffice). Jangan janjikan "tampil di halaman" untuk OOXML sebelum itu ada.
-- **Kompresi & ekspor dokumen Word** (`docs/word/*.docx`) belum disegarkan sejak A.68.
+- ~~**Kompresi & ekspor dokumen Word** (`docs/word/*.docx`) belum disegarkan sejak A.68.~~ — **SUDAH
+  (14 Okt 2026)**: `docs/export-word.sh` dijalankan penuh; `log-mentah.docx` kini gabungan tiga sesi
+  (10,1 MB) dan dokumen lain ikut diperbarui. Yang **belum** ada: pemampatan isi `log-mentah.docx`
+  (Word-nya besar karena transkrip utuh, dan itu memang disengaja — log tidak diringkas).
