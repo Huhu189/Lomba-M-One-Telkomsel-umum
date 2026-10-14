@@ -21,8 +21,18 @@ import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { IkonPengguna } from '../../icons.jsx'
 
-/** @param {{ berhasil?: (user: import('./authStore.js').DataUser) => void }} props */
-export default function MasukTamu({ berhasil }) {
+/**
+ * @param {{
+ *   berhasil?: (user: import('./authStore.js').DataUser) => void,
+ *   utama?: boolean,
+ * }} props
+ *
+ * `utama` dipakai saat halaman masuk dibuka dari **tautan ulangan** (14 Oktober
+ * 2026): pengunjung yang membuka tautan guru umumnya tidak punya akun, jadi
+ * formulir tamu tampil lebih dulu dan judulnya tidak lagi berbunyi "Atau …" —
+ * tidak ada apa pun yang mendahuluinya untuk di-“atau”-kan.
+ */
+export default function MasukTamu({ berhasil, utama = false }) {
   const masukTamu = useAuthStore((s) => s.masukTamu)
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
 
@@ -53,11 +63,13 @@ export default function MasukTamu({ berhasil }) {
   return (
     <section className="auth-tamu" aria-labelledby="judul-masuk-tamu">
       <h2 className="auth-pemisah" id="judul-masuk-tamu">
-        Atau ikut sebagai siswa tamu
+        {utama ? 'Ikut ulangan sebagai siswa tamu' : 'Atau ikut sebagai siswa tamu'}
       </h2>
       <p className="teks-lembut small">
-        Gurumu sudah membuka kuis untuk tamu? Tulis namamu — tanpa akun dan tanpa kata
-        sandi. Hasil ulanganmu tersimpan di perangkat ini, jadi pakai perangkat yang sama
+        {utama
+          ? 'Kamu membuka tautan ulangan dari gurumu. Cukup tulis namamu — tanpa akun dan tanpa kata sandi.'
+          : 'Gurumu sudah membuka kuis untuk tamu? Tulis namamu — tanpa akun dan tanpa kata sandi.'}{' '}
+        Hasil ulanganmu tersimpan di perangkat ini, jadi pakai perangkat yang sama
         sampai selesai ya; kamu bisa lanjut kembali walau halamannya sempat tertutup.
       </p>
 

@@ -3,11 +3,24 @@
  * Pesan galat kredensial dari backend sudah anti-enumerasi; tautan
  * "kirim ulang verifikasi" selalu ditawarkan setelah gagal agar murid yang
  * belum verifikasi tidak buntu (tanpa membocorkan status akun).
+ *
+ * Sejak 14 Oktober 2026 halaman ini **membalik urutannya** bila pengunjung
+ * datang dari tautan ulangan yang dibagikan guru (state `lanjut` menuju
+ * `/kuis/…`): pintu siswa tamu tampil lebih dulu, sedangkan formulir akun
+ * sekolah dilipat di bawahnya. Anak yang tidak punya akun tidak lagi mendarat di
+ * kolom email/kata sandi lalu merasa "dipaksa masuk" — ia menulis namanya dan
+ * langsung kembali ke ulangannya. Server tetap yang memutuskan pintu tamu
+ * terbuka atau tidak (`GET /v1/tamu`).
+ *
+ * Selama jawaban `GET /v1/tamu` **belum tiba**, halaman menahan isinya dulu
+ * (bukan menampilkan kolom email lalu menukarnya beberapa milidetik kemudian):
+ * tanpa itu, anak dari tautan tetap sempat melihat formulir akun sekolah lebih
+ * dulu — persis keluhan yang diperbaiki putaran ini.
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { skemaMasuk } from './validasi.js'
 import { ambilInfoTamu, pesanGalatApi, teksGalat } from './api.js'
 import { sudahDitampilkanSebagaiTunggu, useAuthStore } from './authStore.js'
@@ -20,6 +33,7 @@ import { RUTE } from '../../routes.js'
 import KartuAuth from './KartuAuth.jsx'
 import MasukTamu from './MasukTamu.jsx'
 import PeringatanTunggu from './PeringatanTunggu.jsx'
+import MemuatHalaman from '../../shared/ui/MemuatHalaman.jsx'
 
 /**
  * @param {{ berhasil?: (user: import('./authStore.js').DataUser) => void }} props
@@ -27,10 +41,23 @@ import PeringatanTunggu from './PeringatanTunggu.jsx'
 export default function HalamanMasuk({ berhasil }) {
   const masuk = useAuthStore((s) => s.masuk)
   const detikTunggu = useAuthStore((s) => s.detikTunggu)
+  const lokasi = useLocation()
 
   // Server yang menentukan apakah pintu tamu terbuka; halaman ini hanya
   // menampilkan formulirnya bila memang ada kuis/izin tamu dari guru.
   const infoTamu = useQuery({ queryKey: ['tamu-info'], queryFn: ambilInfoTamu, staleTime: 60_000 })
+
+  // Datang dari tautan ulangan yang dibagikan guru? (`KeMasuk` membawa tujuan
+  // asalnya lewat `state.lanjut`.) Murid yang mengerjakan ulangan lewat tautan
+  // biasanya tidak punya akun sekolah, jadi pintu tamunya yang diutamakan.
+  const tujuan = typeof lokasi.state?.lanjut === 'string' ? lokasi.state.lanjut : ''
+  const dariTautanUlangan = /^\/(kuis|kerjakan|peringkat)\//.test(tujuan)
+  const tamuDulu = dariTautanUlangan && infoTamu.data?.diizinkan === true
+
+  // Pintu tamu dari tautan ulangan belum bisa dipastikan tampil atau tidak.
+  // Menahan isi (dengan penanda yang tidak berkedip) lebih baik daripada
+  // menyodorkan kolom email lebih dulu lalu menukarnya.
+  const sedangMemastikanPintu = dariTautanUlangan && infoTamu.isLoading
 
   const {
     register,
@@ -57,72 +84,104 @@ export default function HalamanMasuk({ berhasil }) {
     }
   })
 
+  const formulirAkun = (
+    <form onSubmit={kirim} noValidate>
+      <PeringatanTunggu />
+
+      {errors.root?.message && (
+        <Banner jenis="salah" judul="Belum bisa masuk">
+          {teksGalat(errors.root)}{' '}
+          <Link
+            to={RUTE.perluVerifikasi}
+            state={{ email: getValues('email') }}
+            className="taut-sentuh mt-1"
+          >
+            Belum verifikasi email? Kirim ulang tautan
+          </Link>
+        </Banner>
+      )}
+
+      <Isian
+        label="Email"
+        type="email"
+        ikon={IkonSurat}
+        autoComplete="email"
+        inputMode="email"
+        placeholder="nama@email.com"
+        galat={teksGalat(errors.email)}
+        {...register('email')}
+      />
+
+      <Isian
+        label="Kata sandi"
+        type="password"
+        ikon={IkonKunci}
+        autoComplete="current-password"
+        galat={teksGalat(errors.password)}
+        {...register('password')}
+      />
+
+      <div className="text-end mb-4">
+        <Link className="taut-sentuh" to={RUTE.lupaSandi}>
+          Lupa kata sandi?
+        </Link>
+      </div>
+
+      <Tombol
+        type="submit"
+        besar
+        lebar
+        memuat={isSubmitting}
+        teksMemuat="Memeriksa…"
+        disabled={detikTunggu > 0}
+      >
+        {detikTunggu > 0 ? `Tunggu ${detikTunggu} detik` : 'Masuk'}
+      </Tombol>
+    </form>
+  )
+
   return (
     <KartuAuth
-      judul="Selamat datang kembali!"
-      sub="Masuk dulu, lalu lanjut belajar."
+      judul={tamuDulu ? 'Ikut ulangan ini' : 'Selamat datang kembali!'}
+      sub={
+        tamuDulu
+          ? 'Kamu membuka tautan ulangan dari gurumu. Cukup tulis namamu.'
+          : 'Masuk dulu, lalu lanjut belajar.'
+      }
       ikon={IkonPengguna}
     >
-      <form onSubmit={kirim} noValidate>
-        <PeringatanTunggu />
+      {tamuDulu ? (
+        <>
+          <MasukTamu berhasil={berhasil} utama />
 
-        {errors.root?.message && (
-          <Banner jenis="salah" judul="Belum bisa masuk">
-            {teksGalat(errors.root)}{' '}
-            <Link
-              to={RUTE.perluVerifikasi}
-              state={{ email: getValues('email') }}
-              className="taut-sentuh mt-1"
-            >
-              Belum verifikasi email? Kirim ulang tautan
-            </Link>
-          </Banner>
-        )}
+          {/**
+           * Akun sekolah tetap dijangkau, tetapi TIDAK lagi menjadi pintu depan
+           * bagi anak yang datang dari tautan ulangan: formulirnya dilipat, dan
+           * tetap ada di DOM untuk pembaca layar/pencarian dalam halaman.
+           */}
+          <details className="auth-lipat-akun">
+            <summary className="auth-pemisah">Punya akun sekolah?</summary>
+            <div className="pt-1">{formulirAkun}</div>
+            <p className="teks-lembut small mt-3 mb-0">
+              Belum punya akun? <Link className="taut-sentuh" to={RUTE.daftar}>Daftar sebagai murid</Link>{' '}
+              — atau lanjut sebagai siswa tamu di atas.
+            </p>
+          </details>
+        </>
+      ) : sedangMemastikanPintu ? (
+        <MemuatHalaman />
+      ) : (
+        <>
+          {formulirAkun}
 
-        <Isian
-          label="Email"
-          type="email"
-          ikon={IkonSurat}
-          autoComplete="email"
-          inputMode="email"
-          placeholder="nama@email.com"
-          galat={teksGalat(errors.email)}
-          {...register('email')}
-        />
+          <p className="auth-pemisah">Belum punya akun?</p>
+          <TombolTaut to={RUTE.daftar} varian="tepi" lebar>
+            Daftar sebagai murid
+          </TombolTaut>
 
-        <Isian
-          label="Kata sandi"
-          type="password"
-          ikon={IkonKunci}
-          autoComplete="current-password"
-          galat={teksGalat(errors.password)}
-          {...register('password')}
-        />
-
-        <div className="text-end mb-4">
-          <Link className="taut-sentuh" to={RUTE.lupaSandi}>
-            Lupa kata sandi?
-          </Link>
-        </div>
-
-        <Tombol
-          type="submit"
-          besar
-          lebar
-          memuat={isSubmitting}
-          teksMemuat="Memeriksa…"
-          disabled={detikTunggu > 0}
-        >
-          {detikTunggu > 0 ? `Tunggu ${detikTunggu} detik` : 'Masuk'}
-        </Tombol>
-      </form>
-
-      <p className="auth-pemisah">Belum punya akun?</p>
-      <TombolTaut to={RUTE.daftar} varian="tepi" lebar>
-        Daftar sebagai murid
-      </TombolTaut>
-
-      {infoTamu.data?.diizinkan && <MasukTamu berhasil={berhasil} />}
+          {infoTamu.data?.diizinkan && <MasukTamu berhasil={berhasil} />}
+        </>
+      )}
     </KartuAuth>
   )
 }
