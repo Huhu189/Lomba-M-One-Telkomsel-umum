@@ -120,8 +120,11 @@ function tautanJadwal(kuis) {
     return { to: ruteMonitorKuis(kuis.slug), ikon: IkonMata, label: 'Pantau' }
   }
 
+  // Draf diarahkan ke HALAMAN kuis itu sendiri (tempat menyusun soal + setelan),
+  // bukan ke daftar kuis: dari daftar, guru masih harus mencari kuisnya lagi, dan
+  // tombol di baris ini jadi tidak sesuai dengan yang dijanjikan labelnya.
   if (kuis.status !== 'publikasi') {
-    return { to: RUTE.kuis, ikon: IkonPensil, label: 'Lanjutkan menyusun' }
+    return { to: ruteKuisDetail(kuis.slug), ikon: IkonPensil, label: 'Ubah kuis' }
   }
 
   return { to: ruteKuisDetail(kuis.slug), ikon: IkonLembarSoal, label: 'Lihat detail' }

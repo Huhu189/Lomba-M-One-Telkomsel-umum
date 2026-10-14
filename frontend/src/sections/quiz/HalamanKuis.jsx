@@ -1,13 +1,21 @@
 /**
- * Halaman kelola kuis (slice 03) — guru menyusun kuis dalam tiga langkah
- * (papan desain 10): info & jadwal → susun soal → tinjau dan publikasi.
+ * Halaman kelola kuis (slice 03).
  *
- * Susunan langkah hanya alat bantu tampilan; yang menentukan tetap server:
+ * Sejak 14 Oktober 2026 penyusunan kuis **satu halaman tiga bagian** — info &
+ * jadwal, susun soal, tinjau & publikasi — bukan lagi tiga langkah yang harus
+ * dilalui satu per satu (permintaan pemilik produk: "buat ringkas, gak perlu 3
+ * step 3 step"). Semua isinya terlihat sekaligus, pil di atas hanya melompat ke
+ * bagiannya, dan **bar aksi lengket** menyimpan draf maupun menerbitkan dari
+ * posisi mana pun — guru tidak perlu menggulir ke bawah untuk menerbitkan.
+ *
+ * Isi bagian mana pun hanya alat bantu tampilan; yang menentukan tetap server:
  * kuis dibuat sebagai draf, susunan soal disinkronkan, dan publikasi diperiksa
- * kelengkapannya di backend (`KuisController@pub`).
+ * kelengkapannya di backend (`KuisController@pub`). Karena semuanya sudah
+ * terlihat, penerbitan menyimpan draf + susunan lebih dulu bila keduanya belum
+ * tersimpan — jadi tombol Terbitkan tidak pernah mengirim kuis setengah jadi.
  *
  * Draf dibuat hanya dengan judul: mapel, kelas, dan durasi boleh ditentukan
- * belakangan, dan soal boleh ditulis langsung di langkah 2 lewat editor yang
+ * belakangan, dan soal boleh ditulis langsung di bagian 2 lewat editor yang
  * sama dengan bank soal — jadi guru tidak wajib punya stok soal lebih dulu.
  */
 import { useEffect, useState } from 'react'
@@ -21,6 +29,7 @@ import {
   IkonDaftar,
   IkonGear,
   IkonKirim,
+  IkonMuatUlang,
   IkonPanahKiri,
   IkonPensil,
   IkonSilang,
@@ -41,11 +50,12 @@ import {
   buatKuis,
   hapusKuis,
   publikasiKuis,
+  pulihkanKuis,
   sinkronSoalKuis,
   ubahKuis,
 } from './api.js'
 import { formatDurasi, formatJadwal, keIso, keLokal, statusTampilan } from './status.js'
-import { LANGKAH_KUIS, kelengkapanKuis, ringkasJadwal, siapTerbit, totalPoin } from './susunKuis.js'
+import { BAGIAN_KUIS, kelengkapanKuis, ringkasJadwal, siapTerbit, totalPoin } from './susunKuis.js'
 import { LABEL_SUMBER, catatanTautan, ringkasSetelan, tautanSiswa } from './setelanSesi.js'
 import { ambilPengaturan } from '../settings/api.js'
 import { pesanGalatApi, teksGalat } from '../auth/api.js'
@@ -57,6 +67,7 @@ import DialogKonfirmasi from '../../shared/ui/DialogKonfirmasi.jsx'
 import HeaderHalaman from '../../shared/ui/HeaderHalaman.jsx'
 import KosongData from '../../shared/ui/KosongData.jsx'
 import LangkahPil from '../../shared/ui/LangkahPil.jsx'
+import SetelanUlangan from './SetelanUlangan.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import { Tombol, TombolIkon, TombolTaut } from '../../shared/ui/Tombol.jsx'
 
@@ -91,8 +102,11 @@ function ringkasSoal(konten) {
   return teks.length > 70 ? `${teks.slice(0, 70)}…` : teks || '(tanpa teks)'
 }
 
-/** Bank soal di langkah susun dimuat 20 baris per permintaan. */
+/** Bank soal di bagian susun dimuat 20 baris per permintaan. */
 const SOAL_PER_HALAMAN = 20
+
+/** Id jangkar tiap bagian, urutannya sama dengan `BAGIAN_KUIS`. */
+const ID_BAGIAN = ['bagian-info', 'bagian-soal', 'bagian-terbit']
 
 /** Ketikan baru dipakai 300 ms sesudah ketikan terakhir (pola bank soal). */
 const JEDA_CARI_MS = 300
@@ -116,7 +130,11 @@ export default function HalamanKuis() {
   const [editor, setEditor] = useState(
     /** @type {{ id: number|null, slug: string, judul: string, status: string }|null} */ (null),
   )
-  const [langkah, setLangkah] = useState(0)
+  //
+  // Bagian yang sedang dilihat (0–2) hanya dipakai pil pelompat: TIDAK ada
+  // bagian yang disembunyikan, jadi tidak mungkin ada isian yang "terlewat"
+  // karena guru lupa menekan tombol lanjut.
+  const [bagian, setBagian] = useState(0)
   const [soalTerpilih, setSoalTerpilih] = useState(/** @type {number[]} */ ([]))
   /**
    * Info soal yang pernah dilihat (dicentang di daftar, atau ikut termuat saat
@@ -193,13 +211,13 @@ export default function HalamanKuis() {
   const nilai = { ...nilaiAwal, ...useWatch({ control, defaultValue: nilaiAwal }) }
 
   // Setelan yang benar-benar berlaku untuk sesi ini (resolusi tiga lapis:
-  // kuis → kelas → sekolah). Diambil hanya saat guru sampai di langkah tinjau,
-  // dan hanya untuk kuis yang sudah punya id — draf yang belum tersimpan
-  // memang belum punya setelan sendiri.
+  // kuis → kelas → sekolah). Ringkasannya tampil di bagian 3, jadi diambil
+  // begitu drafnya punya id — draf yang belum tersimpan memang belum punya
+  // setelan sendiri.
   const setelanSesi = useQuery({
     queryKey: ['pengaturan', 'sesi-kuis', editor?.id ?? null, nilai.class_id],
     queryFn: () => ambilPengaturan(Number(nilai.class_id) || null, editor?.id ?? null),
-    enabled: langkah === 2 && editor !== null && editor.id !== null,
+    enabled: editor !== null && editor.id !== null,
     staleTime: 30_000,
   })
 
@@ -238,9 +256,9 @@ export default function HalamanKuis() {
         : ubahKuis(editor.id, muatanKuis(data)),
     onSuccess: async (kuis) => {
       tampilkanToast('sukses', editor?.id === null ? 'Kuis dibuat sebagai draf.' : 'Kuis diperbarui.')
+      // Draf hasil simpan langsung dipegang: bagian 2 dan 3 di halaman yang sama
+      // memakai id-nya untuk menyusun soal dan membaca setelan sesi.
       setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
-      // Langkah 2 langsung bisa dibuka: kuis (draf) sudah punya id di server.
-      setLangkah(1)
       await segarkan()
     },
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
@@ -304,6 +322,18 @@ export default function HalamanKuis() {
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
 
+  // Memulihkan kuis arsip (14 Oktober 2026): arsip dulu satu arah, jadi salah
+  // tekan "Arsipkan" berarti kuisnya hilang dari daftar kerja guru dan satu-satunya
+  // jalan keluar adalah menyusun ulang dari nol.
+  const pulihkan = useMutation({
+    mutationFn: async (/** @type {number} */ id) => pulihkanKuis(id),
+    onSuccess: async () => {
+      tampilkanToast('sukses', 'Kuis dipulihkan sebagai draf — terbitkan lagi kalau sudah siap.')
+      await segarkan()
+    },
+    onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
+  })
+
   const hapus = useMutation({
     mutationFn: async (/** @type {number} */ id) => hapusKuis(id),
     onSuccess: async () => {
@@ -317,26 +347,37 @@ export default function HalamanKuis() {
     },
   })
 
-  function tutupEditor() {
-    setEditor(null)
-    setLangkah(0)
-    setSoalTerpilih([])
-    reset(nilaiAwal)
+  /**
+   * Pindah ke salah satu dari tiga bagian halaman: tandai pilnya, lalu gulir
+   * ke bagian itu. Dipakai pil pelompat, bukan lagi gerbang antar langkah.
+   * @param {number} indeks
+   */
+  function lompatKe(indeks) {
+    setBagian(indeks)
+    if (typeof document === 'undefined') return
+    document.getElementById(ID_BAGIAN[indeks] ?? '')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
   }
 
-  /** Buka alur tiga langkah untuk kuis baru (draf di server). */
+  function tutupEditor() {
+    setEditor(null)
+    setSoalTerpilih([])
+    reset(nilaiAwal)
+    lompatKe(0)
+  }
+
+  /** Buka penyusunan untuk kuis baru (draf belum ada di server). */
   function buatBaru() {
     setEditor({ id: null, slug: '', judul: '', status: 'draf' })
     setSoalTerpilih([])
     setCatatanSoal({})
     setCariSoal('')
     reset(nilaiAwal)
-    setLangkah(0)
+    lompatKe(0)
   }
 
   /**
-   * Buka langkah 1 dengan isi kuis yang sudah ada; susunan soalnya dimuat
-   * sekalian supaya ringkasan di langkah 3 tidak menebak-nebak.
+   * Buka penyusunan dengan isi kuis yang sudah ada; susunan soalnya dimuat
+   * sekalian supaya ringkasan di bagian 3 tidak menebak-nebak.
    * @param {import('./api.js').DataKuis} kuis
    */
   async function mulaiUbah(kuis) {
@@ -352,7 +393,7 @@ export default function HalamanKuis() {
     setValue('selesai_at', keLokal(kuis.selesai_at))
     setValue('acak_soal', kuis.acak_soal ?? true)
     setValue('acak_opsi', kuis.acak_opsi ?? true)
-    setLangkah(0)
+    lompatKe(0)
 
     try {
       const rinci = await ambilKuisDetail(kuis.id)
@@ -365,8 +406,9 @@ export default function HalamanKuis() {
   }
 
   /**
-   * Lompat langsung ke langkah 2 (aksi "Susun soal" pada daftar) dan ambil
-   * susunan yang sudah tersimpan.
+   * Buka penyusunan langsung di bagian 2 (aksi "Susun soal" pada daftar) dan
+   * ambil susunan yang sudah tersimpan. Isi formulir bagian 1 tetap diisi agar
+   * halaman yang sama tidak tampak kosong.
    * @param {import('./api.js').DataKuis} kuis
    */
   async function bukaSusun(kuis) {
@@ -376,7 +418,16 @@ export default function HalamanKuis() {
       setSoalTerpilih(terpilih.map((satu) => satu.id))
       setCatatanSoal(catatSusunan(terpilih))
       setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
-      setLangkah(1)
+      setValue('judul', kuis.judul)
+      setValue('deskripsi', kuis.deskripsi ?? '')
+      setValue('subject_id', String(kuis.subject_id ?? ''))
+      setValue('class_id', String(kuis.class_id ?? ''))
+      setValue('durasi_menit', String(kuis.durasi_menit))
+      setValue('mulai_at', keLokal(kuis.mulai_at))
+      setValue('selesai_at', keLokal(kuis.selesai_at))
+      setValue('acak_soal', kuis.acak_soal ?? true)
+      setValue('acak_opsi', kuis.acak_opsi ?? true)
+      lompatKe(1)
     } catch (galat) {
       tampilkanToast('salah', pesanGalatApi(galat))
     }
@@ -409,14 +460,73 @@ export default function HalamanKuis() {
     setSoalTerpilih(salinan)
   }
 
-  /** Langkah 2 → 3: susunan soal wajib tersimpan di server lebih dulu. */
-  async function keTinjau() {
-    if (editor === null || editor.id === null) return
+  /**
+   * Simpan draf lewat jalur formulir (dengan validasi Zod yang sama seperti
+   * tombolnya), lalu kembalikan kuis yang tersimpan.
+   *
+   * Dipakai sebelum menyusun soal dan sebelum menerbitkan: karena ketiga bagian
+   * kini terlihat sekaligus, guru bisa memilih soal atau menekan Terbitkan tanpa
+   * pernah menekan "simpan" lebih dulu.
+   *
+   * @returns {Promise<import('./api.js').DataKuis|null>}
+   */
+  async function simpanDraf() {
+    /** @type {import('./api.js').DataKuis|null} */
+    let hasil = null
+
+    await handleSubmit(async (data) => {
+      hasil = await simpan.mutateAsync(data)
+    })()
+
+    return hasil
+  }
+
+  /**
+   * Pastikan kuis sudah punya id di server; buat drafnya bila belum.
+   * @returns {Promise<number|null>}
+   */
+  async function pastikanDraf() {
+    if (editor === null) return null
+    if (editor.id !== null) return editor.id
 
     try {
-      const kuis = await simpanSusunan.mutateAsync({ id: editor.id, soal: soalTerpilih })
+      const kuis = await simpanDraf()
+      return kuis?.id ?? null
+    } catch {
+      return null
+    }
+  }
+
+  /** Tombol "Simpan susunan" di bagian 2. */
+  async function simpanSusunanKlik() {
+    const id = await pastikanDraf()
+    if (id === null) return
+
+    try {
+      const kuis = await simpanSusunan.mutateAsync({ id, soal: soalTerpilih })
       setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
-      setLangkah(2)
+      tampilkanToast('sukses', 'Susunan soal disimpan.')
+    } catch {
+      // pesan galat sudah tampil lewat onError mutasi
+    }
+  }
+
+  /**
+   * Terbitkan dari mana pun di halaman: simpan draf (bila perlu) → simpan
+   * susunan → publikasi. Urutan ini yang dulu dijamin tiga langkah berurutan;
+   * sekarang dijaga di satu tempat supaya tombol Terbitkan tidak pernah
+   * mengirim kuis yang susunannya belum tersimpan.
+   */
+  async function terbitkanKuis() {
+    if (editor === null) return
+
+    const id = await pastikanDraf()
+    if (id === null) return
+
+    try {
+      const kuis = await simpanSusunan.mutateAsync({ id, soal: soalTerpilih })
+      setEditor({ id: kuis.id, slug: kuis.slug, judul: kuis.judul, status: kuis.status })
+      publikasi.mutate(kuis.id)
     } catch {
       // pesan galat sudah tampil lewat onError mutasi
     }
@@ -485,22 +595,61 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
           </span>
         </HeaderHalaman>
 
+        {/*
+          Pil ini pelompat, bukan gerbang: isi ketiga bagian sudah tampil
+          sekaligus di bawah, jadi Pil hanya memindahkan pandangan (dan gulir
+          layar) ke bagiannya. Tidak ada isian yang tersembunyi di baliknya.
+        */}
         <LangkahPil
-          langkah={LANGKAH_KUIS}
-          aktif={langkah}
-          onPilih={setLangkah}
-          label="Langkah menyusun kuis"
+          langkah={BAGIAN_KUIS}
+          aktif={bagian}
+          onPilih={lompatKe}
+          label="Bagian penyusunan kuis"
         />
 
-        <div className="mt-4 d-flex flex-column gap-4">
-          {langkah === 0 && (
-            <form
-              className="kartu-soft p-4"
-              aria-labelledby="langkah-1"
-              noValidate
-              onSubmit={handleSubmit((data) => simpan.mutate(data))}
+        {/*
+          Bar aksi lengket: menyimpan draf dan menerbitkan dari posisi mana pun
+          di halaman panjang ini. "Simpan draf" mengirim formulir bagian 1 lewat
+          atribut `form`, jadi tidak perlu menggulir ke atas untuk menyimpan.
+        */}
+        <div className="bar-susun mt-3">
+          <span className={`badge-status ${bisaTerbit ? 'sukses' : 'peringatan'}`}>
+            {kelengkapan.filter((satu) => satu.ok).length} dari {kelengkapan.length} lengkap
+          </span>
+          <span className="teks-lembut small d-none d-md-inline">
+            Draf tersimpan otomatis sebelum terbit — terbitkan kapan pun kamu siap.
+          </span>
+          <div className="d-flex flex-wrap gap-2 ms-md-auto">
+            <Tombol
+              varian="tepi"
+              ukuran="sedang"
+              type="submit"
+              form="form-kuis"
+              memuat={simpan.isPending}
             >
-              <h2 id="langkah-1" className="judul-bagian">Info dan jadwal</h2>
+              Simpan draf
+            </Tombol>
+            <Tombol
+              ukuran="sedang"
+              ikon={IkonKirim}
+              disabled={!bisaTerbit}
+              memuat={publikasi.isPending || simpanSusunan.isPending}
+              onClick={() => void terbitkanKuis()}
+            >
+              Terbitkan kuis
+            </Tombol>
+          </div>
+        </div>
+
+        <div className="mt-4 d-flex flex-column gap-4">
+          <form
+            id="form-kuis"
+            className="kartu-soft p-4"
+            aria-labelledby="bagian-info"
+            noValidate
+            onSubmit={handleSubmit((data) => simpan.mutate(data))}
+          >
+            <h2 id="bagian-info" className="judul-bagian">1. Info dan jadwal</h2>
               <p className="teks-lembut small">
                 Cukup isi judulnya dulu. Mapel, kelas, dan jadwal boleh ditentukan belakangan —
                 yang penting sudah lengkap saat kuis diterbitkan.
@@ -638,58 +787,62 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 </div>
               </div>
 
-              <p className="teks-lembut small">
-                Pengaturan lanjutan (percobaan ulang, peringkat, dan jenis anti-cheat) mengikuti
-                pengaturan sekolah atau kelas. Khusus kuis ini, atur sendiri{' '}
-                {editor !== null && editor.slug !== '' ? (
-                  <Link to={ruteKuisDetail(editor.slug)}>di halaman kuis ini</Link>
-                ) : (
-                  <span>di halaman kuis (setelah kuisnya tersimpan)</span>
-                )}{' '}
-                — ringkasan yang benar-benar menyala muncul di langkah 3.
-              </p>
+            {/*
+              Setelan ulangan sengaja TIDAK diulang di sini: satu tombolnya ada di
+              bagian 3 bersama ringkasan "Setelan sesi ini" (dan di halaman detail
+              kuis). Dua tombol sama di satu halaman hanya jadi gangguan.
+            */}
+            <p className="teks-lembut small mb-3">
+              Pengaturan lanjutan (percobaan ulang, peringkat, dan jenis anti-cheat) mengikuti
+              pengaturan sekolah atau kelas. Yang benar-benar menyala untuk kuis ini diringkas di
+              bagian 3, dan diubah dari tombol <strong>Setelan ulangan</strong> di sana.
+            </p>
 
-              <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
-                <Tombol varian="tepi" onClick={tutupEditor}>Batal</Tombol>
-                <Tombol type="submit" memuat={isSubmitting || simpan.isPending}>
-                  Lanjut: susun soal
-                </Tombol>
-              </div>
-            </form>
-          )}
+            <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
+              <Tombol varian="tepi" onClick={tutupEditor}>Batal</Tombol>
+              <Tombol type="submit" memuat={isSubmitting || simpan.isPending}>
+                Simpan draf
+              </Tombol>
+            </div>
+          </form>
 
-          {langkah === 1 && soalBaru && (
-            <>
-              <div className="d-flex flex-wrap align-items-center gap-2">
-                <div className="me-auto">
-                  <h2 className="judul-bagian mb-0">Soal baru untuk kuis ini</h2>
-                  <p className="teks-lembut small mb-0">
-                    Soalnya ikut tersimpan di bank soal dan langsung masuk ke susunan kuis.
-                    {soalBaruKe > 0 ? ` Sudah ditambahkan ${soalBaruKe} soal.` : ''} Kamu bisa terus
-                    menulis soal berikutnya tanpa keluar dari sini.
-                  </p>
+          <section
+            id="bagian-soal"
+            className="d-flex flex-column gap-3"
+            aria-labelledby="bagian-soal-judul"
+          >
+            <h2 id="bagian-soal-judul" className="judul-bagian mb-0">2. Susun soal</h2>
+
+            {soalBaru ? (
+              <>
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <div className="me-auto">
+                    <h3 className="judul-bagian mb-0">Soal baru untuk kuis ini</h3>
+                    <p className="teks-lembut small mb-0">
+                      Soalnya ikut tersimpan di bank soal dan langsung masuk ke susunan kuis.
+                      {soalBaruKe > 0 ? ` Sudah ditambahkan ${soalBaruKe} soal.` : ''} Kamu bisa terus
+                      menulis soal berikutnya tanpa keluar dari sini.
+                    </p>
+                  </div>
+                  <Tombol varian="tepi" ikon={IkonPanahKiri} onClick={() => setSoalBaru(false)}>
+                    Kembali ke susunan
+                  </Tombol>
                 </div>
-                <Tombol varian="tepi" ikon={IkonPanahKiri} onClick={() => setSoalBaru(false)}>
-                  Kembali ke susunan
-                </Tombol>
-              </div>
 
-              <EditorSoal
-                key={`soal-baru-di-kuis-${soalBaruKe}`}
-                soal={null}
-                daftarMapel={mapel.data ?? []}
-                daftarTag={tag.data ?? []}
-                mapelAwal={nilai.subject_id}
-                sedangMenyimpan={simpanSoalBaru.isPending}
-                onSimpan={(muatan) => simpanSoalBaru.mutate(muatan)}
-                onMapelDibuat={() => void queryClient.invalidateQueries({ queryKey: ['mapel'] })}
-                onBatal={() => setSoalBaru(false)}
-              />
-            </>
-          )}
-
-          {langkah === 1 && !soalBaru && (
-            <>
+                <EditorSoal
+                  key={`soal-baru-di-kuis-${soalBaruKe}`}
+                  soal={null}
+                  daftarMapel={mapel.data ?? []}
+                  daftarTag={tag.data ?? []}
+                  mapelAwal={nilai.subject_id}
+                  sedangMenyimpan={simpanSoalBaru.isPending}
+                  onSimpan={(muatan) => simpanSoalBaru.mutate(muatan)}
+                  onMapelDibuat={() => void queryClient.invalidateQueries({ queryKey: ['mapel'] })}
+                  onBatal={() => setSoalBaru(false)}
+                />
+              </>
+            ) : (
+              <>
               <div className="row g-4 align-items-start">
                 <div className="col-lg-6">
                   <div className="kartu-soft p-4 h-100">
@@ -881,18 +1034,21 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
               </div>
 
               <div className="d-flex flex-wrap justify-content-between gap-2">
-                <Tombol varian="tepi" onClick={() => setLangkah(0)}>Kembali</Tombol>
-                <Tombol memuat={simpanSusunan.isPending} onClick={() => void keTinjau()}>
-                  Lanjut: tinjau
+                <p className="teks-lembut small mb-0 align-self-center">
+                  {editor.id === null
+                    ? 'Susunan ini ikut tersimpan begitu kamu menekan “Simpan susunan” atau “Terbitkan kuis”.'
+                    : 'Susunan disimpan ke kuis ini, dan bisa diubah lagi kapan saja.'}
+                </p>
+                <Tombol memuat={simpanSusunan.isPending} onClick={() => void simpanSusunanKlik()}>
+                  Simpan susunan
                 </Tombol>
               </div>
-            </>
-          )}
+              </>
+            )}
+          </section>
 
-          {langkah === 2 && (
-            <>
-              <section className="kartu-soft p-4" aria-labelledby="langkah-3">
-                <h2 id="langkah-3" className="judul-bagian">Tinjau sebelum dipublikasikan</h2>
+          <section className="kartu-soft p-4" id="bagian-terbit" aria-labelledby="bagian-terbit-judul">
+            <h2 id="bagian-terbit-judul" className="judul-bagian">3. Tinjau dan publikasikan</h2>
 
                 <ul className="list-unstyled d-flex flex-column gap-2">
                   {kelengkapan.map((satu) => (
@@ -934,23 +1090,25 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                   </div>
                 </div>
 
-                <p className="badge-status info mt-3 mb-0">
+                <p className="badge-status info mt-3 mb-3">
                   Saat kuis berjalan, isi soal masih boleh diperbaiki — murid yang sedang mengerjakan
                   langsung melihat versi barunya. Kunci jawaban, skor, dan jenis soal baru bisa
                   diubah setelah ulangannya selesai.
                 </p>
-              </section>
 
               {/* Ringkasan setelan sesi: apa yang benar-benar menyala untuk kuis
-                  INI setelah digabung dengan pengaturan kelas dan sekolah. */}
+                  INI setelah digabung dengan pengaturan kelas dan sekolah.
+                  Perubahan setelan dilakukan lewat SATU tombol di sini — tidak
+                  lagi deretan saklar yang menggelar di halaman. */}
               <section className="kartu-soal p-3" aria-labelledby="setelan-sesi">
-                <div className="d-flex flex-wrap align-items-baseline gap-2">
-                  <h2 id="setelan-sesi" className="h6 fw-bold mb-0">Setelan sesi ini</h2>
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <h3 id="setelan-sesi" className="h6 fw-bold mb-0">Setelan sesi ini</h3>
                   <span className="teks-lembut small ms-auto">
                     {setelanSesi.isPending
                       ? 'Memuat setelan…'
                       : 'gabungan pengaturan kuis ini ‹ kelas ‹ sekolah'}
                   </span>
+                  {editor.id !== null && <SetelanUlangan kuisId={editor.id} />}
                 </div>
 
                 {setelanSesi.isError && (
@@ -1043,27 +1201,26 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 )}
               </section>
 
-              <div className="d-flex flex-wrap justify-content-between gap-2">
-                <Tombol varian="tepi" onClick={() => setLangkah(1)}>Kembali</Tombol>
-                <Tombol
-                  ikon={IkonKirim}
-                  disabled={!bisaTerbit}
-                  memuat={publikasi.isPending}
-                  onClick={() => {
-                    if (editor.id !== null) publikasi.mutate(editor.id)
-                  }}
-                >
-                  Publikasikan kuis
-                </Tombol>
-              </div>
-
-              {!bisaTerbit && (
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4">
+              {!bisaTerbit ? (
                 <p className="teks-lembut small mb-0">
                   Lengkapi butir yang masih “Belum” di atas sebelum menerbitkan.
                 </p>
+              ) : (
+                <p className="teks-lembut small mb-0">
+                  Semua sudah lengkap. Murid di kelas ini akan melihat kuisnya begitu diterbitkan.
+                </p>
               )}
-            </>
-          )}
+              <Tombol
+                ikon={IkonKirim}
+                disabled={!bisaTerbit}
+                memuat={publikasi.isPending || simpan.isPending || simpanSusunan.isPending}
+                onClick={() => void terbitkanKuis()}
+              >
+                Publikasikan kuis
+              </Tombol>
+            </div>
+          </section>
         </div>
       </>
     )
@@ -1097,8 +1254,8 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
             ikon={IkonDaftar}
             aksi={hanyaLihat ? undefined : <Tombol onClick={buatBaru}>Buat kuis</Tombol>}
           >
-            Susun kuis pertama dalam tiga langkah: info dan jadwal, susun soal, lalu tinjau dan
-            publikasikan.
+            Isi satu halaman berisi tiga bagian: info dan jadwal, susun soal, lalu tinjau dan
+            publikasikan — semuanya terlihat sekaligus.
           </KosongData>
         )}
 
@@ -1161,7 +1318,17 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                           Terbitkan
                         </Tombol>
                       )}
-                      {kuis.status !== 'arsip' && (
+                      {kuis.status === 'arsip' ? (
+                        <Tombol
+                          varian="tepi"
+                          ukuran="sedang"
+                          ikon={IkonMuatUlang}
+                          memuat={pulihkan.isPending}
+                          onClick={() => pulihkan.mutate(kuis.id)}
+                        >
+                          Pulihkan
+                        </Tombol>
+                      ) : (
                         <Tombol
                           varian="tepi"
                           ukuran="sedang"

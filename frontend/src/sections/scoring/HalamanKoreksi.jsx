@@ -18,9 +18,10 @@ import { Tombol, TombolTaut } from '../../shared/ui/Tombol.jsx'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { IkonCentang } from '../../icons.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import { RUTE, kunciKuisSah, ruteKuisDetail } from '../../routes.js'
+import { RUTE, kunciKuisSah, ruteKuisDetail, ruteMonitorKuis } from '../../routes.js'
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
 import {
+  catatanUntukAttempt,
   jawabanTeks,
   kelasStatus,
   kunciKoreksi,
@@ -28,10 +29,94 @@ import {
   pilihItemKoreksi,
   ringkasKunci,
   saranAiTeks,
+  tingkatRisiko,
 } from './tampilan.js'
 
 /** Nama ketiga langkah koreksi — dipakai penunjuk langkah di dalam form. */
 const LANGKAH_KOREKSI = ['Skor & alasan', 'Token konfirmasi', 'Tersimpan']
+
+/**
+ * Waktu satu catatan — selalu waktu server (klien tidak dipercaya).
+ * @param {import('./api.js').DataCatatanMurid['daftar'][number]} satu
+ * @returns {string}
+ */
+function waktuCatatan(satu) {
+  const waktu = satu.created_at === null ? null : new Date(satu.created_at)
+
+  if (waktu === null || Number.isNaN(waktu.getTime())) return 'waktu tidak tercatat'
+
+  return `waktu server ${waktu.toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}`
+}
+
+/**
+ * Catatan kecurangan murid yang sedang dinilai — tampil di halaman ini juga
+ * (14 Oktober 2026).
+ *
+ * Pemilik produk: catatan harus terlihat "saat guru melihat hasil kerja murid".
+ * Sebelumnya guru harus membuka Monitor Ulangan, mencari nama anaknya, lalu
+ * kembali ke antrean — dan sering lupa melakukannya. Yang ditampilkan hanya
+ * bacaan: meninjau catatan (valid/tidak valid) tetap milik Monitor Ulangan,
+ * karena catatan itu append-only dan keputusannya butuh alasan.
+ *
+ * @param {{
+ *   catatan: import('./api.js').DataCatatanMurid|null,
+ *   kunciKuis: string,
+ * }} props
+ */
+function PanelCatatan({ catatan, kunciKuis }) {
+  if (catatan === null) {
+    return (
+      <p className="teks-lembut small mb-2" data-catatan="kosong">
+        Tidak ada catatan kecurangan untuk murid ini.
+      </p>
+    )
+  }
+
+  const risiko = tingkatRisiko(catatan.skor_tertinggi)
+  const sisa = catatan.jumlah - catatan.daftar.length
+
+  return (
+    <div className="kartu-lembut p-2 mb-2" data-catatan={catatan.jumlah}>
+      <div className="d-flex flex-wrap align-items-center gap-2">
+        <span className={risiko.kelas}>{risiko.label}</span>
+        <span className="fw-semibold small">{catatan.jumlah} catatan pada murid ini</span>
+        {catatan.belum_ditinjau > 0 && (
+          <span className="badge-status info">{catatan.belum_ditinjau} belum ditinjau</span>
+        )}
+        <Link className="taut-sentuh small ms-auto" to={ruteMonitorKuis(kunciKuis)}>
+          Tinjau di Monitor Ulangan
+        </Link>
+      </div>
+
+      <ul className="list-unstyled small mb-0 mt-2">
+        {catatan.daftar.map((satu) => (
+          <li key={satu.id} className="d-flex flex-wrap align-items-center gap-2 py-1">
+            <span className="fw-semibold">{satu.kategori_label}</span>
+            <span className="teks-lembut">risiko {satu.skor_risiko}</span>
+            <span className="teks-lembut">{waktuCatatan(satu)}</span>
+            {!satu.dari_klien && <span className="teks-lembut">dihitung server</span>}
+            <span
+              className={`badge-status ${satu.review_status === 'menunggu' ? 'info' : 'lembut'} ms-auto`}
+            >
+              {satu.review_status_label}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {sisa > 0 && (
+        <p className="teks-lembut small mb-0 mt-1">
+          … dan {sisa} catatan lain yang tidak dirinci di sini; semuanya ada di Monitor Ulangan.
+        </p>
+      )}
+
+      <p className="teks-lembut small mb-0 mt-1">
+        Catatan adalah bahan tanya baik-baik, bukan bukti pelanggaran — nilai tetap guru yang
+        menentukan.
+      </p>
+    </div>
+  )
+}
 
 /**
  * Form koreksi satu baris: skor, alasan, lalu token konfirmasi.
@@ -286,6 +371,7 @@ export default function HalamanKoreksi() {
                   {data.item.map((satu) => {
                     const kunciBaris = kunciKoreksi(satu)
                     const dibuka = terpilih !== null && kunciKoreksi(terpilih) === kunciBaris
+                    const catatan = catatanUntukAttempt(data.catatan_attempt, satu.attempt_id)
 
                     return (
                       <li key={kunciBaris} className="mb-2">
@@ -304,6 +390,14 @@ export default function HalamanKoreksi() {
                           <span className="d-flex flex-wrap align-items-center gap-2 mt-1">
                             <span className={kelasStatus(satu.status)}>{satu.status_label}</span>
                             {satu.dinilai_manual && <span className="badge-status info">Sudah dikoreksi</span>}
+                            {catatan !== null && (
+                              <span
+                                className={tingkatRisiko(catatan.skor_tertinggi).kelas}
+                                data-catatan-baris={catatan.jumlah}
+                              >
+                                {catatan.jumlah} catatan
+                              </span>
+                            )}
                             {dibuka && <span className="badge-status lembut">sedang dibuka</span>}
                           </span>
                         </button>
@@ -331,6 +425,11 @@ export default function HalamanKoreksi() {
                         skor {terpilih.skor_sekarang} / {terpilih.skor_maksimal}
                       </span>
                     </div>
+
+                    <PanelCatatan
+                      catatan={catatanUntukAttempt(data.catatan_attempt, terpilih.attempt_id)}
+                      kunciKuis={kunciKuis}
+                    />
 
                     <p className="mb-1">{terpilih.teks_soal}</p>
                     <p className="mb-1">

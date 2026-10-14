@@ -1,15 +1,19 @@
 /**
- * Utilitas murni alur susun kuis tiga langkah (papan 10).
+ * Utilitas murni penyusunan kuis (papan 10).
  *
  * Dipisah dari HalamanKuis.jsx supaya aturan kelengkapan bisa diuji tanpa DOM.
  * Daftar di bawah adalah cermin `KuisService::galatKelengkapan()` di backend —
  * inilah yang benar-benar menahan publikasi; daftar ini hanya membuat guru tahu
  * lebih awal (server tetap otoritasnya).
+ *
+ * Sejak 14 Oktober 2026 penyusunan kuis **bukan lagi tiga langkah berurutan**:
+ * isinya satu halaman dengan tiga bagian, dan `BAGIAN_KUIS` hanya dipakai pil
+ * pelompat di atas halaman (nama bagian, bukan nama langkah yang harus dilalui).
  */
 import { formatJadwal, keIso } from './status.js'
 
-/** Nama langkah pada pil langkah. */
-export const LANGKAH_KUIS = ['Info dan jadwal', 'Susun soal', 'Tinjau dan publikasi']
+/** Nama bagian penyusunan kuis (dipakai pil pelompat). */
+export const BAGIAN_KUIS = ['Info dan jadwal', 'Susun soal', 'Tinjau dan publikasi']
 
 /**
  * Jadwal singkat dari isi formulir (waktu lokal) untuk ringkasan langkah ketiga.

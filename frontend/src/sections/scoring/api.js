@@ -35,6 +35,28 @@ export const skemaItemKoreksi = z.object({
   ai_dinilai_at: z.string().nullable(),
 })
 
+/** Satu catatan kecurangan murid yang ikut ke antrean koreksi (14 Okt 2026). */
+export const skemaCatatanAttempt = z.object({
+  id: z.number(),
+  kategori: z.string(),
+  kategori_label: z.string(),
+  skor_risiko: z.number(),
+  dari_klien: z.boolean(),
+  created_at: z.string().nullable(),
+  client_at: z.string().nullable(),
+  review_status: z.string(),
+  review_status_label: z.string(),
+})
+
+/** Ringkasan catatan satu murid/attempt: jumlah utuh + rincian terbaru. */
+export const skemaCatatanMurid = z.object({
+  attempt_id: z.number(),
+  jumlah: z.number(),
+  belum_ditinjau: z.number(),
+  skor_tertinggi: z.number(),
+  daftar: z.array(skemaCatatanAttempt),
+})
+
 /** Antrean koreksi satu kuis. */
 export const skemaAntreanKoreksi = z.object({
   kuis_id: z.number(),
@@ -45,6 +67,8 @@ export const skemaAntreanKoreksi = z.object({
   ai_aktif: z.boolean(),
   jumlah: z.number(),
   item: z.array(skemaItemKoreksi),
+  // Catatan kecurangan per attempt: guru menilai tanpa pindah halaman.
+  catatan_attempt: z.array(skemaCatatanMurid),
 })
 
 /** Jawaban saat guru meminta saran AI untuk satu attempt. */
@@ -77,6 +101,7 @@ export const skemaHasilKoreksi = z.object({
 /**
  * @typedef {z.infer<typeof skemaAntreanKoreksi>} DataAntrean
  * @typedef {z.infer<typeof skemaItemKoreksi>} DataItemKoreksi
+ * @typedef {z.infer<typeof skemaCatatanMurid>} DataCatatanMurid
  * @typedef {z.infer<typeof skemaTokenKoreksi>} DataTokenKoreksi
  * @typedef {z.infer<typeof skemaHasilKoreksi>} DataHasilKoreksi
  * @typedef {z.infer<typeof skemaHasilSaranAi>} DataHasilSaranAi

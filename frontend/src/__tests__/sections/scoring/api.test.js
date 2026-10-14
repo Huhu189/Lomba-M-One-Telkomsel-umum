@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   skemaAntreanKoreksi,
+  skemaCatatanMurid,
   skemaHasilKoreksi,
   skemaHasilSaranAi,
   skemaItemKoreksi,
@@ -38,6 +39,44 @@ function itemKoreksi(ubah) {
   }
 }
 
+/**
+ * Satu ringkasan catatan murid di antrean koreksi (kontrak KoreksiService).
+ * @param {Record<string, unknown>} ubah
+ */
+function catatanMurid(ubah = {}) {
+  return {
+    attempt_id: 2,
+    jumlah: 2,
+    belum_ditinjau: 1,
+    skor_tertinggi: 8,
+    daftar: [
+      {
+        id: 11,
+        kategori: 'tab_switch',
+        kategori_label: 'Berpindah tab',
+        skor_risiko: 4,
+        dari_klien: true,
+        created_at: '2026-10-14T02:00:00.000Z',
+        client_at: '2026-10-14T09:00:00+07:00',
+        review_status: 'menunggu',
+        review_status_label: 'Menunggu tinjauan',
+      },
+      {
+        id: 12,
+        kategori: 'paste_attempt',
+        kategori_label: 'Menempel jawaban',
+        skor_risiko: 8,
+        dari_klien: true,
+        created_at: '2026-10-14T02:05:00.000Z',
+        client_at: null,
+        review_status: 'valid',
+        review_status_label: 'Valid',
+      },
+    ],
+    ...ubah,
+  }
+}
+
 describe('skema antrean koreksi', () => {
   it('menerima antrean lengkap dari server', () => {
     const data = skemaAntreanKoreksi.parse({
@@ -49,6 +88,7 @@ describe('skema antrean koreksi', () => {
       ai_aktif: true,
       jumlah: 1,
       item: [itemKoreksi({})],
+      catatan_attempt: [],
     })
 
     expect(data.alasan_min).toBe(10)
@@ -56,6 +96,7 @@ describe('skema antrean koreksi', () => {
     expect(data.item[0].dinilai_manual).toBe(false)
     expect(data.item[0].skor_maksimal).toBe(10)
     expect(data.item[0].saran_ai).toBeNull()
+    expect(data.catatan_attempt).toEqual([])
   })
 
   it('menerima mapel/kelas kosong dan murid tanpa nama', () => {
@@ -68,10 +109,52 @@ describe('skema antrean koreksi', () => {
       ai_aktif: false,
       jumlah: 1,
       item: [itemKoreksi({ murid_id: null, murid_nama: null, no_attempt: null })],
+      catatan_attempt: [],
     })
 
     expect(data.mapel_nama).toBeNull()
     expect(data.item[0].murid_nama).toBeNull()
+  })
+
+  it('membaca catatan kecurangan murid yang ikut di antrean', () => {
+    const data = skemaAntreanKoreksi.parse({
+      kuis_id: 2,
+      judul_kuis: 'Ulangan',
+      mapel_nama: 'Matematika',
+      kelas_nama: '3A',
+      alasan_min: 10,
+      ai_aktif: false,
+      jumlah: 1,
+      item: [itemKoreksi({})],
+      catatan_attempt: [catatanMurid()],
+    })
+
+    expect(data.catatan_attempt[0].jumlah).toBe(2)
+    expect(data.catatan_attempt[0].belum_ditinjau).toBe(1)
+    expect(data.catatan_attempt[0].daftar[1].kategori_label).toBe('Menempel jawaban')
+    expect(data.catatan_attempt[0].daftar[1].review_status_label).toBe('Valid')
+  })
+
+  it('menolak catatan tanpa bidang wajib (payload server salah bentuk)', () => {
+    expect(() => skemaCatatanMurid.parse(catatanMurid({ jumlah: undefined }))).toThrow()
+    expect(() =>
+      skemaCatatanMurid.parse(catatanMurid({ daftar: [{ id: 1, kategori_label: 'X' }] })),
+    ).toThrow()
+  })
+
+  it('menolak antrean yang tidak menyertakan catatan attempt sama sekali', () => {
+    expect(() =>
+      skemaAntreanKoreksi.parse({
+        kuis_id: 2,
+        judul_kuis: 'Ulangan',
+        mapel_nama: null,
+        kelas_nama: null,
+        alasan_min: 10,
+        ai_aktif: false,
+        jumlah: 1,
+        item: [itemKoreksi({})],
+      }),
+    ).toThrow()
   })
 
   it('membaca saran AI pada baris antrean', () => {

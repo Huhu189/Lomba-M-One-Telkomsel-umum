@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  catatanUntukAttempt,
   jawabanTeks,
   kelasStatus,
   kunciKoreksi,
@@ -7,6 +8,7 @@ import {
   pilihItemKoreksi,
   ringkasKunci,
   saranAiTeks,
+  tingkatRisiko,
 } from '../../../sections/scoring/tampilan.js'
 
 describe('jawabanTeks', () => {
@@ -88,6 +90,36 @@ describe('langkahKoreksi', () => {
 
   it('tersimpan menang atas token (mis. token masih terisi setelah simpan)', () => {
     expect(langkahKoreksi({ tersimpan: true })).toBe(3)
+  })
+})
+
+describe('catatan kecurangan di antrean koreksi', () => {
+  const catatan = [
+    { attempt_id: 7, jumlah: 2, belum_ditinjau: 2, skor_tertinggi: 4, daftar: [] },
+    { attempt_id: 8, jumlah: 1, belum_ditinjau: 0, skor_tertinggi: 8, daftar: [] },
+  ]
+
+  it('menemukan catatan murid yang sedang dinilai', () => {
+    expect(catatanUntukAttempt(catatan, 8)?.jumlah).toBe(1)
+    expect(catatanUntukAttempt(catatan, 7)?.skor_tertinggi).toBe(4)
+  })
+
+  it('mengembalikan null untuk murid tanpa catatan — bukan ringkasan kosong', () => {
+    expect(catatanUntukAttempt(catatan, 99)).toBeNull()
+    expect(catatanUntukAttempt([], 7)).toBeNull()
+    // Antrean dari server versi lama (tanpa catatan) tidak boleh membuat halaman mati.
+    expect(catatanUntukAttempt(undefined, 7)).toBeNull()
+  })
+})
+
+describe('tingkatRisiko', () => {
+  it('memakai ambang yang sama dengan Monitor Ulangan', () => {
+    expect(tingkatRisiko(8).label).toBe('Perlu ditanya')
+    expect(tingkatRisiko(9).kelas).toBe('badge-status salah')
+    expect(tingkatRisiko(6).label).toBe('Perhatikan')
+    expect(tingkatRisiko(7).kelas).toBe('badge-status peringatan')
+    expect(tingkatRisiko(3).label).toBe('Catatan')
+    expect(tingkatRisiko(0).kelas).toBe('badge-status lembut')
   })
 })
 

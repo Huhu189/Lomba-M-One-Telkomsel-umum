@@ -148,3 +148,16 @@ export async function arsipkanKuis(id) {
   const respons = await client.post(`/v1/kuis/${id}/arsip`)
   return skemaKuis.parse(respons.data)
 }
+
+/**
+ * Pulihkan kuis yang diarsipkan — kembali sebagai draf, siap disusun/diterbitkan
+ * lagi (14 Oktober 2026). Pengarsipan sebelumnya satu arah, jadi salah tekan
+ * berarti kuisnya hilang dari daftar kerja guru.
+ * @param {number} id
+ * @returns {Promise<DataKuis>}
+ */
+export async function pulihkanKuis(id) {
+  await ambilCsrfCookie()
+  const respons = await client.post(`/v1/kuis/${id}/pulihkan`)
+  return skemaKuis.parse(respons.data)
+}

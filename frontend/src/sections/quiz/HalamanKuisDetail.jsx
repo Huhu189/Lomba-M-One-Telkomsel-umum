@@ -3,8 +3,10 @@
  *
  * Guru melihat kunci + pembahasan dan **setelan ulangan kuis ini** (proteksi,
  * percobaan ulang, peringkat, layar guru) langsung di halaman ini — tidak lagi
- * lewat halaman /pengaturan dengan memilih ulangan dulu. Murid hanya melihat
- * soal: server memang tidak pernah mengirimkan kuncinya.
+ * lewat halaman /pengaturan dengan memilih ulangan dulu. Sejak 14 Oktober 2026
+ * setelan itu sendiri diringkas jadi **satu tombol** di baris aksi (`SetelanUlangan`)
+ * yang membuka panel terstruktur, sehingga halaman ini tetap ringkas. Murid
+ * hanya melihat soal: server memang tidak pernah mengirimkan kuncinya.
  */
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
@@ -25,7 +27,7 @@ import CatatanHanyaMelihat from '../../shared/ui/CatatanHanyaMelihat.jsx'
 import { IkonPanahKiri } from '../../icons.jsx'
 import { TombolTaut } from '../../shared/ui/Tombol.jsx'
 import RendererSoal from '../question/render/RendererSoal.jsx'
-import PanelSetelanUlangan from './PanelSetelanUlangan.jsx'
+import SetelanUlangan from './SetelanUlangan.jsx'
 import { ambilKuisDetail } from './api.js'
 import { urlEksporNilai } from '../report/api.js'
 import { formatDurasi, formatJadwal, statusTampilan } from './status.js'
@@ -115,6 +117,13 @@ export default function HalamanKuisDetail() {
                 {sebagaiGuru && !hanyaLihat && (
                   <TombolTaut varian="tepi" to={ruteLayarKuis(data.slug)}>Layar kelas</TombolTaut>
                 )}
+                {/*
+                  Setelan ulangan = SATU tombol (14 Oktober 2026): isinya yang
+                  dulu menggelar belasan saklar langsung di halaman ini kini
+                  terbuka di panel samping. Halaman detail kuis kembali jadi
+                  ringkasan + jalan masuk, bukan halaman konfigurasi.
+                */}
+                {sebagaiGuru && !hanyaLihat && <SetelanUlangan kuisId={data.id} />}
               </div>
 
               {hanyaLihat && (
@@ -122,22 +131,6 @@ export default function HalamanKuisDetail() {
                   Setelan ulangan disusun guru pemilik kuis ini — dari proteksi anti-cheat sampai
                   batas percobaan. Kepala sekolah memantau jalannya ulangan dan membaca hasilnya.
                 </CatatanHanyaMelihat>
-              )}
-
-              {sebagaiGuru && !hanyaLihat && (
-                <section className="kartu-soft p-4 mt-4" aria-labelledby="judul-setelan-ulangan">
-                  <h2 id="judul-setelan-ulangan" className="judul-bagian">
-                    Setelan ulangan
-                  </h2>
-                  <p className="teks-lembut small">
-                    Aturan yang berlaku untuk <strong>{data.judul}</strong>: proteksi anti-cheat,
-                    batas percobaan, peringkat, layar guru, sampai data minimum laporan. Aturan
-                    sekolah dan kelas tetap berlaku di atasnya, dan bila sekolah mengunci sebuah
-                    setelan, nilai sekolah yang menang — saklarnya ditandai “dikunci sekolah”.
-                  </p>
-
-                  <PanelSetelanUlangan kuisId={data.id} />
-                </section>
               )}
 
               {/* Murid tidak menerima daftar soal sebelum mengerjakan (K-02):

@@ -118,3 +118,38 @@ export function kelasStatus(status) {
 
   return 'badge-status lembut'
 }
+
+/**
+ * Catatan kecurangan milik satu attempt di antrean koreksi.
+ *
+ * Guru yang sedang menilai jawaban anak perlu melihat catatannya **di halaman
+ * yang sama** (14 Oktober 2026) — sebelumnya ia harus membuka Monitor Ulangan,
+ * mencari nama anaknya, lalu kembali ke antrean. Tidak ada catatan = hasil
+ * `null`, dan itulah yang ditampilkan sebagai kabar baik (bukan ruang kosong).
+ *
+ * @param {import('./api.js').DataCatatanMurid[]|null|undefined} daftar
+ * @param {number} attemptId
+ * @returns {import('./api.js').DataCatatanMurid|null}
+ */
+export function catatanUntukAttempt(daftar, attemptId) {
+  if (!Array.isArray(daftar)) return null
+
+  return daftar.find((satu) => satu.attempt_id === attemptId) ?? null
+}
+
+/**
+ * Tingkat risiko satu catatan → kelas lencana + label awam.
+ *
+ * Ambangnya sama dengan Monitor Ulangan (`HalamanMonitor`): >= 8 perlu ditanya
+ * lebih dulu, >= 6 diperhatikan, sisanya sekadar catatan. Dipakai bersama supaya
+ * dua halaman tidak memberi kesan risiko yang berbeda untuk catatan yang sama.
+ *
+ * @param {number} skor
+ * @returns {{ kelas: string, label: string }}
+ */
+export function tingkatRisiko(skor) {
+  if (skor >= 8) return { kelas: 'badge-status salah', label: 'Perlu ditanya' }
+  if (skor >= 6) return { kelas: 'badge-status peringatan', label: 'Perhatikan' }
+
+  return { kelas: 'badge-status lembut', label: 'Catatan' }
+}

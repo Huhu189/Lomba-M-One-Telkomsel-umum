@@ -1,11 +1,11 @@
 /**
- * Tes aturan alur susun kuis tiga langkah (papan 10). Daftar kelengkapan di sini
- * adalah cermin KuisService::galatKelengkapan() di backend, jadi tesnya menjaga
- * agar tombol "Publikasikan kuis" tidak menyala untuk kuis yang pasti ditolak.
+ * Tes aturan penyusunan kuis (papan 10). Daftar kelengkapan di sini adalah
+ * cermin KuisService::galatKelengkapan() di backend, jadi tesnya menjaga agar
+ * tombol "Publikasikan kuis" tidak menyala untuk kuis yang pasti ditolak.
  */
 import { describe, expect, it } from 'vitest'
 import {
-  LANGKAH_KUIS,
+  BAGIAN_KUIS,
   jadwalWajar,
   kelengkapanKuis,
   ringkasJadwal,
@@ -25,9 +25,9 @@ const LENGKAP = {
 
 const SUSUNAN = { jumlahSoal: 4, adaSoalNonaktif: false }
 
-describe('LANGKAH_KUIS', () => {
-  it('tiga langkah sesuai papan desain', () => {
-    expect(LANGKAH_KUIS).toEqual(['Info dan jadwal', 'Susun soal', 'Tinjau dan publikasi'])
+describe('BAGIAN_KUIS', () => {
+  it('tiga bagian sesuai papan desain (nama bagian, bukan langkah berurutan)', () => {
+    expect(BAGIAN_KUIS).toEqual(['Info dan jadwal', 'Susun soal', 'Tinjau dan publikasi'])
   })
 })
 
