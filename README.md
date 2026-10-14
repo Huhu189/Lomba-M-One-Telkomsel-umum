@@ -1,3 +1,92 @@
+# Quizfy
+
+**Materi dan ulangan untuk anak SD, dalam satu platform.**
+
+Distribusi materi dan ulangan adalah dua fondasi belajar anak sekolah dasar. Guru menjelaskan lewat materi, lalu mengecek dan menguatkan pemahaman lewat kuis dan ulangan. Quizfy dirancang untuk keduanya: materi dikemas sebagai perjalanan bergambar yang ditempuh anak langkah demi langkah, kuis terasa seperti permainan, dan guru melihat konsep mana yang belum dikuasai tiap murid.
+
+Dibuat untuk **M-ONE Telkomsel Coding Competition** (Kategori Umum), tema *Innovating Education Through Technology*, subtema *Web Education for Kids*.
+
+- Demo: [LINK_DEPLOY]
+- Akun demo guru: [EMAIL_GURU] / murid: [EMAIL_MURID] (kata sandi diberikan lewat dokumen pengumpulan)
+
+## Masalah yang dijawab
+
+- Guru SD menghabiskan banyak waktu menyusun materi dan soal, lalu memeriksanya satu per satu.
+- Satu ulangan hanya memberi angka, bukan gambaran konsep mana yang lemah pada tiap anak.
+- Anak SD mudah kehilangan minat bila belajar dan ulangan terasa kaku atau menegangkan.
+
+## Fitur
+
+### Untuk murid
+
+- **Peta perjalanan belajar**: setiap blok materi menjadi satu pos di peta beranimasi dengan pilihan tema (mendaki gunung, pulau, angkasa). Anak naik tingkat seiring menyelesaikan pos wajib, sementara pos opsional menjadi jalan pintas.
+- **Materi interaktif**: video, dokumen, dan gambar, dengan kuis yang disisipkan di titik tertentu pada video lewat editor bergaya video editor.
+- **22 tipe soal** yang ramah anak: pilihan ganda, menjodohkan, mengurutkan, susun huruf, isian rumpang, garis bilangan, baca jam, hotspot gambar, teka silang mini, tugas unggah, dan lainnya.
+- **Kuis yang bisa diulang**: skor percobaan pertama tetap tersimpan sebagai skor asli, terpisah dari skor setelah mengulang.
+- **Ranking dan penghargaan**: peringkat per kuis, badge, dan progres per tema, dengan bantuan bagi yang tertinggal, bukan hanya penghargaan untuk juara.
+- **Avatar sendiri**: murid dapat mengunggah gambar, dan teman dapat melaporkan gambar yang tidak pantas untuk ditinjau guru.
+- **Tetap jalan saat sinyal buruk**: jawaban disimpan di perangkat dan dikirim ulang saat koneksi kembali.
+- **Mode tamu**: murid dapat ikut kuis hanya dengan mengetik nama, bila guru membukanya.
+- Layar kelas: guru mengendalikan, dan perangkat murid mengikuti.
+
+### Untuk guru
+
+- **Bank soal bertag** dan editor soal dengan pemilih tipe berbentuk petak berikon.
+- **Penilaian**: soal objektif dinilai otomatis, isian dinilai dengan kata kunci, dan uraian atau tugas unggah masuk antrean **koreksi manual**.
+- **Laporan per murid dan per tema**: konsep mana yang benar atau salah, supaya guru tahu apa yang perlu diajarkan ulang.
+- **Pengaturan tiga lapis** (sekolah, kelas, kuis) untuk menyalakan atau mematikan kesempatan ulang, peringkat, mode tim, layar guru, rekam diri, dan pengawasan. Guru melihat ringkasan apa yang menyala sebelum menerbitkan kuis.
+- **Mode tim** dengan penyusunan tim oleh guru.
+- **Monitor ulangan** secara langsung saat murid mengerjakan.
+- **Kelola data induk**: kelas, mata pelajaran, murid, dan impor murid lewat berkas, serta panel admin sekolah untuk akun guru dan murid.
+- **Pengawasan ulangan formal yang bisa diatur**: deteksi keluar tab, salin-tempel, dan gangguan halaman sebagai bahan tinjauan guru, bukan vonis otomatis. Semua proteksi dapat dimatikan untuk kuis latihan anak kecil.
+- Alamat kuis memakai kode acak, bukan nomor berurutan, sehingga tidak bisa ditebak.
+
+## Prinsip keamanan
+
+Server adalah otoritas; klien tidak dipercaya.
+
+- Peran, identitas, waktu, urutan soal, dan skor ditentukan server.
+- Kunci jawaban tidak pernah dikirim ke klien.
+- Tenggat dihitung server, dan pengiriman jawaban bersifat idempoten.
+- Setiap endpoint dilindungi kebijakan akses (anti-IDOR) dan pembatasan laju pada jalur login.
+- Pengacakan soal dan opsi dilakukan server untuk tiap percobaan.
+- Semua data dari luar (API, SSE, penyimpanan lokal) divalidasi dengan Zod di frontend.
+
+## Teknologi
+
+| Lapisan | Teknologi |
+| --- | --- |
+| Backend | Laravel, Octane, MySQL, Redis, Sanctum (mode SPA), spatie/laravel-permission, spatie/laravel-query-builder, spatie/laravel-activitylog, league/csv, Pest |
+| Frontend | React, Vite, React Router, Zustand, TanStack Query, React Hook Form, Zod, Axios, Bootstrap 5.3, Vitest |
+| Realtime | Node.js, Fastify, ioredis, Server-Sent Events |
+
+Aset latar tema perjalanan dibuat sendiri untuk proyek ini dan dilepas ke domain publik (CC0); rinciannya ada di `frontend/public/tema/LISENSI.md`.
+
+## Struktur repositori
+
+```
+backend/    API Laravel (logika bisnis, otorisasi, penilaian)
+frontend/   Aplikasi React + Vite
+realtime/   Layanan Node.js untuk SSE dan pemantauan langsung
+docs/       Dokumen pengumpulan dan log mentah proses pengembangan
+chunks/     Spesifikasi pekerjaan per tahap
+AGENT.md    Dokumen acuan AI Agent
+verify.sh   Menjalankan seluruh pengecekan mutu
+```
+
+=
+## Proses pengembangan
+
+Proyek ini dibuat dari nol sejak garis start lomba, dengan bantuan AI Agent.
+
+- `AGENT.md` memuat peran, aturan kerja, stack, prinsip keamanan, dan urutan tahap kerja.
+- Pekerjaan dibagi menjadi tahap berurutan, dengan commit kecil dan tanggal asli.
+- Log prompt mentah dari awal sampai akhir ada di `docs/log-mentah/`, dan dokumen pengumpulan ada di `docs/word/`.
+
+## Lisensi
+
+MIT. Lihat berkas `LICENSE`.
+
 # Dasar Riset Quizfy.
 
 Quizfy dirancang untuk anak SD dengan mengacu pada riset pendidikan tentang cara anak belajar dan bertahan termotivasi. Dokumen ini menghubungkan setiap fitur utama di README dengan temuan yang melatarbelakanginya.
@@ -97,6 +186,4 @@ Menampilkan slide guru di perangkat siswa mengurangi multitasking dan meningkatk
 
 Sumber: hal-ensta-bretagne.archives-ouvertes.fr/IBSHS/hal-04107214v1
 
-## Evaluasi lanjutan
-
-Quizfy dirancang agar mudah diuji di kelas: skor percobaan pertama dan perbaikannya tercatat terpisah, laporan per tag menunjukkan perkembangan per konsep, dan pengaturan tiga lapis memungkinkan guru membandingkan kelas dengan dan tanpa ranking.
+=
