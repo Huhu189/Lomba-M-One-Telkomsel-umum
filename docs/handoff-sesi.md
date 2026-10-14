@@ -74,9 +74,10 @@ Keadaan saat handoff ini diperbarui (**15 Okt 2026, sesudah putaran A.90**):
   koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip, editor materi (frontend), editor
   soal (grid + jenis berkas + teknik koreksi), kuis satu halaman + layar koreksi (frontend), halaman masuk
   dari tautan ulangan, tema + gaya, lalu dokumentasi. Daftar lengkap: `git log --oneline fd3636a..HEAD`.
-- **`origin/main = fd3636a`** → **semua commit sesi ini belum di-push** (`git rev-list --count origin/main..HEAD`
-  menjawab **17** pada 15 Okt 2026; angka pastinya ambil dari perintah itu, jangan ditulis tetap di sini —
-  commit dokumentasi terakhirnya selalu berada di luar daftar ini). **Push butuh izin pemilik produk.**
+- **`origin/main` = `efec95e`** → **SEMUA commit sudah di-push (15 Okt 2026, sesudah izin pemilik produk).**
+  Push pertama ditolak (`fetch first`) karena remote bertambah dua commit README dari pihak lain; keduanya
+  digabung lewat `git merge origin/main --no-edit` (tidak ada berkas yang bertabrakan) lalu di-push — bukan
+  force push. `git rev-list --count origin/main..HEAD` kini **0**; angka pastinya ambil dari perintah itu.
 - **Working tree BERSIH** (`git status --short` kosong) sesudah commit dokumentasi itu; semua pekerjaan
   A.74–A.88 yang dulu menumpuk sudah ikut dikomit di commit-commit bertema tersebut.
 - **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
@@ -228,17 +229,20 @@ kurang: **deploy publik dengan link yang bisa dibuka**, **Octane Swoole** (atau 
 **jurnal prompt maksimal 5 entri + log mentah utuh**, dan repo **public sejak commit pertama**. Empat hal itu
 mengalahkan semua pekerjaan rapi-rapi di bawah.
 
-1. ~~**Commit + push pekerjaan yang menumpuk**~~ — **commit SELESAI di A.72** (enam commit bertema, working tree
-   bersih). **Yang masih kurang: `git push`** (`origin/main` tertinggal 16 commit: A.65–A.67 + A.70–A.72).
+1. ~~**Commit + push pekerjaan yang menumpuk**~~ — **SELESAI 15 Okt 2026**: seluruh pekerjaan A.65–A.90 sudah
+   dikomit bertema **dan sudah di-push** (`origin/main` = `efec95e`, sesudah menggabungkan dua commit README
+   dari sisi remote). Tidak ada commit lokal yang tertinggal.
 2. **Deploy** (belum ada sama sekali). Rencana yang paling murah: frontend `npm run build` → hosting statis,
    backend Laravel + MySQL + Redis → satu VPS/container, realtime Node → proses kecil terpisah; URL backend
    disuntik lewat env `VITE_*`/`APP_URL`, cookie Sanctum `SameSite=Lax` + HTTPS, dan `frontend/vite.config.js`
    proxy tidak dipakai di produksi (perlu base URL API eksplisit). Sesudah hidup: catat linknya di
    `docs/catatan-demo.md` + `README.md`, lalu jalankan ulang `docs/jalankan-smoke-ui.sh pengaturan` terhadap
    deploy bila memungkinkan.
-3. **Segarkan dokumen untuk dikumpulkan**: `./docs/export-word.sh` (menyegarkan `docs/word/*.docx` +
-   log mentah) atau `python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx` bila snapshot sesi
-   tidak mau disentuh. Per 13 Okt 2026 `docs/word/*.docx` **belum** memuat A.68/A.69.
+3. ~~**Segarkan dokumen untuk dikumpulkan**~~ — **SELESAI 15 Okt 2026**: `./docs/export-word.sh` dijalankan
+   penuh (exit 0) — `docs/word/*.docx` kini memuat **A.90** dan log mentah sesi ini ikut terbarui
+   (`log-mentah.docx` 10,41 MB; sesi `2026-10-13T12-30-29.489Z` **113 pesan**). Kalau hanya satu berkas yang
+   berubah: `python3 docs/export_docx.py docs/<berkas>.md docs/word/<berkas>.docx` (jauh lebih cepat —
+   konversi log mentah ±40 menit karena 34 MB markdown).
 4. **Jurnal prompt**: cek `docs/jurnal-prompt.md` masih ≤ 5 entri dan log mentah di `docs/log-mentah/` utuh
    (`.gz` byte-exact, tidak disunting).
 5. Pekerjaan rapi-rapi yang sudah terdaftar (boleh ditunda kalau waktu mepet):
