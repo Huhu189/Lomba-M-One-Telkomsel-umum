@@ -1262,3 +1262,52 @@ realtime) · sapuan 31 harness semuanya exit 0.
 
 **Sisa:** `smoke-ui-auth` masih 24/25 (3 langkah email dilewati karena backend `.env` yang hidup memakai
 mailer smtp). Rincian lengkap: `docs/laporan-pengujian.md` **A.78**.
+
+## 21. A.79 — perubahan luar repo diterapkan: layar sesudah kuis sisipan (14 Oktober 2026)
+
+**Permintaan:** terapkan `~/Downloads/perubahan-kuis-materi.zip` (18 berkas: `Arsip_2` backend, `Arsip_3`
+frontend), cek validitasnya, dan boleh memodifikasi.
+
+**Yang datang (fitur baru):** tiga saklar per blok kuis di panel klip materi (`tampilan.ringkasan|kartu|papan`,
+**bawaan mati**) yang membuka layar sesudah kuis sisipan — ringkasan soal (benar/salah + jawaban benar +
+pembahasan), kartu ingat/flashcard, dan papan peringkat latihan. Endpoint baru
+`GET /v1/materi/{materi}/blok/{blok}/ringkasan-kuis` (`ProgresMateriController::ringkasanKuis` +
+`RingkasanKuisService` + registry `RangkumKunci`). Panel kuis sisipan yang tadinya ditulis dua kali (blok
+berdiri sendiri dan di dalam video) kini satu komponen `KuisSisipan`, dan **berubah jadi satu soal per
+layar** dengan navigator nomor — sama seperti layar ulangan resmi.
+
+**Validitas — diperiksa, bukan dipercaya:** seluruh isi dibandingkan dengan berkas repo (hanya hunk fitur
+ini, tanpa konflik), lalu diterapkan dan diuji ulang di sini. `RingkasanKuisService` menolak blok yang bukan
+kuis materi itu, menolak 404 bila semua saklar mati, dan menolak 422 selama latihan murid itu belum
+berstatus selesai — **kunci jawaban tidak bocor sebelum dikumpulkan**; papan latihan terpisah dari ranking
+resmi dan membuang siswa tamu.
+
+**Yang saya perbaiki (temuan putaran ini):**
+
+1. `KartuIngat.jsx` — JSDoc `@param` salah nama (`nilai` vs parameter `nilaiBaru`) sehingga **checkJs GAGAL**.
+   Diperbaiki di nama parameternya, bukan dengan mematikan pemeriksaan.
+2. `docs/smoke-ui-kuis-materi.mjs` — harness lama mencari tombol “kumpulkan” di soal pertama; dengan pola
+   satu-soal-per-layar ia kini hanya ada di soal terakhir. Harness **maju ke soal terakhir dulu**
+   (`__keSoalTerakhir`, async supaya React sempat menggambar ulang — versi lurus membaca DOM basi), lalu
+   mengukur; ditambah pemeriksaan **“soal terakhir bisa dijangkau dari soal 1”**. 48 → **50 pemeriksaan**,
+   dan pagar lamanya tidak dilonggarkan.
+
+**Bukti:** `./verify.sh` **SEMUA HIJAU** (Pest 381/3611 · Redis 9/65 · Pint · checkJs · ESLint 0 error ·
+Vitest 90 berkas/848 tes · realtime) · `kuis-materi` **50/50** · `materi` 27/27 · `durasi-klip` 19/19 ·
+`slice06` 28/28 · `slice05` 20/20 · `mobile` 17/17 · `admin` 39/39 · `palet-sidebar` 58/58 · `perjalanan`,
+`editor`, `nav`, `layar` — semuanya exit 0.
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- **Tombol “Simpan jawaban & kumpulkan” hanya ada di soal terakhir** (kaki `KuisSisipan`). Kalau murid perlu
+  bisa mengumpulkan dari soal mana pun, yang diubah satu tempat itu saja.
+- **Saklar ringkasan/kartu/papan menyimpan 0/1 dan hanya ditulis bila klien mengirimnya** (`MateriService`
+  `normalkanTampilan`), supaya materi lama tidak berubah bentuk saat disimpan ulang — jangan diganti jadi
+  “selalu ditulis”.
+- **Guru bisa menyalakan ringkasan pada kuis yang juga dipakai sebagai ulangan resmi**, dan itu membocorkan
+  kunci setelah latihan dikumpulkan. Panel editor memberi peringatan, bukan pagar teknis.
+- `.pm-kuis` sengaja tidak lagi punya bingkai kartu (dipindah ke `.ks`) — jangan dikembalikan tanpa
+  menghapusnya di `.ks`, nanti berbingkai ganda.
+
+**Sisa:** sapuan penuh seluruh harness belum diulang putaran ini (hijau terakhir pada A.78); `smoke-ui-auth`
+tetap menunggu backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md` **A.79**.

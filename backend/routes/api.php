@@ -178,6 +178,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/materi/{materi}/progres', [ProgresMateriController::class, 'ringkasan'])->name('materi.progres');
         Route::post('/materi/{materi}/blok/{blok}/buka', [ProgresMateriController::class, 'buka'])->name('materi.blok.buka');
         Route::post('/materi/{materi}/blok/{blok}/selesai', [ProgresMateriController::class, 'selesai'])->name('materi.blok.selesai');
+        Route::get('/materi/{materi}/blok/{blok}/ringkasan-kuis', [ProgresMateriController::class, 'ringkasanKuis'])->name('materi.blok.ringkasan');
 
         // Avatar murid + moderasi (slice 08): murid mengurus avatarnya sendiri dan
         // melaporkan avatar teman; guru memutuskan hasil tinjauan.

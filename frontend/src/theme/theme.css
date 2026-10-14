@@ -2624,6 +2624,33 @@ a {
   padding: 0 0.25rem;
 }
 
+.nle-sesudah {
+  padding: 0.6rem;
+  border: 1px dashed var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-sesudah legend {
+  float: none;
+  width: auto;
+  padding: 0 0.25rem;
+}
+
+.nle-sesudah-baris {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 44px;
+  padding-block: 0.3rem;
+  padding-inline-start: 0;
+}
+
+.nle-sesudah-baris .form-check-input {
+  flex: none;
+  margin: 0.2rem 0 0;
+  float: none;
+}
+
 /* Lapisan kuis sisipan di atas bingkai. */
 .nle-kuis {
   position: absolute;
@@ -4343,11 +4370,7 @@ a {
 }
 
 .pm-kuis {
-  padding: 0.85rem;
   color: var(--teks);
-  background: var(--kartu);
-  border: 1px solid var(--garis);
-  border-radius: var(--radius);
   scroll-margin-block: 0.75rem;
 }
 
@@ -4387,6 +4410,537 @@ a {
   display: block;
   width: 100%;
   margin-block: 0.4rem;
+}
+
+/* ==========================================================================
+   Kuis sisipan murid (KuisSisipan.jsx, KartuIngat.jsx)
+   --------------------------------------------------------------------------
+   Satu kartu: kepala + kemajuan + satu soal per layar; sesudah dikumpulkan
+   menjadi hero skor + tab (penjelasan, ringkasan, kartu ingat, peringkat).
+   Hanya token tema (tanpa hex) sehingga otomatis mengikuti mode gelap; status
+   tidak pernah hanya warna — selalu ada teks/ikon.
+   ========================================================================== */
+.ks {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  color: var(--teks);
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+}
+
+.ks-kepala {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ks-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--link);
+  text-transform: uppercase;
+}
+
+.ks-kepala-info {
+  font-family: var(--font-judul);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.ks-pil {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.ks-catatan {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--teks-lembut);
+  background: var(--kartu-lembut);
+  border-inline-start: 4px solid var(--aksen);
+  border-radius: var(--radius-kecil);
+}
+
+.ks-bar,
+.ks-kartu-bar {
+  height: 8px;
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.ks-bar .progress-bar,
+.ks-kartu-bar .progress-bar {
+  background: var(--aksen);
+  border-radius: 999px;
+}
+
+.ks-navigator {
+  margin: 0;
+}
+
+.ks-soal {
+  padding: var(--sp-3);
+  background: var(--kartu-lembut);
+  border-radius: var(--radius);
+}
+
+.ks-soal-kepala {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  margin-block-end: var(--sp-2);
+}
+
+.ks-kaki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.ks-kaki-ganda {
+  justify-content: space-between;
+}
+
+/* ---- hasil ---- */
+.ks-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-3);
+  background: var(--kartu-lembut);
+  border-radius: var(--radius);
+}
+
+.ks-hero-teks {
+  flex: 1 1 14rem;
+}
+
+.ks-hero-judul {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-judul);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.ks-skor {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.ks-cincin {
+  position: relative;
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+.ks-cincin svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ks-cincin-latar,
+.ks-cincin-isi {
+  fill: none;
+  stroke-width: 9;
+}
+
+.ks-cincin-latar {
+  stroke: var(--garis);
+}
+
+.ks-cincin-isi {
+  stroke: var(--status-benar);
+  stroke-linecap: round;
+}
+
+.ks-cincin-angka {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.ks-cincin-angka strong {
+  font-family: var(--font-judul);
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.ks-cincin-angka small {
+  font-size: 0.8rem;
+  color: var(--teks-lembut);
+}
+
+.ks-bintang {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.ks-bintang-satu {
+  display: inline-flex;
+  color: var(--garis-input);
+}
+
+.ks-bintang-satu.nyala {
+  color: var(--status-peringatan);
+}
+
+.ks-bintang-satu.nyala svg {
+  fill: currentColor;
+}
+
+/* ---- tab ---- */
+.ks-tab {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  overflow-x: auto;
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.ks-tab-satu {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font-weight: 700;
+  color: var(--teks);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+}
+
+.ks-tab-satu.aktif {
+  color: var(--teks-di-panel);
+  background: var(--aktif);
+}
+
+.ks-panel {
+  min-height: 6rem;
+}
+
+/* ---- ringkasan soal ---- */
+.ks-ringkasan,
+.ks-papan {
+  display: grid;
+  gap: var(--sp-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ks-baris {
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-inline-start-width: 5px;
+  border-radius: var(--radius-kecil);
+}
+
+.ks-baris.benar {
+  border-inline-start-color: var(--status-benar);
+}
+
+.ks-baris.salah {
+  border-inline-start-color: var(--status-salah);
+}
+
+.ks-baris.kosong,
+.ks-baris.tinjau {
+  border-inline-start-color: var(--status-peringatan);
+}
+
+.ks-baris.sorot {
+  box-shadow: 0 0 0 3px var(--cincin-fokus);
+}
+
+.ks-baris-kepala {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: var(--sp-2) var(--sp-3);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.ks-baris-nomor {
+  display: inline-grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  font-weight: 800;
+  place-items: center;
+  background: var(--kartu-lembut);
+  border-radius: 50%;
+}
+
+.ks-baris-teks {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.ks-lencana {
+  display: inline-flex;
+  flex: none;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.ks-lencana.benar {
+  color: var(--status-benar);
+}
+
+.ks-lencana.salah {
+  color: var(--status-salah);
+}
+
+.ks-lencana.kosong,
+.ks-lencana.tinjau {
+  color: var(--status-peringatan);
+}
+
+.ks-baris-rincian {
+  padding: 0 var(--sp-3) var(--sp-3);
+  font-size: 0.95rem;
+}
+
+.ks-judul-kecil {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--teks-lembut);
+  text-transform: uppercase;
+}
+
+.ks-jawab {
+  font-weight: 800;
+}
+
+/* ---- peringkat latihan ---- */
+.ks-papan-baris {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  min-height: 48px;
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.ks-papan-baris.saya {
+  background: var(--kartu-lembut);
+  border-color: var(--aksen);
+  border-width: 2px;
+}
+
+.ks-papan-baris.terpisah {
+  margin-block-start: var(--sp-2);
+}
+
+.ks-papan-urut {
+  display: inline-grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  font-weight: 800;
+  place-items: center;
+  background: var(--kartu-lembut);
+  border-radius: 50%;
+}
+
+.ks-papan-urut.juara {
+  color: var(--teks-di-aksen);
+  background: var(--sorot-hangat);
+}
+
+.ks-papan-nama {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ks-papan-kamu {
+  font-weight: 800;
+  color: var(--link);
+}
+
+.ks-papan-skor {
+  font-weight: 800;
+}
+
+.ks-papan-skor small {
+  font-weight: 600;
+  color: var(--teks-lembut);
+}
+
+/* ---- kartu ingat ---- */
+.ks-kartu-wadah {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.ks-kartu-atas {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ks-kartu {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: center;
+  justify-content: center;
+  min-height: 14rem;
+  padding: var(--sp-5) var(--sp-4);
+  color: var(--teks);
+  text-align: center;
+  cursor: pointer;
+  background: var(--kartu);
+  border: 2px solid var(--aksen);
+  border-radius: var(--radius);
+  box-shadow: var(--bayangan);
+}
+
+.ks-kartu.terbalik {
+  background: var(--kartu-lembut);
+  border-color: var(--status-benar);
+}
+
+.ks-kartu-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--teks-lembut);
+  text-transform: uppercase;
+}
+
+.ks-kartu-isi {
+  font-family: var(--font-judul);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ks-kartu-jawab {
+  color: var(--status-benar);
+}
+
+.ks-kartu-catatan {
+  font-size: 0.95rem;
+  color: var(--teks-lembut);
+}
+
+.ks-kartu-petunjuk {
+  position: absolute;
+  inset-block-end: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--teks-lembut);
+}
+
+.ks-kartu-tanda {
+  position: absolute;
+  inset-block-start: 0.6rem;
+  inset-inline-end: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--status-salah);
+  background: var(--kartu-lembut);
+  border-radius: 999px;
+}
+
+.ks-kartu-nilai {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+
+.ks-kartu-rekap {
+  padding: var(--sp-5) var(--sp-3);
+  text-align: center;
+  background: var(--kartu-lembut);
+  border-radius: var(--radius);
+}
+
+.ks-kartu-rekap-judul {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-judul);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ks-kartu {
+    animation: ks-balik 0.28s ease-out;
+  }
+
+  .ks-bar .progress-bar,
+  .ks-kartu-bar .progress-bar,
+  .ks-cincin-isi {
+    transition: width 0.3s ease, stroke-dasharray 0.6s ease;
+  }
+}
+
+@keyframes ks-balik {
+  from {
+    opacity: 0.4;
+    transform: rotateX(70deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .ks {
+    padding: var(--sp-3);
+  }
+
+  .ks-lencana {
+    font-size: 0.72rem;
+  }
+
+  .ks-kartu {
+    min-height: 12rem;
+  }
 }
 
 /* ==========================================================================

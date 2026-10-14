@@ -253,7 +253,7 @@ class MateriService
     /**
      * Pengaturan tampilan klip, dinormalkan ke nilai yang sah. Media: cara muat
      * ke bingkai (utuh/penuhi) + titik fokus + zoom. Kuis: video berhenti atau
-     * tetap jalan, dan tata letak panel. Teks tidak punya pengaturan.
+     * tetap jalan, tata letak panel, dan saklar ringkasan/kartu/papan. Teks tidak punya pengaturan.
      *
      * @return array<string, mixed>
      */
@@ -277,10 +277,21 @@ class MateriService
         $mode = (string) ($mentah['mode'] ?? 'jeda');
         $tata = (string) ($mentah['tata'] ?? 'vertikal');
 
-        return ['tampilan' => [
+        $tampilan = [
             'mode' => in_array($mode, ['jeda', 'berjalan'], true) ? $mode : 'jeda',
             'tata' => in_array($tata, ['vertikal', 'horizontal'], true) ? $tata : 'vertikal',
-        ]];
+        ];
+
+        // Saklar layar sesudah kuis (0/1, bawaan mati). Hanya ditulis bila klien
+        // mengirimnya, supaya kuis lama tidak berubah bentuk saat disimpan ulang.
+        // Disimpan sebagai angka: `tampilan` di klien berbentuk peta string|angka.
+        foreach (['ringkasan', 'kartu', 'papan'] as $saklar) {
+            if (array_key_exists($saklar, $mentah)) {
+                $tampilan[$saklar] = filter_var($mentah[$saklar], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            }
+        }
+
+        return ['tampilan' => $tampilan];
     }
 
     /**

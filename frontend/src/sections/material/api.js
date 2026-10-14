@@ -144,6 +144,52 @@ export const skemaProgresBlok = z.object({
   boleh_dibuka: z.boolean().optional(),
 })
 
+/** Satu baris ringkasan soal sesudah kuis sisipan (kunci sudah berupa rangkuman teks). */
+export const skemaBarisRingkasan = z.object({
+  question_id: z.number(),
+  nomor: z.number(),
+  tipe: z.string(),
+  tipe_label: z.string(),
+  teks: z.string(),
+  terjawab: z.boolean(),
+  benar: z.boolean().nullable(),
+  skor: z.number(),
+  skor_maksimal: z.number(),
+  jawaban_benar: z.string().nullable(),
+  pembahasan: z.string().nullable(),
+})
+
+/** Kartu ingat (flashcard) dari soal kuis sisipan. */
+export const skemaKartuIngat = z.object({
+  question_id: z.number(),
+  nomor: z.number(),
+  depan: z.string(),
+  belakang: z.string().nullable(),
+  catatan: z.string().nullable(),
+  benar: z.boolean().nullable(),
+})
+
+/** Papan peringkat LATIHAN (terpisah dari ranking resmi ulangan). */
+export const skemaPapanLatihan = z.object({
+  skor_maksimal: z.number(),
+  peserta: z.number(),
+  teratas: z.array(
+    z.object({ peringkat: z.number(), nama: z.string(), skor: z.number(), saya: z.boolean() }),
+  ),
+  saya: z
+    .object({ peringkat: z.number(), nama: z.string(), skor: z.number(), saya: z.boolean() })
+    .nullable()
+    .optional(),
+})
+
+/** Layar sesudah kuis sisipan: bagian yang dikirim mengikuti saklar guru. */
+export const skemaRingkasanKuis = z.object({
+  opsi: z.object({ ringkasan: z.boolean(), kartu: z.boolean(), papan: z.boolean() }),
+  soal: z.array(skemaBarisRingkasan).optional(),
+  kartu: z.array(skemaKartuIngat).optional(),
+  papan: skemaPapanLatihan.optional(),
+})
+
 /** Katalog tema perjalanan dari server (GET /materi/tema). */
 export const skemaKatalogTema = z.object({
   tema: z.array(skemaTemaKatalog),
@@ -546,6 +592,20 @@ export async function bukaBlok(materiId, blockId) {
   await ambilCsrfCookie()
   const respons = await client.post(`/v1/materi/${materiId}/blok/${blockId}/buka`)
   return skemaBukaBlok.parse(respons.data)
+}
+
+/**
+ * Ringkasan soal, kartu ingat, dan papan latihan sesudah kuis sisipan
+ * dikumpulkan. Server menolak (422) sebelum dikumpulkan dan 404 bila guru tidak
+ * membukanya.
+ *
+ * @param {number} materiId
+ * @param {number} blockId
+ * @returns {Promise<z.infer<typeof skemaRingkasanKuis>>}
+ */
+export async function ambilRingkasanKuis(materiId, blockId) {
+  const respons = await client.get(`/v1/materi/${materiId}/blok/${blockId}/ringkasan-kuis`)
+  return skemaRingkasanKuis.parse(respons.data)
 }
 
 /**

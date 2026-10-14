@@ -743,3 +743,121 @@ it('penyebaran materi: hanya materi TERBIT kelas murid yang sampai ke perangkatn
     $this->getJson("/api/v1/materi/{$materi->id}")->assertStatus(403);
     $this->getJson("/api/v1/materi/{$materi->id}/laporan")->assertStatus(403);
 });
+
+/**
+ * Materi dengan satu kuis sisipan (satu soal pilihan ganda, kunci B, skor 4)
+ * yang saklar layar sesudah kuisnya diatur `$tampilan`, sudah terbit.
+ *
+ * @param  array<string, mixed>  $tampilan
+ * @return array{materi: Materi, blok: BlokMateri, soal: Soal}
+ */
+function m08MateriDenganSaklar(object $ctx, array $tampilan, ?string $pembahasan = null): array
+{
+    $soal = m08Soal($ctx, 'pilihan_ganda', [
+        'teks' => 'Berapa hasil dari 2 + 3?',
+        'opsi' => [['id' => 'A', 'teks' => '4'], ['id' => 'B', 'teks' => '5'], ['id' => 'C', 'teks' => '6']],
+    ], ['jawaban' => 'B'], 4, $ctx->tag->id);
+
+    if ($pembahasan !== null) {
+        $soal->forceFill(['pembahasan' => $pembahasan])->save();
+    }
+
+    $kuis = m08Kuis($ctx, [$soal]);
+    $materi = m08Materi($ctx);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($ctx->guru);
+
+    test()->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'kuis', 'wajib' => true, 'quiz_id' => $kuis->id, 'tampilan' => $tampilan],
+    ]])->assertOk();
+
+    test()->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    return [
+        'materi' => $materi,
+        'blok' => BlokMateri::query()->where('material_id', $materi->id)->firstOrFail(),
+        'soal' => $soal,
+    ];
+}
+
+it('saklar ringkasan/kartu/papan hanya tersimpan bila dikirim dan dinormalkan ke 0/1', function (): void {
+    $dipakai = m08MateriDenganSaklar($this, ['mode' => 'jeda', 'tata' => 'vertikal', 'ringkasan' => true, 'kartu' => 0]);
+
+    expect($dipakai['blok']->fresh()->isi['tampilan'])
+        ->toBe(['mode' => 'jeda', 'tata' => 'vertikal', 'ringkasan' => 1, 'kartu' => 0]);
+});
+
+it('ringkasan kuis: ditutup sampai latihan dikumpulkan, lalu membuka soal, kartu, dan pembahasan', function (): void {
+    $dipakai = m08MateriDenganSaklar($this, ['ringkasan' => 1, 'kartu' => 1], 'Dua tambah tiga sama dengan lima.');
+    $materi = $dipakai['materi'];
+    $blok = $dipakai['blok'];
+    $soal = $dipakai['soal'];
+    $url = "/api/v1/materi/{$materi->id}/blok/{$blok->id}/ringkasan-kuis";
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $buka = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$blok->id}/buka")->assertOk();
+    $attemptId = (int) $buka->json('attempt.id');
+
+    // Belum dikumpulkan: kunci tidak boleh bocor.
+    $this->getJson($url)->assertStatus(422)->assertJsonValidationErrors(['blok']);
+
+    $this->postJson("/api/v1/attempt/{$attemptId}/jawab", ['question_id' => $soal->id, 'jawaban' => 'A'])->assertOk();
+    $this->postJson("/api/v1/attempt/{$attemptId}/kumpulkan", ['idempotency_key' => 'ringkasan-1'])->assertOk();
+
+    $respons = $this->getJson($url)->assertOk();
+
+    expect($respons->json('opsi'))->toBe(['ringkasan' => true, 'kartu' => true, 'papan' => false])
+        ->and($respons->json('soal.0.teks'))->toBe('Berapa hasil dari 2 + 3?')
+        ->and($respons->json('soal.0.benar'))->toBeFalse()
+        ->and($respons->json('soal.0.jawaban_benar'))->toBe('5')
+        ->and($respons->json('soal.0.pembahasan'))->toBe('Dua tambah tiga sama dengan lima.')
+        ->and($respons->json('kartu.0.depan'))->toBe('Berapa hasil dari 2 + 3?')
+        ->and($respons->json('kartu.0.belakang'))->toBe('5')
+        ->and($respons->json('papan'))->toBeNull();
+});
+
+it('ringkasan kuis: guru yang tidak membukanya mendapat 404, dan murid lain tidak bisa mengintip', function (): void {
+    $mati = m08MateriDenganSaklar($this, ['mode' => 'jeda', 'tata' => 'vertikal']);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+
+    $this->postJson("/api/v1/materi/{$mati['materi']->id}/blok/{$mati['blok']->id}/buka")->assertOk();
+    $this->getJson("/api/v1/materi/{$mati['materi']->id}/blok/{$mati['blok']->id}/ringkasan-kuis")->assertNotFound();
+});
+
+it('papan peringkat latihan: terpisah dari ranking resmi dan urut skor', function (): void {
+    $dipakai = m08MateriDenganSaklar($this, ['papan' => 1]);
+    $materi = $dipakai['materi'];
+    $blok = $dipakai['blok'];
+    $soal = $dipakai['soal'];
+
+    $kerjakan = function (Murid $murid, string $pilihan, string $kunci) use ($materi, $blok, $soal): void {
+        auth()->forgetGuards();
+        Sanctum::actingAs($murid->user);
+
+        $attemptId = (int) test()->postJson("/api/v1/materi/{$materi->id}/blok/{$blok->id}/buka")->assertOk()->json('attempt.id');
+        test()->postJson("/api/v1/attempt/{$attemptId}/jawab", ['question_id' => $soal->id, 'jawaban' => $pilihan])->assertOk();
+        test()->postJson("/api/v1/attempt/{$attemptId}/kumpulkan", ['idempotency_key' => $kunci])->assertOk();
+        test()->postJson("/api/v1/materi/{$materi->id}/blok/{$blok->id}/selesai")->assertOk();
+    };
+
+    $teman = Murid::factory()->create(['school_id' => $this->sekolah->id, 'class_id' => $this->kelas->id]);
+
+    $kerjakan($teman, 'B', 'papan-teman');
+    $kerjakan($this->murid, 'A', 'papan-saya');
+
+    $respons = $this->getJson("/api/v1/materi/{$materi->id}/blok/{$blok->id}/ringkasan-kuis")->assertOk();
+
+    expect($respons->json('papan.peserta'))->toBe(2)
+        ->and($respons->json('papan.teratas.0.nama'))->toBe($teman->user->name)
+        ->and($respons->json('papan.teratas.0.peringkat'))->toBe(1)
+        ->and($respons->json('papan.teratas.0.saya'))->toBeFalse()
+        ->and($respons->json('papan.teratas.1.saya'))->toBeTrue()
+        ->and($respons->json('papan.teratas.1.peringkat'))->toBe(2)
+        // Latihan tidak pernah menjadi skor asli, jadi tidak ada di ranking resmi.
+        ->and(Attempt::query()->where('asli', true)->count())->toBe(0);
+});

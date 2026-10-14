@@ -20,12 +20,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
-import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import RendererSoal from '../question/render/RendererSoal.jsx'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
 import { bukaBlok, selesaikanBlok } from './api.js'
 import { gayaMedia, rasioAngka, tampilanKlip } from './editorMateri.js'
+import KuisSisipan from './KuisSisipan.jsx'
 import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from './pemutarMateri.js'
 
 /**
@@ -38,7 +37,7 @@ import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from './pemutarMateri.js'
  *
  * @param {{ penjelasan: import('./api.js').DataIsiBlok['penjelasan'] }} props
  */
-function PenjelasanKuis({ penjelasan }) {
+export function PenjelasanKuis({ penjelasan }) {
   if (penjelasan === undefined || penjelasan === null) return null
 
   const teks = (penjelasan.teks ?? '').trim()
@@ -122,6 +121,7 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
   const [hasil, setHasil] = useState(/** @type {import('../attempt/api.js').DataHasil|null} */ (null))
   const [galat, setGalat] = useState('')
   const [sibuk, setSibuk] = useState(false)
+  const [judulKuis, setJudulKuis] = useState('')
 
   const sisipan = sisipanUntuk(ringkasan, blok.block_id)
   const media = blok.media
@@ -165,6 +165,7 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
       setJawaban({})
       setHasil(null)
       setAttempt(data.attempt)
+      setJudulKuis(data.blok.kuis?.judul ?? '')
       menahanRef.current = mode === 'jeda'
       setAktif(target)
     } catch (error) {
@@ -268,58 +269,33 @@ export default function PemutarMateri({ blok, ringkasan, materiId }) {
             aria-label={`Kuis di dalam video: ${aktif.tipe_label}`}
             className={`pm-kuis pm-kuis-${tampilanKuis.tata}`}
           >
-            <p className="small teks-lembut mb-2">
-              {tampilanKuis.mode === 'jeda'
-                ? 'Video berhenti sampai kuis ini selesai.'
-                : 'Video tetap berjalan; jawab kapan siap.'}{' '}
-              Latihan tidak masuk ranking.
-            </p>
-
-            {attempt.soal.map((soal) => (
-              <div className="mb-3" key={soal.id}>
-                <div className="d-flex align-items-baseline gap-2 mb-2">
-                  <strong className="small">Soal {soal.nomor}</strong>
-                  <span className="badge-status lembut">{soal.tipe_label}</span>
-                </div>
-                <RendererSoal
-                  tipe={soal.tipe}
-                  konten={soal.konten}
-                  nilai={jawaban[String(soal.id)]}
-                  onUbah={(nilai) =>
-                    setJawaban((sebelum) => ({ ...sebelum, [String(soal.id)]: nilai }))
-                  }
-                  dinonaktifkan={hasil !== null}
-                  nama={`sisipan-${attempt.id}-soal-${soal.id}`}
-                />
-              </div>
-            ))}
-
-            {galat && <Banner jenis="salah">{galat}</Banner>}
-
-            {hasil === null ? (
-              <div className="d-flex flex-wrap gap-2">
-                <Tombol memuat={sibuk} onClick={() => void kumpulkan()}>
-                  Simpan jawaban & kumpulkan
-                </Tombol>
-                {!aktif.wajib && (
-                  <Tombol varian="tepi" onClick={lewati}>
-                    Lewati
-                  </Tombol>
-                )}
-              </div>
-            ) : (
-              <>
-                <Banner jenis="sukses" judul="Latihan selesai">
-                  Skor {hasil.skor} dari {hasil.skor_maksimal}.
-                </Banner>
-                {/* Penjelasan guru (opsional) tampil di sini — sesudah kuis
-                    selesai, sebelum murid melanjutkan video. */}
-                <PenjelasanKuis penjelasan={aktif.penjelasan} />
-                <Tombol memuat={sibuk} onClick={() => void lanjutkan()}>
-                  {tampilanKuis.mode === 'jeda' ? 'Lanjutkan video' : 'Tutup kuis'}
-                </Tombol>
-              </>
-            )}
+            <KuisSisipan
+              attempt={attempt}
+              jawaban={jawaban}
+              onUbahJawaban={(id, nilai) => setJawaban((sebelum) => ({ ...sebelum, [id]: nilai }))}
+              hasil={hasil}
+              galat={galat}
+              sibuk={sibuk}
+              onKumpulkan={() => void kumpulkan()}
+              onLewati={aktif.wajib ? undefined : lewati}
+              materiId={materiId}
+              blockId={aktif.block_id}
+              tampilan={aktif.tampilan}
+              judul={judulKuis}
+              catatan={
+                tampilanKuis.mode === 'jeda'
+                  ? 'Video berhenti sampai kuis ini selesai. Latihan tidak masuk ranking.'
+                  : 'Video tetap berjalan; jawab kapan siap. Latihan tidak masuk ranking.'
+              }
+              penjelasan={
+                // Penjelasan guru (opsional) tampil sesudah kuis selesai,
+                // sebelum murid melanjutkan video.
+                hasil !== null && aktif.penjelasan ? <PenjelasanKuis penjelasan={aktif.penjelasan} /> : undefined
+              }
+              labelLanjut={tampilanKuis.mode === 'jeda' ? 'Lanjutkan video' : 'Tutup kuis'}
+              sibukLanjut={sibuk}
+              onLanjut={() => void lanjutkan()}
+            />
           </div>
         )}
       </div>

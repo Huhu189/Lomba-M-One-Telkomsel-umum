@@ -323,6 +323,25 @@ function IsiKlip({ satu, cariUnggahan, daftarKuis, bermain, detik }) {
   )
 }
 
+/** Saklar layar sesudah kuis (bawaan mati; tampil di panel klip kuis). */
+const SAKLAR_PANEL = [
+  {
+    kunci: 'ringkasan',
+    judul: 'Ringkasan soal',
+    bantuan: 'Daftar soal, benar/salahnya, jawaban yang tepat, dan pembahasan per soal.',
+  },
+  {
+    kunci: 'kartu',
+    judul: 'Kartu ingat (flashcard)',
+    bantuan: 'Kartu balik dari soal tadi — yang salah muncul lebih dulu. Tertaut ke ringkasan.',
+  },
+  {
+    kunci: 'papan',
+    judul: 'Papan peringkat latihan',
+    bantuan: 'Sepuluh besar kelas untuk kuis ini. Terpisah dari ranking ulangan resmi.',
+  },
+]
+
 /**
  * Pemilih kuis untuk klip sisipan: pencarian + baris ringkas (jumlah soal,
  * mapel, kelas, status) supaya guru tidak menebak dari judul saja, dan kuis
@@ -1605,6 +1624,36 @@ function PanelEditor({ materi, daftarKuis, onTersimpan }) {
                     </Tombol>
                   </div>
                 </div>
+
+                <fieldset className="nle-sesudah mt-3">
+                  <legend className="small fw-semibold mb-1">
+                    Setelah murid selesai kuis <span className="teks-lembut fw-normal">(bisa dinyalakan satu-satu)</span>
+                  </legend>
+                  {SAKLAR_PANEL.map((saklar) => (
+                    <div className="form-check form-switch nle-sesudah-baris" key={saklar.kunci}>
+                      <input
+                        id={`nle-saklar-${saklar.kunci}`}
+                        className="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        checked={tampilanKlip(klipAktif)[saklar.kunci] === 1}
+                        onChange={(e) =>
+                          setBlok(ubahTampilan(blok, aktif, { [saklar.kunci]: e.target.checked ? 1 : 0 }))
+                        }
+                      />
+                      <label className="form-check-label" htmlFor={`nle-saklar-${saklar.kunci}`}>
+                        <span className="fw-semibold">{saklar.judul}</span>
+                        <span className="d-block small teks-lembut">{saklar.bantuan}</span>
+                      </label>
+                    </div>
+                  ))}
+                  {(tampilanKlip(klipAktif).ringkasan === 1 || tampilanKlip(klipAktif).kartu === 1) && (
+                    <p className="small status-peringatan mb-0 mt-1">
+                      Murid akan melihat jawaban benar setelah mengumpulkan latihan. Jangan pakai kuis yang
+                      sama sebagai ulangan resmi yang belum berlangsung.
+                    </p>
+                  )}
+                </fieldset>
 
                 <fieldset className="nle-penjelasan mt-3">
                   <legend className="small fw-semibold mb-1">

@@ -14,8 +14,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 import { pesanGalatApi } from '../auth/api.js'
-import RendererSoal from '../question/render/RendererSoal.jsx'
-import PemutarMateri from './PemutarMateri.jsx'
+import KuisSisipan from './KuisSisipan.jsx'
+import PemutarMateri, { PenjelasanKuis } from './PemutarMateri.jsx'
 import PetaPerjalanan from './PetaPerjalanan.jsx'
 import { kenaikanUntuk } from './perjalanan.js'
 import { kirimJawaban, kumpulkanAttempt, kunciIdempotensiBaru } from '../attempt/api.js'
@@ -282,52 +282,46 @@ export default function HalamanMateriMurid() {
 
                   {blokAktif.tipe === 'kuis' && attempt && (
                     <div className="mb-3">
-                      <p className="small teks-lembut">
-                        {blokAktif.kuis?.judul} · {attempt.soal.length} soal · latihan tidak masuk ranking
-                      </p>
-
-                      {attempt.soal.map((soal) => (
-                        <div className="mb-3" key={soal.id}>
-                          <div className="d-flex align-items-baseline gap-2 mb-2">
-                            <strong className="small">Soal {soal.nomor}</strong>
-                            <span className="badge-status lembut">{soal.tipe_label}</span>
-                          </div>
-                          <RendererSoal
-                            tipe={soal.tipe}
-                            konten={soal.konten}
-                            nilai={jawaban[String(soal.id)]}
-                            onUbah={(nilai) =>
-                              setJawaban((sebelum) => ({ ...sebelum, [String(soal.id)]: nilai }))
-                            }
-                            dinonaktifkan={hasilLatihan !== null}
-                            nama={`latihan-${attempt.id}-soal-${soal.id}`}
-                          />
-                        </div>
-                      ))}
-
-                      {hasilLatihan === null ? (
-                        <Tombol memuat={kumpulkan.isPending} onClick={() => kumpulkan.mutate()}>
-                          Simpan jawaban & kumpulkan
-                        </Tombol>
-                      ) : (
-                        <Banner jenis="sukses" judul="Latihan selesai">
-                          Skor {hasilLatihan.skor} dari {hasilLatihan.skor_maksimal}. Nilai ini masuk
-                          laporan tema materi, bukan ranking.
-                        </Banner>
-                      )}
+                      <KuisSisipan
+                        attempt={attempt}
+                        jawaban={jawaban}
+                        onUbahJawaban={(id, nilai) => setJawaban((sebelum) => ({ ...sebelum, [id]: nilai }))}
+                        hasil={hasilLatihan}
+                        galat={galat}
+                        sibuk={kumpulkan.isPending}
+                        onKumpulkan={() => kumpulkan.mutate()}
+                        materiId={/** @type {number} */ (terpilihId)}
+                        blockId={blokAktif.block_id}
+                        tampilan={blokAktif.tampilan}
+                        judul={blokAktif.kuis?.judul}
+                        catatan="Latihan tidak masuk ranking ulangan."
+                        penjelasan={
+                          hasilLatihan !== null && blokAktif.penjelasan ? (
+                            <PenjelasanKuis penjelasan={blokAktif.penjelasan} />
+                          ) : undefined
+                        }
+                        labelLanjut="Tandai bagian ini selesai"
+                        sibukLanjut={selesai.isPending}
+                        onLanjut={() => {
+                          petaSebelumnya.current = progres.data?.perjalanan ?? null
+                          selesai.mutate(blokAktif.block_id)
+                        }}
+                      />
                     </div>
                   )}
 
-                  <Tombol
-                    memuat={selesai.isPending}
-                    disabled={(blokAktif.tipe === 'kuis' && hasilLatihan === null) || sisaSisipan > 0}
-                    onClick={() => {
-                      petaSebelumnya.current = progres.data?.perjalanan ?? null
-                      selesai.mutate(blokAktif.block_id)
-                    }}
-                  >
-                    Tandai bagian ini selesai
-                  </Tombol>
+                  {blokAktif.tipe !== 'kuis' && (
+                    <Tombol
+                      memuat={selesai.isPending}
+                      disabled={sisaSisipan > 0}
+                      onClick={() => {
+                        petaSebelumnya.current = progres.data?.perjalanan ?? null
+                        selesai.mutate(blokAktif.block_id)
+                      }}
+                    >
+                      Tandai bagian ini selesai
+                    </Tombol>
+                  )}
                   {sisaSisipan > 0 && (
                     <p className="small teks-lembut mt-2 mb-0">
                       Jawab {sisaSisipan} kuis wajib di dalam video dulu.

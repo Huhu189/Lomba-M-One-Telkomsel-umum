@@ -6972,3 +6972,94 @@ Langkah luring yang tadinya merah, sekarang di layar sungguhan (kutipan keluaran
   `frontend/src/__tests__/halaman.test.js`, `docs/smoke-ui-luring.mjs`.
 - **Dihapus:** `docs/smoke-ui-luring-diag.mjs` (harness diagnostik sementara; tidak pernah dikomit).
 - **Komit:** “Perbaiki modul halaman yang gagal diunduh agar tidak mematikan seluruh aplikasi” (lihat handoff).
+
+## A.79 — Perubahan luar repo: layar sesudah kuis sisipan + panel satu soal per layar (14 Oktober 2026)
+
+### A.79.1 Permintaan & asal berkas
+
+**“Boleh lakukan changes ini dan cek apakah valid dan kau boleh modif.”** Lampirannya
+`~/Downloads/perubahan-kuis-materi.zip` (18 berkas: `Arsip_2/` = backend, `Arsip_3/` = frontend). Sesuai
+aturan AGENT.md, isinya **diperiksa dulu satu per satu sebelum diterapkan** dan diverifikasi ulang di repo
+ini — bukan dipercaya apa adanya.
+
+Relevan dan aman diterapkan, karena:
+
+- kesebelas berkas yang sudah ada cocok konteksnya (beda hanya pada hunk fitur ini, tanpa konflik);
+- sisanya berkas baru yang memang dirujuk perubahannya (`KuisSisipan.jsx`, `KartuIngat.jsx`,
+  `ringkasanKuis.js`, `RingkasanKuisService.php`, `RangkumKunci.php`, 2 berkas tes);
+- tidak ada berkas yang menyentuh pekerjaan sesi ini (A.77/A.78) atau area di luar fitur materi/kuis.
+
+### A.79.2 Isi perubahannya (fitur baru, bukan perbaikan)
+
+- **Layar SESUDAH kuis sisipan**, dibuka guru per blok kuis lewat tiga saklar di panel klip
+  (`isi.tampilan.ringkasan|kartu|papan`, bawaan **mati**): ringkasan soal (benar/salah, jawaban benar,
+  pembahasan), kartu ingat/flashcard, dan papan peringkat latihan.
+- **Endpoint baru** `GET /v1/materi/{materi}/blok/{blok}/ringkasan-kuis` (`ProgresMateriController::ringkasanKuis`
+  → `RingkasanKuisService`), dengan `RangkumKunci` yang mengubah kunci mentah jadi teks rangkuman.
+- **Panel kuis sisipan disatukan** ke satu komponen `KuisSisipan` (dipakai blok kuis berdiri sendiri dan kuis
+  di dalam video) dan **diubah jadi satu soal per layar** dengan navigator nomor soal — sama seperti layar
+  ulangan resmi. Kunci jawaban hanya datang setelah latihan dikumpulkan.
+- `.pm-kuis` melepas bingkai kartunya (dipindah ke `.ks`, +558/−4 baris CSS) supaya tidak berbingkai ganda.
+
+**Penjagaan yang diperiksa (bukan hanya dipercaya):** `RingkasanKuisService` menolak bila blok bukan kuis
+materi itu, bila seluruh saklar mati (404), dan bila latihan murid itu belum berstatus selesai (422) — jadi
+kunci jawaban tidak bisa dibaca sebelum dikumpulkan. Papan latihan terpisah dari ranking resmi dan tidak
+memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend menutup semuanya
+(`Slice08Test` 20 lulus, termasuk 4 tes baru).
+
+### A.79.3 Yang saya perbaiki setelah menerapkannya (dan alasannya)
+
+1. **`frontend/src/sections/material/KartuIngat.jsx` — JSDoc salah nama parameter.** Berkas kiriman menulis
+   `@param {'ingat'|'belum'} nilai` untuk fungsi yang parameternya bernama `nilaiBaru`, sehingga
+   `npm run check` (checkJs) **GAGAL** (`TS8024` + `TS7006`). Diperbaiki ke `nilaiBaru`; bukan sekadar
+   mematikan pemeriksaan.
+2. **`docs/smoke-ui-kuis-materi.mjs` — harness harus ikut desain baru, dengan maksud yang tetap sama.**
+   Karena panelnya kini satu soal per layar, tombol “Simpan jawaban & kumpulkan” hanya ada di **soal
+   terakhir**; tiga pemeriksaan lama (dan tiga di viewport kedua) jadi merah karena mencarinya di soal
+   pertama — panel tempat kuis hidup memang berubah, bukan tombolnya hilang. Harness sekarang **maju ke soal
+   terakhir lebih dulu** (`__keSoalTerakhir`, async supaya React sempat menggambar ulang — versi lurus
+   membaca DOM basi dan selalu bilang “tidak ada”), **lalu** mengukur tombolnya; ditambah dua pemeriksaan
+   baru: **“soal terakhir bisa dijangkau dari soal 1”** per viewport. 48 → **50 pemeriksaan**. Inti pagar
+   lamanya tidak dilonggarkan: tombol kumpulkan tetap harus terlihat tanpa menggulir panel.
+
+### A.79.4 Bukti (dijalankan setelah seluruh perubahan)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` | **SEMUA HIJAU** — Pest **381/3611** (dari 377; +4 tes baru) · Redis wajib **9/65** · Pint **PASS** · checkJs bersih · ESLint **0 error** · Vitest **90 berkas/848 tes** (dari 88/828) · realtime lulus |
+| `docs/jalankan-smoke-ui.sh kuis-materi` | **50/50 lulus, exit 0** (sebelum perbaikan harness: 42/48) |
+| `docs/jalankan-smoke-ui.sh materi` · `durasi-klip` · `perjalanan` · `editor` | **27/27** · **19/19** · exit 0 · exit 0 |
+| `docs/jalankan-smoke-ui.sh slice06` · `slice05` · `mobile` · `nav` · `layar` · `admin` · `palet-sidebar` | **28/28** · **20/20** · **17/17** · exit 0 · exit 0 · **39/39** · **58/58** — semuanya exit 0 |
+| `php artisan test --filter=Slice08Test` | **20 lulus (271 asersi)**, termasuk `saklar ringkasan/kartu/papan hanya tersimpan bila dikirim`, `ringkasan kuis: ditutup sampai latihan dikumpulkan`, `ringkasan kuis: guru yang tidak membukanya 404`, `papan peringkat latihan: terpisah dari ranking resmi` |
+
+### A.79.5 Batasan jujur
+
+- **Yang diperiksa adalah apa yang bisa diukur mesin**: izin/kebocoran kunci (tes backend), tata letak panel
+  di dua viewport ponsel+laptop, dan tersedianya tombol. **Selera visual** (apakah kartu ingat enak dipakai,
+  apakah papan peringkat latihan perlu) tidak diukur siapa pun — itu keputusan produk.
+- **Tombol kumpulkan hanya ada di soal terakhir** (pola satu-soal-per-layar). Murid harus menekan
+  “Berikutnya” atau nomor soal; ada penanda “N soal belum dijawab” di soal terakhir, tetapi tidak ada tombol
+  kumpul di soal pertama. Kalau itu tidak diinginkan, yang diubah satu tempat: kaki `KuisSisipan`.
+- **Kunci jawaban benar-benar terlihat murid** setelah latihan dikumpulkan bila guru menyalakan ringkasan —
+  panel editor sudah memperingatkan agar kuis itu tidak dipakai ulang sebagai ulangan resmi yang belum
+  berlangsung, tetapi tidak ada pagar teknis yang mencegahnya.
+- **Harness lain belum dijalankan seluruhnya** putaran ini: sapuan penuh terakhir (31 harness) hijau pada
+  A.78; di sini saya menjalankan 12 harness yang menyentuh area berubah atau luas. `smoke-ui-auth` tetap
+  tidak dijalankan ulang (butuh backend `MAIL_MAILER=log`).
+- **Perangkat sungguhan tidak diuji**: seperti biasa, hanya Chrome headless via CDP.
+
+### A.79.6 Berkas
+
+- **Diterapkan apa adanya (11 diubah + 7 baru):** `backend/routes/api.php`,
+  `backend/app/Sections/Material/Http/Requests/SinkronBlokRequest.php`,
+  `backend/app/Sections/Material/Http/Controllers/ProgresMateriController.php`,
+  `backend/app/Sections/Material/Services/MateriService.php`, `backend/tests/Feature/Slice08Test.php`,
+  `frontend/src/sections/material/{EditorMateri,HalamanMateriMurid,PemutarMateri}.jsx`,
+  `frontend/src/sections/material/{api,editorMateri}.js`, `frontend/src/theme/theme.css`;
+  baru: `backend/app/Sections/Material/Services/RingkasanKuisService.php`,
+  `backend/app/Sections/Question/Registry/RangkumKunci.php`,
+  `frontend/src/sections/material/{KuisSisipan.jsx,KartuIngat.jsx,ringkasanKuis.js}`,
+  `frontend/src/__tests__/sections/material/{kuisSisipan.test.jsx,ringkasanKuis.test.js}`.
+- **Disunting setelah ditinjau:** `frontend/src/sections/material/KartuIngat.jsx` (JSDoc),
+  `docs/smoke-ui-kuis-materi.mjs` (harness mengikuti desain baru + 2 pemeriksaan baru).
+- **Komit:** “Terapkan perubahan kuis sisipan materi + sesuaikan harnessnya” (lihat handoff).

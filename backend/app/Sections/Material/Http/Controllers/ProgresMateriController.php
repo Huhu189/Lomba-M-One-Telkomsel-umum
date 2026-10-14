@@ -11,6 +11,7 @@ use App\Sections\Attempt\Services\AttemptService;
 use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Services\ProgresMateriService;
+use App\Sections\Material\Services\RingkasanKuisService;
 use App\Sections\School\Models\Murid;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,6 +105,27 @@ class ProgresMateriController extends Controller
         }
 
         return response()->json($service->ringkasan($materi, $pengguna));
+    }
+
+    /**
+     * Ringkasan soal, kartu ingat, dan papan latihan SESUDAH kuis sisipan
+     * dikumpulkan. Bagian yang dikirim mengikuti saklar guru per blok.
+     */
+    public function ringkasanKuis(
+        Request $request,
+        Materi $materi,
+        BlokMateri $blok,
+        RingkasanKuisService $service,
+    ): JsonResponse {
+        $this->authorize('kerjakan', $materi);
+
+        $pengguna = $request->user();
+
+        if ($pengguna === null) {
+            abort(401, 'Sesi tidak ditemukan.');
+        }
+
+        return response()->json($service->untuk($materi, $blok, $pengguna));
     }
 
     /**

@@ -51,6 +51,11 @@ class SinkronBlokRequest extends FormRequest
             'blok.*.tampilan.zoom' => ['nullable', 'numeric', 'min:1', 'max:3'],
             'blok.*.tampilan.mode' => ['nullable', Rule::in(['jeda', 'berjalan'])],
             'blok.*.tampilan.tata' => ['nullable', Rule::in(['vertikal', 'horizontal'])],
+            // Saklar layar sesudah kuis sisipan (bawaan mati): ringkasan soal,
+            // kartu ingat, dan papan peringkat latihan.
+            'blok.*.tampilan.ringkasan' => ['nullable', 'boolean'],
+            'blok.*.tampilan.kartu' => ['nullable', 'boolean'],
+            'blok.*.tampilan.papan' => ['nullable', 'boolean'],
         ];
     }
 

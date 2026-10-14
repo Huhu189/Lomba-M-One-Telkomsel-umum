@@ -441,6 +441,9 @@ function jepit(nilai, min, maks, bawaan) {
   return Number.isFinite(angka) ? Math.min(maks, Math.max(min, angka)) : bawaan
 }
 
+/** Saklar layar sesudah kuis sisipan: ringkasan soal, kartu ingat, papan latihan. */
+export const SAKLAR_SESUDAH_KUIS = /** @type {const} */ (['ringkasan', 'kartu', 'papan'])
+
 /**
  * Pengaturan tampilan klip yang sudah dinormalkan (sama persis dengan yang
  * disimpan server, supaya "belum tersimpan" tidak menyala terus).
@@ -465,10 +468,18 @@ export function tampilanKlip(satu) {
   }
 
   if (satu.tipe === 'kuis') {
-    return {
+    const hasil = /** @type {Record<string, string|number>} */ ({
       mode: t.mode === 'berjalan' ? 'berjalan' : 'jeda',
       tata: t.tata === 'horizontal' ? 'horizontal' : 'vertikal',
+    })
+
+    // Saklar layar sesudah kuis hanya ikut bila guru pernah mengaturnya, supaya
+    // kuis lama tidak berubah bentuk saat materi disimpan ulang (0/1, bawaan mati).
+    for (const saklar of SAKLAR_SESUDAH_KUIS) {
+      if (t[saklar] !== undefined) hasil[saklar] = t[saklar] === 1 || t[saklar] === '1' ? 1 : 0
     }
+
+    return hasil
   }
 
   return {}
