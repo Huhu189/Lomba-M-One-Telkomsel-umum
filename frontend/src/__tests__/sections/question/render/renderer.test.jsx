@@ -155,19 +155,33 @@ describe('SoalMengurutkan', () => {
     ],
   }
 
-  it('menyediakan satu isian nomor urut per item', () => {
+  it('mengurutkan lewat ketukan, BUKAN isian nomor urut yang diketik', () => {
     const html = renderToStaticMarkup(<SoalMengurutkan konten={konten} />)
 
-    expect(html.match(/type="number"/g)).toHaveLength(2)
+    // Nomor urut tidak lagi diketik: tidak ada satu pun kotak angka.
+    expect(html.match(/type="number"/g)).toBeNull()
     expect(html).toContain('Urutkan dari terkecil.')
+    expect(html).toContain('data-urut-pilih="I1"')
+    expect(html).toContain('data-urut-pilih="I2"')
+  })
+
+  it('menampilkan nomor yang sudah dipilih murid', () => {
+    const html = renderToStaticMarkup(<SoalMengurutkan konten={konten} nilai={{ I2: '1', I1: '2' }} />)
+
+    expect(html).toContain('data-urut="1"')
+    expect(html).toContain('data-urut="2"')
   })
 
   it('menampilkan kunci posisi saat dibuka', () => {
     const html = renderToStaticMarkup(
-      <SoalMengurutkan konten={konten} kunci={{ urutan: ['I2', 'I1'] }} tampilkanKunci />,
+      <SoalMengurutkan
+        konten={konten}
+        nilai={{ I2: '1', I1: '2' }}
+        kunci={{ urutan: ['I2', 'I1'] }}
+        tampilkanKunci
+      />,
     )
-    expect(html).toContain('kunci: 2')
-    expect(html).toContain('kunci: 1')
+    expect(html).toContain('tepat')
   })
 })
 

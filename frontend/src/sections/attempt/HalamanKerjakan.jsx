@@ -363,7 +363,7 @@ export default function HalamanKerjakan() {
   }, [berjalan, attempt, versiSoal, refetchMulai])
 
   // Proteksi ulangan: dipasang hanya saat attempt berjalan dan ada saklar menyala.
-  const { daftarSaklar, jumlahKejadian, kabur, kunciDetik } = useExamSecurity({
+  const { daftarSaklar, kabur, kunciDetik } = useExamSecurity({
     attemptId: attempt?.id ?? 0,
     proteksi: attempt?.proteksi,
     aktif: berjalan,
@@ -901,11 +901,10 @@ export default function HalamanKerjakan() {
             </p>
           </div>
 
-          {adaProteksi && (
-            <span className="badge-status lembut">
-              Pengaman aktif{jumlahKejadian > 0 ? ` · ${jumlahKejadian} catatan` : ''}
-            </span>
-          )}
+          {/* Jumlah catatan TIDAK ditampilkan ke murid (temuan K5): angka itu
+            * bisa membuat anak cemas dan hanya berguna bagi guru — guru
+            * melihatnya di Monitor Ulangan. */}
+          {adaProteksi && <span className="badge-status lembut">Pengaman aktif</span>}
 
           <div className="kepala-ulangan-progres">
             <span className="teks-lembut small d-block">
@@ -1000,11 +999,16 @@ export default function HalamanKerjakan() {
                 nama={`attempt-${attempt.id}-soal-${soalSekarang.id}`}
               />
 
+              {/* Hanya soal tugas unggah yang membuka panel lampiran sendiri;
+                * di soal lain panelnya terlipat di balik tombol "Tambah
+                * lampiran" supaya anak tidak melihat permintaan rekam diri di
+                * setiap soal (temuan M1). */}
               <UnggahLampiran
                 attemptId={attempt.id}
                 soalId={soalSekarang.id}
                 nonaktif={waktuHabis}
                 sisaDetik={detik}
+                bukaOtomatis={soalSekarang.tipe === 'tugas_unggah'}
               />
             </>
           )}

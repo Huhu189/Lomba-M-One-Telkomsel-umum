@@ -14,6 +14,14 @@
  *    tak dikenal tetap unduhan `.upload`.
  *
  * Semua tombol mati begitu waktu ulangan habis; server menolaknya juga.
+ *
+ * **Terlipat kecuali pada soal tugas unggah** (14 Oktober 2026, temuan M1).
+ * Dulu panel ini terbuka di SETIAP soal — termasuk pilihan ganda — sehingga
+ * anak melihat kotak "Lampiran jawaban", tombol rekam diri, dan permintaan izin
+ * merekam di semua halaman. Anak jadi ragu ("aku harus rekam?") dan
+ * perhatiannya pecah dari soalnya. Kini hanya soal tugas unggah yang membuka
+ * panelnya sendiri; di soal lain cukup satu tombol kecil "Tambah lampiran" yang
+ * bisa dibuka murid bila gurunya memang meminta.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -79,9 +87,16 @@ async function kecilkanGambar(berkas) {
  *   soalId: number,
  *   nonaktif?: boolean,
  *   sisaDetik?: number,
+ *   bukaOtomatis?: boolean,
  * }} props
  */
-export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, sisaDetik = 1 }) {
+export default function UnggahLampiran({
+  attemptId,
+  soalId,
+  nonaktif = false,
+  sisaDetik = 1,
+  bukaOtomatis = true,
+}) {
   const queryClient = useQueryClient()
   const masukanBerkas = useRef(/** @type {HTMLInputElement|null} */ (null))
   const perekam = useRef(/** @type {MediaRecorder|null} */ (null))
@@ -97,6 +112,7 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
   const [izin, setIzin] = useState(false)
   const [sedangRekam, setSedangRekam] = useState(false)
   const [detikRekam, setDetikRekam] = useState(0)
+  const [terbuka, setTerbuka] = useState(bukaOtomatis)
 
   const kunci = ['lampiran-jawaban', attemptId]
   const daftar = useQuery({ queryKey: kunci, queryFn: () => daftarLampiran(attemptId) })
@@ -244,6 +260,29 @@ export default function UnggahLampiran({ attemptId, soalId, nonaktif = false, si
     perekam.current?.stop()
     perekam.current = null
     setSedangRekam(false)
+  }
+
+  /**
+   * Soal biasa (bukan tugas unggah): panel penuh disembunyikan sampai murid
+   * benar-benar menekan "Tambah lampiran". Kalau sudah ada lampiran, panelnya
+   * tetap terbuka supaya anak bisa melihat & membuang berkasnya.
+   */
+  const terlipat = !terbuka && milikSoal.length === 0 && !sedangRekam
+
+  if (terlipat) {
+    return (
+      <div className="panel-lampiran-lipat mt-3" data-lampiran="terlipat">
+        <Tombol
+          varian="tepi"
+          ukuran="sedang"
+          disabled={mati}
+          onClick={() => setTerbuka(true)}
+        >
+          Tambah lampiran
+        </Tombol>
+        {galat !== '' && <Banner jenis="salah">{galat}</Banner>}
+      </div>
+    )
   }
 
   return (

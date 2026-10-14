@@ -22,6 +22,7 @@ import { RUTE, kunciKuisSah, ruteKuisDetail, ruteMonitorKuis } from '../../route
 import { ambilAntreanKoreksi, mintaSaranAi, mintaTokenKoreksi, simpanKoreksi } from './api.js'
 import {
   catatanUntukAttempt,
+  itemBerikutnya,
   jawabanTeks,
   kelasStatus,
   kunciKoreksi,
@@ -34,6 +35,23 @@ import {
 
 /** Nama ketiga langkah koreksi — dipakai penunjuk langkah di dalam form. */
 const LANGKAH_KOREKSI = ['Skor & alasan', 'Token konfirmasi', 'Tersimpan']
+
+/**
+ * Alasan siap pakai (14 Oktober 2026, temuan G1).
+ *
+ * Alasan koreksi tetap **wajib** — itu aturan audit di `AGENT.md` (mutasi
+ * sensitif = alasan + token + audit), dan laporan ini tidak melemahkannya tanpa
+ * izin pemilik produk. Yang dihapus adalah keharusan MENGETIK: kelas 30 murid
+ * dengan 3 soal uraian berarti 90 kali menulis alasan, dan itulah yang membuat
+ * guru berhenti memakai fitur koreksi. Kalimat di bawah semuanya ≥ 10 karakter
+ * sehingga tetap memenuhi ambang server, dan guru tetap bebas menulis sendiri.
+ */
+const ALASAN_CEPAT = [
+  'Konsep benar walau ejaannya berbeda',
+  'Jawaban belum lengkap, nilai dikurangi',
+  'Kata kunci terlampaui walaupun kalimatnya berbeda',
+  'Nilai otomatis terlalu longgar untuk jawaban ini',
+]
 
 /**
  * Waktu satu catatan — selalu waktu server (klien tidak dipercaya).
@@ -129,10 +147,11 @@ function PanelCatatan({ catatan, kunciKuis }) {
  *   item: import('./api.js').DataItemKoreksi,
  *   alasanMin: number,
  *   aiAktif: boolean,
+ *   adaBerikutnya: boolean,
  *   onSelesai: () => void,
  * }} props
  */
-function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
+function FormKoreksi({ item, alasanMin, aiAktif, adaBerikutnya, onSelesai }) {
   const [skor, setSkor] = useState(String(item.skor_sekarang))
   const [alasan, setAlasan] = useState('')
   const [token, setToken] = useState('')
@@ -149,14 +168,33 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
     onError: (galat) => tampilkanToast('salah', pesanGalatApi(galat)),
   })
 
+  /**
+   * Simpan koreksi — token dimintakan sendiri bila belum ada (temuan G1).
+   *
+   * Dulu guru harus menekan "Minta token konfirmasi" lalu "Simpan koreksi":
+   * empat aksi per jawaban (skor, alasan, token, simpan) untuk puluhan jawaban.
+   * Token tetap diterbitkan & dipakai server seperti sebelumnya (audit tidak
+   * berubah), hanya saja dua langkah itu kini satu tombol. Tombol "Minta token"
+   * tetap ada bagi guru yang ingin melihat tokennya lebih dulu.
+   */
   const simpan = useMutation({
-    mutationFn: () =>
-      simpanKoreksi(item.attempt_id, {
+    mutationFn: async () => {
+      let dipakai = token.trim()
+
+      if (dipakai === '') {
+        const terbit = await mintaTokenKoreksi(item.attempt_id, item.question_id, alasan.trim())
+        dipakai = terbit.token
+        setToken(terbit.token)
+        setTokenKedaluwarsa(terbit.expires_at)
+      }
+
+      return simpanKoreksi(item.attempt_id, {
         question_id: item.question_id,
         skor: Number(skor),
         alasan: alasan.trim(),
-        token: token.trim(),
-      }),
+        token: dipakai,
+      })
+    },
     onSuccess: (hasil) => {
       setTersimpan(true)
       tampilkanToast('sukses', `${hasil.message} Total skor attempt: ${hasil.total_skor}.`)
@@ -180,6 +218,25 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
   const skorWajar = Number.isFinite(angkaSkor) && angkaSkor >= 0 && angkaSkor <= item.skor_maksimal
   const alasanCukup = alasan.trim().length >= alasanMin
   const sibuk = mintaToken.isPending || simpan.isPending
+
+  /** Skor cepat yang masuk akal untuk satu jawaban (temuan G1). */
+  const skorCepat = [0, item.skor_maksimal / 2, item.skor_maksimal].filter(
+    (satu, indeks, daftar) => daftar.indexOf(satu) === indeks && satu > 0,
+  )
+
+  /**
+   * Ctrl/Cmd+Enter menyimpan dari mana pun di dalam form (temuan G1): guru yang
+   * mengoreksi puluhan jawaban tidak perlu memindahkan tangan ke tetikus.
+   * @param {import('react').KeyboardEvent<HTMLElement>} peristiwa
+   */
+  function pintasanSimpan(peristiwa) {
+    if (peristiwa.key !== 'Enter' || !(peristiwa.ctrlKey || peristiwa.metaKey)) return
+
+    peristiwa.preventDefault()
+    if (sibuk || !skorWajar || !alasanCukup) return
+
+    simpan.mutate()
+  }
 
   return (
     <div className="kartu-lembut p-3">
@@ -244,7 +301,22 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
             step="0.5"
             value={skor}
             onChange={(e) => setSkor(e.target.value)}
+            onKeyDown={pintasanSimpan}
           />
+          {/* Tombol skor cepat: satu ketukan, tanpa mengetik angka. */}
+          <div className="d-flex flex-wrap gap-1 mt-1">
+            {skorCepat.map((satu) => (
+              <Tombol
+                key={satu}
+                varian="tepi"
+                ukuran="sedang"
+                data-skor-cepat={satu}
+                onClick={() => setSkor(String(satu))}
+              >
+                {satu === item.skor_maksimal ? `Penuh (${satu})` : `Setengah (${satu})`}
+              </Tombol>
+            ))}
+          </div>
         </div>
         <div className="col-sm-8 col-lg-9">
           <label className="form-label fw-semibold" htmlFor={`alasan-${item.attempt_id}-${item.question_id}`}>
@@ -256,8 +328,23 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
             rows={2}
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
+            onKeyDown={pintasanSimpan}
             placeholder="mis. jawaban benar secara konsep walau ejaannya berbeda"
           />
+          {/* Alasan siap pakai: mengurangi mengetik, tanpa menghapus kewajiban
+           * alasan (aturan audit tetap sama). */}
+          <div className="d-flex flex-wrap gap-1 mt-1">
+            {ALASAN_CEPAT.map((satu) => (
+              <Tombol
+                key={satu}
+                varian="teks"
+                data-alasan-cepat={satu}
+                onClick={() => setAlasan(satu)}
+              >
+                {satu}
+              </Tombol>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -280,15 +367,20 @@ function FormKoreksi({ item, alasanMin, aiAktif, onSelesai }) {
           Minta token konfirmasi
         </Tombol>
 
+        {/* Satu tombol yang mengurus tokennya sendiri (temuan G1). */}
         <Tombol
           memuat={simpan.isPending}
           teksMemuat="Menyimpan…"
-          disabled={sibuk || token.trim() === '' || !skorWajar || !alasanCukup}
+          disabled={sibuk || !skorWajar || !alasanCukup}
           onClick={() => simpan.mutate()}
         >
-          Simpan koreksi
+          {adaBerikutnya ? 'Simpan & berikutnya' : 'Simpan koreksi'}
         </Tombol>
       </div>
+
+      <p className="teks-lembut small mb-0 mt-2">
+        Pintasan: Ctrl/Cmd + Enter menyimpan tanpa pindah ke tetikus.
+      </p>
 
       {!skorWajar && <p className="status-salah small mb-0 mt-2">Skor wajib antara 0 dan {item.skor_maksimal}.</p>}
       {!alasanCukup && alasan.trim() !== '' && (
@@ -330,6 +422,8 @@ export default function HalamanKoreksi() {
   }
 
   const terpilih = pilihItemKoreksi(data.item, kunci).item
+  const berikutnya =
+    terpilih === null ? null : itemBerikutnya(data.item, kunciKoreksi(terpilih))
 
   return (
     <div className="row justify-content-center">
@@ -445,7 +539,14 @@ export default function HalamanKoreksi() {
                       item={terpilih}
                       alasanMin={data.alasan_min}
                       aiAktif={data.ai_aktif}
-                      onSelesai={() => void klienQuery.invalidateQueries({ queryKey: ['koreksi', kunciKuis] })}
+                      adaBerikutnya={berikutnya !== null}
+                      onSelesai={() => {
+                        // Setelah tersimpan, baris ini hilang dari antrean; yang
+                        // dibuka berikutnya adalah baris SESUDAHNYA (temuan G1),
+                        // bukan baris pertama lagi.
+                        setKunci(berikutnya === null ? null : kunciKoreksi(berikutnya))
+                        void klienQuery.invalidateQueries({ queryKey: ['koreksi', kunciKuis] })
+                      }}
                     />
                   </section>
                 )}

@@ -108,6 +108,29 @@ export function pilihItemKoreksi(daftar, kunci) {
 }
 
 /**
+ * Baris antrean yang sebaiknya dibuka setelah baris ini selesai dikoreksi.
+ *
+ * Guru yang mengoreksi puluhan jawaban tidak perlu mencari lagi barisnya di
+ * daftar (14 Oktober 2026, temuan G1): setelah disimpan, baris sekarang hilang
+ * dari antrean, jadi "berikutnya" dihitung dari baris sesudah kunci yang habis
+ * itu — bukan dari baris pertama.
+ *
+ * @template {{ attempt_id: number, question_id: number }} T
+ * @param {T[]} daftar
+ * @param {string|null} kunci
+ * @returns {T|null}
+ */
+export function itemBerikutnya(daftar, kunci) {
+  if (!Array.isArray(daftar) || daftar.length === 0) return null
+
+  const indeks = daftar.findIndex((satu) => kunciKoreksi(satu) === kunci)
+
+  if (indeks < 0) return daftar[0] ?? null
+
+  return daftar[indeks + 1] ?? null
+}
+
+/**
  * Kelas lencana status penilaian (perlu ditinjau vs gagal).
  * @param {string} status
  * @returns {string}
