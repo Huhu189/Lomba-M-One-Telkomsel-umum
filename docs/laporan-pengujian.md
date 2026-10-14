@@ -8101,5 +8101,12 @@ Sesudah seluruh commit itu, `./verify.sh` dijalankan ulang di pohon bersih:
 checkJs · ESLint 0 error · Vitest 107 berkas / 1002 tes · realtime 20 lulus.
 `docs/export-word.sh` juga dijalankan penuh: `log-mentah.docx` (gabungan tiga
 sesi) 3,8 MB → **10,1 MB**, `laporan-pengujian.docx` 266 KB, `penjelasan-fitur.docx`
-65 KB, plus `AGENT.docx` dan `jurnal-prompt.docx`. Kesembilan commit **belum
-di-push** (`origin/main = fd3636a`); push butuh izin pemilik produk.
+65 KB, plus `AGENT.docx` dan `jurnal-prompt.docx`. Kesembilan commit di tabel
+atas — ditambah satu commit dokumentasi yang memuat bagian ini — **belum
+di-push** (`origin/main = fd3636a`, jumlahnya: `git rev-list --count origin/main..HEAD`);
+push butuh izin pemilik produk.
+
+Batasan jujur putaran ini: yang dijalankan ulang lewat `./verify.sh` adalah
+**pohon terakhir** sesudah semua commit; commit di tengah tidak diverifikasi
+satu per satu, jalur jenis berkas tidak diuji peramban, dan pemeriksaan peramban
+untuk mengurutkan/menjodohkan hanya menyentuh tampilan-interaksi.

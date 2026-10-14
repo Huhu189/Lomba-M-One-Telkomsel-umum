@@ -67,16 +67,16 @@ git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 
 Keadaan saat handoff ini diperbarui (**14 Okt 2026, sesudah putaran A.88**):
 
-- **`HEAD = ad6ba41`** (*"Catat putaran ini di handoff, laporan pengujian, dan ekspor Word"*). Putaran
-  **A.84–A.88** (14 Okt 2026) sudah dikomit dalam **sembilan commit** bertema: materi (dokumen kantor +
-  tautan + pustaka berkas), teknik koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip,
-  editor materi (frontend), editor soal (grid + jenis berkas + teknik koreksi), kuis satu halaman +
-  layar koreksi (frontend), halaman masuk dari tautan ulangan, tema + gaya, dan dokumentasi. Daftar
-  lengkap: `git log --oneline fd3636a..HEAD`.
-- **`origin/main = fd3636a`** → **9 commit lokal belum di-push** (`git rev-list --count origin/main..HEAD`).
-  Push butuh izin pemilik produk.
+- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat handoff ini ditulis: `b2a1189`). Putaran
+  **A.84–A.88** (14 Okt 2026) dikomit bertema — materi (dokumen kantor + tautan + pustaka berkas), teknik
+  koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip, editor materi (frontend), editor
+  soal (grid + jenis berkas + teknik koreksi), kuis satu halaman + layar koreksi (frontend), halaman masuk
+  dari tautan ulangan, tema + gaya, lalu dokumentasi. Daftar lengkap: `git log --oneline fd3636a..HEAD`.
+- **`origin/main = fd3636a`** → **semua commit sesi ini belum di-push**
+  (`git rev-list --count origin/main..HEAD`; angka pastinya ambil dari perintah itu, jangan ditulis tetap
+  di sini — commit dokumentasi terakhirnya selalu berada di luar daftar ini). Push butuh izin pemilik produk.
 - **Working tree BERSIH** (`git status --short` kosong) sesudah commit dokumentasi itu; semua pekerjaan
-  A.74–A.88 yang dulu menumpuk sudah ikut dikomit di sembilan commit tersebut.
+  A.74–A.88 yang dulu menumpuk sudah ikut dikomit di commit-commit bertema tersebut.
 - **Working tree BERSIH sejak A.72** (`git status --short` kosong). Seluruh pekerjaan A.61–A.69 sudah dikomit
   dalam enam commit bertema: slug kuis (backend), slug di seluruh layar + pil saring, bank soal bertahap,
   halaman akun + setelan per kuis, bundel per halaman, dan penjelasan fitur. Daftar lengkap ada di
@@ -87,6 +87,9 @@ Keadaan saat handoff ini diperbarui (**14 Okt 2026, sesudah putaran A.88**):
     diverifikasi hijau adalah yang sekarang: `./verify.sh` **SEMUA HIJAU**.
 - **Jangan ikut dikomit:** arsip/zip, `.agents/`, `.claude/`, `.DS_Store`. `frontend/dist/` memang sudah
   diabaikan (`.gitignore`), jadi hasil `npm run build` aman untuk pengukuran.
+- **Urutan commit putaran ini backend → frontend → tema → dokumen**, supaya tiap commit memuat kode
+  server yang dibutuhkan lapisan di atasnya. Yang **diverifikasi hijau hanya pohon terakhir** (sepuluh
+  commit di atas `fd3636a`); commit di tengah belum dijalankan satu per satu lewat `./verify.sh`.
 - **`docs/word/*.docx` SUDAH disegarkan (14 Okt 2026)** lewat `docs/export-word.sh`: `log-mentah.docx`
   3,8 MB → **10,1 MB** (sumbernya kini gabungan transkrip **tiga** sesi, termasuk sesi 412 MB),
   `laporan-pengujian.docx` 250 KB → 266 KB, `penjelasan-fitur.docx` 63 KB → 65 KB, plus `AGENT.docx` dan
