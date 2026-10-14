@@ -117,3 +117,113 @@ export function barisMilikSaya(baris, saya, modeTim) {
 
   return baris.murid_id !== null && baris.murid_id === saya.murid_id
 }
+
+/**
+ * Angka rapi untuk dibaca manusia: 7.00 → 7, 7.5 → 7,5 (koma ala Indonesia).
+ * Dipakai di catatan bonus supaya guru tidak membaca "7.000000005".
+ *
+ * @param {number} angka
+ * @returns {string}
+ */
+export function angkaRapi(angka) {
+  const dibulatkan = Math.round(Number(angka) * 100) / 100
+
+  return String(dibulatkan).replace('.', ',')
+}
+
+/**
+ * Angka yang DITAMPILKAN papan untuk satu baris.
+ *
+ * Papan guru membawa dua kebenaran sekaligus — nilai asli (`skor`) dan nilai
+ * tampilan (`skor_tampil`) — dan yang naik ke papan selalu yang tampilan. Kalau
+ * baris yang sama dibaca berbeda oleh guru dan murid, seluruh aturan bonusnya
+ * bocor dalam sekejap: kelas melihat Dedi 2/10 di proyektor sementara anaknya
+ * melihat 7/10 di perangkatnya. Baris murid tidak punya `skor_tampil`, jadi ia
+ * jatuh ke `skor` — dan di situlah nilainya sudah dipindahkan server.
+ *
+ * @param {import('./api.js').DataBarisPeringkat|import('./api.js').DataDetailSaya} baris
+ * @returns {{ nilai: number, maksimal: number, persen: number }}
+ */
+export function angkaTampil(baris) {
+  return {
+    nilai: typeof baris?.skor_tampil === 'number' ? baris.skor_tampil : Number(baris?.skor ?? 0),
+    maksimal: Number(baris?.skor_maksimal ?? 0),
+    persen: typeof baris?.persen_tampil === 'number' ? baris.persen_tampil : Number(baris?.persen ?? 0),
+  }
+}
+
+/**
+ * Catatan satu baris papan untuk mata GURU: berapa tambahannya, berapa nilai
+ * aslinya, dan peringkat aslinya. `null` untuk baris yang tidak dibantu —
+ * termasuk SEMUA baris yang diterima murid, karena server mengirim jejak bonus
+ * hanya kepada guru.
+ *
+ * @param {import('./api.js').DataBarisPeringkat} baris
+ * @returns {{ teks: string, asli: string, peringkatAsli: number|null }|null}
+ */
+export function catatanBonusBaris(baris) {
+  if (baris?.berbantuan !== true || typeof baris.bonus !== 'number') return null
+
+  const asli = `${angkaRapi(baris.skor)} / ${angkaRapi(baris.skor_maksimal)}`
+  const peringkatAsli = typeof baris.peringkat_asli === 'number' ? baris.peringkat_asli : null
+
+  return {
+    teks: `dibantu +${angkaRapi(baris.bonus)} poin · nilai asli ${asli}`,
+    asli,
+    peringkatAsli,
+  }
+}
+
+/**
+ * Ringkasan aturan papan peringkat dari payload server.
+ *
+ * Halaman memakainya untuk MENJELASKAN aturan yang sedang berlaku, bukan
+ * menebaknya dari jumlah baris yang kebetulan terkirim. Dua penjelasan yang
+ * sengaja berbeda:
+ *
+ * - **murid** hanya diberi tahu bahwa nomor peringkat dibuka untuk N murid
+ *   teratas (dan skornya sendiri tetap terlihat). Ia tidak pernah diberi tahu
+ *   ada bonus — `catatanBonus` selalu `null` untuknya.
+ * - **guru** melihat seluruh papan, dan karena itu juga melihat jejaknya:
+ *   berapa murid yang dibantu dan seberapa besar tambahannya.
+ *
+ * @param {import('./api.js').DataPeringkat} data
+ * @returns {{
+ *   guru: boolean,
+ *   terbukaPersen: number,
+ *   terbukaJumlah: number,
+ *   catatanKeterbukaan: string,
+ *   bonusAktif: boolean,
+ *   catatanBonus: string|null,
+ *   jumlahDibantu: number,
+ *   bonusBawahPersen: number,
+ *   bonusMaksPersen: number,
+ * }}
+ */
+export function ringkasAturanPapan(data) {
+  const guru = data?.guru === true
+  const terbukaPersen = Number(data?.terbuka_persen ?? 0)
+  const terbukaJumlah = Number(data?.terbuka_jumlah ?? 0)
+  const bonusAktif = data?.bonus_aktif === true
+  const bonusBawahPersen = Number(data?.bonus_bawah_persen ?? 0)
+  const bonusMaksPersen = Number(data?.bonus_maks_persen ?? 0)
+  const baris = Array.isArray(data?.peringkat) ? data.peringkat : []
+  const jumlahDibantu = guru ? baris.filter((satu) => satu?.berbantuan === true).length : 0
+
+  return {
+    guru,
+    terbukaPersen,
+    terbukaJumlah,
+    catatanKeterbukaan: guru
+      ? `Murid hanya melihat ${terbukaJumlah} baris teratas (${terbukaPersen}% peserta); di layarmu seluruh papan terbuka.`
+      : `Nomor peringkat dibuka untuk ${terbukaJumlah} murid teratas. Skormu sendiri tetap terlihat.`,
+    bonusAktif,
+    catatanBonus:
+      guru && bonusAktif
+        ? `Bonus penyemangat aktif: murid di bawah ${bonusBawahPersen}% ditampilkan sampai titik tengah kelas (tambahan maksimal ${bonusMaksPersen}%). ${jumlahDibantu} baris bertanda “dibantu”, nilai aslinya tidak berubah.`
+        : null,
+    jumlahDibantu,
+    bonusBawahPersen,
+    bonusMaksPersen,
+  }
+}

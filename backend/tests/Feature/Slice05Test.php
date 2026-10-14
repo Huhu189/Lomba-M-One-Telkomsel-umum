@@ -250,13 +250,49 @@ it('ranking hanya memakai skor asli dengan tie-break waktu selesai lalu nama', f
         ->and($tersembunyi->json('peringkat'))->toBe([])
         ->and($tersembunyi->json('peringkat_saya'))->toBeNull();
 
-    // Guru menyalakan ranking → murid melihat peringkatnya sendiri.
+    // Guru menyalakan ranking → papan terbuka, tetapi nomor peringkat hanya
+    // untuk N% teratas (bawaan 30%). Dengan 2 peserta, aturan itu berarti satu
+    // baris: Budi (peringkat 1). Ani tetap melihat SKORNYA, tanpa nomor.
     $this->pengaturan->simpan(LingkupPengaturan::Sekolah, $this->sekolah->id, KunciPengaturan::Ranking, true);
 
     $tampil = $this->getJson("/api/v1/kuis/{$siap['kuis']->id}/ranking")->assertOk();
     expect($tampil->json('tampil'))->toBeTrue()
-        ->and($tampil->json('peringkat'))->toHaveCount(2)
-        ->and($tampil->json('peringkat_saya.nama'))->toBe('Ani');
+        ->and($tampil->json('terbuka_persen'))->toBe(30)
+        ->and($tampil->json('terbuka_jumlah'))->toBe(1)
+        ->and($tampil->json('peringkat'))->toHaveCount(1)
+        ->and($tampil->json('peringkat.0.nama'))->toBe('Budi')
+        ->and($tampil->json('peringkat_saya'))->toBeNull()
+        ->and($tampil->json('detail_saya.skor'))->toEqual(5.0)
+        ->and($tampil->json('detail_saya.di_luar_terbuka'))->toBeTrue();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($budi->user);
+
+    $budiLihat = $this->getJson("/api/v1/kuis/{$siap['kuis']->id}/ranking")->assertOk();
+    expect($budiLihat->json('peringkat_saya.nama'))->toBe('Budi')
+        ->and($budiLihat->json('detail_saya.di_luar_terbuka'))->toBeFalse();
+
+    // Guru tetap melihat seluruh papan (dipakai laporan & layar proyektor),
+    // lengkap dengan peringkat asli tiap baris.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $guruSemua = $this->getJson("/api/v1/kuis/{$siap['kuis']->id}/ranking")->assertOk();
+    expect($guruSemua->json('guru'))->toBeTrue()
+        ->and($guruSemua->json('peringkat'))->toHaveCount(2)
+        ->and($guruSemua->json('peringkat.1.nama'))->toBe('Ani')
+        ->and($guruSemua->json('peringkat.1.peringkat_asli'))->toBe(2);
+
+    // Saklar keterlihatan itu bisa dibuka penuh oleh guru: 100% = semua murid
+    // melihat nomor peringkatnya sendiri (perilaku lama).
+    $this->pengaturan->simpan(LingkupPengaturan::Sekolah, $this->sekolah->id, KunciPengaturan::PeringkatTerbukaPersen, 100);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($ani->user);
+
+    $terbukaPenuh = $this->getJson("/api/v1/kuis/{$siap['kuis']->id}/ranking")->assertOk();
+    expect($terbukaPenuh->json('peringkat_saya.nama'))->toBe('Ani')
+        ->and($terbukaPenuh->json('peringkat'))->toHaveCount(2);
 });
 
 it('badge per mapel terbentuk dari rata-rata skor asli', function (): void {

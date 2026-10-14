@@ -98,14 +98,31 @@ Sistem nilai yang jujur: nilai pertama ulangan (skor asli) tidak pernah berubah,
 ### Cara kerjanya
 Skor asli tersimpan permanen. Kalau guru menyalakan retry, murid boleh mengerjakan ulang dan skornya dicatat **terpisah** — nilai pertama tetap jadi acuan ranking. Ranking diurutkan dari skor asli; kalau seri, yang lebih cepat selesai menang, lalu urut nama. Badge per mapel memberi apresiasi. Remedial otomatis menyusun latihan dari soal bertag yang lemah, tanpa mengubah nilai asli.
 
+### Peringkat sebagai alat kelas (14 Oktober 2026)
+Peringkat dipakai guru di depan kelas — bisa ditampilkan besar-besar lewat **mode proyektor** di halaman
+peringkat. Yang dibuka untuk murid dibatasi dua hal:
+
+- **Nomor peringkat hanya untuk N% teratas** (`peringkat_terbuka_persen`, bawaan 30%). Murid lain tetap
+  melihat **skornya sendiri** dan diberi tahu bahwa nomornya belum dibuka — bukan layar kosong. Guru selalu
+  melihat seluruh papan.
+- **Bonus penyemangat** (`bonus_semangat`, bawaan **mati**): murid yang nilainya di bawah ambang
+  (`bonus_semangat_bawah_persen`, bawaan 50%) dinaikkan angka **tampilannya** sampai melewati ambang dan
+  titik tengah kelas, dibatasi `bonus_semangat_maks_persen` (bawaan 15%). Ini **bukan nilai**: yang tercatat
+  di rapor, ekspor nilai, dan laporan tetap skor sebenarnya.
+
+Jejak bonus hanya sampai ke guru: barisnya bertanda "dibantu" lengkap dengan nilai dan peringkat aslinya,
+sedangkan respons untuk murid sama sekali tidak memuat kunci bonus — dan mode proyektor menyembunyikan
+kolom itu juga, supaya papan yang menghadap kelas sama persis dengan yang dilihat murid.
+
 ### Mengapa aman
-Semua perhitungan di server; skor asli tidak punya jalur perubahan dari klien. Ranking default-nya mati — guru yang menyalakannya, karena tidak semua kelas senang diperbandingkan.
+Semua perhitungan di server; skor asli tidak punya jalur perubahan dari klien. Ranking default-nya mati — guru yang menyalakannya, karena tidak semua kelas senang diperbandingkan. Yang bisa diubah bonus hanyalah angka di papan; nilai resmi tetap jujur.
 
 ### Manfaat untuk anak SD dan guru
-Anak SD berani mencoba lagi tanpa takut nilai jeleknya "nempel selamanya", tapi nilai resmi tetap jujur. Guru bisa menyalakan ranking hanya saat cocok, dan remedial jalan sendiri untuk murid yang butuh.
+Anak SD berani mencoba lagi tanpa takut nilai jeleknya "nempel selamanya", tapi nilai resmi tetap jujur. Guru bisa menyalakan ranking hanya saat cocok, dan remedial jalan sendiri untuk murid yang butuh. Anak yang selalu di bawah tidak lagi melihat namanya terpaku di dasar papan, sementara gurunya tetap tahu keadaan sebenarnya.
 
 Status: **sudah bisa dipakai** (slice 05). Ranking mati secara bawaan; lencana per mapel dan remedial
-otomatis tersedia.
+otomatis tersedia. Aturan N% teratas dan bonus penyemangat bisa diatur guru per kuis (panel setelan
+ulangan, kelompok "Tampilan & laporan").
 
 ---
 

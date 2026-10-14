@@ -51,13 +51,38 @@ enum KunciPengaturan: string
     // ini tiga lapis, guru memakainya pada **lapis kuis** miliknya sendiri
     // (admin bisa menyalakannya untuk sekolah/kelas).
     case IzinkanTamu = 'izinkan_tamu';
+    // Keterlihatan peringkat (14 Oktober 2026). Peringkat adalah alat kelas,
+    // bukan rapor: yang melihat NOMOR peringkat hanya N% teratas, sedangkan
+    // murid lain tetap melihat skornya sendiri. Guru selalu melihat seluruh
+    // daftar (dipakai laporan dan layar proyektor).
+    case PeringkatTerbukaPersen = 'peringkat_terbuka_persen';
+    // Bonus penyemangat (14 Oktober 2026). Ini BUKAN nilai: skor asli di rapor,
+    // ekspor, dan laporan tidak pernah berubah. Yang berubah hanya angka yang
+    // DITAMPILKAN di papan peringkat, dan barisnya menandai diri sendiri sebagai
+    // berbantuan supaya guru (dan muridnya) tahu persis apa yang terjadi.
+    case BonusSemangat = 'bonus_semangat';
+    case BonusSemangatBawahPersen = 'bonus_semangat_bawah_persen';
+    case BonusSemangatMaksPersen = 'bonus_semangat_maks_persen';
 
     /** Tipe nilai yang diterima ('boolean' | 'integer'). */
     public function tipe(): string
     {
         return match ($this) {
-            self::BatasPercobaan, self::AmbangPaham, self::AmbangMulaiPaham, self::MinimalDataTag => 'integer',
+            self::BatasPercobaan, self::AmbangPaham, self::AmbangMulaiPaham, self::MinimalDataTag,
+            self::PeringkatTerbukaPersen, self::BonusSemangatBawahPersen,
+            self::BonusSemangatMaksPersen => 'integer',
             default => 'boolean',
+        };
+    }
+
+    /** Kunci yang nilainya persentase 0–100 (divalidasi di request). */
+    public function persentase(): bool
+    {
+        return match ($this) {
+            self::AmbangPaham, self::AmbangMulaiPaham,
+            self::PeringkatTerbukaPersen, self::BonusSemangatBawahPersen,
+            self::BonusSemangatMaksPersen => true,
+            default => false,
         };
     }
 
@@ -96,6 +121,12 @@ enum KunciPengaturan: string
             self::RekamDiri => false,
             // Kuis hanya terbuka untuk orang tanpa akun bila guru memintanya.
             self::IzinkanTamu => false,
+            // Bawaan yang sengaja ramah kelas: nomor peringkat hanya untuk 30%
+            // teratas, dan bonus penyemangat mati kecuali guru menyalakannya.
+            self::PeringkatTerbukaPersen => 30,
+            self::BonusSemangat => false,
+            self::BonusSemangatBawahPersen => 50,
+            self::BonusSemangatMaksPersen => 15,
             default => true,
         };
     }
@@ -109,7 +140,9 @@ enum KunciPengaturan: string
             self::DetectTamper, self::DetectResize, self::BlockTabSwitch, self::FocusLock,
             self::BlockTranslate, self::ExamMode => 'Anti-cheat',
             self::AmbangPaham, self::AmbangMulaiPaham, self::MinimalDataTag => 'Laporan & pemahaman',
-            self::LayarGuru, self::ModeTim, self::Ranking => 'Tampilan & laporan',
+            self::LayarGuru, self::ModeTim, self::Ranking,
+            self::PeringkatTerbukaPersen, self::BonusSemangat,
+            self::BonusSemangatBawahPersen, self::BonusSemangatMaksPersen => 'Tampilan & laporan',
             self::IzinkanTamu => 'Siswa tamu',
             default => 'Aturan ulangan',
         };
@@ -142,6 +175,10 @@ enum KunciPengaturan: string
             self::MinimalDataTag => 'Data minimum per tema (jumlah soal)',
             self::RekamDiri => 'Izinkan rekam diri jawaban (izin sekolah/orang tua)',
             self::IzinkanTamu => 'Izinkan siswa tamu ikut kuis ini tanpa akun (cukup nama)',
+            self::PeringkatTerbukaPersen => 'Nomor peringkat hanya untuk …% teratas',
+            self::BonusSemangat => 'Bonus penyemangat untuk murid di bawah ambang (hanya tampilan)',
+            self::BonusSemangatBawahPersen => 'Bonus penyemangat: ambang bawah (%)',
+            self::BonusSemangatMaksPersen => 'Bonus penyemangat: tambahan maksimal (%)',
         };
     }
 }

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { skemaProgres, skemaResponPeringkat } from '../../../sections/report/api.js'
 import {
+  angkaRapi,
+  angkaTampil,
   barisMilikSaya,
+  catatanBonusBaris,
   kelasLencana,
   milikMurid,
+  ringkasAturanPapan,
   ringkasTingkat,
   tingkatTampilan,
   urutkanPeringkat,
@@ -138,10 +142,17 @@ describe('skema laporan', () => {
       judul_kuis: 'Ulangan Operasi Hitung',
       mode_tim: false,
       tampil: false,
+      guru: false,
       total: 1,
       top: 20,
+      terbuka_persen: 30,
+      terbuka_jumlah: 1,
+      bonus_aktif: false,
+      bonus_bawah_persen: 50,
+      bonus_maks_persen: 15,
       peringkat: [barisPeringkat({})],
       peringkat_saya: null,
+      detail_saya: null,
     })
 
     expect(data.tampil).toBe(false)
@@ -154,8 +165,15 @@ describe('skema laporan', () => {
       judul_kuis: 'Ulangan Kelompok',
       mode_tim: true,
       tampil: true,
+      guru: false,
       total: 1,
       top: 20,
+      terbuka_persen: 30,
+      terbuka_jumlah: 1,
+      bonus_aktif: false,
+      bonus_bawah_persen: 50,
+      bonus_maks_persen: 15,
+      detail_saya: null,
       peringkat: [
         barisPeringkat({ murid_id: null, tim_id: 9, tim_nama: 'Tim 1', nama: 'Tim 1', anggota: ['Ayu', 'Bima'] }),
       ],
@@ -188,5 +206,104 @@ describe('skema laporan', () => {
 
     expect(data.tema[0].tingkat).toBe('belum_paham')
     expect(data.remedial.soal).toEqual([])
+  })
+})
+
+describe('aturan papan peringkat', () => {
+  /**
+   * Payload papan lengkap; bawaannya papan guru tanpa bonus.
+   * @param {Record<string, unknown>} ubah
+   * @returns {import('../../../sections/report/api.js').DataPeringkat}
+   */
+  function papan(ubah) {
+    return /** @type {import('../../../sections/report/api.js').DataPeringkat} */ ({
+      kuis_id: 1,
+      judul_kuis: 'Ulangan Operasi Hitung',
+      mode_tim: false,
+      tampil: true,
+      guru: true,
+      total: 3,
+      top: 50,
+      terbuka_persen: 30,
+      terbuka_jumlah: 2,
+      bonus_aktif: false,
+      bonus_bawah_persen: 50,
+      bonus_maks_persen: 15,
+      peringkat: [],
+      peringkat_saya: null,
+      detail_saya: null,
+      ...ubah,
+    })
+  }
+
+  it('angkaTampil memakai angka tampilan dan jatuh ke nilai asli bila tidak dibantu', () => {
+    expect(
+      angkaTampil(
+        barisPeringkat({ skor: 2, skor_tampil: 7, persen: 20, persen_tampil: 70, berbantuan: true }),
+      ),
+    ).toEqual({ nilai: 7, maksimal: 10, persen: 70 })
+
+    // Baris murid tidak membawa skor_tampil sama sekali: nilai yang ada itulah
+    // yang ditampilkan.
+    expect(angkaTampil(barisPeringkat({ skor: 7, persen: 70 }))).toEqual({
+      nilai: 7,
+      maksimal: 10,
+      persen: 70,
+    })
+  })
+
+  it('catatanBonusBaris hanya hidup untuk baris yang ditandai berbantuan', () => {
+    expect(catatanBonusBaris(barisPeringkat({}))).toBeNull()
+    expect(catatanBonusBaris(barisPeringkat({ berbantuan: false, bonus: 0 }))).toBeNull()
+
+    expect(
+      catatanBonusBaris(
+        barisPeringkat({ berbantuan: true, bonus: 5, skor: 2, skor_tampil: 7, peringkat_asli: 5 }),
+      ),
+    ).toEqual({ teks: 'dibantu +5 poin · nilai asli 2 / 10', asli: '2 / 10', peringkatAsli: 5 })
+  })
+
+  it('ringkasAturanPapan menjelaskan aturan terbuka kepada murid tanpa menyebut bonus', () => {
+    const murid = ringkasAturanPapan(
+      papan({
+        guru: false,
+        bonus_aktif: true,
+        bonus_bawah_persen: 50,
+        bonus_maks_persen: 60,
+        peringkat: [barisPeringkat({ berbantuan: true, bonus: 5 })],
+      }),
+    )
+
+    expect(murid.catatanKeterbukaan).toContain('2 murid teratas')
+    // Sekalipun bonusnya menyala, murid tidak pernah diberi tahu apa pun.
+    expect(murid.catatanBonus).toBeNull()
+    expect(murid.jumlahDibantu).toBe(0)
+  })
+
+  it('ringkasAturanPapan memberi guru hitungan baris yang dibantu dan batasnya', () => {
+    const guru = ringkasAturanPapan(
+      papan({
+        bonus_aktif: true,
+        bonus_maks_persen: 60,
+        peringkat: [
+          barisPeringkat({ berbantuan: true, bonus: 5 }),
+          barisPeringkat({ peringkat: 2, berbantuan: false, bonus: 0 }),
+          barisPeringkat({ peringkat: 3, berbantuan: true, bonus: 2 }),
+        ],
+      }),
+    )
+
+    expect(guru.jumlahDibantu).toBe(2)
+    expect(guru.catatanBonus).toContain('di bawah 50%')
+    expect(guru.catatanBonus).toContain('maksimal 60%')
+    expect(guru.catatanBonus).toContain('2 baris bertanda')
+    expect(guru.catatanBonus).toContain('nilai aslinya tidak berubah')
+  })
+
+  it('angkaRapi menulis angka dengan koma dan tanpa nol ekor', () => {
+    expect(angkaRapi(7)).toBe('7')
+    expect(angkaRapi(7.5)).toBe('7,5')
+    expect(angkaRapi(7.25)).toBe('7,25')
+    expect(angkaRapi(6.66666)).toBe('6,67')
   })
 })

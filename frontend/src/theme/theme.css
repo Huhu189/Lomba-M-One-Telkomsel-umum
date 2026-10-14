@@ -632,6 +632,13 @@ a {
   border-radius: var(--radius-kecil);
 }
 
+/* Baris papan peringkat yang dibantu bonus penyemangat (hanya papan guru).
+ * Diberi garis tepi kiri mencolok supaya terbaca sekilas dari proyektor tanpa
+ * mengubah warna barisnya — barisnya masih harus terbaca seperti baris lain. */
+.peringkat-dibantu {
+  box-shadow: inset 4px 0 0 0 var(--status-peringatan);
+}
+
 .lencana {
   display: inline-flex;
   align-items: center;

@@ -7081,3 +7081,96 @@ memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend men
 - **Disunting setelah ditinjau:** `frontend/src/sections/material/KartuIngat.jsx` (JSDoc),
   `docs/smoke-ui-kuis-materi.mjs` (harness mengikuti desain baru + 2 pemeriksaan baru).
 - **Komit:** “Terapkan perubahan kuis sisipan materi + sesuaikan harnessnya” (lihat handoff).
+
+## A.80 — Arsitektur peringkat diubah: nomor hanya untuk N% teratas + bonus penyemangat (14 Oktober 2026)
+
+### A.80.1 Permintaan
+
+Peringkat dijadikan alat **layar guru** (bisa ditampilkan ke proyektor). Informasi nomor peringkat hanya
+diberikan ke murid **30% teratas**; murid yang ada di bawah ambang **50%** "secara diam-diam" diberi tambahan
+poin sampai ia keluar dari separuh kelas terbawah.
+
+### A.80.2 Aturan yang dipilih (dan alasannya)
+
+| Kunci pengaturan | Bawaan | Arti |
+| --- | --- | --- |
+| `peringkat_terbuka_persen` | 30 | jumlah baris teratas yang dibuka untuk murid = `ceil(peserta × N%)`, minimal 1 |
+| `bonus_semangat` | mati | saklar induk bonus penyemangat |
+| `bonus_semangat_bawah_persen` | 50 | batas bawah: murid di bawah ini yang dibantu |
+| `bonus_semangat_maks_persen` | 15 | tambahan maksimal (persen dari skor maksimal) |
+
+Dua keputusan yang sengaja diambil:
+
+1. **Sasaran bonus = `max(ambang, median kelas)`, dibatasi `maks_persen`.** Melewati ambang saja tidak cukup
+   untuk keluar dari separuh kelas terbawah ketika kelasnya bernilai tinggi, jadi titik tengah kelas dipakai
+   sebagai patokan kedua. Bila batas tambahannya tidak cukup, angka tampilan **tidak** dipaksa menyeberang —
+   yang tampil adalah nilai asli + batas itu (perilaku yang diuji, bukan angka ajaib).
+2. **Urutan papan memakai angka tampilan, pemecah serinya skor asli.** Dengan begitu murid yang benar-benar
+   mengerjakan lebih baik tidak pernah tergusur oleh temannya yang dibantu.
+
+### A.80.3 Pemisahan "nilai" dan "angka yang ditampilkan"
+
+- `skor`, `jumlah_benar`, `persen` **asli** tidak pernah berubah: rapor, ekspor nilai, laporan tema, dan
+  halaman hasil tetap memakai nilai sebenarnya.
+- Baris papan membawa `bonus`, `skor_tampil`, `persen_tampil`, `berbantuan`, dan `peringkat_asli`.
+- **Jejak itu hanya dikirim ke guru.** `RankingService::tanpaJejakBonus()` memindahkan angka tampilan ke
+  `skor`/`persen` dan membuang keempat kunci jejak untuk pemohon murid — jadi janji "diam-diam" ditegakkan di
+  server, bukan hanya disembunyikan di tampilan.
+- Halaman peringkat memakai `angkaTampil()` untuk kolom Skor, sehingga papan guru dan papan murid tidak
+  pernah menampilkan angka berbeda untuk baris yang sama (temuan nyata: sebelum itu, papan guru sempat
+  menampilkan 2/10 sedangkan murid melihat 7/10 untuk baris yang sama).
+- **Mode proyektor menyembunyikan kolom audit guru.** Layar itu menghadap kelas, jadi papan yang diproyeksikan
+  harus identik dengan yang dilihat murid.
+
+### A.80.4 Bukti (dijalankan, bukan klaim)
+
+- `php artisan test` — **387 lulus / 3866 asersi**. Baru: `backend/tests/Feature/RankingSemangatTest.php`
+  (6 tes / 224 asersi): tanpa bonus setiap baris `berbantuan=false`; bonus menaikkan angka tampilan sampai
+  melewati titik tengah sementara `attempts.skor` tetap 2; batas tambahan 5% membuat bonus tidak cukup
+  menyeberang (20% → 25%, tetap peringkat 4); aturan N% (murid peringkat 4 dari 5 tidak menerima nomor,
+  `detail_saya.di_luar_terbuka` true, `peringkat_saya` null) dan guru tetap melihat 5 baris lewat `top=50`;
+  validasi 0–100 menolak 150 pada ketiga kunci persentase; dan respons murid **tidak** memuat kunci bonus
+  sama sekali sementara guru memuatnya lengkap.
+- `Slice05Test` diperbarui mengikuti aturan baru (tie-break, N% teratas, `detail_saya`) — tetap hijau.
+- `./vendor/bin/pint --test` — 377 berkas bersih.
+- `npm run check` (checkJs) bersih; `npm run lint` 0 error (2 peringatan lama di `HalamanDaftar`/`Masuk`,
+  tidak tersentuh).
+- `npx vitest run` — **91 berkas / 856 tes lulus**. Baru:
+  `src/__tests__/sections/report/halamanPeringkat.test.jsx` (3 tes: murid di luar N% melihat skornya tanpa
+  satu pun kata "dibantu"; guru melihat catatan bonus lalu mode proyektor membersihkannya; murid yang
+  mengumpulkan melihat peringkatnya) dan 5 tes aturan murni di `tampilan.test.js` (`angkaTampil`,
+  `catatanBonusBaris`, `ringkasAturanPapan`, `angkaRapi`).
+- `bash docs/jalankan-smoke-ui.sh slice05` — **27/27 lulus** di browser sungguhan. Pemeriksaan baru: respons
+  guru membawa `guru/terbuka_persen/terbuka_jumlah/bonus_aktif`; bonus ujung-ke-ujung **skor asli 5 → tampil
+  6,5** sedangkan `skor` di baris itu tetap 5; papan guru punya sel `td[data-label="Catatan guru"]` bertanda
+  "dibantu" + "peringkat asli"; mode proyektor menghapus sel itu; papan murid tidak memuat kata "dibantu",
+  tidak punya sel catatan, dan responsnya hanya berisi 13 kunci tanpa satu pun jejak bonus.
+
+### A.80.5 Batasan jujur
+
+- **Halaman hasil tetap menampilkan skor asli.** Murid yang dibantu bisa membandingkan angka di papan dengan
+  hasilnya sendiri dan menemukan selisihnya; ini harga dari "bonus yang diam-diam" yang diminta. Titik ubah
+  tunggalnya: `tanpaJejakBonus()` (kalau ingin dihapus) + kolom Skor memakai `skor` asli.
+- **Bonus dihitung pada setiap permintaan papan** (median kelas dihitung ulang tiap kali). Untuk kelas
+  seukuran sekolah ini tidak terasa; kalau nanti ada kuis dengan ratusan peserta, hitungan itu perlu
+  di-cache.
+- **Bonus tidak menembus daftar N% teratas**: sasarannya titik tengah kelas, jadi anak yang dibantu tetap
+  tidak melihat nomornya kalau ia ada di luar 30% — efeknya hanya terlihat di papan guru. Bila yang
+  dikehendaki sebaliknya, ubah sasaran `beriBonus()` atau `terbukaJumlah`.
+- **Sapuan penuh 31 harness tidak diulang** putaran ini (hijau terakhir A.78); yang dijalankan adalah
+  `slice05` karena halaman yang berubah ada di sana. `smoke-ui-auth` tetap menunggu backend `MAIL_MAILER=log`.
+- Perangkat sungguhan tidak diuji: hanya Chrome headless via CDP, seperti biasa.
+
+### A.80.6 Berkas
+
+- **Backend:** `app/Sections/Settings/Enums/KunciPengaturan.php` (4 kunci baru + `persentase()`),
+  `app/Sections/Settings/Http/Requests/SimpanPengaturanRequest.php` (validasi 0–100),
+  `app/Sections/Report/Services/RankingService.php` (`aturan()`, `beriBonus()`, `tanpaJejakBonus()`,
+  `peringkat_asli`), `tests/Feature/Slice05Test.php`, `tests/Feature/RankingSemangatTest.php` (baru).
+- **Frontend:** `src/sections/report/api.js` (skema `guru`/`terbuka_*`/`bonus_*`/`detail_saya` + kunci jejak
+  bonus opsional), `src/sections/report/tampilan.js` (`angkaTampil`, `catatanBonusBaris`, `ringkasAturanPapan`,
+  `angkaRapi`), `src/sections/report/HalamanPeringkat.jsx` (mode proyektor + kolom catatan guru),
+  `src/theme/theme.css` (`.peringkat-dibantu`), `src/__tests__/sections/report/tampilan.test.js`,
+  `src/__tests__/sections/report/halamanPeringkat.test.jsx` (baru).
+- **Docs/harness:** `docs/smoke-ui-slice05.mjs` (+7 pemeriksaan, 20 → 27; ALAT dapat `klik`),
+  `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`.

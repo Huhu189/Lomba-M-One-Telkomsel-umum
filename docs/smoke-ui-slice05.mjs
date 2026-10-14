@@ -50,6 +50,12 @@ const ALAT = `window.__alat = {
   ada(teks) { return (document.querySelector('main')?.innerText ?? '').includes(teks) },
   teksMain() { return document.querySelector('main')?.innerText?.replace(/\\s+/g, ' ') ?? '' },
   hitung(sel) { return document.querySelectorAll(sel).length },
+  klik(teks) {
+    const tombol = [...document.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(teks))
+    if (!tombol) return false
+    tombol.click()
+    return true
+  },
 }`
 
 const hasil = []
@@ -414,6 +420,66 @@ async function main() {
       halamanLaporan.slice(0, 90),
     )
 
+    // ---------- 4b. Aturan baru: keterbukaan N% teratas + bonus penyemangat ----------
+    catat(
+      'respons peringkat membawa aturan keterbukaan, dan guru melihat seluruh papan',
+      peringkatApi.isi?.guru === true &&
+        peringkatApi.isi?.terbuka_persen === 30 &&
+        peringkatApi.isi?.terbuka_jumlah === 1 &&
+        peringkatApi.isi?.bonus_aktif === false,
+      `${peringkatApi.isi?.terbuka_persen}% → ${peringkatApi.isi?.terbuka_jumlah} baris · guru ${peringkatApi.isi?.guru}`,
+    )
+
+    // Bonus penyemangat dinyalakan dengan ambang atas sengaja (100%) supaya
+    // murid uji — yang skornya separuh — pasti masuk kriteria tanpa perlu
+    // menambah murid kedua di harness ini.
+    await atur('bonus_semangat', true)
+    await atur('bonus_semangat_bawah_persen', 100)
+    const peringkatBonus = await apiJson(`/v1/kuis/${idKuisUji}/ranking?top=5`)
+    const barisBonus = (peringkatBonus.isi?.peringkat ?? []).find((p) => p.murid_id === muridId)
+    catat(
+      'bonus menaikkan angka tampilan, sedangkan skor asli di baris itu tidak berubah',
+      peringkatBonus.isi?.bonus_aktif === true &&
+        barisBonus?.berbantuan === true &&
+        barisBonus.bonus > 0 &&
+        barisBonus.skor === SOAL_UJI[0].skor &&
+        barisBonus.skor_tampil > barisBonus.skor,
+      `asli ${barisBonus?.skor} → tampil ${barisBonus?.skor_tampil} (bonus ${barisBonus?.bonus})`,
+    )
+
+    await buka(`/peringkat/${idKuisUji}`)
+    const papanGuru = await evalJs(`__alat.teksMain()`)
+    // Tiap bagian diperiksa sendiri-sendiri supaya kegagalan berkata bagian
+    // mana yang hilang — bukan sekadar "teksnya tidak cocok".
+    const papanPunyaAturan = papanGuru.includes('Murid hanya melihat')
+    const papanPunyaTanda = papanGuru.includes('dibantu')
+    const papanPunyaAsli = papanGuru.includes('peringkat asli')
+    // Kolomnya dihitung dari `data-label` tiap sel, bukan dari judul di <thead>:
+    // di lebar jendela yang sempit kepala tabel disembunyikan CSS, sehingga
+    // teksnya memang tidak ada di innerText walaupun kolomnya lengkap.
+    const kolomCatatanGuru = await evalJs(`__alat.hitung('td[data-label="Catatan guru"]')`)
+    catat(
+      'papan guru menjelaskan aturan terbuka dan menandai baris yang dibantu',
+      papanPunyaAturan && papanPunyaTanda && papanPunyaAsli && kolomCatatanGuru >= 1,
+      `aturan ${papanPunyaAturan} · tanda ${papanPunyaTanda} · asli ${papanPunyaAsli} · sel catatan ${kolomCatatanGuru}`,
+    )
+
+    catat(
+      'mode proyektor bisa dinyalakan dari papan guru',
+      (await evalJs(`__alat.klik('Mode proyektor')`)) === true,
+    )
+    await sleep(700)
+    const papanProyektor = await evalJs(`__alat.teksMain()`)
+    const selCatatanProyektor = await evalJs(`__alat.hitung('td[data-label="Catatan guru"]')`)
+    catat(
+      'papan yang diproyeksikan bersih dari jejak bonus',
+      papanProyektor.includes('Keluar mode proyektor') &&
+        selCatatanProyektor === 0 &&
+        !papanProyektor.includes('dibantu') &&
+        !papanProyektor.includes('peringkat asli'),
+      `sel catatan ${selCatatanProyektor} · ${papanProyektor.slice(0, 90)}`,
+    )
+
     // ---------- 5. Murid melihat peringkat setelah saklar menyala ----------
     await apiJson('/v1/auth/keluar', 'POST')
     await buka('/masuk')
@@ -429,6 +495,32 @@ async function main() {
         peringkatNyala.includes('nilai asli') &&
         barisSendiri === 1,
       `baris disorot ${barisSendiri}`,
+    )
+
+    // Janji "diam-diam": murid membaca angkanya, bukan kejujuran di baliknya.
+    // Halaman murid TIDAK boleh memuat kata "dibantu", kolom catatan guru,
+    // tombol mode proyektor, atau nama kunci apa pun yang membocorkan bonus.
+    const selCatatanMurid = await evalJs(`__alat.hitung('td[data-label="Catatan guru"]')`)
+    catat(
+      'murid tidak melihat satu pun jejak bonus di papan peringkatnya',
+      !peringkatNyala.includes('dibantu') &&
+        selCatatanMurid === 0 &&
+        !peringkatNyala.includes('Mode proyektor') &&
+        !peringkatNyala.includes('bonus') &&
+        peringkatNyala.includes('murid teratas'),
+      `sel catatan ${selCatatanMurid} · ${peringkatNyala.slice(0, 90)}`,
+    )
+
+    const peringkatMuridApi = await apiJson(`/v1/kuis/${idKuisUji}/ranking`)
+    const barisMuridApi = (peringkatMuridApi.isi?.peringkat ?? []).find((p) => p.murid_id === muridId)
+    catat(
+      'respons untuk murid tidak memuat jejak bonus sama sekali',
+      barisMuridApi !== undefined &&
+        barisMuridApi.berbantuan === undefined &&
+        barisMuridApi.bonus === undefined &&
+        barisMuridApi.skor_tampil === undefined &&
+        barisMuridApi.peringkat_asli === undefined,
+      `kunci yang terlihat: ${Object.keys(barisMuridApi ?? {}).join(', ')}`,
     )
   } finally {
     // ---------- 6. Bersih-bersih ----------

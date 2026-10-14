@@ -1321,3 +1321,60 @@ Vitest 90 berkas/848 tes · realtime) · `kuis-materi` **57/57** · `materi` 27/
 
 **Sisa:** sapuan penuh seluruh harness belum diulang putaran ini (hijau terakhir pada A.78); `smoke-ui-auth`
 tetap menunggu backend `MAIL_MAILER=log`. Rincian lengkap: `docs/laporan-pengujian.md` **A.79**.
+
+## 22. A.80 — arsitektur peringkat diubah: nomor hanya untuk N% teratas + bonus penyemangat diam-diam (14 Oktober 2026)
+
+**Permintaan:** peringkat jadi alat layar guru (bisa diproyeksikan ke proyektor); informasi nomor peringkat
+hanya diberikan ke anak **top 30%**; murid di bawah ambang (50%) **secara diam-diam** diberi tambahan poin
+pada jawaban/tampilan sampai ia keluar dari separuh kelas terbawah.
+
+**Yang dibangun:**
+
+1. **Empat kunci pengaturan baru** (tiga lapis seperti biasa, jadi bisa diatur per sekolah/kelas/kuis):
+   `peringkat_terbuka_persen` (bawaan **30**), `bonus_semangat` (bawaan **mati**),
+   `bonus_semangat_bawah_persen` (bawaan **50**), `bonus_semangat_maks_persen` (bawaan **15**). Ketiganya
+   persentase, jadi divalidasi 0–100 di `SimpanPengaturanRequest`. Panel setelan ulangan di halaman kuis
+   langsung menampilkannya (panelnya memang dirender dari resolusi server, bukan daftar hardcode).
+2. **`RankingService`** — jumlah baris yang dibuka untuk murid = `ceil(peserta × N%)` (minimal 1). Murid di
+   luar itu dapat `peringkat_saya: null` **tetapi tetap** dapat `detail_saya` (skornya + penanda
+   `di_luar_terbuka`), jadi tidak ada layar kosong tanpa penjelasan. Guru selalu melihat seluruh papan.
+3. **Bonus penyemangat = angka tampilan, bukan nilai.** `skor` (rapor/ekspor/laporan) tidak pernah disentuh.
+   Baris berbantuan membawa `bonus`, `skor_tampil`, `berbantuan`, dan `peringkat_asli`; urutan papan memakai
+   angka tampilan dengan pemecah seri **skor asli**, sehingga anak yang benar-benar mengerjakan lebih baik
+   tidak pernah tergusur oleh temannya yang dibantu.
+4. **"Diam-diam" ditegakkan di server.** Respons untuk murid dibersihkan dari seluruh jejak bonus
+   (`tanpaJejakBonus`): angka tampilan pindah ke `skor`/`persen` dan keempat kunci jejak dibuang. Membaca
+   DevTools pun tidak membocorkan apa pun. Di mode proyektor, kolom audit guru juga disembunyikan — papan
+   yang menghadap kelas identik dengan yang dilihat murid.
+5. **Halaman peringkat**: mode proyektor (huruf/angka besar) untuk guru, kolom "Catatan guru" berisi
+   "dibantu +X poin · nilai asli …· peringkat asli #…", dan kalimat aturan yang berbeda untuk guru vs
+   murid. Angka di kolom Skor selalu angka **tampilan** (`angkaTampil`), supaya papan guru dan papan murid
+   tidak pernah beda angka untuk baris yang sama.
+
+**Bukti:** Pest **387/3866** (termasuk `RankingSemangatTest` 6 tes / 224 asersi: bonus aktif-mati, batas
+tambahan yang terlalu kecil untuk menyeberang, aturan N%, validasi 0–100, dan janji "murid tanpa jejak
+bonus") · Pint bersih · checkJs bersih · ESLint 0 error · Vitest **91 berkas / 856 tes** (baru:
+`__tests__/sections/report/halamanPeringkat.test.jsx` 3 tes + 5 tes aturan murni di `tampilan.test.js`) ·
+`docs/smoke-ui-slice05.mjs` **27/27** lewat browser sungguhan (bukti bonus ujung-ke-ujung: skor asli 5 →
+tampil 6,5 di papan, sementara respons murid hanya berisi 13 kunci tanpa satu pun jejak bonus).
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- **Bonus hanya mengubah papan.** Rapor, ekspor nilai, laporan tema, dan halaman hasil tetap nilai asli.
+  Kalau nanti guru mengeluh "nilai di papan beda dengan di rapor", itu memang desainnya — bukan bug.
+- **Murid bisa membandingkan papan dengan halaman hasilnya.** Halaman hasil menampilkan skor asli, sedangkan
+  papan menampilkan angka tampilan bila ia dibantu; anak yang teliti bisa menemukan selisihnya. Ini harga
+  dari "diam-diam" yang diminta; kalau tidak diinginkan, yang diubah satu tempat: `tanpaJejakBonus`
+  (dikembalikan apa adanya) + kolom Skor memakai `skor` asli.
+- **Bonus tidak menaikkan anak ke dalam N% teratas**: sasarannya titik tengah kelas, jadi efeknya terlihat di
+  papan guru — bukan tiket masuk daftar yang dibuka untuk murid. Kalau yang diinginkan sebaliknya, ubah
+  `beriBonus` (sasaran) atau `terbukaJumlah`.
+- **Mode proyektor = papan bersih.** Jangan menambahkan penanda "dibantu" ke mode itu; layarnya menghadap
+  kelas.
+- **`peringkat`/`persen` bermakna berbeda menurut pemohon** (murid: angka tampilan; guru: angka asli +
+  `skor_tampil`). Skema Zod menandai kunci jejak bonus sebagai opsional justru supaya perbedaan itu terlihat
+  di kontrak.
+
+**Sisa:** sapuan penuh 31 harness belum diulang putaran ini (hijau terakhir A.78); yang dijalankan adalah
+`slice05` (menyentuh halaman yang berubah). `smoke-ui-auth` tetap menunggu backend `MAIL_MAILER=log`.
+Rincian lengkap: `docs/laporan-pengujian.md` **A.80**.

@@ -21,6 +21,13 @@ export function urlEksporNilai(kuisId) {
  *
  * Pada mode tim (slice 09-C) yang diurutkan adalah tim: `murid_id` null dan
  * `tim_nama` + `anggota` terisi. Pada mode individu kebalikannya.
+ *
+ * Perhatikan pembagian dua angka (14 Oktober 2026): `skor`/`persen` adalah
+ * angka yang MEMANG DITAMPILKAN ke pemohonnya, sedangkan jejak bonus
+ * (`bonus`, `skor_tampil`, `peringkat_asli`, `berbantuan`) hanya dikirim ke
+ * guru. Bagi murid, papan peringkat memang cuma punya satu kebenaran: angka
+ * yang dilihatnya. Karena itu kunci-kunci jejak bonus bersifat opsional di
+ * skema ini — ketiadaannya di respons murid adalah bagian dari janji itu.
  */
 export const skemaPeringkat = z.object({
   peringkat: z.number(),
@@ -36,18 +43,51 @@ export const skemaPeringkat = z.object({
   jumlah_benar: z.number(),
   jumlah_soal: z.number(),
   dikumpulkan_at: z.string().nullable(),
+  // Jejak bonus: ada hanya bila pemohonnya guru.
+  peringkat_asli: z.number().optional(),
+  bonus: z.number().optional(),
+  skor_tampil: z.number().optional(),
+  persen_tampil: z.number().optional(),
+  berbantuan: z.boolean().optional(),
 })
 
-/** Peringkat satu kuis + keterlihatan saklar `ranking`. */
+/**
+ * Baris milik pemohon sendiri (murid), dikirim walau nomor peringkatnya tidak
+ * dibuka: skornya tetap miliknya, dan `di_luar_terbuka` menjelaskan mengapa
+ * nomornya kosong — bukan layar tanpa jawaban.
+ */
+export const skemaDetailSaya = z.object({
+  nama: z.string(),
+  skor: z.number(),
+  skor_maksimal: z.number(),
+  persen: z.number(),
+  peringkat: z.number().nullable(),
+  di_luar_terbuka: z.boolean(),
+  bonus: z.number().optional(),
+  skor_tampil: z.number().optional(),
+  persen_tampil: z.number().optional(),
+  berbantuan: z.boolean().optional(),
+})
+
+/** Peringkat satu kuis + aturan keterlihatan & bonus yang sedang berlaku. */
 export const skemaResponPeringkat = z.object({
   kuis_id: z.number(),
   judul_kuis: z.string(),
   mode_tim: z.boolean(),
   tampil: z.boolean(),
+  guru: z.boolean(),
   total: z.number(),
   top: z.number(),
+  // Aturan yang dipakai server saat menyusun respons ini — dibaca apa adanya
+  // supaya halaman menjelaskan aturannya, bukan menebak.
+  terbuka_persen: z.number(),
+  terbuka_jumlah: z.number(),
+  bonus_aktif: z.boolean(),
+  bonus_bawah_persen: z.number(),
+  bonus_maks_persen: z.number(),
   peringkat: z.array(skemaPeringkat),
   peringkat_saya: skemaPeringkat.nullable(),
+  detail_saya: skemaDetailSaya.nullable(),
 })
 
 /** Pemahaman satu tema (tag). */
@@ -140,6 +180,7 @@ export const skemaProgres = z.object({
 /**
  * @typedef {z.infer<typeof skemaResponPeringkat>} DataPeringkat
  * @typedef {z.infer<typeof skemaPeringkat>} DataBarisPeringkat
+ * @typedef {z.infer<typeof skemaDetailSaya>} DataDetailSaya
  * @typedef {z.infer<typeof skemaLaporan>} DataLaporan
  * @typedef {z.infer<typeof skemaBarisLaporan>} DataBarisLaporan
  * @typedef {z.infer<typeof skemaTema>} DataTema
