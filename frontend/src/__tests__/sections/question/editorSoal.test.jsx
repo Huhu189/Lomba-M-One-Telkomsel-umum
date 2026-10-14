@@ -8,20 +8,26 @@
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import EditorSoal from '../../../sections/question/EditorSoal.jsx'
 
 const daftarMapel = [{ id: 1, nama: 'Matematika' }]
 
-function render() {
+/** @param {{ daftarMapel?: { id: number, nama: string }[] }} [props] */
+function render(props = {}) {
+  // Editor menyimpan mapel baru lewat react-query (sejak 14 Oktober 2026), jadi
+  // ia butuh satu QueryClient seperti komponen halaman lain.
   return renderToStaticMarkup(
-    <EditorSoal
-      soal={null}
-      daftarMapel={daftarMapel}
-      daftarTag={[]}
-      sedangMenyimpan={false}
-      onSimpan={() => {}}
-      onBatal={() => {}}
-    />,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
+      <EditorSoal
+        soal={null}
+        daftarMapel={props.daftarMapel ?? daftarMapel}
+        daftarTag={[]}
+        sedangMenyimpan={false}
+        onSimpan={() => {}}
+        onBatal={() => {}}
+      />
+    </QueryClientProvider>,
   )
 }
 
@@ -74,5 +80,31 @@ describe('EditorSoal — kartu soal pilihan ganda', () => {
     const ringkas = html.indexOf('ringkas-kunci-soal')
     expect(ringkas).toBeGreaterThan(-1)
     expect(html.indexOf('baris-opsi')).toBeLessThan(ringkas)
+  })
+
+  it('menyediakan pembuat mapel di samping pemilih mapel', () => {
+    const html = render()
+
+    // Mapel tetap wajib saat menyimpan soal, jadi jalan membuatnya harus ada di
+    // sini juga — bukan hanya di halaman Mapel.
+    expect(html).toContain('id="soal-mapel"')
+    expect(html).toContain('Mapel baru')
+    // Sekolah yang sudah punya mapel membukanya sendiri lewat tombol itu, jadi
+    // isian nama belum tampil saat pertama dirender.
+    expect(html).not.toContain('aria-label="Nama mapel baru"')
+  })
+
+  it('sekolah tanpa mapel: formulir mapel baru sudah terbuka dan memberi tahu sebabnya', () => {
+    const html = render({ daftarMapel: [] })
+
+    expect(html).toContain('Belum ada mapel di sekolah ini')
+    expect(html).toContain('aria-label="Kode mapel baru"')
+    expect(html).toContain('Simpan mapel')
+  })
+
+  it('soal baru punya centang "simpan & lanjut" untuk menyusun rangkaian soal', () => {
+    const html = render()
+    expect(html).toContain('id="soal-lanjut-serupa"')
+    expect(html).toContain('Simpan soal')
   })
 })

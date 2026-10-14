@@ -58,6 +58,10 @@ export default function HalamanBankSoal() {
   const [cariDipakai, setCariDipakai] = useState('')
   const [modeEditor, setModeEditor] = useState(false)
   const [soalDiubah, setSoalDiubah] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
+  // Jenis/mapel/tag bekas soal yang baru disimpan dengan centang "lanjut".
+  const [awalSerupa, setAwalSerupa] = useState({ tipe: '', subject_id: '', tag_id: '' })
+  // Naik satu tiap soal baru yang diwarisi, jadi editor benar-benar dipasang ulang.
+  const [kunciEditor, setKunciEditor] = useState(0)
   const [soalDihapus, setSoalDihapus] = useState(/** @type {import('./api.js').DataSoal|null} */ (null))
 
   // Ketikan digabung dulu: satu permintaan per jeda, bukan satu per huruf.
@@ -89,12 +93,29 @@ export default function HalamanBankSoal() {
   })
 
   const simpan = useMutation({
-    mutationFn: async (/** @type {import('./tipeSoal.js').MuatanSoal} */ muatan) =>
-      soalDiubah === null ? buatSoal(muatan) : ubahSoal(soalDiubah.id, muatan),
-    onSuccess: async () => {
-      tampilkanToast('sukses', soalDiubah === null ? 'Soal ditambahkan.' : 'Soal diperbarui.')
-      setModeEditor(false)
-      setSoalDiubah(null)
+    mutationFn: async (
+      /** @type {{ muatan: import('./tipeSoal.js').MuatanSoal, lanjut: boolean }} */ variabel,
+    ) => (soalDiubah === null ? buatSoal(variabel.muatan) : ubahSoal(soalDiubah.id, variabel.muatan)),
+    onSuccess: async (_hasil, variabel) => {
+      // "Simpan & lanjut": editor tetap terbuka, kali ini untuk soal baru dengan
+      // jenis, mapel, dan tag yang sama — menyusun satu bab soal jadi beruntun.
+      if (variabel.lanjut && soalDiubah === null) {
+        setAwalSerupa({
+          tipe: variabel.muatan.tipe,
+          subject_id: String(variabel.muatan.subject_id),
+          tag_id: variabel.muatan.tag_id === null ? '' : String(variabel.muatan.tag_id),
+        })
+        setKunciEditor((sebelum) => sebelum + 1)
+        setSoalDiubah(null)
+        setModeEditor(true)
+        tampilkanToast('sukses', 'Soal disimpan. Lanjut ke soal berikutnya.')
+      } else {
+        tampilkanToast('sukses', soalDiubah === null ? 'Soal ditambahkan.' : 'Soal diperbarui.')
+        setAwalSerupa({ tipe: '', subject_id: '', tag_id: '' })
+        setModeEditor(false)
+        setSoalDiubah(null)
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['soal'] })
       await queryClient.invalidateQueries({ queryKey: ['tag'] })
     },
@@ -127,6 +148,10 @@ export default function HalamanBankSoal() {
 
   function mulaiTambah() {
     setSoalDiubah(null)
+    // Tombol "Tambah soal" selalu mulai dari nol; warisan jenis/mapel hanya
+    // berlaku lewat centang "Simpan & lanjut".
+    setAwalSerupa({ tipe: '', subject_id: '', tag_id: '' })
+    setKunciEditor((sebelum) => sebelum + 1)
     setModeEditor(true)
   }
 
@@ -150,12 +175,16 @@ export default function HalamanBankSoal() {
           />
 
           <EditorSoal
-            key={soalDiubah === null ? 'baru' : String(soalDiubah.id)}
+            key={soalDiubah === null ? `baru-${kunciEditor}` : String(soalDiubah.id)}
             soal={soalDiubah}
             daftarMapel={mapel.data ?? []}
             daftarTag={tag.data ?? []}
             sedangMenyimpan={simpan.isPending}
-            onSimpan={(muatan) => simpan.mutate(muatan)}
+            mapelAwal={awalSerupa.subject_id}
+            jenisAwal={awalSerupa.tipe}
+            tagAwal={awalSerupa.tag_id}
+            onSimpan={(muatan, opsi) => simpan.mutate({ muatan, lanjut: Boolean(opsi?.lanjut) })}
+            onMapelDibuat={() => void queryClient.invalidateQueries({ queryKey: ['mapel'] })}
             onBatal={tutupEditor}
           />
         </>

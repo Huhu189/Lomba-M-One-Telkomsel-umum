@@ -11,8 +11,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { skemaKelasForm } from './validasi.js'
-import { ambilKelas, buatKelas, ubahKelas, hapusKelas } from './api.js'
+import { skemaKelasForm, skemaMuridForm } from './validasi.js'
+import { ambilKelas, buatKelas, ubahKelas, hapusKelas, buatMurid } from './api.js'
 import { galatKolom, pesanGalatApi, teksGalat } from '../auth/api.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import { useHanyaMelihat } from '../../shared/akses.js'
@@ -56,6 +56,10 @@ export default function HalamanKelas() {
     /** @type {import('./api.js').DataKelas | null} */ (null),
   )
   const [saring, setSaring] = useState(/** @type {'semua' | number} */ ('semua'))
+  // Kelas yang sedang ditambahi murid (null = panelnya tertutup). Menambah murid
+  // dari sini jauh lebih pendek daripada pindah ke halaman Murid lalu memilih
+  // kelasnya lagi — dan kelas tujuannya sudah pasti tidak salah pilih.
+  const [kelasMurid, setKelasMurid] = useState(/** @type {import('./api.js').DataKelas | null} */ (null))
 
   const daftarKelas = useQuery({ queryKey: ['kelas'], queryFn: ambilKelas })
 
@@ -102,6 +106,50 @@ export default function HalamanKelas() {
     },
   })
 
+  // Formulir murid baru di halaman Kelas: kelasnya terkunci pada baris yang
+  // ditekan, sisanya sama seperti formulir di halaman Murid.
+  const {
+    register: registerMurid,
+    handleSubmit: handleSubmitMurid,
+    reset: resetMurid,
+    setError: setErrorMurid,
+    clearErrors: clearErrorsMurid,
+    formState: { errors: errorsMurid, isSubmitting: mengirimMurid },
+  } = useForm({
+    resolver: zodResolver(skemaMuridForm),
+    defaultValues: { nama: '', email: '', class_id: '', nis: '', nisn: '' },
+  })
+
+  const tambahMurid = useMutation({
+    mutationFn: async (/** @type {import('./validasi.js').DataMuridForm} */ isi) =>
+      buatMurid({
+        nama: isi.nama,
+        email: isi.email,
+        class_id: Number(isi.class_id),
+        nis: isi.nis || undefined,
+        nisn: isi.nisn || undefined,
+      }),
+    onSuccess: async () => {
+      tampilkanToast('sukses', 'Murid ditambahkan ke kelas ini.')
+      tutupPanelMurid()
+      // Jumlah murid ikut berubah, jadi daftar kelas juga disegarkan.
+      await queryClient.invalidateQueries({ queryKey: ['murid'] })
+      await queryClient.invalidateQueries({ queryKey: ['kelas'] })
+    },
+    onError: (galat) => {
+      const kolom = galatKolom(galat)
+
+      clearErrorsMurid()
+      if (kolom.nama) setErrorMurid('nama', { message: kolom.nama })
+      if (kolom.email) setErrorMurid('email', { message: kolom.email })
+      if (kolom.nis) setErrorMurid('nis', { message: kolom.nis })
+      if (kolom.nisn) setErrorMurid('nisn', { message: kolom.nisn })
+      if (kolom.class_id) setErrorMurid('class_id', { message: kolom.class_id })
+
+      tampilkanToast('salah', pesanGalatApi(galat))
+    },
+  })
+
   const hapus = useMutation({
     mutationFn: async (/** @type {number} */ id) => hapusKelas(id),
     onSuccess: async () => {
@@ -141,6 +189,17 @@ export default function HalamanKelas() {
     setPanelBuka(false)
     setIdUbah(null)
     reset(nilaiAwal)
+  }
+
+  /** @param {import('./api.js').DataKelas} kelas */
+  function bukaTambahMurid(kelas) {
+    setKelasMurid(kelas)
+    resetMurid({ nama: '', email: '', class_id: String(kelas.id), nis: '', nisn: '' })
+  }
+
+  function tutupPanelMurid() {
+    setKelasMurid(null)
+    resetMurid({ nama: '', email: '', class_id: '', nis: '', nisn: '' })
   }
 
   return (
@@ -203,6 +262,13 @@ export default function HalamanKelas() {
                       aksi: true,
                       sel: (/** @type {import('./api.js').DataKelas} */ kelas) => (
                         <div className="aksi-baris">
+                          {/* Menambah murid langsung dari baris kelasnya: inilah
+                           * yang paling sering dilakukan guru setelah kelas dibuat. */}
+                          <TombolIkon
+                            label={`Tambah murid ke kelas ${kelas.nama}`}
+                            ikon={IkonTambah}
+                            onClick={() => bukaTambahMurid(kelas)}
+                          />
                           <TombolIkon
                             label={`Ubah kelas ${kelas.nama}`}
                             ikon={IkonPensil}
@@ -238,7 +304,8 @@ export default function HalamanKelas() {
           }
         >
           Kelas dipakai untuk mengelompokkan murid dan membagikan kuis. Tambahkan satu kelas, lalu
-          impor murid ke dalamnya.
+          tambah muridnya langsung dari baris kelas itu (tombol +) — atau impor sekaligus banyak lewat
+          halaman Impor murid.
         </KosongData>
       )}
 
@@ -298,6 +365,84 @@ export default function HalamanKelas() {
             </Tombol>
             <Tombol type="submit" memuat={isSubmitting || simpan.isPending}>
               {idUbah === null ? 'Simpan kelas' : 'Simpan perubahan'}
+            </Tombol>
+          </div>
+        </form>
+      </PanelForm>
+
+      <PanelForm
+        buka={kelasMurid !== null}
+        judul={`Tambah murid ke ${kelasMurid?.nama ?? ''}`}
+        labelTutup="Tutup formulir murid"
+        onTutup={tutupPanelMurid}
+      >
+        <form onSubmit={handleSubmitMurid((isi) => tambahMurid.mutate(isi))} noValidate>
+          <p className="teks-lembut small">
+            Murid baru langsung masuk ke kelas <strong>{kelasMurid?.nama}</strong> dan bisa dipakai masuk
+            dengan email ini. Kata sandinya dibuatkan server; kalau lupa, murid dapat memintanya sendiri
+            lewat “Lupa kata sandi”.
+          </p>
+
+          {/* Kelasnya dibawa formulir ini, bukan dipilih lagi oleh guru. */}
+          <input type="hidden" {...registerMurid('class_id')} />
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold" htmlFor="nama-murid-kelas">
+              Nama
+            </label>
+            <input id="nama-murid-kelas" className="form-control" {...registerMurid('nama')} />
+            {errorsMurid.nama && (
+              <p className="status-salah small mb-0 mt-1">{teksGalat(errorsMurid.nama)}</p>
+            )}
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold" htmlFor="email-murid-kelas">
+              Email
+            </label>
+            <input
+              id="email-murid-kelas"
+              type="email"
+              inputMode="email"
+              className="form-control"
+              {...registerMurid('email')}
+            />
+            {errorsMurid.email && (
+              <p className="status-salah small mb-0 mt-1">{teksGalat(errorsMurid.email)}</p>
+            )}
+          </div>
+
+          <div className="row g-2 mb-4">
+            <div className="col-6">
+              <label className="form-label fw-semibold" htmlFor="nis-murid-kelas">
+                NIS <span className="teks-lembut fw-normal">(opsional)</span>
+              </label>
+              <input id="nis-murid-kelas" className="form-control" {...registerMurid('nis')} />
+              {errorsMurid.nis && (
+                <p className="status-salah small mb-0 mt-1">{teksGalat(errorsMurid.nis)}</p>
+              )}
+            </div>
+            <div className="col-6">
+              <label className="form-label fw-semibold" htmlFor="nisn-murid-kelas">
+                NISN <span className="teks-lembut fw-normal">(opsional)</span>
+              </label>
+              <input id="nisn-murid-kelas" className="form-control" {...registerMurid('nisn')} />
+              {errorsMurid.nisn && (
+                <p className="status-salah small mb-0 mt-1">{teksGalat(errorsMurid.nisn)}</p>
+              )}
+            </div>
+          </div>
+
+          {errorsMurid.class_id && (
+            <p className="status-salah small mb-2">{teksGalat(errorsMurid.class_id)}</p>
+          )}
+
+          <div className="d-flex flex-wrap justify-content-end gap-2">
+            <Tombol varian="tepi" onClick={tutupPanelMurid}>
+              Batal
+            </Tombol>
+            <Tombol type="submit" memuat={mengirimMurid || tambahMurid.isPending}>
+              Simpan murid
             </Tombol>
           </div>
         </form>

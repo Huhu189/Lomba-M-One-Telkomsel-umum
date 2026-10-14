@@ -242,9 +242,11 @@ mengalahkan semua pekerjaan rapi-rapi di bawah.
    (c) jadikan asersi "kartu Perlu perhatian tanpa garis sisi berwarna" permanen di `docs/smoke-ui-mobile.mjs`;
    (d) audit tata letak 360/768/1024/1440 px; (e) target sentuh < 44 px di kontrol editor materi;
    (f) perluas pencarian ke Kelas/Mapel/Bank Soal; (g) ambang denyut proteksi (A.54) bisa diatur guru +
-   uji denyut di peramban sungguhan; (h) mode `hasil` pada Layar kelas (mode `kosong`, `pengumuman`,
-   `soal`, dan `peringkat` sudah diuji di peramban sejak A.81) dan moderasi avatar pada antrean
-   panjang — dua jalur yang masih gelap di GUI.
+   uji denyut di peramban sungguhan;   (h) mode `hasil` pada Layar kelas (mode `kosong`, `pengumuman`,
+   `soal`, dan `peringkat` sudah diuji di peramban sejak A.81/A.82 — termasuk papan yang **berisi baris**)
+   dan moderasi avatar pada antrean panjang — dua jalur yang masih gelap di GUI;
+   (i) sambungkan panel layar kelas ke **halaman hasil murid** supaya papan yang disiarkan guru tetap
+   terlihat setelah anak mengumpulkan (batasan yang disebut apa adanya di A.81.4 & `penjelasan-fitur.md`).
 
 ### 0.7 Kebiasaan hemat memory (WAJIB dipertahankan)
 
@@ -372,6 +374,8 @@ riwayat A.30–A.60:**
 
 | Perintah | Hasil |
 | --- | --- |
+| **Lima jalur yang dulu memaksa guru keluar halaman (**A.83**, 14 Okt 2026)** — `./verify.sh` + `docs/jalankan-smoke-ui.sh kelas/murid/slice03/slice04/pengaturan` | `./verify.sh` **SEMUA HIJAU (exit 0)** — Pest **391 lulus** (3940 asersi) · Redis wajib **9/65** · Pint bersih (**379 berkas**) · checkJs exit 0 · ESLint 0 error · Vitest **94 berkas / 877 tes** · realtime **20**; smoke **`kelas` 26/26** (17 → 26) · **`murid` 23/23** (18 → 23, termasuk murid **masuk dengan alamat email hasil ganti**) · **`slice03` 16/16** (9 → 16, termasuk mapel baru dari editor & "Simpan & lanjut") · **`slice04` 19/19** (18 → 19) · **`pengaturan` 17/17** (13 → 17, saklar tamu **geser 0 px** di 390 px) — semuanya exit 0 di Chrome sungguhan. Rincian: **A.83** |
+| **Papan peringkat BERISI baris di peramban (**A.82**, 14 Okt 2026)** — `docs/jalankan-smoke-ui.sh layar` | **62/62 lulus, exit 0** (52 → 62) di Chrome sungguhan, memakai layanan yang sudah hidup (`vite=200 backend=204 realtime=200`). Empat murid sekelas mengumpulkan lebih dulu (A=5 · B=5 · C=5 · D=0), lalu papan disiarkan ulang: **tabel di HP murid sama persis dengan tabel di halaman peringkatnya** (dibandingkan sebagai satu string `innerText`), jumlah barisnya sama-sama 2 (`30% dari 4 → 2 terbuka`), dan pembersihannya lulus (`akun murid pengumpul terhapus · 4/4`). Tidak ada berkas aplikasi yang disentuh — `./verify.sh` tidak diulang. Rincian: **A.82** |
 | **Bundel per halaman (**A.69**, 13 Okt 2026 — putaran terakhir, belum dikomit)** — `npm run build` sebelum/sesudah, `node docs/ukur-bundel-peramban.mjs` (Chrome + `vite preview`), `npm run check`, `npm run lint`, `npm run test`, enam harness smoke | Bundel awal **923,63 kB → 555,26 kB** (262,06 → **176,35 kB gzip**), 54 berkas JS; di peramban: buka app **6 berkas / 555,30 kB** lalu tekan “Daftar” **2 berkas kecil** tanpa muat ulang; checkJs exit 0 · ESLint 0 error · Vitest **80 berkas / 760 tes**; smoke `pengaturan` 12/12 · `susun` 44/44 · `slice04` 18/18 · `nav` 14/14 · `kuis-materi` 48/48 · `slice07` 21/21 — semua exit 0. Rincian: **A.69** |
 | **Bank soal bertahap + `/pengaturan` jadi halaman akun (**A.68**, 13 Okt 2026 — belum dikomit)** — `./verify.sh` + `docs/jalankan-smoke-ui.sh pengaturan/slice03/susun/kuis-manual` | `./verify.sh` **SEMUA HIJAU** — Pest **357 lulus** (3356 asersi) · Redis wajib 9 · Pint bersih (361 berkas) · checkJs · ESLint 0 error · Vitest **79 berkas/752 tes** · realtime 20; smoke `pengaturan` **12/12** (harness ditulis ulang) · `slice03` **9/9** · `susun` **44/44** · `kuis-manual` **15/15**. Rincian: **A.68** |
 | **Audit pemeriksaan mati harness GUI (**A.67**, 13 Okt 2026)** — `slice07`, `kuis-materi`, `audit-ui` | `slice07` **21/21** · `kuis-materi` **48/48** · `audit-ui kuis` **BERSIH (`{}`)** — semuanya exit 0. Kontrol negatif A/B: klaim lama **21/21 lulus** atas respons tak terpakai (buta) vs klaim baru **20/21 · exit 1**. Rincian: `laporan-pengujian.md` **A.67** |
@@ -752,15 +756,16 @@ npm --prefix frontend run build              # build produksi
 # Cara menguji GUI langsung: satu perintah per harness. Runner memakai layanan yang
 # sudah hidup dari nyalakan-local.sh (dan menyalakan/mematikan sendiri yang belum ada),
 # jadi urutannya bebas dan tidak ada port yang diperebutkan:
-docs/jalankan-smoke-ui.sh pengaturan        # halaman akun + setelan ulangan di tiap kuis (12/12)
-docs/jalankan-smoke-ui.sh slice03           # bank soal + editor kuis (9/9)
-docs/jalankan-smoke-ui.sh slice04           # kerjakan + hasil, dua halaman yang kini dimuat malas (18/18)
+docs/jalankan-smoke-ui.sh pengaturan        # halaman akun + setelan ulangan di tiap kuis (17/17)
+docs/jalankan-smoke-ui.sh slice03           # bank soal + editor kuis (16/16)
+docs/jalankan-smoke-ui.sh slice04           # kerjakan + hasil, dua halaman yang kini dimuat malas (19/19)
 docs/jalankan-smoke-ui.sh susun             # editor kuis (44/44)
 docs/jalankan-smoke-ui.sh nav / mobile / sidebar / palet-sidebar   # tata letak & menu (14/14 · 16/16 · 9/9 · 58/58)
-docs/jalankan-smoke-ui.sh layar / tim / impor-murid               # 52/52 · 31/31 · 29/29
+docs/jalankan-smoke-ui.sh layar / tim / impor-murid               # 62/62 · 31/31 · 29/29
 docs/jalankan-smoke-ui.sh mapel / avatar / auth                   # 32/32 · 44/44 · 36/36 (auth butuh MAIL_MAILER=log)
 docs/jalankan-smoke-ui.sh soal-berubah / setelan-sesi / kuis-materi # 19/19 · 23/23 · 48/48
-docs/jalankan-smoke-ui.sh tamu / murid / kuis-manual / slice06     # 9/9 · 18/18 · 15/15 · 28/28
+docs/jalankan-smoke-ui.sh tamu / murid / kuis-manual / slice06     # 9/9 · 23/23 · 15/15 · 28/28
+docs/jalankan-smoke-ui.sh kelas / mapel / pengaturan                # 26/26 · 32/32 · 17/17
 docs/jalankan-smoke-ui.sh editor            # editor materi: tidak melebar di 390/768/1366 px
 # Daftar lengkap 30 harness berhitung + hasilnya: docs/laporan-pengujian.md A.66.1
 docs/jalankan-smoke-materi.sh                 # pemutar materi + kuis sisipan (backend+vite+Chrome sendiri)
@@ -1444,3 +1449,54 @@ halaman peringkat.
 - **Papan menyegarkan diri tiap 30 detik** selama tampil + dipasang ulang setiap siaran baru (versi naik).
 
 Rincian lengkap: `docs/laporan-pengujian.md` **A.81**.
+
+---
+
+## 24. A.83 — lima jalur yang dulu memaksa guru keluar halaman (14 Oktober 2026)
+
+**Yang dikerjakan:** lima hal yang akarnya sama — pekerjaan yang satu niat dipecah ke beberapa halaman, dan
+satu di antaranya bahkan tampak "berhasil" padahal tidak menyimpan apa pun.
+
+1. **Email murid benar-benar bisa diganti.** Kolom `email` divalidasi (termasuk unik) tetapi tidak pernah
+   masuk `forceFill`, jadi `PUT /v1/murid/{id}` menjawab 200 **dengan alamat lama**. Sekarang ikut disimpan
+   (lowercase + trim); `email_verified_at` sengaja **tidak** dikosongkan.
+2. **Tambah murid dari baris kelas.** Tombol `+` di tiap baris halaman Kelas membuka panel murid dengan
+   kelasnya sudah terpilih (dikirim lewat isian tersembunyi `class_id`), bukan pemilih kelas halaman Murid.
+3. **Mapel baru dibuat di dalam editor soal.** Sekolah tanpa mapel dulu terkunci dari bank soal (mapel wajib
+   saat menyimpan). Editor menyimpan mapelnya, langsung memakainya, lalu memberi tahu pemanggil lewat prop
+   `onMapelDibuat` supaya daftar mapel disegarkan (dipakai halaman bank soal **dan** langkah "soal baru" di
+   halaman kuis).
+4. **"Simpan & lanjut".** Editor menyimpan soal lalu memasang ulang dirinya (lewat `key` yang naik) untuk soal
+   berikutnya dengan jenis, mapel, dan tag yang sama; teks/pilihan/kunci tetap kosong.
+5. **Saklar setelan ulangan tidak bergeser saat disentuh.** Lebar blok saklar tetap + "dikunci sekolah" pindah
+   ke teks sumber di kiri + `aria-label`; geser 0 px dan tinggi baris tetap di 390 px. Saklar setelan tetap
+   **tidak** dipasang di layar pengerjaan murid (pemeriksaan peramban baru menjaganya).
+
+**Bukti:** `./verify.sh` **SEMUA HIJAU (exit 0)** — Pest **391 lulus / 3940 asersi** · Redis wajib 9/65 ·
+Pint bersih (379 berkas) · checkJs · ESLint 0 error · Vitest **94 berkas / 877 tes** · realtime 20. Smoke:
+`kelas` **26/26** (17 → 26) · `murid` **23/23** (18 → 23, termasuk **murid masuk dengan alamat email hasil
+ganti**) · `slice03` **16/16** (9 → 16, termasuk mapel baru dari editor & warisan "Simpan & lanjut") ·
+`slice04` **19/19** (18 → 19) · `pengaturan` **17/17** (13 → 17, saklar tamu **geser 0 px**). Tes baru:
+`tambahMuridKelas.test.jsx` (4) · `mapelBaruEditor.test.jsx` (4) · `SekolahTest` +1 · `editorSoal.test.jsx`
++3 & dibungkus `QueryClientProvider` (editor kini memakai react-query).
+
+**Keterikatan yang perlu diketahui sesi berikutnya:**
+
+- **Jangan mengosongkan `email_verified_at` saat email murid diganti.** Alamat murid ditetapkan sekolah, dan
+  murid tidak bisa membuka tautan verifikasi ke alamat yang baru saja diganti guru — mengosongkannya mengunci
+  murid dari seluruh fitur tanpa jalan keluar.
+- **Formulir murid kini ada DUA** (halaman Murid dan panel di halaman Kelas). Yang berbeda hanya kelasnya
+  (terkunci). Menambah kolom murid harus mengubah keduanya — belum ada komponen bersama.
+- **Warisan "Simpan & lanjut" sengaja terbatas** pada jenis, mapel, dan tag. Skor/pembahasan/aktif **tidak**
+  diwarisi; kalau nanti ditambah, ubah `awalSerupa` di `HalamanBankSoal.jsx` (bukan state di dalam editor).
+- **Editor soal memakai react-query sekarang** (untuk menyimpan mapel baru), jadi komponen itu butuh
+  `QueryClientProvider` di tes mana pun yang merendernya. Tes SSR lama sudah dibungkus.
+- **Pembuat mapel di editor tidak memeriksa duplikat di perangkat** — servernya yang menolak dan pesannya
+  tampil di panel. Jangan menambahkan pemeriksaan dari daftar mapel klien: daftar itu bisa basi.
+
+**Sisa:** sapuan penuh seluruh harness belum diulang putaran ini (yang dijalankan: `kelas`, `murid`,
+`slice03`, `slice04`, `pengaturan` + `./verify.sh`). Perubahan **di luar putaran ini** yang sedang ada di pohon
+kerja — editor materi (bilah rasio dihapus, tombol ✕/Delete di timeline, "Hapus berkas" pustaka media) beserta
+`Theme`/`gunung.svg` dan harness `editor`/`materi`/`kuis-materi`/`perjalanan` — **belum dijalankan** dan tidak
+diklaim hijau oleh laporan ini; jalankan harnessnya sebelum mengandalkannya. Rincian lengkap:
+`docs/laporan-pengujian.md` **A.83**.

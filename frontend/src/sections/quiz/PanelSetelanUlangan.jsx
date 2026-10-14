@@ -166,24 +166,34 @@ export default function PanelSetelanUlangan({ kuisId }) {
                   <span className="fw-semibold d-block">{info.label}</span>
                   <span className="text-body-secondary small">
                     Sumber: {info.sumber}
-                    {info.terkunci ? ' · dikunci sekolah' : ''}
+                    {info.terkunci && <span className="badge-status lembut ms-1">dikunci sekolah</span>}
                   </span>
                 </div>
 
+                {/*
+                  Saklar setelan (termasuk "Izinkan siswa tamu"). Dua hal yang
+                  membuatnya tidak bergeser saat disentuh — dulu teks labelnya
+                  berubah panjang ("Aktif" → "Nonaktif") dan barisnya ikut
+                  membungkus, sehingga saklarnya seperti melompat:
+                  1. lebar bloknya tetap (`.saklar-setelan`) dan teksnya diberi
+                     lebar minimum, jadi panjang teks tidak menggeser apa pun;
+                  2. keterangan "dikunci sekolah" dipindah ke teks sumber di
+                     sebelah kiri — bukan lagi ikut mengubah lebar label.
+                */}
                 {info.tipe === 'boolean' && (
-                  <div className="form-check form-switch m-0">
+                  <div className="form-check form-switch m-0 saklar-setelan">
                     <input
                       className="form-check-input"
                       type="checkbox"
                       role="switch"
                       id={`set-${kunci}`}
+                      aria-label={`${info.label}: ${info.nilai ? 'aktif' : 'nonaktif'}`}
                       checked={Boolean(info.nilai)}
                       disabled={simpan.isPending || sibukMassal || info.terkunci}
                       onChange={(e) => simpan.mutate({ kunci, nilai: e.target.checked, terkunci: info.terkunci })}
                     />
                     <label className="form-check-label small" htmlFor={`set-${kunci}`}>
-                      {info.nilai ? 'Aktif' : 'Nonaktif'}
-                      {info.terkunci ? ' · dikunci sekolah' : ''}
+                      <span className="saklar-setelan-teks">{info.nilai ? 'Aktif' : 'Nonaktif'}</span>
                     </label>
                   </div>
                 )}

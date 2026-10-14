@@ -11,7 +11,12 @@
 //    menemukan murid yang halaman-nya bahkan mungkin bukan halaman 1);
 // 4. kata kunci yang tidak ada hasilnya memakai keadaan kosong khusus
 //    pencarian, dan tombol "Bersihkan pencarian" mengembalikan daftar penuh;
-// 5. pencarian digabung saringan kelas (dua filter sekaligus di satu kueri).
+// 5. pencarian digabung saringan kelas (dua filter sekaligus di satu kueri);
+// 6. **alamat email murid benar-benar bisa diganti** (14 Oktober 2026). Kolom itu
+//    dulu lolos validasi tetapi tidak pernah disimpan, jadi panelnya menjawab
+//    "Murid diperbarui." sementara alamatnya tetap yang lama — dan itu baru
+//    ketahuan saat murid gagal masuk. Di sini dibuktikan alamat BARU yang dipakai
+//    masuk, alamat LAMA tidak lagi menemukan muridnya.
 //
 // Harness ini MANDIRI: kelas + tiga murid ujinya dibuat di awal dan dihapus di
 // blok `finally`, jadi bisa dijalankan berulang.
@@ -32,6 +37,8 @@ const NAMA_B = `Cari Dua ${TANDA}`
 const NAMA_C = `Cari Tiga ${TANDA}`
 const NIS_A = `7${TANDA.slice(0, 4)}`
 const EMAIL_A = `cari.satu.${TANDA}@murid.test`
+/** Kata sandi murid A: dipakai membuktikan alamat email BARU benar-benar bisa dipakai masuk. */
+const SANDI_MURID_A = 'Passw0rd!Aman'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -64,6 +71,23 @@ const ALAT = `window.__alat = {
     return [...document.querySelectorAll('table tbody tr')].map((tr) =>
       (tr.innerText ?? '').replace(/\\s+/g, ' ').trim(),
     )
+  },
+  // Tombol Ubah milik satu murid saja (labelnya menyebut namanya), supaya
+  // membuka panel tidak bergantung pada urutan baris. Catatan: potongan ini
+  // hidup DI DALAM template literal, jadi jangan memakai backtick di sini.
+  bukaUbah(nama) {
+    const tombol = document.querySelector('button[aria-label="Ubah murid ' + nama + '"]')
+    if (!tombol) return false
+    tombol.click()
+    return true
+  },
+  panel() { return (document.querySelector('dialog')?.innerText ?? '').replace(/\\s+/g, ' ') },
+  panelTerbuka() { return document.querySelector('dialog')?.open === true },
+  kirimPanel() {
+    const form = document.querySelector('dialog form')
+    if (!form) return false
+    form.requestSubmit()
+    return true
   },
   // Menghitung permintaan yang benar-benar ditembak ke /api/v1/murid — supaya
   // penyaringan di server dan aturan satu-permintaan-per-ketikan bisa
@@ -233,7 +257,9 @@ async function main() {
     catat('ada kelas lain untuk menguji gabungan saringan', typeof idKelasLain === 'number', `kelas ${idKelasLain ?? '—'}`)
 
     const dataMurid = [
-      { nama: NAMA_A, email: EMAIL_A, class_id: idKelas, nis: NIS_A },
+      // Kata sandinya ditentukan supaya langkah 8 bisa membuktikan alamat email
+      // hasil ganti benar-benar bisa dipakai masuk (bukan sekadar tersimpan).
+      { nama: NAMA_A, email: EMAIL_A, class_id: idKelas, nis: NIS_A, kata_sandi: SANDI_MURID_A },
       { nama: NAMA_B, email: `cari.dua.${TANDA}@murid.test`, class_id: idKelas, nis: `${NIS_A}2` },
       { nama: NAMA_C, email: `cari.tiga.${TANDA}@murid.test`, class_id: idKelas },
     ]
@@ -355,6 +381,56 @@ async function main() {
       )
       await evalJs(`window.__alat.pilihKelas(${idKelas})`)
     }
+
+    // --- 8. Email murid benar-benar bisa diganti (14 Oktober 2026) ---
+    // Kolom email diterima validasi tetapi DULU tidak pernah disimpan: panelnya
+    // menjawab "Murid diperbarui." sementara alamatnya tetap yang lama — dan itu
+    // baru ketahuan saat murid gagal masuk dengan alamat barunya. Yang diperiksa
+    // di sini bukan hanya balasannya, tetapi alamat mana yang benar-benar bisa
+    // dipakai masuk menurut SERVER.
+    const emailBaru = `ganti.${TANDA}@murid.test`
+    await evalJs(`window.__alat.ketik('#cari-murid', '')`)
+    await tunggu(`window.__alat.barisTabel().length > 1`, 20000)
+    const dibuka = await evalJs(`window.__alat.bukaUbah(${JSON.stringify(NAMA_A)})`)
+    await tunggu('window.__alat.panelTerbuka()', 8000)
+    const isianAwal = await evalJs(`({ email: window.__alat.nilai('#email-murid'), nama: window.__alat.nilai('#nama-murid') })`)
+    catat(
+      'panel Ubah murid terbuka dengan alamat email murid itu',
+      dibuka && isianAwal.email === EMAIL_A && isianAwal.nama === NAMA_A,
+      `nama “${isianAwal.nama}” · email “${isianAwal.email}”`,
+    )
+
+    await evalJs(`window.__alat.ketik('#email-murid', ${JSON.stringify(emailBaru)})`)
+    await evalJs('window.__alat.kirimPanel()')
+    const tersimpan = await tunggu(
+      `(document.body.innerText ?? '').includes('Murid diperbarui.')`,
+      12000,
+    )
+    catat('guru mengganti email murid lewat panel', tersimpan, await evalJs(`window.__alat.panelTerbuka() ? window.__alat.panel().slice(0, 90) : 'panel ditutup'`))
+
+    const cariBaru = await apiJson(`/v1/murid?filter[cari]=${encodeURIComponent(emailBaru)}`)
+    const cariLama = await apiJson(`/v1/murid?filter[cari]=${encodeURIComponent(EMAIL_A)}`)
+    const barisBaru = Array.isArray(cariBaru.isi?.data) ? cariBaru.isi.data : []
+    catat(
+      'alamat baru yang terbaca server (bukan alamat lama)',
+      barisBaru.length === 1 && barisBaru[0]?.email === emailBaru,
+      `email “${barisBaru[0]?.email ?? '—'}” · murid ${barisBaru[0]?.id ?? '—'}`,
+    )
+    catat(
+      'alamat lama tidak lagi menemukan murid itu',
+      Array.isArray(cariLama.isi?.data) && cariLama.isi.data.length === 0,
+      `${cariLama.isi?.meta?.total ?? '?'} hasil untuk “${EMAIL_A}”`,
+    )
+
+    // Murid bisa memakai alamat barunya untuk masuk — inilah keluhan aslinya.
+    await apiJson('/v1/auth/keluar', 'POST')
+    const masukMurid = await apiJson('/v1/auth/masuk', 'POST', { email: emailBaru, password: SANDI_MURID_A })
+    catat(
+      'murid bisa masuk dengan alamat barunya',
+      masukMurid.status === 200,
+      `status ${masukMurid.status} · ${masukMurid.isi?.user?.email ?? masukMurid.isi?.message ?? '—'}`,
+    )
+    await masuk()
   } finally {
     const bersih = await bersihkan()
     catat('murid & kelas uji dihapus kembali', bersih.status === 200, bersih.sisa)

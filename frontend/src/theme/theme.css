@@ -2411,6 +2411,37 @@ a {
   cursor: pointer;
 }
 
+/*
+ * Saklar setelan yang tidak bergeser saat disentuh (mis. "Izinkan siswa tamu").
+ *
+ * Labelnya berbunyi "Aktif"/"Nonaktif" — panjangnya berbeda, jadi tanpa lebar
+ * tetap blok saklar ini bergerak (dan pernah ikut membungkus ke baris baru)
+ * tepat setelah jari menyentuhnya. Bloknya karena itu dibuat selebar nilai
+ * terpanjang dan duduk di kanan barisnya, dengan tinggi 44 px supaya tetap
+ * sasaran sentuh yang nyaman di ponsel.
+ */
+.saklar-setelan {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 10.5rem;
+  min-height: 44px;
+  padding-left: 0;
+}
+
+.saklar-setelan .form-check-input {
+  float: none;
+  margin: 0;
+}
+
+/* Lebar tetap untuk teks keadaannya: "Aktif" dan "Nonaktif" sama panjangnya. */
+.saklar-setelan .saklar-setelan-teks {
+  display: inline-block;
+  min-width: 4.25rem;
+}
+
 /* ===== Editor materi gaya non-linear video editor ===== */
 
 /* Sidebar sempit + area kerja yang memprioritaskan canvas & timeline. */

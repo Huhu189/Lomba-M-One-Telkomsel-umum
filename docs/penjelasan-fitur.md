@@ -176,11 +176,26 @@ Di panel yang sama ada tombol **Buat tautan siswa** yang menghasilkan satu tauta
 ### Manfaat untuk anak SD dan guru
 Kepala sekolah/guru senior menyeragamkan hal penting sekali saja di lapis sekolah; guru kelas tetap punya keleluasaan untuk hal kecil pada ulangannya sendiri. Anak SD di semua kelas mendapat aturan yang konsisten. Guru juga tidak perlu membuka halaman Pengaturan untuk tahu “sebenarnya ulanganku diawasi apa saja?”, dan tidak perlu mengetik ulang alamat kuis saat membagikannya ke kelas.
 
+### Saklar yang tidak lari dari jari (14 Oktober 2026)
+
+Di layar sentuh, menyentuh saklar setelan dulu hanya membuat saklarnya **berpindah tempat**: teks keadaannya
+("Aktif" → "Nonaktif") mengubah panjang label, blok saklarnya bergeser, dan barisnya ikut membungkus ulang —
+jadi guru menyentuh satu hal dan mengenai hal lain. Sekarang lebarnya tetap dan keterangan "dikunci sekolah"
+dipindah ke teks sumber di sebelah kiri, sehingga posisi saklar tidak berubah sama sekali saat disentuh
+(diukur di 390 px: geser 0 px, tinggi baris tetap). Saklar itu juga punya `aria-label` yang menyebut nama
+setelan dan keadaannya, jadi pembaca layar tidak bergantung pada teks label di sebelahnya.
+
+Satu hal yang **tidak** dilakukan dengan sengaja: setelan ulangan tidak dipasang di layar pengerjaan murid.
+Layar itu hanya berisi soal, navigator nomor, dan timer; saklar anti-kecurangan/percobaan ulang lengkapnya ada
+di halaman kuis milik guru. Anak yang sedang ulangan tidak disuguhi saklar yang bukan miliknya — dan itu ikut
+dijaga pemeriksaan peramban (bukan hanya diandaikan).
+
 Status: **sudah bisa dipakai** (slice 02, diperluas di slice 07; ringkasan sesi + tautan siswa 12 Oktober 2026;
-panelnya pindah ke halaman kuis 13 Oktober 2026). Saklar anti-cheat memakai mekanisme yang sama,
-termasuk preset ujian yang bisa dinyalakan sekali klik. Yang jujur belum ada: lapis sekolah/kelas
-sekarang **hanya bisa dibaca** lewat panel itu (nilainya diatur dari API/seed dan tetap mengunci), belum ada
-halaman admin khusus untuknya.
+panelnya pindah ke halaman kuis 13 Oktober 2026; kerapian saklar di layar sentuh 14 Oktober 2026). Saklar
+anti-cheat memakai mekanisme yang sama, termasuk preset ujian yang bisa dinyalakan sekali klik. Yang jujur
+belum ada: lapis sekolah/kelas sekarang **hanya bisa dibaca** lewat panel itu (nilainya diatur dari API/seed
+dan tetap mengunci), belum ada halaman admin khusus untuknya; kerapian saklar itu diukur di Chrome headless
+pada lebar ponsel, bukan di perangkat sentuh sungguhan.
 
 ---
 
@@ -679,7 +694,23 @@ Guru tidak lagi menelusuri halaman demi halaman untuk mencari satu anak — misa
 tentang nilai, atau saat ada murid pindahan yang harus ditambahkan. Ini juga melengkapi impor CSV: setelah
 data masuk, mencari siapa yang datanya salah jadi pekerjaan hitungan detik.
 
-Status: **sudah bisa dipakai** (putaran A.51 + A.53, diuji 18/18 di Chrome sungguhan). Batasan yang jujur:
+### Menambah murid tanpa pindah halaman (14 Oktober 2026)
+
+Kelas dan murid adalah satu pekerjaan yang sama bagi guru: begitu kelasnya jadi, hal berikutnya hampir selalu
+menambah muridnya. Sejak 14 Oktober 2026 tiap baris di halaman **Kelas** punya tombol **+** yang membuka panel
+murid baru dengan **kelas itu sudah terpilih** — guru tidak perlu pindah ke halaman Murid lalu memilih lagi
+kelas yang barusan ia lihat. Panelnya memuat nama, email, dan NIS/NISN (opsional) yang sama seperti halaman
+Murid, termasuk sebab per kolom bila server menolak (mis. email sudah dipakai). Kode kelas yang dikirim ke
+server ditentukan barisnya, bukan dipilih ulang, jadi murid tidak bisa mendarat di kelas yang salah.
+
+Di halaman **Murid** sendiri, alamat email murid kini benar-benar bisa **diperbaiki** (14 Oktober 2026): dulu
+kolom itu lolos validasi tetapi tidak pernah disimpan, sehingga panelnya menjawab "Murid diperbarui."
+sementara alamatnya tetap yang lama — dan itu baru ketahuan saat murid gagal masuk dengan alamat barunya.
+Verifikasi emailnya sengaja **tidak** dikosongkan: alamat ini ditetapkan sekolah (bukan pendaftaran sendiri),
+dan murid tidak bisa membuka tautan verifikasi ke alamat yang baru saja diganti guru.
+
+Status: **sudah bisa dipakai** (putaran A.51 + A.53 + A.83, diuji 18/18 → **23/23** di Chrome sungguhan,
+termasuk membuktikan murid bisa masuk dengan alamat email hasil ganti). Batasan yang jujur:
 pola pencariannya masih `LIKE %kata%` sehingga belum memanfaatkan indeks — sejak A.53 ada tes regresi pada
 **1.200 murid** yang membuktikan pencariannya benar dan tetap berhalaman pada skala itu, tetapi itu bukan
 uji beban waktu tanggap. Sejak 13 Oktober 2026 kotak cari juga ada di halaman **Bank Soal** (dan di panel
@@ -710,9 +741,27 @@ soal pilihan yang tidak ada di halaman yang sedang tampil akan terhitung **0 poi
 Waktu buka halaman Bank Soal dan langkah “Susun soal” tidak lagi tumbuh mengikuti jumlah soal sekolah, dan
 guru tetap bisa menemukan soal semester lalu tanpa menelusuri halaman.
 
-Status: **sudah bisa dipakai** (13 Oktober 2026). Jenis soal di bank soal tetap boleh diperbaiki saat
-ulangannya berjalan; batas 20 barisnya diatur klien (`PER_HALAMAN`), sedangkan server tetap membatasinya di
-100 baris per permintaan.
+### Menulis rangkaian soal tanpa keluar-masuk editor (14 Oktober 2026)
+
+Menyusun satu bab ulangan berarti menulis belasan soal yang **jenis dan mapelnya sama**. Dua jalan pintas
+menutup pekerjaan berulang itu:
+
+1. **Mapel baru dibuat di dalam editor soal.** Mapel wajib saat menyimpan, jadi sekolah yang belum punya
+   mapel dulu terkunci dari bank soal: satu-satunya jalan membuatnya ada di halaman Mapel, artinya guru harus
+   keluar dari soal yang sedang ditulis. Sekarang tombol *Mapel baru* di sebelah pemilih mapel membuka isian
+   nama (+ kode opsional), dan mapel yang tersimpan **langsung dipakai soal itu** — daftar pemilihnya ikut
+   disegarkan, bukan menunggu muat ulang halaman. Bila sekolah belum punya satu mapel pun, isiannya sudah
+   terbuka sendiri disertai keterangan sebabnya.
+2. **"Simpan & lanjut".** Satu centang membuat tombol simpan menjadi *Simpan & lanjut*: soalnya tersimpan,
+   lalu editor tetap terbuka untuk soal **berikutnya** dengan jenis, mapel, dan tag yang sama. Yang diwarisi
+   hanya pilihan yang berulang itu — teks soal, pilihan jawaban, dan kuncinya tetap kosong, karena justru itu
+   yang berubah tiap nomor.
+
+Status: **sudah bisa dipakai** (13 Oktober 2026; dua jalan pintas di atas 14 Oktober 2026). Jenis soal di bank
+soal tetap boleh diperbaiki saat ulangannya berjalan; batas 20 barisnya diatur klien (`PER_HALAMAN`),
+sedangkan server tetap membatasinya di 100 baris per permintaan. Batasan yang jujur: nama mapel yang sudah
+dipakai tetap ditolak **server** dan pesannya tampil di panelnya (tidak ada pemeriksaan duplikat di perangkat,
+karena daftarnya bisa berubah sementara guru mengetik).
 
 ---
 

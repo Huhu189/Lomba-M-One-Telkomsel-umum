@@ -99,6 +99,40 @@ it('guru dapat menambah, mengubah, dan menghapus murid tunggal', function (): vo
     expect(Murid::query()->whereKey($id)->exists())->toBeFalse();
 });
 
+it('mengubah email murid benar-benar mengganti alamat masuknya', function (): void {
+    $kelas = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6D', 'tingkat' => 6]);
+    Sanctum::actingAs(User::factory()->guru()->create());
+
+    $buat = $this->postJson('/api/v1/murid', [
+        'nama' => 'Dewi Lestari',
+        'email' => 'dewi@murid.test',
+        'class_id' => $kelas->id,
+    ])->assertCreated();
+
+    $id = (int) $buat->json('id');
+    $userId = (int) Murid::query()->findOrFail($id)->user_id;
+
+    // Guru mengganti alamat emailnya (mis. salah ketik alamat orang tua).
+    // Sebelum perbaikan 14 Oktober 2026 kolom ini lolos validasi tetapi tidak
+    // pernah disimpan: balasannya 200 dengan email LAMA, jadi halaman Murid
+    // melaporkan "tersimpan" tanpa satu pun perubahan.
+    $this->putJson("/api/v1/murid/{$id}", [
+        'nama' => 'Dewi Lestari',
+        'email' => 'Dewi.Baru@Murid.test',
+        'class_id' => $kelas->id,
+    ])->assertOk()->assertJsonPath('email', 'dewi.baru@murid.test');
+
+    expect(User::query()->findOrFail($userId)->email)->toBe('dewi.baru@murid.test')
+        // Alamat lama tidak tertinggal di akun mana pun. Penggantinya boleh
+        // dipakai murid lain (kolom uniknya sudah dilepas dari pemilik ini).
+        ->and(User::query()->where('email', 'dewi@murid.test')->exists())->toBeFalse();
+
+    // Email baru milik satu-satunya akun, dan verifikasinya tetap utuh: alamat
+    // ini ditetapkan sekolah, bukan pendaftaran sendiri.
+    expect(User::query()->where('email', 'dewi.baru@murid.test')->count())->toBe(1)
+        ->and(User::query()->findOrFail($userId)->hasVerifiedEmail())->toBeTrue();
+});
+
 it('daftar murid berpaginasi dan membatasi jumlah per halaman', function (): void {
     $kelas = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '6B', 'tingkat' => 6]);
     Murid::factory()->count(5)->create([

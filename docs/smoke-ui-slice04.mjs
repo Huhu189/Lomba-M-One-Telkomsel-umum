@@ -306,6 +306,28 @@ async function main() {
       `timer ${timer}`,
     )
 
+    // Setelan ulangan TIDAK ada di layar pengerjaan (14 Oktober 2026): lengkapnya
+    // di halaman kuisnya sendiri (`/kuis/:slug`). Murid tidak boleh disuguhi
+    // saklar anti-cheat/percobaan ulang di tengah ulangan — layar ini memang
+    // hanya berisi soal, navigator nomor, dan timer.
+    // Yang dihitung hanya saklar SETELAN ULANGAN (id-nya `set-<kunci>`, dibuat
+    // panel setelan di halaman kuis). Saklar milik murid sendiri — "Simpan
+    // riwayat jawaban di perangkat ini" — bukan setelan ulangan dan memang boleh
+    // ada di sini.
+    const setelanDiKerjakan = await evalJs(`(() => {
+      const setelan = document.querySelectorAll('input[role="switch"][id^="set-"]').length
+      const panel = [...document.querySelectorAll('h1, h2, h3')].some(
+        (el) => el.innerText.trim().toLowerCase() === 'setelan ulangan',
+      )
+      const milikMurid = document.querySelectorAll('input[role="switch"][id="riwayat-lokal"]').length
+      return { setelan, panel, milikMurid }
+    })()`)
+    catat(
+      'layar pengerjaan tidak memuat setelan ulangan (setelan lengkap ada di halaman kuis)',
+      setelanDiKerjakan.setelan === 0 && setelanDiKerjakan.panel === false,
+      `${setelanDiKerjakan.setelan} saklar setelan · panel setelan=${setelanDiKerjakan.panel} · saklar milik murid=${setelanDiKerjakan.milikMurid}`,
+    )
+
     // Ambil attempt aktif lewat API (mulai idempoten) + pastikan tanpa kunci.
     const mulaiApi = await apiJson(`/v1/kuis/${idKuisUji}/mulai`, 'POST')
     const attempt = mulaiApi.isi

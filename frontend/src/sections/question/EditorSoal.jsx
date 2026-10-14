@@ -9,6 +9,10 @@
  * yang dilihat murid.
  */
 import { createElement, useRef, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { buatMapel } from '../school/api.js'
+import { pesanGalatApi } from '../auth/api.js'
+import { tampilkanToast } from '../../shared/ui/toast.jsx'
 import Banner from '../../shared/ui/Banner.jsx'
 import { Tombol, TombolIkon } from '../../shared/ui/Tombol.jsx'
 import { IkonTambah, IkonTipeIsianSingkat, IkonTongSampah } from '../../icons.jsx'
@@ -213,9 +217,12 @@ function FieldsetPasangan({ state, ubah, namaPeta, judul }) {
  *   daftarMapel: { id: number, nama: string }[],
  *   daftarTag: import('./api.js').DataTag[],
  *   sedangMenyimpan: boolean,
- *   onSimpan: (muatan: import('./tipeSoal.js').MuatanSoal) => void,
+ *   onSimpan: (muatan: import('./tipeSoal.js').MuatanSoal, opsi?: { lanjut?: boolean }) => void,
  *   onBatal: () => void,
+ *   onMapelDibuat?: () => void,
  *   mapelAwal?: string,
+ *   jenisAwal?: string,
+ *   tagAwal?: string,
  * }} props
  */
 export default function EditorSoal({
@@ -225,14 +232,60 @@ export default function EditorSoal({
   sedangMenyimpan,
   onSimpan,
   onBatal,
+  onMapelDibuat,
   mapelAwal = '',
+  jenisAwal = '',
+  tagAwal = '',
 }) {
   // Panggung (parent) memberi `key` per soal, jadi state selalu mulai bersih
   // saat guru berpindah soal — tanpa perlu effect penyusun ulang.
   const [state, setState] = useState(() =>
-    soal === null ? { ...stateSoalKosong(), subject_id: mapelAwal } : stateDariSoal(soal),
+    soal === null
+      ? {
+          ...stateSoalKosong(),
+          subject_id: mapelAwal,
+          tag_id: tagAwal,
+          // Jenis & mapel bekas soal sebelumnya diwarisi saat guru memilih
+          // "simpan lalu buat soal berikutnya": menyusun satu bab soal jadi
+          // tidak perlu memilih ulang hal yang sama puluhan kali.
+          tipe: jenisAwal === '' ? stateSoalKosong().tipe : jenisAwal,
+        }
+      : stateDariSoal(soal),
   )
   const [galat, setGalat] = useState(/** @type {string[]} */ ([]))
+  // Mapel baru bisa dibuat LANGSUNG dari sini (14 Oktober 2026). Sebelumnya,
+  // bila sekolah belum punya mapel, guru terpaksa keluar ke halaman Mapel dulu
+  // — soal tidak bisa disimpan karena mapelnya wajib, sehingga editor terasa
+  // "tidak bisa dipakai" sampai data lain ditambahkan.
+  const [mapelBaruTampil, setMapelBaruTampil] = useState(daftarMapel.length === 0)
+  const [namaMapelBaru, setNamaMapelBaru] = useState('')
+  const [kodeMapelBaru, setKodeMapelBaru] = useState('')
+  const [galatMapelBaru, setGalatMapelBaru] = useState('')
+  // "Simpan lalu buat soal berikutnya" — satu centang untuk menyusun rangkaian
+  // soal tanpa keluar-masuk editor tiap nomor.
+  const [lanjutSerupa, setLanjutSerupa] = useState(false)
+
+  const tambahMapel = useMutation({
+    mutationFn: async () =>
+      buatMapel({
+        nama: namaMapelBaru.trim(),
+        kode: kodeMapelBaru.trim() === '' ? undefined : kodeMapelBaru.trim(),
+      }),
+    onSuccess: async (mapelJadi) => {
+      // Mapel baru langsung dipakai soal yang sedang disusun — guru tidak perlu
+      // memilihnya lagi dari daftar.
+      ubah({ subject_id: String(mapelJadi.id) })
+      setNamaMapelBaru('')
+      setKodeMapelBaru('')
+      setGalatMapelBaru('')
+      setMapelBaruTampil(false)
+      tampilkanToast('sukses', `Mapel “${mapelJadi.nama}” ditambahkan dan langsung dipakai soal ini.`)
+      // Daftar mapel disegarkan pemanggil (halaman bank soal yang memegang
+      // kuerinya) — editor tidak perlu tahu soal cache.
+      onMapelDibuat?.()
+    },
+    onError: (error) => setGalatMapelBaru(pesanGalatApi(error)),
+  })
   // Pemilih jenis soal dilipat jadi satu chip (13 Oktober 2026). Guru menulis
   // lebih cepat karena 22 petak tidak lagi mendorong pertanyaan & pilihannya ke
   // bawah; begitu satu jenis dipilih, daftarnya menutup sendiri.
@@ -748,7 +801,7 @@ export default function EditorSoal({
     }
 
     setGalat([])
-    onSimpan(muatan)
+    onSimpan(muatan, { lanjut: lanjutSerupa })
   }
 
   return (
@@ -2125,17 +2178,89 @@ export default function EditorSoal({
               <div className="col-sm-6">
                 <div className="bidang">
                   <label className="form-label" htmlFor="soal-mapel">Mapel</label>
-                  <select
-                    id="soal-mapel"
-                    className="form-select"
-                    value={state.subject_id}
-                    onChange={(e) => ubah({ subject_id: e.target.value })}
-                  >
-                    <option value="">Pilih mapel…</option>
-                    {daftarMapel.map((mapel) => (
-                      <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
-                    ))}
-                  </select>
+                  <div className="d-flex gap-2">
+                    <select
+                      id="soal-mapel"
+                      className="form-select"
+                      value={state.subject_id}
+                      onChange={(e) => ubah({ subject_id: e.target.value })}
+                    >
+                      <option value="">Pilih mapel…</option>
+                      {daftarMapel.map((mapel) => (
+                        <option key={mapel.id} value={String(mapel.id)}>{mapel.nama}</option>
+                      ))}
+                    </select>
+                    {/* Mapel baru dibuat di sini juga: tanpa ini, sekolah yang belum
+                     * punya mapel terkunci dari menyimpan soal sama sekali. */}
+                    <Tombol
+                      varian="tepi"
+                      ukuran="sedang"
+                      onClick={() => setMapelBaruTampil((sebelum) => !sebelum)}
+                    >
+                      {mapelBaruTampil ? 'Tutup' : 'Mapel baru'}
+                    </Tombol>
+                  </div>
+
+                  {daftarMapel.length === 0 && !mapelBaruTampil && (
+                    <p className="teks-lembut small mb-0 mt-1">
+                      Belum ada mapel di sekolah ini — tambahkan lewat tombol “Mapel baru”.
+                    </p>
+                  )}
+
+                  {mapelBaruTampil && (
+                    <div className="mapel-baru mt-2">
+                      <p className="teks-lembut small mb-2">
+                        {daftarMapel.length === 0
+                          ? 'Belum ada mapel di sekolah ini. Buat satu di sini — mapelnya langsung dipakai soal ini.'
+                          : 'Mapel yang dibuat di sini langsung dipakai soal ini.'}
+                      </p>
+                      <div className="row g-2">
+                        <div className="col-8">
+                          <input
+                            id="mapel-baru-nama"
+                            className="form-control form-control-sm"
+                            placeholder="Nama mapel, mis. Matematika"
+                            aria-label="Nama mapel baru"
+                            value={namaMapelBaru}
+                            onChange={(e) => setNamaMapelBaru(e.target.value)}
+                          />
+                        </div>
+                        <div className="col-4">
+                          <input
+                            id="mapel-baru-kode"
+                            className="form-control form-control-sm"
+                            placeholder="Kode (opsional)"
+                            aria-label="Kode mapel baru"
+                            value={kodeMapelBaru}
+                            onChange={(e) => setKodeMapelBaru(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      {galatMapelBaru !== '' && (
+                        <p className="status-salah small mb-0 mt-1">{galatMapelBaru}</p>
+                      )}
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        <Tombol
+                          ukuran="sedang"
+                          memuat={tambahMapel.isPending}
+                          disabled={namaMapelBaru.trim().length < 2}
+                          onClick={() => tambahMapel.mutate()}
+                        >
+                          Simpan mapel
+                        </Tombol>
+                        <Tombol
+                          varian="tepi"
+                          ukuran="sedang"
+                          onClick={() => {
+                            setMapelBaruTampil(false)
+                            setGalatMapelBaru('')
+                          }}
+                        >
+                          Batal
+                        </Tombol>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2273,6 +2398,25 @@ export default function EditorSoal({
               ))}
             </ul>
 
+            {soal === null && (
+              /* Menyusun satu bab berisi belasan soal: setelah tersimpan, guru
+               * sering langsung menulis soal berikutnya dengan jenis & mapel yang
+               * sama. Centang ini melewati pemilihan ulang itu. */
+              <div className="form-check form-switch mb-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="soal-lanjut-serupa"
+                  checked={lanjutSerupa}
+                  onChange={(e) => setLanjutSerupa(e.target.checked)}
+                />
+                <label className="form-check-label small" htmlFor="soal-lanjut-serupa">
+                  Setelah tersimpan, langsung buat soal berikutnya dengan jenis &amp; mapel yang sama
+                </label>
+              </div>
+            )}
+
             <div className="d-flex flex-wrap gap-2">
               <Tombol
                 disabled={!siap}
@@ -2280,7 +2424,7 @@ export default function EditorSoal({
                 teksMemuat="Menyimpan…"
                 onClick={kirim}
               >
-                {soal === null ? 'Simpan soal' : 'Perbarui soal'}
+                {soal === null ? (lanjutSerupa ? 'Simpan & lanjut' : 'Simpan soal') : 'Perbarui soal'}
               </Tombol>
               <Tombol varian="tepi" onClick={onBatal}>Batal</Tombol>
             </div>

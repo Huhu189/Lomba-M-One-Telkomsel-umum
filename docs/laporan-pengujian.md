@@ -7311,3 +7311,191 @@ keputusan arsitektur yang menentukan seluruh sisanya:
   `src/__tests__/sections/presence/layar.test.js` (aturan mode baru).
 - **Docs/harness:**  `docs/smoke-ui-layar.mjs` (+18 pemeriksaan, 34 → 52), `docs/penjelasan-fitur.md`
   (bagian 4 & 15), `docs/handoff-sesi.md`.
+
+## A.82 — Papan peringkat yang BERISI baris diuji di peramban sungguhan (14 Oktober 2026)
+
+### A.82.1 Permintaan
+
+"Kau boleh tes langsung di browser." Sampai A.81, kesamaan "sama persis" untuk papan yang **berisi baris**
+baru dibuktikan di jsdom; di peramban papan uji selalu kosong (murid uji baru memulai attempt-nya), jadi yang
+terbanding di peramban cuma kalimat aturan dan keadaan papannya. Batasan itu ditutup di sini.
+
+### A.82.2 Cara yang dipilih (dan alasannya)
+
+Harness `docs/smoke-ui-layar.mjs` diperluas — bukan harness baru — karena alur yang dibutuhkan sudah ada di
+sana: kuis uji, guru yang menyiarkan papan, dan murid yang layar pengerjaannya memasang panel. Yang
+ditambahkan bagian **8b**: empat murid sekelas dibuat guru lewat endpoint `/v1/murid` (kata sandi diketahui),
+lalu tiap-tiapnya `mulai` → `jawab` → `kumpulkan` **lewat API** — lapisan server yang sama dengan tombol
+"Kumpulkan" di layar anak, tapi tanpa perlu mengeklik empat kali di peramban. Tiga menjawab benar dan satu
+salah (kuis ujinya satu soal bernilai 5), jadi papannya bercampur skor seperti kelas sungguhan. Guru lalu
+menyiarkan ulang papannya, dan perangkat murid mengambil isinya sendiri lewat endpoint peringkat dengan
+sesinya (bukan dari payload layar).
+
+Alasan papan **kosong** tetap dipertahankan sebagai pemeriksaan tersendiri (dijalankan lebih dulu, saat belum
+ada yang mengumpulkan): keadaan itu juga harus diucapkan apa adanya. Harness jadi menguji **dua keadaan**,
+bukan menukar satu dengan yang lain.
+
+### A.82.3 Bukti (dijalankan, bukan klaim)
+
+- `bash docs/jalankan-smoke-ui.sh layar` — **62/62 lulus, exit 0** di Chrome sungguhan (52 → 62;
+  layanan yang sudah hidup dipakai apa adanya: `vite=200 backend=204 realtime=200`). Sepuluh pemeriksaan baru:
+  1. `empat murid sekelas mengumpulkan jawabannya (papan jadi berisi baris)` — `A=5 · B=5 · C=5 · D=0`;
+  2. `papan guru memuat keempat murid pengumpul` — `total 4 · baris SMOKE-PAPAN A, B, C, D`;
+  3. `aturan N% teratas benar-benar memotong baris papan` — `30% dari 4 → 2 baris terbuka` (angka harapan
+     dihitung dari respons server, bukan ditanam di harness, lalu dibandingkan dengan `terbuka_jumlah`);
+  4. `papan BERISI baris sampai ke HP murid tanpa memuat ulang halaman` — tabel di HP murid memuat
+     `SMOKE-PAPAN`, `# NAMA SKOR BENAR 1 SMOKE-PAPAN A 5 / 5 (100%) 1 / 1 2 SMOKE-PAPAN B …`;
+  5. `papan di HP murid memotong barisnya sebatas N% teratas` — `baris di HP 2 · terbuka 2`;
+  6. `kalimat aturan di panel memakai angka terbaru dari server` (bukan angka papan kosong tadi);
+  7. **`papan di HP murid sama persis dengan papan di halaman peringkatnya (isi tabel per baris)`** —
+     `innerText` tabel di panel dan di `/peringkat/<kuis>` (murid yang sama, kunjungan yang sama) dibandingkan
+     sebagai **satu string utuh**: keduanya `# NAMA SKOR BENAR 1 SMOKE-PAPAN A 5 / 5 (100%) 1 / 1
+     2 SMOKE-PAPAN B 5 / 5 (100%) 1 / 1`;
+  8. `jumlah baris papan di HP = jumlah baris di halaman peringkatnya` — `HP 2 · halaman 2 · terbuka 2`;
+  9–10. pemeriksaan lama (payload layar murid tetap hanya penanda mode; murid tetap ditolak `PUT` layar)
+     dan pembersihan tetap lulus: saklar `layar_guru` + `ranking` dikembalikan ke nilai semula, kuis + soal
+     uji terhapus, dan **`akun murid pengumpul terhapus · 4/4`** (akun dihapus setelah kuisnya, karena
+     `attempts` meng-cascade dari kuis).
+- Tidak ada satu pun berkas aplikasi yang disentuh dalam langkah ini — jadi `./verify.sh` tidak diulang:
+  putaran hijau terakhir (A.81.3) masih berlaku untuk kode yang sama. Yang berubah hanya harness-nya, dan
+  harness itu dijalankan di depan. `node --check docs/smoke-ui-layar.mjs` lolos sebelum dijalankan.
+
+### A.82.4 Batasan jujur
+
+- **Dua batasan A.81.4 tetap berlaku** dan tidak tersentuh langkah ini: papan masih hanya sampai ke murid yang
+  masih di layar pengerjaan (bukan yang sudah di halaman hasil), dan perangkatnya tetap Chrome headless via
+  CDP — bukan laptop/HP sungguhan.
+- Murid pengumpul mengumpulkan lewat API, bukan dengan mengeklik tombol di peramban. Tombol "Kumpulkan"
+  sendiri sudah dibuktikan di harness `peringkat` (lima murid menekannya di layarnya masing-masing); di sini
+  yang sedang diuji adalah papan berisi setelah ada yang mengumpulkan, bukan lagi tombolnya.
+- Yang dibandingkan adalah **tabel** papannya (isi baris, kolom, angka). Judul panel yang lebih kecil
+  (`ringkas`) memang berbeda dari judul halaman — itu disengaja, dan bukan bagian dari "isi papan".
+- Papannya bercampur skor (5/5/5/0) tapi hanya 2 baris yang terbuka, jadi baris dengan skor 0 tidak pernah
+  ikut terbanding di peramban ini. Baris bernilai 0 sudah tercakup oleh tes backend dan `peringkat`.
+- Sapuan penuh harness tetap tidak diulang; yang dijalankan `layar` (area yang berubah).
+
+### A.82.5 Berkas
+
+- **Docs/harness:** `docs/smoke-ui-layar.mjs` (+10 pemeriksaan, 52 → 62; konstanta `SANDI_MURID` +
+  `MURID_PAPAN`, konteks peramban ketiga untuk pengumpul, bagian 8b, dan pembersihan akun pengumpul),
+  `docs/laporan-pengujian.md` (bagian ini), `docs/handoff-sesi.md`.
+- **Tidak ada berkas aplikasi** (backend/frontend/realtime) yang diubah.
+
+## A.83 — Lima jalur yang dulu memaksa guru keluar halaman (14 Oktober 2026)
+
+### A.83.1 Yang dikerjakan (dan sebabnya)
+
+Semuanya berakar pada satu pola yang sama: pekerjaan yang **satu niat** dipecah ke beberapa halaman, sehingga
+guru harus keluar dari apa yang sedang dikerjakannya — dan satu di antaranya bahkan tampak "berhasil" padahal
+tidak menyimpan apa pun.
+
+1. **Email murid benar-benar bisa diganti** (`MuridService::ubah`). Kolom `email` diterima validasi (termasuk
+   aturan unik) tetapi tidak pernah masuk ke `forceFill`, jadi `PUT /v1/murid/{id}` menjawab **200 dengan
+   alamat LAMA**: halaman Murid melaporkan "Murid diperbarui." tanpa satu pun perubahan, dan itu baru
+   ketahuan saat murid gagal masuk dengan alamat barunya. Sekarang email ikut disimpan (di-lowercase +
+   `trim`), alamat lama tidak tertinggal di akun mana pun, dan `email_verified_at` sengaja **tidak**
+   dikosongkan — alamat ini ditetapkan sekolah, bukan pendaftaran sendiri, dan murid tidak bisa membuka
+   tautan verifikasi ke alamat yang baru saja diganti guru.
+2. **Tambah murid langsung dari baris kelas** (`HalamanKelas.jsx`). Tiap baris kelas punya tombol `+` yang
+   membuka panel murid baru dengan **kelasnya sudah terpilih** (dikirim lewat isian tersembunyi
+   `class_id`), bukan pemilih kelas yang dipakai halaman Murid. Sebab kegagalan per kolom (mis. email sudah
+   dipakai) tetap terbaca di bawah isiannya, dan daftar kelas disegarkan karena kolom "N murid" ikut berubah.
+3. **Mapel baru dibuat di dalam editor soal** (`EditorSoal.jsx`). Mapel wajib saat menyimpan soal, jadi
+   sekolah yang belum punya mapel **terkunci dari bank soal** — satu-satunya jalan membuatnya ada di halaman
+   Mapel. Sekarang tombol *Mapel baru* di sebelah pemilih mapel membuka isian nama + kode (opsional); mapel
+   yang tersimpan langsung dipakai soal itu, dan daftar pemilihnya disegarkan pemanggil lewat prop
+   `onMapelDibuat` (halaman bank soal **dan** langkah "soal baru" di halaman kuis). Bila sekolah belum punya
+   satu mapel pun, isiannya sudah terbuka sendiri disertai keterangan sebabnya.
+4. **"Simpan & lanjut"** (centang di editor soal). Menyusun satu bab berisi belasan soal berarti menulis soal
+   dengan jenis & mapel yang sama berulang kali; centang ini menyimpan soal lalu **membuka soal baru dengan
+   jenis, mapel, dan tag yang sama** (teks, pilihan, dan kunci tetap kosong — itu justru yang berubah tiap
+   nomor). Editor dipasang ulang lewat `key` yang naik, jadi warisannya nyata, bukan state yang tersisa.
+5. **Saklar setelan ulangan tidak lagi bergeser saat disentuh** (`PanelSetelanUlangan.jsx` + `theme.css`).
+   Teks keadaan ("Aktif" → "Nonaktif") mengubah panjang label sehingga blok saklarnya bergeser dan barisnya
+   membungkus ulang di layar sentuh; lebarnya kini tetap dan keterangan "dikunci sekolah" pindah ke teks
+   sumber di sebelah kiri. Saklar juga diberi `aria-label` yang menyebut nama setelan + keadaannya.
+
+### A.83.2 Bukti (dijalankan, bukan klaim)
+
+- `./verify.sh` — **SEMUA HIJAU, exit 0**: Pest **391 lulus / 3940 asersi** · Redis wajib **9 lulus / 65
+  asersi** · Pint bersih (**379 berkas**) · checkJs exit 0 · ESLint **0 error** (2 peringatan lama React
+  Compiler di `HalamanDaftar.jsx`) · Vitest **94 berkas / 877 tes** · realtime **20 lulus / 0 gagal**.
+- `bash docs/jalankan-smoke-ui.sh kelas` — **26/26 lulus, exit 0** di Chrome sungguhan (17 → 26). Sembilan
+  pemeriksaan baru membuktikan jalan yang dipakai guru, bukan hanya tombolnya:
+  1. `tiap baris kelas punya tombol tambah murid` — 33 tombol · 33 baris;
+  2. `panel murid menyebut kelas tujuannya` — label `Tambah murid ke kelas Smoke kelas 284388` → panel
+     berbunyi `Tambah murid ke Smoke kelas 284388`;
+  3. `kelasnya TIDAK dipilih ulang di panel` — 0 pemilih `#kelas-murid`;
+  4. `murid tersimpan lewat formulir kelas` — toast `Murid ditambahkan ke kelas ini.`, panel tertutup;
+  5. **`murid mendarat di kelas yang ditekan (dibaca dari server)`** — `class_id 63` = kelas uji
+     (`filter[cari]` mengembalikan tepat 1 murid dengan `kelas_nama` yang sama);
+  6. `baris kelasnya langsung menunjukkan jumlah murid yang baru` — `… Tingkat 6 — 1 murid …` tanpa muat
+     ulang halaman;
+  7. `email yang sudah dipakai: pesannya tampil di panel murid` (bukan hanya toast);
+  8. `percobaan gagal itu tidak menambah murid kedua` — total tetap 1;
+  9. pembersihan: `murid 391 dihapus · kelas 63 dihapus (200,200)`.
+- `bash docs/jalankan-smoke-ui.sh murid` — **23/23 lulus, exit 0** (18 → 23). Lima pemeriksaan baru untuk
+  perbaikan email: panel Ubah terbuka dengan alamat murid itu → guru menggantinya → **server membaca alamat
+  baru** (`ganti.920957@murid.test`) → alamat lama **tidak lagi menemukan muridnya** → dan **murid bisa masuk
+  dengan alamat barunya** (`POST /v1/auth/masuk` status 200) — keluhan aslinya, dibuktikan ujung-ke-ujung.
+  Kata sandi murid uji ditentukan di harness supaya langkah masuk ini benar-benar bisa dilakukan.
+- `bash docs/jalankan-smoke-ui.sh slice03` — **16/16 lulus, exit 0** (9 → 16). Tujuh pemeriksaan baru:
+  centang "Simpan & lanjut" mengubah label tombol · editor tetap terbuka dengan isian kosong untuk soal
+  berikutnya · **jenis & mapel benar-benar diwarisi** (`mapel=1 · jenis=Pilihan ganda`) · soal hasilnya
+  tercatat di server dengan `subject_id` yang sama · mapel baru dari editor tercatat di server
+  (`kode SMK-670518`, 27 → 28 mapel) · **soal yang sedang disusun langsung memakainya** (`#soal-mapel`
+  bernilai id mapel baru, opsi terpilih `"Smoke mapel 670518"`) · soal & mapel uji dibersihkan lagi
+  (200, 200) supaya bank soal dev tidak menumpuk.
+- `bash docs/jalankan-smoke-ui.sh pengaturan` — **17/17 lulus, exit 0** (13 → 17). Empat pemeriksaan baru
+  mengukur saklar "Izinkan siswa tamu" di 390 px: ada & bisa diubah · **geser 0 px** saat disentuh
+  (`kiri 101,3 → 101,3` · `atas 5948,8 → 5948,8`) · nilainya benar-benar berubah (`false → true`) · tinggi
+  baris tidak membungkus ulang (`172 → 172`), lalu nilainya dikembalikan seperti semula.
+- `bash docs/jalankan-smoke-ui.sh slice04` — **19/19 lulus, exit 0** (18 → 19). Pemeriksaan baru:
+  `layar pengerjaan tidak memuat setelan ulangan` — 0 saklar setelan, panel "Setelan ulangan" tidak ada,
+  sementara saklar milik murid sendiri ("Simpan riwayat jawaban") tetap 1. Jadi setelan lengkap memang hanya
+  di halaman kuis.
+- `node --check` dijalankan sebelum tiap harness (`kelas`, `murid`, `slice03`, `slice04`) — lolos.
+
+### A.83.3 Batasan jujur
+
+- **Alamat email baru belum diverifikasi.** Murid langsung bisa masuk dengan alamat hasil ganti guru
+  (dibuktikan di harness `murid`), dan memang begitu yang diminta: sekolah yang menetapkan alamatnya. Kalau
+  nanti diinginkan alur verifikasi ulang untuk alamat murid, itu pekerjaan tersendiri — jangan hanya
+  mengosongkan `email_verified_at`, karena itu mengunci murid dari seluruh fitur tanpa jalan keluar.
+- **Formulir murid di halaman Kelas adalah formulir kedua** yang mirip halaman Murid (nama, email, NIS,
+  NISN). Yang berbeda hanya kelasnya (terkunci). Kalau nanti bertambah kolom (mis. tanggal lahir), keduanya
+  harus diubah bersama — belum ada satu komponen bersama untuk formulir murid.
+- **Warisan "Simpan & lanjut" hanya sebatas jenis, mapel, dan tag.** Skor, pembahasan, penanda aktif, dan
+  pengaturan tampil tidak diwarisi — disengaja, tetapi guru yang menulis sepuluh soal berskor 5 akan tetap
+  mengetik skornya tiap nomor.
+- **Pembuat mapel di editor tidak memeriksa duplikat di perangkat** (daftar mapel bisa berubah sementara guru
+  mengetik). Nama yang sudah dipakai ditolak server, dan pesannya tampil di panelnya — bukan toast saja.
+- **Kerapian saklar diukur di Chrome headless pada 390 px**, bukan di perangkat sentuh sungguhan. Yang diukur
+  geometri DOM (geser 0 px, tinggi baris tetap), bukan pengalaman jari.
+- **Perubahan lain yang ada di pohon kerja saat putaran ini bukan dari putaran ini** (editor materi: bilah
+  rasio dihapus, tombol ✕ & tombol Delete di timeline, "Hapus berkas" di pustaka media; termasuk harness
+  `editor`/`materi`/`kuis-materi`/`perjalanan` dan latar tema). Berkas-berkas itu **tidak** dijalankan di sini
+  dan **tidak** diklaim hijau oleh laporan ini; yang dijalankan putaran ini adalah lima harness di atas plus
+  `./verify.sh`.
+- Sapuan penuh seluruh harness tetap tidak diulang: yang dijalankan adalah area yang berubah
+  (`kelas`, `murid`, `slice03`, `slice04`, `pengaturan`).
+
+### A.83.4 Berkas
+
+- **Backend:** `app/Sections/School/Services/MuridService.php` (email ikut disimpan di `ubah`),
+  `tests/Feature/SekolahTest.php` (+1 tes: email baru benar-benar mengganti alamat masuknya, alamat lama
+  hilang, `email_verified_at` tetap utuh).
+- **Frontend aplikasi:** `src/sections/school/HalamanKelas.jsx` (tombol `+` per baris + panel murid dengan
+  `class_id` terjaga), `src/sections/question/EditorSoal.jsx` (pembuat mapel + centang "Simpan & lanjut" +
+  pewarisan `jenisAwal`/`tagAwal` + `onSimpan(muatan, opsi)`), `src/sections/question/HalamanBankSoal.jsx`
+  (warisan jenis/mapel/tag + `onMapelDibuat` + `key` editor naik), `src/sections/quiz/HalamanKuis.jsx`
+  (`onMapelDibuat` untuk editor soal-baru-di-kuis), `src/sections/quiz/PanelSetelanUlangan.jsx` (saklar
+  berlebar tetap + `aria-label`), `src/theme/theme.css` (`.saklar-setelan`, `.saklar-setelan-teks`).
+- **Frontend uji (Vitest, lokasi terpusat):** `src/__tests__/sections/school/tambahMuridKelas.test.jsx`
+  (baru, 4 tes), `src/__tests__/sections/question/mapelBaruEditor.test.jsx` (baru, 4 tes),
+  `src/__tests__/sections/question/editorSoal.test.jsx` (+3 tes & dibungkus `QueryClientProvider` karena
+  editor kini memakai react-query).
+- **Docs/harness:** `docs/smoke-ui-kelas.mjs` (+9, 17 → 26), `docs/smoke-ui-murid.mjs` (+5, 18 → 23),
+  `docs/smoke-ui-slice03.mjs` (+7, 9 → 16), `docs/smoke-ui-slice04.mjs` (+1, 18 → 19),
+  `docs/smoke-ui-pengaturan.mjs` (+4, 13 → 17), `docs/penjelasan-fitur.md` (bagian 5, 19, 20),
+  `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (bagian ini).

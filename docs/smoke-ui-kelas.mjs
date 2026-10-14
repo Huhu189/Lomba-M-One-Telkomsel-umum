@@ -13,6 +13,12 @@
 //    perpindahan jendela mengirim beberapa permintaan dalam satu detik tanpa ada
 //    data yang berubah. Harness ini mengubah visibilitas halaman
 //    (frozen → active) dan menghitung permintaan `/api/v1/` yang lahir.
+// 3. **Menambah murid langsung dari baris kelas (14 Oktober 2026).** Guru paling
+//    sering melakukan ini tepat setelah kelasnya dibuat; dulu ia harus pindah ke
+//    halaman Murid lalu memilih lagi kelas yang baru saja dilihatnya. Muridnya
+//    harus mendarat di kelas yang ditekan — dibuktikan lewat `class_id` dari
+//    server, bukan dari tabel yang mungkin belum disegarkan — dan email yang
+//    sudah dipakai harus terbaca di kolom emailnya.
 //
 // Harness ini MANDIRI: kelas ujinya dibuat lalu dihapus di blok `finally`, dan
 // tidak pernah menyentuh kelas bernama lain.
@@ -74,6 +80,30 @@ const ALAT = `window.__alat = {
   },
   barisTabel() {
     return [...document.querySelectorAll('table tbody tr')].map((tr) => (tr.innerText ?? '').replace(/\\s+/g, ' ').trim())
+  },
+  barisKelas(nama) {
+    const tr = [...document.querySelectorAll('table tbody tr')].find((r) => (r.innerText ?? '').includes(nama))
+    return tr ? (tr.innerText ?? '').replace(/\\s+/g, ' ').trim() : null
+  },
+  // Panel murid adalah <dialog> KEDUA di halaman (panel kelas dirender lebih dulu
+  // dan tetap ada di DOM saat tertutup), jadi ia dikenali dari isiannya sendiri.
+  dialogMurid() {
+    return [...document.querySelectorAll('dialog')].find((d) => d.querySelector('#nama-murid-kelas') !== null) ?? null
+  },
+  panelMurid() { return (this.dialogMurid()?.innerText ?? '').replace(/\\s+/g, ' ') },
+  panelMuridTerbuka() { return this.dialogMurid()?.open === true },
+  kirimMurid() {
+    const form = this.dialogMurid()?.querySelector('form')
+    if (!form) return false
+    form.requestSubmit()
+    return true
+  },
+  tombolTambahMurid(namaKelas) {
+    const tr = [...document.querySelectorAll('table tbody tr')].find((r) => (r.innerText ?? '').includes(namaKelas))
+    const b = tr?.querySelector('button[aria-label^="Tambah murid ke kelas "]')
+    if (!b) return null
+    b.click()
+    return b.getAttribute('aria-label')
   },
   // Penghitung permintaan /api/v1/: klien API aplikasi memakai XMLHttpRequest
   // (axios), jadi yang dipasangi penghitung adalah XHR.
@@ -224,6 +254,9 @@ async function main() {
   /** @type {number} */
   let idKelasUji = 0
 
+  /** @type {number} */
+  let idMuridUji = 0
+
   const daftarKelas = async () => {
     const jawab = await apiJson('/v1/kelas')
     return Array.isArray(jawab.isi) ? jawab.isi : []
@@ -232,12 +265,18 @@ async function main() {
   const bersihkan = async () => {
     const status = []
 
+    // Murid dihapus lebih dulu: kelas berisi murid tidak bisa dibuang.
+    if (idMuridUji > 0) status.push((await apiJson(`/v1/murid/${idMuridUji}`, 'DELETE')).status)
     if (idKelasUji > 0) status.push((await apiJson(`/v1/kelas/${idKelasUji}`, 'DELETE')).status)
     await apiJson('/v1/auth/keluar', 'POST')
 
+    const sisa = []
+    if (idMuridUji > 0) sisa.push(`murid ${idMuridUji} dihapus`)
+    if (idKelasUji > 0) sisa.push(`kelas ${idKelasUji} dihapus`)
+
     return {
-      status: status.every((satu) => satu === 200) ? 200 : (status[0] ?? 200),
-      sisa: idKelasUji > 0 ? `kelas ${idKelasUji} dihapus (${status.join(',')})` : 'tidak ada kelas uji',
+      status: status.length > 0 && status.every((satu) => satu === 200) ? 200 : (status[0] ?? 200),
+      sisa: sisa.length > 0 ? `${sisa.join(' · ')} (${status.join(',')})` : 'tidak ada kelas uji',
     }
   }
 
@@ -333,6 +372,101 @@ async function main() {
       'fokus jendela tidak menembak permintaan lagi',
       permintaan.length === 0,
       permintaan.length === 0 ? '0 permintaan' : permintaan.join(' ; '),
+    )
+
+    // --- 5. Tambah murid langsung dari baris kelas (14 Oktober 2026) ---
+    // Guru paling sering melakukan ini tepat setelah kelasnya dibuat: dulu ia
+    // harus pindah ke halaman Murid dan memilih lagi kelas yang baru saja
+    // dilihatnya. Yang diuji di sini bukan hanya tombolnya, tetapi bahwa muridnya
+    // benar-benar mendarat di kelas yang ditekan — dibaca dari server, bukan dari
+    // tabel yang mungkin belum disegarkan.
+    await buka('/kelas')
+    await tunggu(`window.__alat.barisTabel().length > 0`)
+
+    const jumlahBaris = await evalJs('window.__alat.jumlah("table tbody tr")')
+    const jumlahTombolMurid = await evalJs(
+      'window.__alat.jumlah(\'table tbody tr button[aria-label^="Tambah murid ke kelas "]\')',
+    )
+    catat(
+      'tiap baris kelas punya tombol tambah murid',
+      jumlahBaris > 0 && jumlahTombolMurid === jumlahBaris,
+      `${jumlahTombolMurid} tombol · ${jumlahBaris} baris`,
+    )
+
+    const labelDiklik = await evalJs(
+      `window.__alat.tombolTambahMurid(${JSON.stringify(KELAS_UJI)})`,
+    )
+    await tunggu('window.__alat.panelMuridTerbuka()', 8000)
+    const panelMurid = await evalJs('window.__alat.panelMurid()')
+    catat(
+      'panel murid menyebut kelas tujuannya',
+      String(labelDiklik) === `Tambah murid ke kelas ${KELAS_UJI}` && panelMurid.includes(`Tambah murid ke ${KELAS_UJI}`),
+      `“${labelDiklik ?? '—'}” · ${panelMurid.slice(0, 90)}`,
+    )
+    catat(
+      'kelasnya TIDAK dipilih ulang di panel (pemilih kelas halaman Murid tidak dipakai)',
+      (await evalJs('window.__alat.jumlah("#kelas-murid")')) === 0,
+      '0 pemilih #kelas-murid',
+    )
+
+    const emailMuridUji = `smoke-kelas-${TANDA}@murid.test`
+    await evalJs(`window.__alat.ketik('#nama-murid-kelas', ${JSON.stringify(`Smoke murid ${TANDA}`)})`)
+    await evalJs(`window.__alat.ketik('#email-murid-kelas', ${JSON.stringify(emailMuridUji)})`)
+    await evalJs('window.__alat.kirimMurid()')
+
+    const muridTersimpan = await tunggu(
+      `window.__alat.toast().includes('Murid ditambahkan ke kelas ini.')`,
+      12000,
+    )
+    catat('murid tersimpan lewat formulir kelas', muridTersimpan, await evalJs('window.__alat.toast()'))
+    catat('panel murid ditutup setelah berhasil', !(await evalJs('window.__alat.panelMuridTerbuka()')))
+
+    // Dibaca dari SERVER: satu murid dengan email itu, dan kelasnya persis kelas uji.
+    const cariMurid = await apiJson(`/v1/murid?filter[cari]=${encodeURIComponent(emailMuridUji)}`)
+    const barisMurid = Array.isArray(cariMurid.isi?.data) ? cariMurid.isi.data : []
+    idMuridUji = Number(barisMurid[0]?.id ?? 0)
+    catat(
+      'murid mendarat di kelas yang ditekan (dibaca dari server)',
+      barisMurid.length === 1 && Number(barisMurid[0]?.class_id) === idKelasUji && barisMurid[0]?.kelas_nama === KELAS_UJI,
+      `total ${cariMurid.isi?.meta?.total ?? '?'} · class_id ${barisMurid[0]?.class_id ?? '—'} · kelas ${barisMurid[0]?.kelas_nama ?? '—'}`,
+    )
+
+    // Jumlah murid di baris kelasnya ikut berubah tanpa muat ulang halaman.
+    // Kolomnya berbunyi "N murid", jadi angkanya tidak tertukar dengan potongan
+    // nama kelas (yang juga berisi angka dari tanda waktu).
+    const barisKelasnya = await tunggu(
+      `(window.__alat.barisKelas(${JSON.stringify(KELAS_UJI)}) ?? '').includes('1 murid')`,
+      10000,
+    )
+    catat(
+      'baris kelasnya langsung menunjukkan jumlah murid yang baru',
+      barisKelasnya,
+      await evalJs(`window.__alat.barisKelas(${JSON.stringify(KELAS_UJI)}) ?? '—'`),
+    )
+
+    // --- 6. Email yang sudah dipakai: sebabnya terbaca di kolom email ---
+    await evalJs(`window.__alat.tombolTambahMurid(${JSON.stringify(KELAS_UJI)})`)
+    await tunggu('window.__alat.panelMuridTerbuka()', 8000)
+    await evalJs(`window.__alat.ketik('#nama-murid-kelas', 'Smoke murid ganda')`)
+    await evalJs(`window.__alat.ketik('#email-murid-kelas', ${JSON.stringify(emailMuridUji)})`)
+    await evalJs('window.__alat.kirimMurid()')
+
+    const galatKolom = await tunggu(
+      `window.__alat.panelMurid().includes('sudah dipakai')`,
+      12000,
+    )
+    catat(
+      'email yang sudah dipakai: pesannya tampil di panel murid (bukan hanya toast)',
+      galatKolom,
+      (await evalJs('window.__alat.panelMurid()')).slice(0, 120),
+    )
+    await evalJs('window.__alat.ketik(\'#email-murid-kelas\', \'\')')
+
+    const hitungMurid = await apiJson(`/v1/murid?filter[cari]=${encodeURIComponent(emailMuridUji)}`)
+    catat(
+      'percobaan gagal itu tidak menambah murid kedua',
+      Number(hitungMurid.isi?.meta?.total ?? 0) === 1,
+      `total ${hitungMurid.isi?.meta?.total ?? '?'}`,
     )
   } finally {
     const bersih = await bersihkan()

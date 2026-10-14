@@ -237,6 +237,95 @@ async function main() {
         const sesudahKembali = await ubah(sebelum)
         catat('saklar dikembalikan ke nilai semula', sesudahKembali === sebelum, `checked=${sesudahKembali}`)
       }
+
+      // --- 4. Saklar "Izinkan siswa tamu": tidak bergeser saat disentuh ---
+      //
+      // Keluhan nyata 14 Oktober 2026: di layar sentuh, menyentuh saklar tamu
+      // hanya membuat saklarnya BERPINDAH tempat — teks keadaannya ("Aktif" ↔
+      // "Nonaktif") mengubah panjang label, sehingga blok saklarnya bergeser dan
+      // barisnya ikut membungkus. Yang diukur di sini: kotak saklar sebelum vs
+      // sesudah sentuhan di lebar ponsel, plus nilainya benar-benar berubah.
+      await send(
+        'Emulation.setDeviceMetricsOverride',
+        { width: 390, height: 844, deviceScaleFactor: 1, mobile: true },
+        sessionId,
+      )
+      await send('Page.navigate', { url: `${APP}/kuis/${kuis.slug}` }, sessionId)
+      await sleep(4000)
+
+      /** Saklar izin tamu di panel setelan (labelnya datang dari server). */
+      const saklarTamu = `(() => {
+        const setelan = [...document.querySelectorAll('section')].find((s) =>
+          s.querySelector('h2')?.innerText?.trim().toLowerCase() === 'setelan ulangan',
+        )
+        if (!setelan) return null
+        return [...setelan.querySelectorAll('input[role="switch"]')].find((el) =>
+          (el.getAttribute('aria-label') ?? '').toLowerCase().includes('tamu'),
+        ) ?? null
+      })()`
+
+      const ukurSaklar = `(() => {
+        const el = ${saklarTamu}
+        if (!el) return null
+        const kotak = el.getBoundingClientRect()
+        const baris = el.closest('div.d-flex') ?? el.parentElement
+        const kotakBaris = baris.getBoundingClientRect()
+        return {
+          kiri: Math.round(kotak.left * 10) / 10,
+          atas: Math.round(kotak.top * 10) / 10,
+          tinggiBaris: Math.round(kotakBaris.height * 10) / 10,
+          label: el.getAttribute('aria-label'),
+          checked: el.checked,
+          disabled: el.disabled,
+        }
+      })()`
+
+      const sebelumSentuh = await evalJs(ukurSaklar)
+      catat(
+        'saklar "Izinkan siswa tamu" ada dan bisa diubah',
+        sebelumSentuh !== null && sebelumSentuh.disabled === false,
+        sebelumSentuh === null ? 'saklar tidak ditemukan' : `${sebelumSentuh.label} · checked=${sebelumSentuh.checked}`,
+      )
+
+      if (sebelumSentuh !== null && sebelumSentuh.disabled === false) {
+        const sesudahSentuh = await evalJs(`(async () => {
+          const el = ${saklarTamu}
+          el.click()
+          await new Promise((r) => setTimeout(r, 1800))
+          return ${ukurSaklar}
+        })()`)
+
+        const geser = Math.max(
+          Math.abs(sesudahSentuh.kiri - sebelumSentuh.kiri),
+          Math.abs(sesudahSentuh.atas - sebelumSentuh.atas),
+        )
+
+        catat(
+          'saklar tamu tidak bergeser saat disentuh (390 px)',
+          geser <= 1,
+          `geser ${geser}px · kiri ${sebelumSentuh.kiri} → ${sesudahSentuh.kiri} · atas ${sebelumSentuh.atas} → ${sesudahSentuh.atas}`,
+        )
+        catat(
+          'saklar tamu benar-benar berubah nilai (bukan cuma pindah tempat)',
+          sesudahSentuh.checked === !sebelumSentuh.checked,
+          `checked ${sebelumSentuh.checked} → ${sesudahSentuh.checked}`,
+        )
+        catat(
+          'baris saklar tidak membungkus ulang saat disentuh',
+          sesudahSentuh.tinggiBaris <= sebelumSentuh.tinggiBaris + 1,
+          `tinggi baris ${sebelumSentuh.tinggiBaris} → ${sesudahSentuh.tinggiBaris}`,
+        )
+
+        // Nilai dikembalikan supaya basis data dev tidak berubah.
+        await evalJs(`(async () => {
+          const el = ${saklarTamu}
+          if (el.checked !== ${sebelumSentuh.checked}) el.click()
+          await new Promise((r) => setTimeout(r, 1500))
+          return el.checked
+        })()`)
+      }
+
+      await send('Emulation.clearDeviceMetricsOverride', {}, sessionId)
     }
   } finally {
     const gagal = hasil.filter((satu) => !satu.lolos)

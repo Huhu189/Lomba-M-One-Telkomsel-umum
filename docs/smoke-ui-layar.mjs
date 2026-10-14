@@ -16,6 +16,11 @@
 //    lalu kembali ke tampilan ulangan biasa saat guru mengosongkan layar —
 //    semuanya tanpa memuat ulang halaman.
 // 4. Murid hanya boleh MEMBACA keadaan layar; server menolak PUT-nya.
+// 5. Mode "Papan peringkat" sampai ke HP murid dengan isi yang SAMA PERSIS
+//    seperti halaman peringkatnya sendiri — dibuktikan dua keadaan: papan yang
+//    masih kosong (diucapkan apa adanya) dan papan yang sudah BERISI baris
+//    (empat murid sekelas mengumpulkan lebih dulu, lalu tabel di HP murid
+//    dibandingkan baris demi baris dengan tabel di halaman peringkatnya).
 //
 // Dua konteks peramban dipakai (dua profil cookie terpisah) supaya sesi guru dan
 // murid tidak saling menendang.
@@ -33,6 +38,23 @@ const APP = 'http://localhost:5173'
 // Jalur kepala sekolah diuji terpisah di `docs/smoke-ui-admin.mjs`.
 const AKUN_GURU = { email: 'guru1@sekolah.test', password: 'password12' }
 const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
+
+/** Kata sandi akun murid pengumpul (dibuat lewat endpoint guru, seperti di halaman Murid). */
+const SANDI_MURID = 'Passw0rd!Aman'
+
+/**
+ * Murid tambahan yang MENGUMPULKAN lebih dulu supaya papan yang disiarkan guru
+ * benar-benar berisi baris — bukan papan kosong yang bisa lulus karena tidak ada
+ * apa pun untuk dibandingkan. Empat murid sekelas, tiga menjawab benar dan satu
+ * salah (kuis ujinya satu soal bernilai 5), jadi papannya bercampur skor seperti
+ * kelas sungguhan.
+ */
+const MURID_PAPAN = [
+  { huruf: 'A', benar: true },
+  { huruf: 'B', benar: true },
+  { huruf: 'C', benar: true },
+  { huruf: 'D', benar: false },
+]
 
 const TANDA = String(Date.now()).slice(-6)
 const JUDUL_KUIS = `Smoke layar ${TANDA}`
@@ -203,6 +225,7 @@ async function main() {
 
   const { browserContextId: ctxGuru } = await send('Target.createBrowserContext')
   const { browserContextId: ctxMurid } = await send('Target.createBrowserContext')
+  const { browserContextId: ctxKumpul } = await send('Target.createBrowserContext')
 
   let kuisId = null
   let soalId = null
@@ -211,6 +234,9 @@ async function main() {
 
   /** Nilai `ranking` sebelum harness menyentuhnya — dikembalikan di `finally`. */
   let rankingSebelumnya = null
+
+  /** Akun murid pengumpul yang dibuat harness ini — dihapus lagi di `finally`. */
+  const akunPapan = []
 
   try {
     const guru = await pasang(ctxGuru)
@@ -577,6 +603,134 @@ async function main() {
       '',
     )
 
+    // ---------- 8b. Papan yang benar-benar BERISI baris ----------
+    // Sampai di sini papannya masih kosong. Papan kosong bisa lulus karena tidak
+    // ada apa pun untuk dibandingkan, jadi empat murid sekelas dibiarkan
+    // mengumpulkan lebih dulu — lewat API, lapisan server yang sama dengan tombol
+    // "Kumpulkan" di layar anak — lalu guru menyiarkan ulang papannya. Yang
+    // diperiksa: papan berisi itu sampai ke perangkat murid dengan isi yang SAMA
+    // PERSIS seperti halaman peringkatnya sendiri, dan aturan "nomor hanya untuk
+    // N% teratas" tetap memotong barisnya di HP anak.
+    const kumpul = await pasang(ctxKumpul)
+    /** @type {Array<{ huruf: string, status: number, skor: number|null }>} */
+    const hasilKumpul = []
+
+    for (const satu of MURID_PAPAN) {
+      const email = `smoke.papan.${satu.huruf.toLowerCase()}.${TANDA}@sekolah.test`
+      const dibuat = await guru.apiJson('/v1/murid', 'POST', {
+        nama: `SMOKE-PAPAN ${satu.huruf}`,
+        email,
+        class_id: kelasId,
+        kata_sandi: SANDI_MURID,
+      })
+
+      if (dibuat.status !== 201) {
+        hasilKumpul.push({ huruf: satu.huruf, status: dibuat.status, skor: null })
+        continue
+      }
+
+      akunPapan.push({ id: dibuat.isi.id, nama: `SMOKE-PAPAN ${satu.huruf}`, email })
+
+      // Satu konteks peramban dipakai bergantian: sesi lama ditutup dulu supaya
+      // cookie murid sebelumnya tidak membuat pengumpulan ini tercatat atas nama
+      // anak yang salah.
+      if (hasilKumpul.length > 0) await kumpul.apiJson('/v1/auth/keluar', 'POST')
+      await kumpul.masuk({ email, password: SANDI_MURID })
+
+      const mulaiKumpul = await kumpul.apiJson(`/v1/kuis/${kuisId}/mulai`, 'POST')
+      const attemptKumpul = mulaiKumpul.isi?.id ?? null
+      const soalKumpul = (mulaiKumpul.isi?.soal ?? [])[0] ?? null
+
+      await kumpul.apiJson(`/v1/attempt/${attemptKumpul}/jawab`, 'POST', {
+        question_id: soalKumpul?.id ?? null,
+        jawaban: satu.benar ? 'B' : 'A',
+      })
+      const dikumpulkan = await kumpul.apiJson(`/v1/attempt/${attemptKumpul}/kumpulkan`, 'POST', {
+        idempotency_key: `papan-${TANDA}-${satu.huruf}`,
+      })
+
+      hasilKumpul.push({ huruf: satu.huruf, status: dikumpulkan.status, skor: dikumpulkan.isi?.skor ?? null })
+    }
+
+    cek(
+      'empat murid sekelas mengumpulkan jawabannya (papan jadi berisi baris)',
+      hasilKumpul.length === MURID_PAPAN.length &&
+        hasilKumpul.every((satu, indeks) => satu.status === 200 && satu.skor === (MURID_PAPAN[indeks].benar ? 5 : 0)),
+      hasilKumpul.map((satu) => `${satu.huruf}=${satu.skor}`).join(' · '),
+    )
+
+    const papanGuruApi = await guru.apiJson(`/v1/kuis/${kuisId}/ranking?top=20`)
+    const namaDiPapan = (papanGuruApi.isi?.peringkat ?? []).map((satu) => satu.nama)
+    cek(
+      'papan guru memuat keempat murid pengumpul',
+      papanGuruApi.isi?.total === MURID_PAPAN.length &&
+        MURID_PAPAN.every((satu) => namaDiPapan.includes(`SMOKE-PAPAN ${satu.huruf}`)),
+      `total ${papanGuruApi.isi?.total} · baris ${namaDiPapan.join(', ')}`,
+    )
+
+    // Berapa baris yang boleh dilihat murid dihitung server dari N% teratas.
+    // Angkanya dibaca dari respons (bukan ditanam di harness), lalu dipakai
+    // sebagai patokan jumlah baris papan di HP anak.
+    const terbukaJumlah = papanGuruApi.isi?.terbuka_jumlah ?? 0
+    const seharusnyaTerbuka = Math.min(
+      20,
+      Math.max(1, Math.ceil(((papanGuruApi.isi?.total ?? 0) * (papanGuruApi.isi?.terbuka_persen ?? 0)) / 100)),
+    )
+    cek(
+      'aturan N% teratas benar-benar memotong baris papan',
+      terbukaJumlah === seharusnyaTerbuka && terbukaJumlah < (papanGuruApi.isi?.total ?? 0),
+      `${papanGuruApi.isi?.terbuka_persen}% dari ${papanGuruApi.isi?.total} → ${terbukaJumlah} baris terbuka`,
+    )
+
+    // Murid kembali ke layar pengerjaannya (di sanalah panel layar kelas dipasang),
+    // lalu guru menyiarkan ulang papannya supaya perangkat murid mengambil ulang.
+    await murid.buka(`/kerjakan/${kuisId}`)
+    cek(
+      'murid kembali ke layar pengerjaan untuk menyambut papan baru',
+      await murid.tunggu(`__alat.halaman().includes(${JSON.stringify(TEKS_SOAL)})`, 40_000),
+      '',
+    )
+    await siarkanUlangPapan()
+
+    cek(
+      'papan BERISI baris sampai ke HP murid tanpa memuat ulang halaman',
+      await murid.tunggu(`(__alat.papanMurid().tabel ?? '').includes('SMOKE-PAPAN')`, 40_000),
+      (await murid.evalJs(`__alat.papanMurid().tabel`))?.slice(0, 200) ?? '(tidak ada tabel)',
+    )
+
+    const barisPanel = await murid.evalJs(
+      `document.querySelectorAll('section[aria-label="Papan peringkat dari guru"] table tbody tr').length`,
+    )
+    const teksPapanPanel = await murid.evalJs(`__alat.papanMurid().tabel ?? ''`)
+    cek(
+      'papan di HP murid memotong barisnya sebatas N% teratas (nomor hanya untuk yang terbuka)',
+      barisPanel === terbukaJumlah,
+      `baris di HP ${barisPanel} · terbuka ${terbukaJumlah} · ${teksPapanPanel.slice(0, 140)}`,
+    )
+    cek(
+      'kalimat aturan di panel memakai angka terbaru dari server, bukan angka papan kosong tadi',
+      (await murid.evalJs(`__alat.papanMurid().teks`)).includes(`dibuka untuk ${terbukaJumlah} murid teratas`),
+      (await murid.evalJs(`__alat.papanMurid().teks`)).slice(0, 200),
+    )
+
+    // Dibandingkan langsung dengan halaman peringkat murid itu sendiri — tabel
+    // demi tabel, baris demi baris.
+    await murid.buka(`/peringkat/${kuisId}`)
+    const barisHalaman = await murid.evalJs(`document.querySelectorAll('main table tbody tr').length`)
+    const teksPapanHalaman = await murid.evalJs(
+      `(document.querySelector('main table')?.innerText ?? '').replace(/\\s+/g, ' ').trim()`,
+    )
+    cek(
+      'papan di HP murid sama persis dengan papan di halaman peringkatnya (isi tabel per baris)',
+      teksPapanPanel !== '' && teksPapanPanel === teksPapanHalaman,
+      `HP: ${teksPapanPanel.slice(0, 150)} | halaman: ${teksPapanHalaman.slice(0, 150)}`,
+    )
+    cek(
+      'jumlah baris papan di HP = jumlah baris di halaman peringkatnya',
+      barisHalaman === barisPanel && barisHalaman === terbukaJumlah,
+      `HP ${barisPanel} · halaman ${barisHalaman} · terbuka ${terbukaJumlah}`,
+    )
+
     const layarMurid = await murid.apiJson(`/v1/kuis/${kuisId}/layar`)
     cek(
       'payload layar untuk murid hanya penanda mode (isi papan tidak dititipkan)',
@@ -633,10 +787,24 @@ async function main() {
         const hapusSoal = await guru.apiJson(`/v1/soal/${soalId}`, 'DELETE')
         cek('pembersihan: soal uji terhapus', hapusSoal.status === 200 || hapusSoal.status === 204, `status=${hapusSoal.status}`)
       }
+
+      // Akun murid pengumpul dihapus SETELAH kuisnya: `attempts` meng-cascade dari
+      // kuis, jadi urutan terbalik akan ditahan foreign key.
+      let muridTerhapus = 0
+      for (const satu of akunPapan) {
+        const hapus = await guru.apiJson(`/v1/murid/${satu.id}`, 'DELETE')
+        if (hapus.status === 200 || hapus.status === 204) muridTerhapus += 1
+      }
+      cek(
+        'pembersihan: akun murid pengumpul terhapus',
+        akunPapan.length === 0 || muridTerhapus === akunPapan.length,
+        `${muridTerhapus}/${akunPapan.length}`,
+      )
     } catch (galat) {
       cek('pembersihan selesai tanpa galat', false, galat?.message ?? String(galat))
     }
 
+    await send('Target.disposeBrowserContext', { browserContextId: ctxKumpul }).catch(() => {})
     await send('Target.disposeBrowserContext', { browserContextId: ctxMurid }).catch(() => {})
     await send('Target.disposeBrowserContext', { browserContextId: ctxGuru }).catch(() => {})
     ws.close()

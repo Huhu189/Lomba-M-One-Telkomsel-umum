@@ -682,6 +682,7 @@ const JENIS_STATUS = /** @type {Record<string, string>} */ ({
                 mapelAwal={nilai.subject_id}
                 sedangMenyimpan={simpanSoalBaru.isPending}
                 onSimpan={(muatan) => simpanSoalBaru.mutate(muatan)}
+                onMapelDibuat={() => void queryClient.invalidateQueries({ queryKey: ['mapel'] })}
                 onBatal={() => setSoalBaru(false)}
               />
             </>

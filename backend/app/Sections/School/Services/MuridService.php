@@ -97,13 +97,28 @@ class MuridService
     }
 
     /**
+     * Ubah data murid, termasuk **email masuknya**.
+     *
+     * Email ikut berubah karena permintaan guru: sebelumnya kolom ini diterima
+     * validasi (termasuk aturan unik) tetapi tidak pernah disimpan, sehingga
+     * halaman Murid melaporkan "tersimpan" tanpa satu pun perubahan — perubahan
+     * hanya terlihat setelah halaman dimuat ulang, dan itu pun tetap kosong.
+     *
+     * `email_verified_at` sengaja TIDAK dikosongkan: alamat ini ditetapkan
+     * sekolah (bukan pendaftaran sendiri), dan murid tidak bisa membuka tautan
+     * verifikasi ke alamat yang baru saja diganti guru. Mengosongkannya akan
+     * mengunci murid dari seluruh fitur tanpa jalan keluar.
+     *
      * @param  array<string, mixed>  $data
      */
     public function ubah(Murid $murid, array $data): Murid
     {
         return DB::transaction(function () use ($murid, $data): Murid {
             $user = User::query()->findOrFail($murid->user_id);
-            $user->forceFill(['name' => $data['nama']])->save();
+            $user->forceFill([
+                'name' => $data['nama'],
+                'email' => mb_strtolower(trim((string) ($data['email'] ?? $user->email))),
+            ])->save();
 
             $murid->fill([
                 'class_id' => (int) $data['class_id'],
