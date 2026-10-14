@@ -153,4 +153,26 @@ describe('HalamanMasuk — datang dari tautan ulangan', () => {
     expect(wadah.querySelector('details.auth-lipat-akun')).toBeNull()
     expect(wadah.querySelector('input[type="email"]')).not.toBeNull()
   })
+
+  it('dari tautan ulangan dengan pintu tamu tertutup: sebabnya dikatakan, bukan dibiarkan menebak', async () => {
+    // Anak (dan guru yang menguji tautannya sendiri) harus tahu bahwa yang
+    // menutup pintu bukan aplikasinya, melainkan kuis itu belum dibuka untuk
+    // tamu/diterbitkan. Sebab itu ditulis di halaman, bukan disimpulkan sendiri.
+    await pasang({ tujuan: '/kuis/abc123', diizinkan: false })
+
+    const teks = wadah.textContent ?? ''
+    expect(teks).toContain('Ulangan ini belum dibuka untuk siswa tanpa akun')
+    expect(teks).toContain('Izinkan siswa tamu')
+    expect(teks).toContain('menerbitkan kuisnya')
+
+    // Kontrol negatif: tanpa tautan ulangan catatan itu TIDAK muncul — halaman
+    // masuk biasa tidak boleh menuduh ada kuis yang tertutup.
+    act(() => root.unmount())
+    wadah.innerHTML = ''
+    root = createRoot(wadah)
+
+    await pasang({})
+
+    expect(wadah.textContent).not.toContain('Ulangan ini belum dibuka untuk siswa tanpa akun')
+  })
 })

@@ -136,6 +136,48 @@ describe('SetelanUlangan (satu tombol)', () => {
     expect(tombol('Tutup setelan ulangan')).not.toBeNull()
   })
 
+  it('jadi hanya-baca bila server bilang pengguna ini tidak boleh mengubahnya', async () => {
+    // Kepala sekolah boleh MEMBACA resolusi ini, jadi panelnya tampil lengkap —
+    // tetapi setiap simpan akan ditolak 403. Tanpa `boleh_ubah`, saklarnya
+    // tampak bisa ditekan dan guru bertanya "apakah setelannya masuk?".
+    ambilPengaturan.mockResolvedValue({ ...RESOLUSI, boleh_ubah: false })
+
+    pasang()
+    await tungguTeks('2/8 aktif')
+
+    act(() => tombol('Setelan ulangan')?.click())
+    await tungguTeks('Izinkan siswa tamu')
+
+    const saklarTamu = /** @type {HTMLInputElement|null} */ (cari('input#set-izinkan_tamu'))
+    const saklarAntiCheat = /** @type {HTMLInputElement|null} */ (cari('input#set-block_paste'))
+
+    expect(saklarTamu).not.toBeNull()
+    expect(saklarTamu?.disabled).toBe(true)
+    expect(saklarAntiCheat?.disabled).toBe(true)
+    // Nilainya tetap apa adanya dari server: hanya-baca, bukan dikosongkan.
+    expect(saklarTamu?.checked).toBe(true)
+
+    // Sebabnya ditulis, bukan hanya saklar mati tanpa keterangan.
+    const teks = wadah.textContent ?? ''
+    expect(teks).toContain('Hanya bisa dibaca')
+    expect(teks).toContain('hanya bisa diubah guru pemilik kuis ini')
+
+    // Tidak ada tombol massal yang mengundang menyimpan.
+    expect(tombol('Nyalakan semua')).toBeNull()
+
+    // Kontrol positif: dengan `boleh_ubah` true, saklarnya hidup lagi.
+    ambilPengaturan.mockResolvedValue(RESOLUSI)
+    act(() => root.unmount())
+    root = createRoot(wadah)
+    pasang()
+    await tungguTeks('2/8 aktif')
+    act(() => tombol('Setelan ulangan')?.click())
+    await tungguTeks('Izinkan siswa tamu')
+
+    expect(/** @type {HTMLInputElement|null} */ (cari('input#set-izinkan_tamu'))?.disabled).toBe(false)
+    expect(tombol('Nyalakan semua')).not.toBeNull()
+  })
+
   it('menjelaskan kapan pintu tamu benar-benar terbuka', async () => {
     pasang()
     await tungguTeks('2/8 aktif')

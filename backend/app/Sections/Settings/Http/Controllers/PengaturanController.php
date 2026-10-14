@@ -31,11 +31,11 @@ class PengaturanController extends Controller
     ): JsonResponse {
         $this->authorize('viewAny', Pengaturan::class);
 
-        return response()->json($service->semua(
-            $sekolah->tunggal()->id,
-            $request->integer('kelas_id') ?: null,
-            $request->integer('kuis_id') ?: null,
-        ));
+        $sekolahId = $sekolah->tunggal()->id;
+        $kelasId = $request->integer('kelas_id') ?: null;
+        $kuisId = $request->integer('kuis_id') ?: null;
+
+        return response()->json($this->resolusi($request, $service, $sekolahId, $kelasId, $kuisId));
     }
 
     public function perbarui(
@@ -54,16 +54,68 @@ class PengaturanController extends Controller
 
         // Lingkup kuis diperiksa kepemilikannya (S-05): saklar anti-cheat satu
         // kuis bukan milik semua guru.
-        $this->authorize('update', [Pengaturan::class, $lingkup, $lingkupId]);
+        //
+        // Penolakannya dikirim sebagai 403 dengan pesan bahasa Indonesia yang
+        // menyebut siapa yang berhak: sebelum ini jawabannya pesan bawaan
+        // kerangka ("This action is unauthorized."), dan kepala sekolah yang
+        // menekan saklar "Izinkan siswa tamu" tidak tahu bahwa setelannya memang
+        // tidak pernah tersimpan — bukan aplikasinya yang menolak tamu.
+        if (! $request->user()?->can('update', [Pengaturan::class, $lingkup, $lingkupId])) {
+            abort(403, $this->pesanTolak($lingkup));
+        }
 
         $nilai = $kunci->tipe() === 'integer' ? (int) $data['nilai'] : (bool) $data['nilai'];
 
         $service->simpan($lingkup, $lingkupId, $kunci, $nilai, (bool) ($data['terkunci'] ?? false));
 
-        return response()->json($service->semua(
+        return response()->json($this->resolusi(
+            $request,
+            $service,
             $sekolahId,
             $request->integer('kelas_id') ?: null,
             $request->integer('kuis_id') ?: null,
         ));
+    }
+
+    /**
+     * Resolusi pengaturan + `boleh_ubah`.
+     *
+     * `boleh_ubah` dibaca dari policy yang sama dengan jalur tulisnya, jadi
+     * klien tidak perlu menebak dari peran pengguna: panel yang menampilkan
+     * saklar wajib tahu apakah saklar itu benar-benar bisa disimpan. Tanpa ini
+     * kepala sekolah (yang boleh MEMBACA resolusi) melihat panel yang tampak
+     * bisa ditekan, menekannya, lalu tidak ada apa pun yang tersimpan.
+     *
+     * @return array<string, mixed>
+     */
+    private function resolusi(
+        Request $request,
+        PengaturanService $service,
+        int $sekolahId,
+        ?int $kelasId,
+        ?int $kuisId,
+    ): array {
+        $lingkup = match (true) {
+            $kuisId !== null => LingkupPengaturan::Kuis,
+            $kelasId !== null => LingkupPengaturan::Kelas,
+            default => LingkupPengaturan::Sekolah,
+        };
+
+        $lingkupId = $kuisId ?? $kelasId ?? $sekolahId;
+
+        return [
+            ...$service->semua($sekolahId, $kelasId, $kuisId),
+            'boleh_ubah' => (bool) $request->user()?->can('update', [Pengaturan::class, $lingkup, $lingkupId]),
+        ];
+    }
+
+    /** Sebab penolakan yang bisa dibaca guru, bukan pesan bawaan kerangka. */
+    private function pesanTolak(LingkupPengaturan $lingkup): string
+    {
+        if ($lingkup === LingkupPengaturan::Kuis) {
+            return 'Setelan ulangan ini hanya bisa diubah guru pemilik kuisnya. Kepala sekolah hanya melihat.';
+        }
+
+        return 'Setelan tingkat sekolah dan kelas tidak diubah dari aplikasi. Atur proteksi dan aturan ulangan di halaman kuisnya masing-masing.';
     }
 }

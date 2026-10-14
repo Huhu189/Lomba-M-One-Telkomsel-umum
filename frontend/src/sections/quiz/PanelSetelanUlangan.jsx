@@ -16,7 +16,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ambilPengaturan, simpanPengaturan } from '../settings/api.js'
 import { KUNCI_TAMU } from './setelanSesi.js'
 import { pesanGalatApi } from '../auth/api.js'
+import { useAuthStore } from '../auth/authStore.js'
 import { tampilkanToast } from '../../shared/ui/toast.jsx'
+import Banner from '../../shared/ui/Banner.jsx'
 import Skeleton from '../../shared/ui/Skeleton.jsx'
 import { Tombol } from '../../shared/ui/Tombol.jsx'
 
@@ -25,6 +27,7 @@ import { Tombol } from '../../shared/ui/Tombol.jsx'
  */
 export default function PanelSetelanUlangan({ kuisId }) {
   const queryClient = useQueryClient()
+  const peran = useAuthStore((s) => s.user?.role ?? '')
   const [angkaDraft, setAngkaDraft] = useState(/** @type {Record<string, string>} */ ({}))
   const [sibukMassal, setSibukMassal] = useState(false)
 
@@ -99,6 +102,19 @@ export default function PanelSetelanUlangan({ kuisId }) {
 
   const data = resolusi.data
 
+  /**
+   * Boleh mengubah atau tidak — dibaca dari SERVER (`boleh_ubah`), bukan ditebak
+   * dari peran klien.
+   *
+   * Sebelumnya panel ini selalu menampilkan saklar yang bisa ditekan, walau
+   * pemakainya (mis. kepala sekolah) tidak berhak menyimpannya: setiap tik
+   * berakhir 403 tanpa satu pun nilai tersimpan. Guru yang mencobanya karena itu
+   * wajar bertanya "apakah setelannya masuk?" — dan jawabannya tidak. Sekarang
+   * saklarnya dimatikan beserta sebabnya, jadi tidak ada lagi panel yang menjanjikan
+   * sesuatu yang server tolak.
+   */
+  const bolehUbah = data?.boleh_ubah !== false
+
   /** @type {Record<string, [string, import('../settings/api.js').NilaiPengaturan][]>} */
   const kelompok = {}
   if (data) {
@@ -121,6 +137,15 @@ export default function PanelSetelanUlangan({ kuisId }) {
 
   return (
     <div>
+      {!bolehUbah && (
+        <Banner jenis="info" judul="Hanya bisa dibaca">
+          {peran === 'admin'
+            ? 'Kepala sekolah hanya melihat: setelan ulangan diubah guru pemilik kuis ini. '
+            : 'Setelan ulangan hanya bisa diubah guru pemilik kuis ini. '}
+          Perubahan yang dikirim dari sini akan ditolak server, jadi saklar dan kotak angkanya dimatikan.
+        </Banner>
+      )}
+
       {Object.entries(kelompok).map(([namaKelompok, daftar]) => {
         // Saklar (boolean) bisa dinyalakan/dimatikan sekaligus; angka tidak.
         const saklar = daftar.filter(([, info]) => info.tipe === 'boolean')
@@ -139,7 +164,7 @@ export default function PanelSetelanUlangan({ kuisId }) {
                 )}
               </div>
 
-              {saklar.length > 1 && (
+              {bolehUbah && saklar.length > 1 && (
                 <div className="d-flex gap-1">
                   <Tombol
                     varian="tepi"
@@ -190,7 +215,7 @@ export default function PanelSetelanUlangan({ kuisId }) {
                       id={`set-${kunci}`}
                       aria-label={`${info.label}: ${info.nilai ? 'aktif' : 'nonaktif'}`}
                       checked={Boolean(info.nilai)}
-                      disabled={simpan.isPending || sibukMassal || info.terkunci}
+                      disabled={simpan.isPending || sibukMassal || info.terkunci || !bolehUbah}
                       onChange={(e) => simpan.mutate({ kunci, nilai: e.target.checked, terkunci: info.terkunci })}
                     />
                     <label className="form-check-label small" htmlFor={`set-${kunci}`}>
@@ -226,23 +251,25 @@ export default function PanelSetelanUlangan({ kuisId }) {
                       className="form-control form-control-sm"
                       style={{ width: '6rem' }}
                       value={angkaDraft[kunci] ?? String(info.nilai)}
-                      disabled={simpan.isPending || info.terkunci}
+                      disabled={simpan.isPending || info.terkunci || !bolehUbah}
                       onChange={(e) => setAngkaDraft({ ...angkaDraft, [kunci]: e.target.value })}
                     />
-                    <Tombol
-                      ukuran="sedang"
-                      memuat={simpan.isPending}
-                      disabled={info.terkunci}
-                      onClick={() =>
-                        simpan.mutate({
-                          kunci,
-                          nilai: Number(angkaDraft[kunci] ?? info.nilai),
-                          terkunci: info.terkunci,
-                        })
-                      }
-                    >
-                      Simpan
-                    </Tombol>
+                    {bolehUbah && (
+                      <Tombol
+                        ukuran="sedang"
+                        memuat={simpan.isPending}
+                        disabled={info.terkunci}
+                        onClick={() =>
+                          simpan.mutate({
+                            kunci,
+                            nilai: Number(angkaDraft[kunci] ?? info.nilai),
+                            terkunci: info.terkunci,
+                          })
+                        }
+                      >
+                        Simpan
+                      </Tombol>
+                    )}
                   </div>
                 )}
               </div>

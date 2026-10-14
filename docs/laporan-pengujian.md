@@ -8303,3 +8303,100 @@ soalnya panjang (bar lengket) — diangkat jadi komponen `TautanSiswa.jsx`.
 - **Backend diubah:** `Sections/Material/Services/ProgresMateriService.php` (komentar `sajian` saja).
 - **Docs:** `docs/penjelasan-fitur.md` (bagian 24), `docs/laporan-pengujian.md` (bagian ini).
 - **Commit:** `547d140` (working tree bersih sesudahnya; belum di-push).
+
+## A.91 — “Sudah dinyalakan izin tamu, kok masih dipaksa masuk”: ternyata setelannya memang tidak pernah tersimpan (15 Oktober 2026)
+
+### A.91.1 Keluhan & cara memeriksanya
+Pemilik produk, sesudah putaran A.90: *“sudah di setting tamu namun masih redirect ke /masuk dipaksa, apakah
+settingnya masuk? perbaiki”*. Diperiksa langsung di basis data pengembangan (bukan ditebak), dan jawabannya
+**tidak** — tidak ada satu pun setelan tamu yang tersimpan:
+
+| Yang diperiksa | Hasil (DB dev, 15 Okt 2026 03.xx WIB) |
+| --- | --- |
+| `settings` lapis sekolah | `sekolah #1 izinkan_tamu='false'` (dan lapis sekolah memang tidak bisa diubah siapa pun) |
+| Kuis hidup yang membuka pintu | **tidak ada** (kuis 376 terbit tapi `false`; kuis lain tak punya barisnya) |
+| Baris `izinkan_tamu=true` yang berjumlah paling banyak | semuanya menunjuk kuis yang **sudah dihapus** — sisa harness smoke |
+| `TamuService::tersedia(1)` | **false** → `GET /v1/tamu` menjawab `{"diizinkan":false}` → halaman masuk tidak pernah menampilkan formulir tamu |
+| Akun yang dipakai pemilik produk | `admin@sekolah.test` → **role `admin` (kepala sekolah)**, `bolehMengubahAkademik()=false` |
+| Panel setelan untuk akun itu | `can('viewAny', Pengaturan)` **true** → panelnya tampil lengkap; `can('update', …)` **false** → setiap simpan ditolak **403** |
+| Kuis yang dicoba (“ddddd”, id 280) | **draf** dan pemiliknya akun `admin@sekolah.test` itu |
+
+Jadi dua sebab bertumpuk, dan keduanya sama-sama tak terlihat dari layar: **(1)** kepala sekolah boleh
+MEMBACA panel setelan (karena `viewAny` = guru/admin) sehingga saklarnya tampak bisa ditekan, tetapi
+menyimpannya ditolak 403 dengan pesan bawaan kerangka berbahasa Inggris — pekerjaan guru tidak pernah masuk;
+**(2)** pintu tamu hanya dihitung untuk kuis yang **sudah terbit** (`TamuService::kuisTerbuka`), sementara kuis
+yang dicoba masih draf.
+
+Yang **tidak** salah (diuji ulang): rantai simpan→baca bekerja seketika (`simpan` kuis terbit → `tersedia`
+`false`→`true` tanpa restart, cache Redis terinvalidasi), dan kuis terbit milik guru yang pintunya menyala
+memang membuat `GET /v1/tamu` menjawab `true` (`TamuTest`).
+
+### A.91.2 Yang diperbaiki
+1. **`GET /v1/pengaturan` kini membawa `boleh_ubah`** (`PengaturanController::resolusi`), dibaca dari policy
+   yang **sama** dengan jalur tulisnya. Klien tidak lagi menebak dari peran: kalau server bilang tidak boleh,
+   panelnya hanya-baca.
+2. **Penolakan simpan menjawab 403 berbahasa Indonesia** yang menyebut siapa yang berhak —
+   `"Setelan ulangan ini hanya bisa diubah guru pemilik kuisnya. Kepala sekolah hanya melihat."` (dan versi
+   lapis sekolah/kelas) — bukan lagi `"This action is unauthorized."` yang membuat guru menduga aplikasinya
+   rusak.
+3. **`PanelSetelanUlangan` jadi hanya-baca saat `boleh_ubah=false`**: setiap saklar & kotak angka dimatikan,
+   tombol massal (“Nyalakan/Matikan semua”) tidak dirender, dan sebabnya ditulis di kepala panel
+   (“Kepala sekolah hanya melihat: setelan ulangan diubah guru pemilik kuis ini.” — dibedakan untuk peran
+   `admin` dan guru bukan pemilik). Tidak ada lagi saklar yang menjanjikan sesuatu yang server tolak.
+4. **Halaman masuk menjelaskan pintu tamu yang tertutup** bagi pengunjung yang datang dari tautan ulangan:
+   “Ulangan ini belum dibuka untuk siswa tanpa akun — minta gurumu menyalakan *Izinkan siswa tamu* untuk kuis
+   ini, lalu menerbitkan kuisnya.” Anak (dan guru yang menguji tautannya sendiri) berhenti menebak; halaman ini
+   tetap tidak menawarkan pintu yang pasti ditolak.
+
+### A.91.3 Aturan yang tetap berlaku (tidak diubah)
+- Pintu tamu per kuis **hanya pemilik kuis** (S-05); kepala sekolah membaca, tidak menulis (`KepalaSekolahHanyaMelihatTest`).
+- Lapis sekolah/kelas tidak diubah dari aplikasi (dikunci `PengaturanPolicy`; `retry` lapis sekolah tetap 403).
+- Pintu tamu tetap butuh kuis **terbit** — tamu tidak boleh melihat kuis draf.
+
+### A.91.4 Verifikasi (dijalankan)
+- **Pest penuh: 421 lulus (4235 asersi)** — naik dari 419 karena dua tes baru di `PengaturanTest`:
+  (a) `boleh_ubah` true untuk guru pemilik vs false untuk kepala sekolah, 403 berpesan Indonesia saat kepala
+  sekolah menyimpan, dan pintu tamu tetap tertutup sesudahnya (`GET /v1/tamu` → `false`); (b) guru lain boleh
+  membaca resolusi tetapi 403 saat menyimpan. `TamuTest` (18 tes) dan `KepalaSekolahHanyaMelihatTest` (5 tes)
+  dijalankan ulang: hijau.
+- **Frontend: Vitest penuh hijau** (120 berkas / **1066 tes**) — dua tes baru: panel hanya-baca saat
+  `boleh_ubah=false` (saklar mati, nilai dari server tetap tampil, tidak ada tombol massal) dengan **kontrol
+  positif** bahwa dengan `boleh_ubah=true` saklarnya hidup lagi; dan catatan “belum dibuka untuk siswa tanpa
+  akun” di halaman masuk beserta **kontrol negatif** (tanpa tautan ulangan catatan itu tidak muncul).
+- `npm run check` (`tsc --noEmit`) exit 0 · `npm run lint` exit 0 (0 galat, 3 peringatan lama) · Pint PASS
+  untuk `PengaturanController.php` + `PengaturanTest.php`.
+
+### A.91.5 Batasan jujur
+- **Bukti peramban untuk keluhan ini belum ada pada putaran ini**: harness `tamu` dijalankan ulang lewat
+  `docs/jalankan-smoke-ui.sh tamu` (lihat bagian A.92 di bawah untuk hasilnya) — harnes itu membuktikan jalur
+  “pintu terbuka → anak masuk sebagai tamu”, bukan keadaan “pintu tertutup” yang dikeluhkan. Keadaan tertutup
+  diuji di jsdom (`masukTautanUlangan`) dan lewat HTTP (`PengaturanTest`).
+- **Kuis 280 “ddddd” (draf, milik akun `admin@sekolah.test`) tidak bisa dikelola siapa pun** sesudah aturan
+  14 Okt 2026: pemiliknya kepala sekolah yang tidak boleh mengubah data akademik, dan guru lain bukan
+  pemiliknya. Ini konsekuensi langsung dari keputusan itu, bukan bug baru — kuis untuk dikerjakan murid
+  sebaiknya dibuat dengan akun guru.
+- Untuk membuka pintu tamu di mesin dev: masuk sebagai guru pemilik kuis (`guru1@sekolah.test`, sandi
+  `password12`), **terbitkan** kuisnya, lalu nyalakan “Izinkan siswa tamu” di panel setelan ulangan. Sesudah
+  itu `GET /v1/tamu` menjawab `true` dan formulir tamu muncul di halaman masuk.
+
+### A.91.6 Berkas
+- **Backend diubah:** `Sections/Settings/Http/Controllers/PengaturanController.php` (`boleh_ubah` + pesan 403),
+  `tests/Feature/PengaturanTest.php` (2 tes baru).
+- **Frontend diubah:** `sections/settings/api.js` (skema `boleh_ubah`), `sections/quiz/PanelSetelanUlangan.jsx`
+  (hanya-baca), `sections/auth/HalamanMasuk.jsx` (catatan pintu tertutup),
+  `__tests__/sections/quiz/setelanUlanganTombol.test.jsx`, `__tests__/sections/auth/masukTautanUlangan.test.jsx`.
+
+## A.92 — Bukti peramban jalur tamu (harness `tamu`) sesudah A.91 (15 Oktober 2026)
+
+Harness yang sudah ada dijalankan ulang atas kode A.91 —
+`docs/jalankan-smoke-ui.sh tamu` (runner menyalakan backend :8000, vite :5173, realtime :4000, Chrome :9333
+sendiri lalu mematikannya): **15/15 lulus, exit 0**.
+
+Yang dibuktikan ulang di peramban sungguhan: pintu tamu dibuka lewat **satu kuis terbit milik guru**
+(`izinkan_tamu` lapis kuis), formulir tamu berada **di ATAS** kolom email/kata sandi (bukan “atau” di bawah),
+formulir akun sekolah **dilipat**, nama yang ditulis mengembalikan anak ke **kuis yang dibuka tanpa akun**,
+kode perangkat bertahan saat halaman dimuat ulang, dan di akhir harness **menghapus kuis pintu tamunya**
+sehingga `GET /v1/tamu` kembali `diizinkan=false`.
+
+Batasan: harness ini mewakili keadaan **pintu terbuka**; keadaan pintu tertutup (yang dikeluhkan pemilik
+produk) diuji di jsdom (`masukTautanUlangan`) dan lewat HTTP (`PengaturanTest`), bukan di peramban.

@@ -23,12 +23,20 @@ export const skemaNilaiPengaturan = z.object({
   terkunci: z.boolean(),
 })
 
-/** Resolusi pengaturan lengkap untuk satu konteks. */
+/**
+ * Resolusi pengaturan lengkap untuk satu konteks.
+ *
+ * `boleh_ubah` datang dari server (policy yang sama dengan jalur tulisnya).
+ * Bawaan `true` supaya respons lama/uji yang belum memuatnya tidak mengubah
+ * panelnya jadi hanya-baca; server yang benar-benar menolak selalu mengirim
+ * `false`.
+ */
 export const skemaResolusiPengaturan = z.object({
   sekolah_id: z.number(),
   kelas_id: z.number().nullable(),
   kuis_id: z.number().nullable(),
   pengaturan: z.record(z.string(), skemaNilaiPengaturan),
+  boleh_ubah: z.boolean().optional().default(true),
 })
 
 /**

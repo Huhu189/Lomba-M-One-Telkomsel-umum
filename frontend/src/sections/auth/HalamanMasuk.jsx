@@ -174,6 +174,25 @@ export default function HalamanMasuk({ berhasil }) {
       ) : (
         <>
           {/**
+           * Datang dari tautan ulangan, tetapi pintu tamunya tertutup: sebabnya
+           * dikatakan apa adanya (14 Oktober 2026).
+           *
+           * Sebelum catatan ini, anak yang membuka tautan guru hanya melihat
+           * kolom email + kata sandi dan merasa "dipaksa masuk" — padahal bukan
+           * aplikasinya yang menolak, melainkan kuis itu memang belum dibuka
+           * untuk tamu (`TamuService::tersedia`: kuisnya harus terbit dan
+           * `izinkan_tamu`-nya menyala). Guru yang mencoba tautannya sendiri pun
+           * membaca sebab yang sama, jadi tidak perlu bertanya ke mana-mana.
+           */}
+          {dariTautanUlangan && infoTamu.isSuccess && infoTamu.data?.diizinkan === false && (
+            <Banner jenis="info" judul="Ulangan ini belum dibuka untuk siswa tanpa akun">
+              Minta gurumu menyalakan “Izinkan siswa tamu” untuk kuis ini, lalu menerbitkan kuisnya —
+              pintu tamu baru terbuka sesudah itu. Sementara itu, kamu bisa masuk dengan akun sekolah
+              di bawah.
+            </Banner>
+          )}
+
+          {/**
            * Tombol Google ditempatkan di ATAS formulir kata sandi (14 Oktober
            * 2026): bagi murid yang akunnya dibuat lewat Google, pintu itu memang
            * yang pertama ia cari. Tampil hanya bila sekolah menyalakannya.

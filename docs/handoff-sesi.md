@@ -67,9 +67,11 @@ git rev-parse --short HEAD origin/main && git rev-list --count origin/main..HEAD
 
 Keadaan saat handoff ini diperbarui (**15 Okt 2026, sesudah putaran A.90**):
 
-- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`; saat handoff ini ditulis: `547d140`, putaran
-  **A.90** — materi ditampilkan apa adanya: pratinjau dokumen kantor, klip tautan, latihan sisipan; tulisannya
-  di `laporan-pengujian.md` bagian **A.90** dan `penjelasan-fitur.md` bagian **24**). Putaran
+- **`HEAD`** = commit terakhir (pakai `git log --oneline -1`, jangan hafalkan hashnya di sini). Putaran
+  terakhir yang sudah dikomit: **A.90** (materi ditampilkan apa adanya — bagian **30** di bawah,
+  `laporan-pengujian.md` **A.90**, `penjelasan-fitur.md` bagian **24**) dan **A.91–A.92** (pintu tamu: setelan
+  yang tidak pernah tersimpan karena bukan pemilik kuis + bukti peramban harness `tamu` — bagian **31** di
+  bawah, `laporan-pengujian.md` **A.91**/**A.92**, `penjelasan-fitur.md` bagian **25**). Putaran
   **A.84–A.88** (14 Okt 2026) dikomit bertema — materi (dokumen kantor + tautan + pustaka berkas), teknik
   koreksi + catatan di antrean koreksi (backend), pulihkan kuis arsip, editor materi (frontend), editor
   soal (grid + jenis berkas + teknik koreksi), kuis satu halaman + layar koreksi (frontend), halaman masuk
@@ -1801,3 +1803,34 @@ exit 0** · `npm run check` exit 0 tanpa galat · `npm run lint` exit 0 (0 galat
 **Yang belum dibuktikan:** pratinjau diuji dengan ZIP buatan tes (bukan berkas asli pemilik produk) dan belum
 pernah dibuka di Chrome; tata letak/animasi/bagan/rumus tidak digambar ulang (batas ini tertulis di
 `penjelasan-fitur.md` bagian 24).
+
+## 31. A.91–A.92 — “sudah di setting tamu, kok tetap dipaksa masuk”: setelannya memang tidak pernah tersimpan (15 Oktober 2026)
+
+**Keluhan pemilik produk:** *“sudah di setting tamu namun masih redirect ke /masuk dipaksa, apakah settingnya
+masuk? perbaiki.”*
+
+**Jawaban (diperiksa di DB dev, bukan ditebak): tidak.** Tidak ada satu pun setelan tamu yang tersimpan —
+`TamuService::tersedia(1)` = **false**, jadi `GET /v1/tamu` menjawab `diizinkan:false` dan halaman masuk tidak
+pernah menampilkan formulir tamu. Dua sebab bertumpuk, keduanya tak terlihat dari layar:
+
+1. **Akun `admin@sekolah.test` adalah kepala sekolah** (`role=admin`, `hanyaMelihat=true`). Ia boleh MEMBACA
+   panel setelan (`viewAny` = guru/admin) sehingga saklarnya tampak bisa ditekan, tetapi menyimpannya ditolak
+   **403** dengan pesan bawaan kerangka berbahasa Inggris — pekerjaan guru tidak pernah masuk.
+2. **Pintu tamu hanya dihitung untuk kuis yang sudah TERBIT**, dan kuis yang dicoba (“ddddd”, id 280) masih
+   **draf** sekaligus milik akun kepala sekolah itu.
+
+**Yang diperbaiki:** `GET /v1/pengaturan` kini membawa **`boleh_ubah`** (dibaca dari policy yang sama dengan
+jalur tulisnya); penolakan simpan menjawab **403 berbahasa Indonesia** yang menyebut siapa yang berhak;
+`PanelSetelanUlangan` jadi **hanya-baca** saat `boleh_ubah=false` (saklar mati + sebabnya, tombol massal tidak
+dirender); dan halaman masuk **mengatakan sebabnya** bila pengunjung datang dari tautan ulangan sementara
+pintunya tertutup. Aturan lama tidak diubah: pemilik kuis (S-05), lapis sekolah/kelas bukan jalur aplikasi,
+dan tamu tidak pernah melihat kuis draf.
+
+**Verifikasi:** Pest **421 lulus** (2 tes baru di `PengaturanTest`) · Vitest **120 berkas / 1066 tes lulus** ·
+`tsc --noEmit` exit 0 · ESLint 0 galat · Pint PASS · harness peramban `docs/jalankan-smoke-ui.sh tamu`
+**15/15 lulus, exit 0**.
+
+**Yang harus dipakai untuk mencoba pintu tamu:** guru pemilik kuis (`guru1@sekolah.test`, sandi `password12`),
+kuisnya **diterbitkan**, baru “Izinkan siswa tamu” dinyalakan. Kuis 280 milik akun kepala sekolah sekarang
+tidak bisa dikelola siapa pun (pemiliknya tidak boleh menulis, guru lain bukan pemiliknya) — buat kuis baru
+dengan akun guru bila ingin diuji.

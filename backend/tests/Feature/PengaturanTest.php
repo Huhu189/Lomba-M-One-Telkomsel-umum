@@ -149,6 +149,75 @@ it('murid tidak boleh mengubah pengaturan', function (): void {
         ->assertStatus(403);
 });
 
+it('setelan kuis hanya-baca bagi kepala sekolah, dan penolakan simpan menjelaskan sebabnya', function (): void {
+    // Keluhan nyata (15 Okt 2026): kepala sekolah menyalakan "Izinkan siswa tamu"
+    // di panel setelan kuis, anaknya tetap dipaksa masuk, dan ia bertanya apakah
+    // setelannya tersimpan. Jawabannya: tidak — dan sebelum ini panelnya tidak
+    // pernah mengatakan itu, sedangkan penolakan servernya memakai pesan bawaan
+    // kerangka berbahasa Inggris.
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
+        'dibuat_oleh' => $this->guru->id,
+    ]);
+
+    // Guru pemiliknya: panelnya memang bisa disimpan.
+    Sanctum::actingAs($this->guru);
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$kuis->id)
+        ->assertOk()
+        ->assertJsonPath('boleh_ubah', true);
+
+    // Kepala sekolah: boleh MEMBACA resolusi (itu tugasnya mengawasi), tetapi
+    // server menyatakan tegas bahwa ia tidak boleh mengubahnya.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->admin);
+
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$kuis->id)
+        ->assertOk()
+        ->assertJsonPath('boleh_ubah', false);
+
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'izinkan_tamu', 'nilai' => true,
+    ])->assertStatus(403)->assertJsonPath(
+        'message',
+        'Setelan ulangan ini hanya bisa diubah guru pemilik kuisnya. Kepala sekolah hanya melihat.',
+    );
+
+    // Bukti bahwa tidak ada yang tersimpan: pintu tamunya tetap tertutup.
+    auth()->forgetGuards();
+    $this->getJson('/api/v1/tamu')->assertOk()->assertJsonPath('diizinkan', false);
+
+    // Setelan tingkat sekolah/kelas tidak diubah lewat aplikasi — sebabnya juga
+    // disebut dengan bahasa yang bisa dibaca. (Badannya diperiksa, supaya guru
+    // tidak disuruh menebak.)
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->admin);
+
+    $this->putJson('/api/v1/pengaturan', ['lingkup' => 'sekolah', 'kunci' => 'retry', 'nilai' => false])
+        ->assertStatus(403)
+        ->assertJsonPath(
+            'message',
+            'Setelan tingkat sekolah dan kelas tidak diubah dari aplikasi. Atur proteksi dan aturan ulangan di halaman kuisnya masing-masing.',
+        );
+});
+
+it('guru lain boleh membaca setelan kuis itu, tetapi tidak boleh mengubahnya', function (): void {
+    // Batas kepemilikan (S-05) tidak boleh menghalangi guru lain MEMBACA — ia
+    // hanya tidak boleh menyimpan perubahan orang lain.
+    $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
+        'dibuat_oleh' => $this->guru->id,
+    ]);
+
+    $guruLain = User::factory()->guru()->create();
+    Sanctum::actingAs($guruLain);
+
+    $this->getJson('/api/v1/pengaturan?kuis_id='.$kuis->id)
+        ->assertOk()
+        ->assertJsonPath('boleh_ubah', false);
+
+    $this->putJson('/api/v1/pengaturan', [
+        'lingkup' => 'kuis', 'lingkup_id' => $kuis->id, 'kunci' => 'mode_tim', 'nilai' => true,
+    ])->assertStatus(403);
+});
+
 it('validasi menolak tipe nilai yang salah', function (): void {
     $kuis = Kuis::factory()->untukSekolah($this->sekolah, null, $this->kelas)->create([
         'dibuat_oleh' => $this->guru->id,

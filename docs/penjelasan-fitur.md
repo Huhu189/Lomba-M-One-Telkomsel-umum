@@ -998,3 +998,39 @@ awal adalah **Octane Swoole** (ekstensi `swoole` tidak ada di mesin pengembangan
 maupun diuji — dicatat jujur) dan **deploy**.
 
 **Yang tidak boleh dipotong apa pun alasannya:** deploy dengan link yang bisa dibuka, Octane Swoole (atau catatan jujur bila gagal), keamanan inti (auth, pembatasan akses antar murid, kunci jawaban tidak bocor, deadline dari server), serta jurnal prompt dan log mentah yang jujur.
+
+---
+
+## 25. Pintu siswa tamu: siapa yang boleh membukanya (15 Oktober 2026)
+
+### Apa ini
+Siswa tamu = anak yang ikut ulangan **tanpa akun sekolah**. Pintunya ada di **panel Setelan ulangan** pada
+halaman kuis: “Izinkan siswa tamu ikut kuis ini tanpa akun (cukup nama)”. Saklar itu disimpan **per kuis**.
+
+### Siapa yang boleh menyalakannya
+- **Guru pemilik kuis.** Ia yang mengatur ulangan itu, jadi pintunya miliknya.
+- **Kepala sekolah (peran `admin`) hanya melihat.** Ia boleh membuka panelnya untuk meninjau, tetapi setiap
+  perubahan ditolak server dengan pesan yang jelas: *“Setelan ulangan ini hanya bisa diubah guru pemilik
+  kuisnya. Kepala sekolah hanya melihat.”* Sejak 15 Oktober 2026 panelnya karena itu langsung tampil
+  **hanya-baca** (saklarnya mati + sebabnya ditulis) — sebelumnya saklarnya tampak bisa ditekan dan guru wajar
+  bertanya “apakah setelannya masuk?”.
+- **Lapis sekolah dan kelas** tidak diubah dari aplikasi: aturan proteksi berlaku sama untuk seluruh sekolah,
+  jadi tidak ada satu guru pun yang boleh memutuskannya sendiri.
+
+### Pintunya baru terbuka bila kuisnya sudah terbit
+Ini bagian yang paling mudah disalahpahami: menyalakan saklarnya **belum cukup**. Halaman masuk menawarkan
+formulir tamu hanya bila ada **kuis terbit** yang membukanya (`TamuService::tersedia`). Kuis **draf** tidak
+pernah membuka pintu — tamu tidak boleh melihat kuis yang belum diterbitkan guru.
+
+Bila anak membuka tautan ulangan sementara pintunya masih tertutup, halaman masuk sekarang mengatakan
+sebabnya apa adanya: *“Ulangan ini belum dibuka untuk siswa tanpa akun — minta gurumu menyalakan ‘Izinkan
+siswa tamu’ untuk kuis ini, lalu menerbitkan kuisnya.”* Jadi anak (dan guru yang menguji tautannya sendiri)
+tidak lagi hanya melihat kolom email + kata sandi lalu merasa dipaksa masuk.
+
+### Urutan yang benar untuk mengundang anak tanpa akun
+1. Masuk sebagai **guru pemilik kuis**.
+2. Susun kuisnya, lalu **terbitkan**.
+3. Nyalakan **“Izinkan siswa tamu”** di panel Setelan ulangan kuis itu.
+4. Bagikan tautan siswa (halaman kelola kuis menyediakan tombol salin).
+5. Anak membuka tautan → menulis namanya → langsung mengerjakan. Hasilnya tercatat atas namanya dan bisa
+   dilihat guru pemilik kuis di halaman kuis itu.
