@@ -1,42 +1,102 @@
-# Note: md ini Di buat manual
-<h1>Quizfy</h1>
-<p>Platform ujian yang aman, kelas dan penyebaran materi dan pembelajaran yang efektif dan fleksibel dengan standar enterprise-grade application.</p>
-<br>
-<h1>Fitur</h1>
+# Dasar Riset Quizfy.
 
-<strong><p style="font-size:20px">Sistem Ujian</p></strong>
-<ul>
-  <li><strong>Sistem tahan kecurangan:</strong> Pengawasan ketat dengan deteksi upaya keluar tab, copy paste, print, memecah layar, dll. Secara aman dan tahan banyak extension.</li>
-  <li><strong>Bank Soal Dinamis:</strong> Mendukung pengacakan soal dan opsi jawaban secara otomatis serta manajemen kategori soal yang fleksibel.</li>
-  <li><strong>Ragam Tipe Soal:</strong> Sangat banyak pilihan tipe soal, terdiri dari 22 soal bervariatif yang memudahkan guru membuat soal ulangan/ujian.</li>
-</ul>
+Quizfy dirancang untuk anak SD dengan mengacu pada riset pendidikan tentang cara anak belajar dan bertahan termotivasi. Dokumen ini menghubungkan setiap fitur utama di README dengan temuan yang melatarbelakanginya.
 
-<strong><p style="font-size:20px">Manajemen Kelas & Materi</p></strong>
-<ul>
-  <li><strong>Ruang Kelas Virtual:</strong> Pengelompokan siswa berdasarkan kelas atau organisasi untuk distribusi ujian yang tepat sasaran.</li>
-  <li><strong>Penyebaran Materi Efektif:</strong> Unggah dan bagikan modul pembelajaran, video interaktif, dan dokumen pendukung dalam satu dashboard.</li>
-  <li><strong>Pelacakan Progres:</strong> Pantau sejauh mana peserta didik telah membaca materi atau menyelesaikan tugas yang diberikan.</li>
-</ul>
+| Fitur di README | Bagian |
+| --- | --- |
+| Kuis yang bisa diulang, kuis kecil tiap sesi | 1 |
+| Bank soal bertag, laporan per murid dan per tema, remedial | 2 |
+| Materi interaktif dengan kuis di dalam video | 3 |
+| Peta perjalanan belajar, badge, progres tema | 4 |
+| Ranking, poin semangat, notifikasi, penutup sesi | 5 |
+| Ranking per mata pelajaran, badge kekuatan | 6 |
+| Penghargaan berupa status dan progres, tampilan bersama | 7 |
+| Layar kelas | 8 |
 
-<strong><p style="font-size:20px">Kualitas Enterprise-Grade</p></strong>
-<ul>
-  <li><strong>Skalabilitas Tinggi dan kode optimal:</strong> Sanggup menampung ribuan peserta ujian secara bersamaan tanpa kendala latensi atau server down dengan Laravel Octane.</li>
-  <li><strong>Keamanan Data Maksimal:</strong> Mencegah banyak percobaan pembajakan hak otorisasi hingga tahan XSS.</li>
-  <li><strong>Memiliki akses data ketat:</strong> Akses data berbasis role diimplementasikan dengan sangat ketat.</li>
-</ul>
+## 1. Kuis kecil dan pengulangan
 
-<h1>Menjalankan &amp; Prasyarat</h1>
-<ul>
-  <li><strong>Satu perintah untuk local:</strong> <code>./nyalakan-local.sh</code> menyalakan Redis, backend (:8000), realtime (:4000), dan frontend (:5173); <code>./nyalakan-local.sh status</code> untuk cek kesehatan dan <code>./nyalakan-local.sh stop</code> untuk mematikannya. Skrip ini memakai <code>php artisan migrate</code> dan <strong>tidak</strong> menghapus data — jadi <strong>sesi login tidak ikut mati</strong> saat local dinyalakan ulang. Jangan pakai <code>migrate:fresh --seed</code> pada DB yang sedang dipakai: perintah itu menjatuhkan tabel <code>sessions</code> dan memaksa semua orang login ulang.</li>
-  <li><strong>Redis wajib</strong> — dipakai untuk cache aplikasi, kehadiran Live Monitor (hash per murid), dan pub/sub siaran SSE. Kliennya ekstensi PHP <code>redis</code> (phpredis), bukan Predis: pasang ekstensinya lalu jalankan <code>redis-server</code> (<code>brew install redis</code> di macOS).</li>
-  <li><strong>Service realtime (Node) hanya membaca <code>REDIS_URL</code></strong>, bukan <code>REDIS_HOST</code>/<code>REDIS_PORT</code>, dan memakai database 0. Saat deploy, isi <code>REDIS_URL</code> supaya Laravel dan service Node menunjuk Redis yang sama; kalau tidak, keduanya jatuh ke <code>127.0.0.1:6379</code>. Koneksi <code>realtime</code> Laravel sengaja tanpa prefix kunci karena Node tidak mengenal prefix internal Laravel.</li>
-  <li><strong>Gerbang mutu:</strong> <code>./verify.sh</code> (Pest, Pint, checkJs, ESLint, Vitest, node --test). Langkah <strong>Backend Redis wajib</strong> sengaja MERAH bila Redis mati — jalur Redis tidak boleh "hijau" tanpa pernah diuji.</li>
-  <li><strong>Kalau Redis mati</strong>, aplikasi tetap jalan: kehadiran memakai peta di memori dan panel guru turun ke polling berkala (fail-open) — ulangan tidak pernah gagal karena proteksi.</li>
-</ul>
+Menjawab soal untuk mengingat (retrieval practice) memperkuat ingatan dibanding hanya membaca ulang, dan efeknya ditemukan pada SD, SMP/SMA, hingga perguruan tinggi. Efeknya lebih kuat ketika diulang dan ketika siswa segera tahu jawabannya benar atau salah. Soal pilihan ganda sama efektifnya dengan isian untuk tujuan ini, dan kuis berstakes rendah dapat menurunkan kecemasan menghadapi tes.
 
-<h1>Kelebihan</h1>
-<strong><p style="font-size:20px">Kemudahan guru</p></strong>
-<ul>
-  <li><strong>Skalabilitas pembuatan ulangan/ujian:</strong> Guru dapat membuat soal ujian/ulangan dll dengan aman dan cepat yang sudah dilengkapi pertahanan cheat.</li>
-  <li><strong>Penyebaran materi:</strong> Guru dapat dengan mudah membuat materi berbasis media yang lebih mudah dipahami secara efektif dan motivatif oleh anak SD.</li>
-</ul>
+**Penerapan di Quizfy:**
+- Kuis kecil di tiap sesi dan kesempatan mengulang, yang dapat diatur guru.
+- Penjelasan dan umpan balik langsung setelah anak menjawab.
+- **Skor percobaan pertama tersimpan sebagai skor asli**, terpisah dari skor setelah mengulang. Pengulangan dipakai untuk belajar, sedangkan penilaian guru tetap memakai skor asli.
+
+Sumber: eedi.com/articles/10-things-we-know-about-testing; frontiersin.org/journals/education/articles/10.3389/feduc.2019.00005; metacog.bnu.edu.cn/pdf/articles/2023/YangLiZhaoLuo2023.pdf
+
+## 2. Asesmen formatif dan laporan untuk guru
+
+Tinjauan atas 22 studi ketat pada siswa SD menyimpulkan bahwa asesmen formatif berdampak positif pada prestasi, terutama di matematika, dan lebih besar ketika diarahkan guru atau program komputer. Efek data penilaian juga lebih besar ketika guru memakai prosedur yang jelas untuk menelaah data dan menentukan langkah berikutnya.
+
+**Penerapan di Quizfy:**
+- Soal diberi tag konsep, sehingga laporan menunjukkan konsep mana yang benar atau salah per murid dan per kelas.
+- Laporan dihubungkan dengan tindak lanjut berupa latihan remedial, bukan hanya angka.
+- Soal objektif dinilai otomatis, sedangkan uraian masuk antrean koreksi manual guru.
+
+Sumber: ies.ed.gov, "Formative assessment and elementary school student academic achievement" (REL 2017-259); epaa.asu.edu/ojs/article/download/809/852
+
+## 3. Kuis di dalam video
+
+Beberapa studi menemukan skor tes lebih tinggi pada video dengan pertanyaan yang disisipkan, sementara studi lain tidak menemukan perbedaan dan mencatat bahwa kuis dapat mengganggu atau menimbulkan cemas pada sebagian siswa. Hasil ini menunjukkan bahwa cara kuis disisipkan menentukan manfaatnya.
+
+**Penerapan di Quizfy:**
+- Kuis sisipan bersifat ringan dan berstakes rendah.
+- Guru yang menentukan titik dan tata letak kuis lewat editor bergaya video editor.
+
+Sumber: link.springer.com/article/10.1007/s12528-020-09263-x; link.springer.com/article/10.1007/s11528-019-00374-6; pure.fh-ooe.at/en/studentTheses/interaktive-lernvideos
+
+## 4. Peta perjalanan, badge, dan progres
+
+Meta-analisis menunjukkan gamifikasi umumnya meningkatkan motivasi dan hasil belajar, dengan efek yang bervariasi menurut jenjang dan rancangan. Pada siswa SD efeknya lebih kecil dibanding siswa yang lebih tua, sehingga unsur permainan perlu terhubung langsung dengan kemajuan belajar.
+
+**Penerapan di Quizfy:**
+- Setiap blok materi menjadi pos di peta perjalanan bertema (gunung, pulau, angkasa). Kenaikan tingkat dihitung dari pos wajib yang diselesaikan, jadi kemajuan visual mencerminkan kemajuan belajar nyata.
+- Badge dan progres per tema memberi anak penanda capaian pribadi.
+
+Sumber: doi.org/10.3389/fpsyg.2023.1253549; Kurnaz & Koçtürk (2025), Psychology in the Schools, doi.org/10.1002/pits.70056
+
+## 5. Ranking, poin semangat, dan notifikasi
+
+Riset tentang papan peringkat menunjukkan efek yang berbeda menurut posisi anak. Ranking yang menampilkan posisi di sekitar diri sendiri dinilai lebih ringan tekanannya dibanding ranking penuh, dan ada saran membatasi tampilan publik peringkat bawah. Eksperimen acak pada sekitar 400 anak kelas 3 SD (usia rata-rata 8,6 tahun) menemukan bahwa ranking yang poinnya dihitung dari **peningkatan performa tiap anak** meningkatkan motivasi, usaha, dan performa matematika anak berprestasi rendah tanpa merugikan anak lain. Studi yang sama mencatat stres yang lebih tinggi pada anak berprestasi rendah, sehingga cara penyajiannya perlu dijaga.
+
+**Penerapan di Quizfy:**
+- Ranking dihitung per kuis dan per mata pelajaran, tidak diakumulasi menjadi papan permanen.
+- **Poin semangat dipisahkan dari nilai murni.** Buff untuk anak di bawah peringkat 50% hanya memengaruhi poin permainan; skor asli dan nilai rapor tidak berubah.
+- Notifikasi bernada semangat dan merata untuk semua anak.
+- Opsi tanpa ranking, diatur guru lewat pengaturan tiga lapis.
+
+Sumber: download.uni-mainz.de/RePEc/pdf/Discussion_Paper_1908.pdf (Hermes, Huschens, Rothlauf & Schunk, 2019); hub.hku.hk/handle/10722/368255; epub.ub.uni-muenchen.de/96762; springerprofessional.de, "The dark side of gamification"
+
+## 6. Ranking per mata pelajaran dan badge kekuatan
+
+Persepsi diri akademik bersifat spesifik per bidang: merasa mampu di satu mata pelajaran hampir tidak berkaitan dengan persepsi diri di mata pelajaran lain, termasuk pada anak SD. Dengan ranking dan badge per mapel, anak yang berbeda dapat merasa kompeten di bidang yang berbeda.
+
+**Penerapan di Quizfy:**
+- Ranking dan badge kekuatan dipisah per mata pelajaran (misalnya Jagoan IPA, Jagoan IPS).
+- Penghargaan kemajuan pribadi tersedia untuk semua anak.
+
+Sumber: pmc.ncbi.nlm.nih.gov/articles/PMC9853285; pedocs.de/volltexte/2020/16795/pdf/Arens_2018_testing_internal_external_A.pdf
+
+## 7. Penghargaan dan tampilan bersama
+
+Hadiah berwujud cenderung lebih melemahkan motivasi intrinsik pada anak dibanding mahasiswa, sedangkan hadiah tak terduga tidak berpengaruh. Perilaku siswa juga berubah ketika usaha atau pilihannya terlihat teman, dan umpan balik kolektif yang ditampilkan ke seluruh kelas dapat menambah ancaman perbandingan sosial.
+
+**Penerapan di Quizfy:**
+- Penghargaan berupa status, badge, dan progres, bukan hadiah berwujud.
+- Umpan balik pribadi tampil di perangkat murid.
+- Penutup sesi menampilkan semua murid tanpa urutan peringkat.
+
+Sumber: Deci, Koestner & Ryan (1999), depts.washington.edu/techdocs/papers/deciExtrinsicRewardsAndIntrinsicMotivation99.pdf; Bursztyn & Jensen (2015), pmc.ncbi.nlm.nih.gov/articles/PMC4698889; isidore.science/document/10670/1.kqfy78
+
+## 8. Layar kelas
+
+Menampilkan slide guru di perangkat siswa mengurangi multitasking dan meningkatkan keterlibatan pada satu studi di perkuliahan.
+
+**Penerapan di Quizfy:**
+- Guru mengendalikan layar kelas dan perangkat murid mengikuti, dengan toggle yang diatur guru sehingga dapat dimatikan ketika anak perlu melihat langsung ke guru.
+
+Sumber: hal-ensta-bretagne.archives-ouvertes.fr/IBSHS/hal-04107214v1
+
+## Evaluasi lanjutan
+
+Quizfy dirancang agar mudah diuji di kelas: skor percobaan pertama dan perbaikannya tercatat terpisah, laporan per tag menunjukkan perkembangan per konsep, dan pengaturan tiga lapis memungkinkan guru membandingkan kelas dengan dan tanpa ranking.
