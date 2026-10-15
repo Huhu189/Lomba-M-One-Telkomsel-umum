@@ -1123,8 +1123,10 @@ Guru ingin menyusun materi `/materi` "seperti video editor" — hasil susunannya
 Pengguna melampirkan hasil audit statis (`audit-projectla-lomba.md`: 84 temuan — 1 kritis, 18
 tinggi, 51 sedang, 14 rendah, **tanpa ada kode yang dijalankan** karena PHP tidak tersedia di
 sandbox audit) dengan instruksi "cek lagi dan kerjakan progres penyelesaian bug". Berkas prompt
-dan log pekerjaan audit itu disimpan apa adanya di `docs/log-mentah/eksternal/prompt-claude-eksternal.md`
-dan `docs/log-mentah/eksternal/log-claude-eksternal.md` supaya asal setiap temuan bisa ditelusuri.
+dan log pekerjaan audit itu disimpan apa adanya di
+`docs/log-mentah/2026-10-10T06-22-04.000Z-eksternal-claude/prompt.md` dan `.../transkrip.md` supaya asal
+setiap temuan bisa ditelusuri. (Awalnya di folder terpisah `docs/log-mentah/eksternal/`; 15 Oktober 2026
+keduanya disatukan ke daftar sesi log mentah yang sama, lihat A.97.)
 
 Isi berkas audit **tidak lengkap**: hanya 23 temuan yang membawa rincian lokasi + skenario
 (U-01..U-04, Q-01..Q-19). Enam temuan lain punya ringkasan Top-10 yang skenarionya cukup jelas
@@ -6166,8 +6168,8 @@ log ditulis **utuh** dengan tambahan **indeks ringkas**.
   (jumlah pesan, ukuran, md5, waktu ekspor). `docs/log-mentah/README.md` — indeks ringkas semua sesi —
   **dibuat ulang tiap ekspor**, jadi angkanya tidak mungkin basi.
 - **Struktur `docs/log-mentah/` dirapikan** menjadi `2026-10-05T07-39-24.876Z/`, `2026-10-12T13-01-29.434Z/`,
-  `2026-10-13T12-30-29.489Z/`, plus `tangkapan/` (7 potret bukti), `eksternal/` (prompt & log AI luar repo),
-  dan `README.md`. Dua berkas lama (`sesi-2026-10-05-chat-messages.json.gz`, `sesi-2026-10-05-transkrip.md`)
+  `2026-10-13T12-30-29.489Z/`, plus `tangkapan/` (7 potret bukti), `eksternal/` (prompt & log AI luar repo —
+  **sejak A.97 disatukan** menjadi sesi `…-eksternal-claude/` di daftar yang sama), dan `README.md`. Dua berkas lama (`sesi-2026-10-05-chat-messages.json.gz`, `sesi-2026-10-05-transkrip.md`)
   dihapus karena sudah digantikan versi yang lebih lengkap — bukan dibiarkan sebagai salinan ketinggalan.
 - **Rujukan ikut diperbarui** (tanpa memindahkan berkas yang dirujuk): `AGENT.md`, `00-index.json`,
   `docs/word/AGENT.md`, `docs/jurnal-prompt.md`, `docs/laporan-pengujian.md`, `docs/handoff-sesi.md`,
@@ -6222,6 +6224,8 @@ ulang — tidak ada satu baris pun kode produk yang berubah.
 - **Baru:** `docs/README.md`, `docs/log-mentah/README.md` (dibuat skrip), tiga folder
   `docs/log-mentah/<sesi>/` (`chat-messages.json.gz`, `transkrip.md`, `info.json`) di dalamnya.
 - **Dipindah:** delapan berkas ke `docs/log-mentah/tangkapan/` dan `docs/log-mentah/eksternal/` (isi tidak diubah).
+  *(Susulan 15 Okt 2026, A.97: folder `eksternal/` tidak ada lagi — isinya menjadi sesi
+  `2026-10-10T06-22-04.000Z-eksternal-claude/` di daftar sesi yang sama.)*
 - **Dihapus:** `docs/log-mentah/sesi-2026-10-05-chat-messages.json.gz`, `docs/log-mentah/sesi-2026-10-05-transkrip.md`.
 - **Diubah (rujukan):** `AGENT.md`, `00-index.json`, `docs/word/AGENT.md`, `docs/jurnal-prompt.md`,
   `docs/handoff-sesi.md`, dan entri A.18/A.33 di laporan ini.
@@ -8622,3 +8626,147 @@ Isi 20 pemeriksaan itu, apa adanya:
   `docs/penjelasan-fitur.md`).
 - Progres murid contoh di basis data dev **direset** ke keadaan awal setelah bukti ini diambil, supaya demo bisa
   ditinggalkan dalam keadaan mulai dari Basecamp.
+
+## A.96 — Jawaban tiap murid bisa dibuka langsung dari Monitor Ulangan (15 Oktober 2026)
+
+### A.96.1 Permintaan
+
+*"buat sekarang jawaban bisa langsung dilihat pada monitor ujian jadi jawabannya per siswa bisa dilihat per siswa"*
+
+### A.96.2 Keadaan sebelum putaran ini
+
+Monitor Ulangan sudah membawa **angka** progres tiap murid (`dijawab` / `jumlah_soal`) dan catatan kejadian —
+tetapi bukan **isi** jawabannya. Untuk tahu apa yang ditulis seorang anak, guru harus berjalan ke mejanya, atau
+menunggu ulangannya dikumpulkan lalu membuka halaman koreksi manual — dan halaman koreksi itu memang baru berisi
+setelah `dikumpulkan_at` terisi (`KoreksiService::pastikanSasaranValid`). Jadi pertanyaan yang paling sering
+muncul di kelas — *"anak ini berhenti di soal berapa, dan dia menulis apa?"* — belum bisa dijawab dari layar guru.
+
+### A.96.3 Yang berubah
+
+**Backend**
+
+1. `MonitorService::lembarJawaban(Attempt)` — satu baris per soal, urut seperti urutan soal yang benar-benar
+   dikerjakan murid itu (snapshot attempt, `AttemptService::soalTerurut`), berisi: nomor, tipe + label, teks soal
+   (dipotong 200 karakter), daftar opsi (id + teks, dipotong 100 karakter), `terjawab`, `jawaban` mentah,
+   `versi`/`penjawab` (mode tim), dan waktu perubahan terakhir. Soal yang belum dijawab **tetap tampil**.
+2. `MonitorController::jawaban()` + rute `GET /v1/kuis/{kuis}/monitor/{attempt}/jawaban` (`monitor.jawaban`).
+   Batas bacanya sama dengan monitor (K-04): pemilik kuis dan kepala sekolah; guru lain dan murid ditolak, dan
+   attempt milik kuis lain dijawab **404** supaya id attempt kuis orang lain tidak bisa dipinjam. Aturan
+   "guru + kuis sendiri" diangkat ke satu tempat (`pastikanGuruPemantau`) supaya `show` dan `jawaban` tidak bisa
+   berbeda diam-diam.
+3. **Tanpa kunci jawaban dan tanpa nilai per soal** — ditegakkan sebagai ketiadaan (`kunci`, `benar`, `skor`
+   tidak ada di payload), bukan sekadar "kunci tidak ditampilkan". Layar monitor terbuka di depan kelas; satu
+   kunci yang bocor dari sana membatalkan seluruh ulangan. Nilai per soal tetap milik halaman koreksi manual.
+4. `tests/Feature/MonitorJawabanTest.php` (baru).
+
+**Frontend**
+
+5. `sections/cheat/api.js` — skema Zod `skemaLembarJawaban` + `ambilJawabanMurid()`.
+6. `sections/cheat/lembarJawaban.js` — hitungan murni: `jawabanTerbaca()` (menerjemahkan **id opsi** jadi bunyi
+   opsinya, karena `B` sendirian tidak bisa dibaca), `progresLembar()` (menghitung terjawab + **nomor soal yang
+   kosong**, dihitung dari baris yang ditampilkan), `formatWaktuJawaban()`. Ringkasan isi jawaban memakai ulang
+   `ringkasNilai` milik riwayat murid supaya tidak ada dua cara menjelaskan jawaban yang sama.
+7. `sections/cheat/komponen/LembarJawaban.jsx` — panel lembar jawaban (memuat / galat / kuis tanpa soal / daftar
+   jawaban + nomor yang kosong + catatan bahwa kunci tidak ditampilkan).
+8. `HalamanMonitor.jsx` — kolom **Jawaban** dengan tombol "Lihat jawaban"/"Sembunyikan", panel di bawah tabel,
+   dan query lembar yang hanya hidup saat ada murid dibuka (`enabled: muridDibuka > 0`). Panelnya mengikuti irama
+   monitor: ikut `refetch` saat SSE memberi tanda, dan ikut polling 5/20 detik.
+
+### A.96.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test --filter=MonitorJawabanTest` | **5 lulus (42 asersi)** — termasuk ketiadaan `kunci`/`benar`/`skor` per soal, guru lain & murid ditolak (403), attempt kuis lain (404), kepala sekolah boleh, dan lembar yang sudah dikumpulkan tetap terbaca |
+| `npx vitest run src/__tests__/sections/cheat` | **17 lulus** (13 di antaranya baru: `jawabanTerbaca`, `progresLembar`, `formatWaktuJawaban`, render `LembarJawaban`) |
+| sesi guru sungguhan (cookie Sanctum, `guru1@sekolah.test`) → `GET /api/v1/kuis/pnujvvur/monitor/24/jawaban` | **200**; 58 soal, 4 terjawab; payload **tanpa kata "kunci"**; field per soal = `question_id, nomor, tipe, tipe_label, teks, opsi, terjawab, jawaban, versi, penjawab, diperbarui_at` |
+| `php artisan route:list --path=monitor` | rute `monitor.jawaban` terdaftar |
+| Vite dev (`:5173`) | 4 modul baru ter-transform **200**, HMR tanpa galat, `/kuis/pnujvvur/monitor` **200** |
+
+### A.96.5 Batasan jujur
+
+- **`./verify.sh` belum dijalankan ulang pada putaran ini** setelah perbaikan tipe (`checkJs`) dan format
+  (`Pint`) — perbaikannya sudah dikerjakan karena pemeriksaan pertama menemukannya merah. Hasil jalannya
+  dicatat di **A.97.4**: hijau (429 tes Pest, 127 berkas Vitest).
+- **`docs/smoke-http-fitur.mjs` dan harnes GUI (`docs/jalankan-smoke-ui.sh slice07`) belum dijalankan** untuk fitur
+  ini. Bukti di atas datang dari tes backend/frontend dan pemanggilan API sungguhan, belum dari klik di peramban.
+- **Tata letak belum diuji di lebar ponsel.** Panelnya memuat banyak baris (satu per soal); pada kuis 58 soal
+  halamannya menjadi panjang. Baris jawaban memakai kelas yang sudah ada, tetapi belum ada pemeriksaan lebar
+  kecil untuknya.
+- **Nilai per soal sengaja tidak ada di layar monitor.** Guru yang ingin menilai tetap ke halaman koreksi manual —
+  batasan yang dipilih, bukan yang terlewat.
+
+## A.97 — Log pekerjaan AI luar repo disatukan ke log utama (15 Oktober 2026)
+
+### A.97.1 Permintaan
+
+*"sekearang commit semau hal ke github dan satuakn ouput external cladue ke dalam log utama dan hapus"*
+
+### A.97.2 Keadaan sebelum putaran ini
+
+Pekerjaan AI luar repo (Claude) tersimpan di folder **terpisah** `docs/log-mentah/eksternal/`
+(`prompt-claude-eksternal.md` + `log-claude-eksternal.md`). Akibatnya:
+
+1. isinya **tidak ikut** ke dokumen log yang dikumpulkan (`docs/word/log-mentah.docx`), karena
+   `export-word.sh` hanya menggabungkan folder sesi yang punya `transkrip.md`;
+2. sesi itu **tidak muncul** di indeks `docs/log-mentah/README.md`, karena indeks hanya memuat sesi yang
+   baru diekspor dari folder chat;
+3. pekerjaan hari itu (satu jawaban panjang dari tool luar) hanya bisa ditemukan oleh orang yang tahu
+   folder itu ada.
+
+### A.97.3 Yang berubah
+
+1. **Sesi luar repo jadi sesi biasa di daftar yang sama**: `docs/log-mentah/2026-10-10T06-22-04.000Z-eksternal-claude/`
+   berisi `prompt.md` (prompt aslinya) + `transkrip.md` (catatan mentahnya) + `info.json`
+   (`"jenis": "eksternal"`). Isi kedua berkas **tidak disunting** — dipindahkan apa adanya, dan md5-nya
+   dicatat di `info.json` supaya bisa diperiksa (`1eb173b2fdec2b56de91e96531330359`, 97.740 B).
+   Nama folder memakai waktu berkas prompt (10 Okt 2026 13.22 WIB) + penanda `eksternal-claude`, jadi
+   asalnya tetap terbaca tanpa folder terpisah.
+2. **FK diperbaiki: indeks dibangun dari folder yang ada**, bukan hanya dari hasil ekspor kali ini
+   (`export-log-sesi.py` → `sesi_di_folder()`). Tanpa ini, menjalankan ulang ekspor akan menghapus sesi
+   eksternal dari daftar padahal berkasnya masih ada di repo. Tabel indeks juga mendapat kolom
+   **Sumber** (`Freebuff` / `Claude (di luar repo)`), dan kolom angka chat bertanda `—` untuk sesi yang
+   memang tidak punya berkas chat.
+3. **Prompt menjelaskan aturannya**: README indeks (dibuat skrip) + komentar `export-word.sh` kini
+   menyebut bahwa sesi `*-eksternal-<alat>/` ikut tergabung ke log utama sekaligus tetap ditandai
+   sebagai pekerjaan luar repo — aturan di `AGENT.md` tetap berlaku: **isinya bukan bukti sampai
+   diverifikasi ulang di repo ini**.
+4. **Folder `docs/log-mentah/eksternal/` dihapus** setelah isinya pindah (tidak ada berkas yang hilang;
+   riwayatnya tetap ada di commit sebelumnya).
+5. **Rujukan path diperbarui** supaya tidak ada tautan yang menunjuk folder yang sudah tidak ada:
+   `AGENT.md`, `docs/word/AGENT.md` (dokumen yang dikumpulkan), `docs/jurnal-prompt.md`, `docs/README.md`,
+   `docs/handoff-sesi.md`, `docs/laporan-pengujian.md` (A.18 + catatan struktur A.67), dan kedua skrip ekspor.
+
+### A.97.4 Bukti (dijalankan, bukan klaim)
+
+| Periksa | Hasil |
+| --- | --- |
+| `md5` `transkrip.md` sesi eksternal vs berkas aslinya sebelum dihapus | sama: `1eb173b2fdec2b56de91e96531330359` (97.740 B) — pindah tanpa mengubah isi |
+| `python3 docs/export-log-sesi.py` | indeks memuat **4 baris**: tiga sesi Freebuff + satu baris **Claude (di luar repo)** dengan kolom chat `—` |
+| gabungan log (perintah yang sama dengan `export-word.sh`: `cat log-mentah/*/transkrip.md`) | 37.178.313 karakter, sesi eksternal **TERGABUNG** di dalamnya — jadi ekspor penuh berikutnya otomatis memuatnya |
+| `docs/word/*.docx` lain (AGENT, jurnal-prompt, penjelasan-fitur, catatan-demo, laporan-pengujian) | disegarkan; `AGENT.docx` ikut memuat path baru sesi eksternal |
+| `ls docs/log-mentah/` | `eksternal/` **tidak ada lagi** |
+| `grep -rn "eksternal/" AGENT.md docs/` | tidak ada lagi rujukan ke folder lama |
+
+Gerbang mutu repo (dijalankan sebelum commit; perbaikan tipe/format dari A.96 diperiksa seluruhnya di sini,
+bukan hanya bagian yang tadi merah):
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` | **SEMUA HIJAU (exit 0)** — Pest **429 lulus / 4.337 asersi**, `REDIS_WAJIB=1` **9 lulus**, Pint **OK**, `checkJs` **OK**, ESLint **OK**, Vitest **127 berkas lulus**, realtime `node --test` **OK** |
+| `git status --short` | 33 entri (fitur A.96 + penggabungan log A.97 + dokumen yang disegarkan) |
+
+Yang **masih** belum dijalankan untuk fitur A.96: `docs/smoke-http-fitur.mjs` dan harnes GUI
+(`docs/jalankan-smoke-ui.sh slice07`). Keduanya menyusul, bukan diklaim sudah.
+
+### A.97.5 Batasan jujur
+
+- **Tidak ada `chat-messages.json.gz` untuk sesi eksternal** — berkas chat aslinya memang tidak ada (dikerjakan
+  di luar repo), jadi byte-exactness hanya bisa diperiksa pada `transkrip.md`, bukan pada salinan chat.
+- **`docs/word/log-mentah.docx` (9,9 MB, gabungan ±37 MB Markdown) belum dibangun ulang pada commit ini** —
+  konversinya butuh beberapa menit dan putaran ini diminta cepat. Isi dokumen itu belum memuat sesi
+  eksternal sampai ekspor penuh dijalankan; yang sudah pasti adalah jalurnya (gabungan di atas sudah
+  diperiksa memuatnya). Jalankan `docs/export-word.sh` sebelum mengumpulkan.
+- **Yang tersalin adalah keadaan berkas saat digabung** (15 Okt 2026 ±17.00 WIB). Tool luar itu masih
+  menulis di berkas aslinya setelah penggabungan; salinan di repo tidak ikut berubah setelah itu.
+- **Isi sesi eksternal bukan bukti** (aturan `AGENT.md`): semua yang dipakai dari sana tetap harus
+  diverifikasi ulang di repo ini. Pemindahan ini hanya soal keterbacaan, bukan pengakuan hasil.

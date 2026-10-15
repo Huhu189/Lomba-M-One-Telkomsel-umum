@@ -62,6 +62,47 @@ export const skemaMonitor = z.object({
   ambang_segar_detik: z.number(),
 })
 
+/**
+ * Satu soal di lembar jawaban murid (Monitor Ulangan).
+ *
+ * `jawaban` bertipe bebas karena bentuknya beda-beda per tipe soal (string,
+ * angka pilihan, daftar, peta); yang membacanya `jawabanTerbaca()` di
+ * `lembarJawaban.js`. Yang penting di sini: **tidak ada kunci dan tidak ada
+ * nilai per soal** — server sengaja tidak mengirimnya ke layar monitor.
+ */
+export const skemaSoaLembarJawaban = z.object({
+  question_id: z.number(),
+  nomor: z.number(),
+  tipe: z.string(),
+  tipe_label: z.string(),
+  teks: z.string(),
+  opsi: z.array(z.object({ id: z.string(), teks: z.string() })).optional(),
+  terjawab: z.boolean(),
+  jawaban: z.unknown().nullable(),
+  versi: z.number(),
+  penjawab: z.string().nullable(),
+  diperbarui_at: z.string().nullable(),
+})
+
+/** Lembar jawaban satu murid (jawaban saja — tanpa kunci, tanpa nilai per soal). */
+export const skemaLembarJawaban = z.object({
+  attempt: z.object({
+    attempt_id: z.number(),
+    student_id: z.number(),
+    nama: z.string().nullable(),
+    attempt_no: z.number(),
+    status: z.string(),
+    status_label: z.string(),
+    terjawab: z.number(),
+    jumlah_soal: z.number(),
+    skor: z.number().nullable(),
+    deadline_at: z.string().nullable(),
+    dikumpulkan_at: z.string().nullable(),
+  }),
+  soal: z.array(skemaSoaLembarJawaban),
+  server_now: z.string(),
+})
+
 /** Respons penerbitan ticket SSE. */
 export const skemaTiketSse = z.object({
   tiket: z.string(),
@@ -73,6 +114,8 @@ export const skemaTiketSse = z.object({
  * @typedef {z.infer<typeof skemaKejadian>} DataKejadian
  * @typedef {z.infer<typeof skemaMonitor>} DataMonitor
  * @typedef {z.infer<typeof skemaBarisMonitor>} DataBarisMonitor
+ * @typedef {z.infer<typeof skemaSoaLembarJawaban>} DataSoaLembarJawaban
+ * @typedef {z.infer<typeof skemaLembarJawaban>} DataLembarJawaban
  */
 
 /**
@@ -83,6 +126,22 @@ export const skemaTiketSse = z.object({
 export async function ambilMonitor(kuisId) {
   const respons = await client.get(`/v1/kuis/${kuisId}/monitor`)
   return skemaMonitor.parse(respons.data)
+}
+
+/**
+ * Lembar jawaban satu murid di Monitor Ulangan (15 Oktober 2026).
+ *
+ * Dipanggil hanya saat guru membuka satu murid, dan disegarkan mengikuti irama
+ * monitor (polling/SSE) selagi panelnya terbuka — jadi guru melihat tulisan anak
+ * bertambah tanpa berpindah halaman.
+ *
+ * @param {string|number} kuisId slug kuis (angka lama masih diterima server)
+ * @param {number} attemptId
+ * @returns {Promise<DataLembarJawaban>}
+ */
+export async function ambilJawabanMurid(kuisId, attemptId) {
+  const respons = await client.get(`/v1/kuis/${kuisId}/monitor/${attemptId}/jawaban`)
+  return skemaLembarJawaban.parse(respons.data)
 }
 
 /**

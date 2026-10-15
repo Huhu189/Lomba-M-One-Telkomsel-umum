@@ -1854,3 +1854,44 @@ File di /tmp/claude-0/work/out:
 
 Catatan lampiran: file perubahan (.diff) dan zip yang disebut di atas
 tidak ada di percakapan ini, jadi isinya belum bisa saya periksa.
+
+Sudah dulu belum ada — sebelumnya di Monitor Ulangan guru hanya lihat progres, status, dan catatan kecurangan, tapi tidak bisa membuka isi jawaban murid satu per satu. Jalur melihat jawaban sungguhan baru ada di antrean Koreksi, dan itu pun cuma untuk soal yang masih menunggu nilai manual (isian/uraian), bukan semua soal.
+
+Jadi saya buat langsung di Monitor Ulangan, bukan halaman baru:
+
+Setiap baris murid di tabel “Progres murid” sekarang punya tombol “Lihat jawaban”.
+Klik tombol itu membuka panel samping berisi semua soal kuis, dengan jawaban murid yang sudah tersimpan diperlihatkan apa adanya (pakai komponen tampilan soal yang sama seperti layar pengerjaan murid, hanya dalam mode nonaktif/baca saja).
+Berlaku untuk attempt yang masih berjalan (jawaban sejauh ini, bisa berubah) maupun yang sudah dikumpulkan.
+Tidak menampilkan kunci jawaban — ini memang sengaja: server backend-nya (AttemptService::payloadSoal) tidak pernah mengirim kunci lewat jalur ini, jadi batasan keamanan yang sudah ada di proyek ini tetap utuh.
+Tidak perlu endpoint backend baru — saya pakai endpoint GET /attempt/{id} yang sudah ada dan memang sudah diizinkan untuk guru pemilik kuis (termasuk kepala sekolah yang mode “hanya lihat”).
+
+File yang berubah:
+
+JawabanMurid.jsx (baru) — panel yang menampilkan daftar soal + jawaban murid untuk satu attempt.
+HalamanMonitor.jsx (diubah) — tambah kolom “Jawaban” dengan tombol per murid, plus panel samping (PanelForm, komponen yang sudah ada) yang membukanya.
+
+Tinggal salin kedua file ini ke posisi yang sama di proyek lokal Anda (src/sections/attempt/komponen/JawabanMurid.jsx dan src/sections/cheat/halaman/HalamanMonitor.jsx, timpa yang lama).
+
+User (2):
+
+jaddin aptch
+
+Claude (3):
+
+Base-nya cocok (src_10 = sebelum perubahan saya). Saya buatkan patch git yang bisa langsung diterapkan.
+
+Lalu Claude menjalankan beberapa tool (34 perintah, membaca 3 file, dan 6 alat lainnya) dan menghasilkan balasan berikut:
+
+Claude (4):
+
+Ini patch git untuk fitur “Lihat jawaban” di Monitor Ulangan. Sudah saya tes terapkan ke kode src_10.zip yang baru diunggah — bersih, tanpa konflik.
+
+Cara pakai, dari root proyek frontend (folder yang berisi src/):
+
+git apply fitur-lihat-jawaban.patch
+
+Kalau bukan repo git atau git apply tidak cocok, bisa juga pakai:
+
+patch -p1 < fitur-lihat-jawaban.patch
+
+Isinya dua perubahan: file baru src/sections/attempt/komponen/JawabanMurid.jsx, dan modifikasi src/sections/cheat/halaman/HalamanMonitor.jsx.

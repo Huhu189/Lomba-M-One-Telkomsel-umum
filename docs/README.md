@@ -40,7 +40,9 @@ Satu folder per sesi, isinya apa adanya dan tidak boleh disunting:
 - `<sesi>/transkrip.md` — transkrip utuh tanpa potong (prompt, lampiran prompt, balasan, seluruh argumen alat).
 - `<sesi>/info.json` — jumlah pesan, ukuran, md5, dan waktu ekspor.
 - `tangkapan/` — potret layar bukti visual (mis. `palet-terang.png`, `adegan-gunung-gelap.png`).
-- `eksternal/` — prompt & log pekerjaan AI lain di luar repo ini, apa adanya.
+- `<sesi>-eksternal-<alat>/` — sesi pekerjaan AI lain di luar repo ini (`prompt.md` + `transkrip.md`,
+  apa adanya). Sejak 15 Oktober 2026 sesi luar repo **disatukan** ke daftar sesi yang sama — tidak ada lagi
+  folder `eksternal/` terpisah — dan ditandai di kolom “Sumber” indeks `log-mentah/README.md`.
 - `README.md` — **indeks ringkas semua sesi** (jumlah pesan, ukuran, md5), dibuat ulang tiap ekspor.
 
 Segarkan log: `python3 docs/export-log-sesi.py` (semua sesi) atau

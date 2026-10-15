@@ -9,18 +9,26 @@ Seluruh berkas di folder ini **apa adanya** (tidak disunting, tidak diringkas). 
   dan seluruh argumen panggilan alat).
 - `info.json` — angka sesi (jumlah pesan, ukuran, md5) beserta waktu ekspor.
 
+Untuk sesi **eksternal** (pekerjaan AI lain di luar repo, mis. Claude), folder sesinya tidak berisi
+berkas chat asli — yang ada `prompt.md` (prompt aslinya, apa adanya) + `transkrip.md` (catatannya,
+apa adanya) + `info.json`. Folder itu diberi akhiran `-eksternal-…` supaya tetap terbaca sebagai
+pekerjaan luar repo: isinya bukan bukti sampai diverifikasi ulang di repo ini.
+
 Berkas bukti lain:
 
 - `tangkapan/` — potret layar bukti visual dari putaran-putaran pengujian.
-- `eksternal/` — prompt & log pekerjaan AI lain di luar repo ini, apa adanya.
 
 ## Daftar sesi
 
-| Sesi | Tanggal | Pesan | `chat-messages.json` | md5 isi | `.json.gz` | `transkrip.md` |
+| Sesi | Tanggal | Sumber | Pesan | `chat-messages.json` | md5 isi | `.json.gz` | `transkrip.md` |
 | --- | --- | --- | --- | --- | --- | --- |
-| `2026-10-05T07-39-24.876Z` | 2026-10-05 | 539 | 412.229.403 B | `ccc58e6bc00045be22af061f89e10f3b` | 68.581.188 B | 26.819.105 B |
-| `2026-10-12T13-01-29.434Z` | 2026-10-12 | 2 | 543.490 B | `95fd0cf34bc893b13ef57b0903777b55` | 160.367 B | 212.377 B |
-| `2026-10-13T12-30-29.489Z` | 2026-10-13 | 113 | 103.807.007 B | `a29b22066ac93adec350e0cede3f42a5` | 17.222.454 B | 7.596.255 B |
+| `2026-10-05T07-39-24.876Z` | 2026-10-05 | Freebuff | 539 | 412.229.403 B | `ccc58e6bc00045be22af061f89e10f3b` | 68.581.188 B | 26.819.105 B |
+| `2026-10-10T06-22-04.000Z-eksternal-claude` | 2026-10-10 | Claude (di luar repo) | — | — | — | — | 97.740 B |
+| `2026-10-12T13-01-29.434Z` | 2026-10-12 | Freebuff | 2 | 543.490 B | `95fd0cf34bc893b13ef57b0903777b55` | 160.367 B | 212.377 B |
+| `2026-10-13T12-30-29.489Z` | 2026-10-13 | Freebuff | 182 | 146.464.248 B | `592b0ee32a08dcc9ab65d6b034e9ca22` | 24.151.449 B | 10.310.777 B |
+
+Baris bersumber **Claude (di luar repo)** adalah pekerjaan AI lain yang disalin masuk pengguna:
+kolom chat-nya bertanda `—` karena tidak ada berkas chat asli. Urutan baris = urut nama folder = urut waktu.
 
 Indeks ini **dibuat ulang** setiap kali ekspor dijalankan, jadi angkanya mengikuti berkas yang ada.
 

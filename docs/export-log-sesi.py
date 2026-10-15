@@ -15,7 +15,10 @@ Yang dihasilkan, satu folder per sesi:
     docs/log-mentah/<id-sesi>/info.json              angka + md5 untuk diperiksa
 
 plus `docs/log-mentah/README.md` = indeks ringkas semua sesi (dibuat ulang tiap
-kali skrip ini dijalankan, jadi angkanya tidak pernah basi).
+kali skrip ini dijalankan, jadi angkanya tidak pernah basi). Sesi **eksternal**
+(pekerjaan AI lain di luar repo) tidak punya berkas chat asli, jadi ia tidak ikut
+diekspor — tetapi folder sesinya ikut terdaftar di indeks karena indeks dibangun
+dari folder yang ada di `log-mentah/`, bukan hanya dari hasil ekspor kali ini.
 
 Pemakaian:
 
@@ -294,6 +297,39 @@ def ekspor_satu(dir_sesi: str, logdir: str) -> dict:
     return info
 
 
+def sesi_di_folder(logdir: str) -> dict:
+    """Sesi yang **sudah ada** di `log-mentah/`, dibaca dari `info.json` tiap folder.
+
+    Sesi di sini belum tentu punya berkas chat asli: sesi pekerjaan AI lain di luar
+    repo (mis. Claude) masuk sebagai folder berlabel `*-eksternal-*` yang hanya
+    berisi `prompt.md` + `transkrip.md` + `info.json`. Karena itu indeks dibangun
+    dari folder yang ada, bukan hanya dari sesi yang baru diekspor — kalau tidak,
+    menjalankan ulang ekspor akan menghapusnya dari daftar padahal berkasnya masih
+    ada di repo.
+    """
+    hasil = {}
+
+    if not os.path.isdir(logdir):
+        return hasil
+
+    for nama in sorted(os.listdir(logdir)):
+        jalur = os.path.join(logdir, nama, "info.json")
+
+        if not os.path.isfile(jalur):
+            continue
+
+        try:
+            with open(jalur, encoding="utf-8") as f:
+                info = json.load(f)
+        except (OSError, ValueError):
+            continue
+
+        if isinstance(info, dict) and info.get("sesi"):
+            hasil[str(info["sesi"])] = info
+
+    return hasil
+
+
 def tulis_indeks(logdir: str, daftar: list) -> None:
     baris = [
         "# Log mentah — indeks sesi",
@@ -307,26 +343,48 @@ def tulis_indeks(logdir: str, daftar: list) -> None:
         "  dan seluruh argumen panggilan alat).",
         "- `info.json` — angka sesi (jumlah pesan, ukuran, md5) beserta waktu ekspor.",
         "",
+        "Untuk sesi **eksternal** (pekerjaan AI lain di luar repo, mis. Claude), folder sesinya tidak berisi",
+        "berkas chat asli — yang ada `prompt.md` (prompt aslinya, apa adanya) + `transkrip.md` (catatannya,",
+        "apa adanya) + `info.json`. Folder itu diberi akhiran `-eksternal-…` supaya tetap terbaca sebagai",
+        "pekerjaan luar repo: isinya bukan bukti sampai diverifikasi ulang di repo ini.",
+        "",
         "Berkas bukti lain:",
         "",
         "- `tangkapan/` — potret layar bukti visual dari putaran-putaran pengujian.",
-        "- `eksternal/` — prompt & log pekerjaan AI lain di luar repo ini, apa adanya.",
         "",
         "## Daftar sesi",
         "",
-        "| Sesi | Tanggal | Pesan | `chat-messages.json` | md5 isi | `.json.gz` | `transkrip.md` |",
+        "| Sesi | Tanggal | Sumber | Pesan | `chat-messages.json` | md5 isi | `.json.gz` | `transkrip.md` |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
 
+    def ukuran(angka) -> str:
+        """Angka ribuan gaya Indonesia; `None` = tidak ada (sesi eksternal)."""
+        return "—" if angka is None else f"{angka:,}".replace(",", ".") + " B"
+
+    # Gabungan: folder yang sudah ada lebih dulu, lalu hasil ekspor kali ini
+    # menimpanya (angkanya yang paling baru). Sesi eksternal karena itu tetap
+    # terdaftar walau tidak punya berkas chat untuk diekspor ulang.
+    gabungan = sesi_di_folder(logdir)
+
     for info in daftar:
-        ukuran = lambda angka: f"{angka:,}".replace(",", ".")
+        gabungan[str(info["sesi"])] = info
+
+    for kunci in sorted(gabungan):
+        info = gabungan[kunci]
+        sumber = "Claude (di luar repo)" if info.get("jenis") == "eksternal" else "Freebuff"
         baris.append(
-            f"| `{info['sesi']}` | {info['tanggal']} | {info['pesan']} | {ukuran(info['chat_messages_json_byte'])} B | "
-            f"`{info['chat_messages_md5']}` | {ukuran(info['chat_messages_json_gz_byte'])} B | "
-            f"{ukuran(info['transkrip_md_byte'])} B |"
+            f"| `{info['sesi']}` | {info['tanggal']} | {sumber} | {info.get('pesan') if info.get('pesan') is not None else '—'} | "
+            f"{ukuran(info.get('chat_messages_json_byte'))} | "
+            f"{('`' + str(info['chat_messages_md5']) + '`') if info.get('chat_messages_md5') else '—'} | "
+            f"{ukuran(info.get('chat_messages_json_gz_byte'))} | "
+            f"{ukuran(info.get('transkrip_md_byte'))} |"
         )
 
     baris += [
+        "",
+        "Baris bersumber **Claude (di luar repo)** adalah pekerjaan AI lain yang disalin masuk pengguna:",
+        "kolom chat-nya bertanda `—` karena tidak ada berkas chat asli. Urutan baris = urut nama folder = urut waktu.",
         "",
         "Indeks ini **dibuat ulang** setiap kali ekspor dijalankan, jadi angkanya mengikuti berkas yang ada.",
         "",
@@ -374,7 +432,9 @@ def utama() -> None:
         if info:
             hasil.append(info)
 
-    tulis_indeks(logdir, sorted(hasil, key=lambda satu: satu["sesi"]))
+    # Sesi eksternal (tanpa berkas chat) tidak pernah ikut `hasil`; indeksnya
+    # dibangun ulang dari folder yang ada supaya mereka tidak hilang dari daftar.
+    tulis_indeks(logdir, hasil)
 
     print(f"Selesai: {len(hasil)} sesi · {os.path.join(logdir, 'README.md')} · {time.time() - mulai:.1f} dtk")
 

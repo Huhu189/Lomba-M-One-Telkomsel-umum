@@ -9,6 +9,11 @@
  *
  * Panel kecurangan hanya menampilkan **catatan**, dan guru yang memutuskan
  * valid atau tidak — tidak ada hukuman otomatis di mana pun.
+ *
+ * Sejak 15 Oktober 2026 tiap baris murid punya tombol **Lihat jawaban**: panel di
+ * bawah tabel menampilkan apa yang sudah ditulis anak itu per soal, dan ikut
+ * disegarkan bersama monitor. Jadi guru tidak lagi harus berjalan ke meja anak
+ * (atau menunggu ulangannya dikumpulkan) untuk tahu di mana ia berhenti.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -26,7 +31,14 @@ import { IkonCentang, IkonPerisai } from '../../../icons.jsx'
 import { pesanGalatApi } from '../../auth/api.js'
 import { RUTE, kunciKuisSah, ruteKuisDetail } from '../../../routes.js'
 import { urlSse } from '../../../shared/api/realtime.js'
-import { ambilKejadian, ambilMonitor, terbitkanTiketSse, tinjauKejadian } from '../api.js'
+import {
+  ambilJawabanMurid,
+  ambilKejadian,
+  ambilMonitor,
+  terbitkanTiketSse,
+  tinjauKejadian,
+} from '../api.js'
+import LembarJawaban from '../komponen/LembarJawaban.jsx'
 import { formatDetikTerakhir, ringkasMonitor } from '../ringkasMonitor.js'
 
 /** Selang polling saat SSE tidak tersedia (ms). */
@@ -57,7 +69,12 @@ export default function HalamanMonitor() {
   const [statusSse, setStatusSse] = useState('mencoba')
   const [saring, setSaring] = useState('')
   const [sedangTinjau, setSedangTinjau] = useState(0)
+  /** Attempt yang lembar jawabannya sedang dibuka (0 = tidak ada). */
+  const [muridDibuka, setMuridDibuka] = useState(0)
+  /** Nama dari baris yang diklik — dipakai selagi lembar jawabannya masih dimuat. */
+  const [namaDibuka, setNamaDibuka] = useState('')
   const sumberRef = useRef(/** @type {EventSource|null} */ (null))
+  const panelRef = useRef(/** @type {HTMLDivElement|null} */ (null))
 
   const selang = statusSse === 'hidup' ? POLLING_LAMBAT : POLLING_CEPAT
 
@@ -72,6 +89,21 @@ export default function HalamanMonitor() {
     queryKey: ['kejadian', kunci, saring],
     queryFn: () => ambilKejadian(kunci, saring || undefined),
     enabled: kunci !== '',
+    refetchInterval: selang,
+  })
+
+  /**
+   * Lembar jawaban murid yang sedang dibuka.
+   *
+   * Hanya diminta saat ada murid yang dibuka (`muridDibuka > 0`): memuat lembar
+   * seluruh kelas sekaligus berarti menambah lalu lintas untuk data yang mungkin
+   * tidak pernah dibaca guru. Iramanya mengikuti monitor, jadi jawaban yang baru
+   * masuk muncul di panel tanpa guru menekan apa pun.
+   */
+  const lembar = useQuery({
+    queryKey: ['monitor-jawaban', kunci, muridDibuka],
+    queryFn: () => ambilJawabanMurid(kunci, muridDibuka),
+    enabled: kunci !== '' && muridDibuka > 0,
     refetchInterval: selang,
   })
 
@@ -96,6 +128,9 @@ export default function HalamanMonitor() {
           // Cukup minta data baru; bentuk payload tidak dipercaya klien.
           void monitor.refetch()
           void kejadian.refetch()
+          // Lembar jawaban ikut segar — kalau panelnya sedang terbuka, jawaban
+          // yang baru disimpan murid muncul tanpa menunggu putaran polling.
+          void lembar.refetch()
         }
         sumber.onerror = () => {
           // Fail-open: tanpa SSE, polling sudah menutupi.
@@ -122,11 +157,29 @@ export default function HalamanMonitor() {
 
   const data = monitor.data
 
+  // Membuka panel di bawah tabel: kalau tanpa ini, guru yang mengklik baris
+  // teratas tidak melihat apa pun berubah karena panelnya tumbuh di luar layar.
+  useEffect(() => {
+    if (muridDibuka === 0) return
+
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [muridDibuka])
+
   const tertinggi = useMemo(() => {
     if (data === undefined) return []
 
     return [...data.murid].sort((a, b) => b.kecurangan.skor_tertinggi - a.kecurangan.skor_tertinggi).slice(0, 3)
   }, [data])
+
+  /**
+   * Buka lembar jawaban satu murid; menekan tombol yang sama lagi menutupnya.
+   *
+   * @param {{ attempt_id: number, nama: string|null }} baris
+   */
+  function bukaJawaban(baris) {
+    setNamaDibuka(baris.nama ?? 'Murid')
+    setMuridDibuka((lama) => (lama === baris.attempt_id ? 0 : baris.attempt_id))
+  }
 
   /**
    * @param {number} kejadianId
@@ -203,7 +256,7 @@ export default function HalamanMonitor() {
         <div className="kartu-soft p-0 mb-4">
           <TabelData
             label="Progres murid"
-            caption="Progres dan kehadiran diperbarui dari aktivitas murid; tab yang disembunyikan tetap dihitung hadir."
+            caption="Progres dan kehadiran diperbarui dari aktivitas murid; tab yang disembunyikan tetap dihitung hadir. Jawaban tiap murid bisa dibuka langsung dari kolom Jawaban."
             baris={data.murid}
             kunciBaris={(baris) => baris.attempt_id}
             kolom={[
@@ -265,7 +318,34 @@ export default function HalamanMonitor() {
                     </span>
                   ),
               },
+              {
+                kunci: 'jawaban',
+                judul: 'Jawaban',
+                sel: (baris) => (
+                  <Tombol
+                    varian="tepi"
+                    ukuran="sedang"
+                    aria-expanded={muridDibuka === baris.attempt_id}
+                    onClick={() => bukaJawaban(baris)}
+                  >
+                    {muridDibuka === baris.attempt_id ? 'Sembunyikan' : 'Lihat jawaban'}
+                  </Tombol>
+                ),
+              },
             ]}
+          />
+        </div>
+      )}
+
+      {muridDibuka > 0 && (
+        <div ref={panelRef}>
+          <LembarJawaban
+            nama={lembar.data?.attempt.nama ?? namaDibuka}
+            lembar={lembar.data}
+            memuat={lembar.isFetching}
+            galat={lembar.isError ? lembar.error : undefined}
+            onTutup={() => setMuridDibuka(0)}
+            onSegarkan={() => void lembar.refetch()}
           />
         </div>
       )}

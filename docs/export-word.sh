@@ -16,7 +16,9 @@
 #       * <sesi>/transkrip.md          (transkrip mentah utuh, tidak dipotong)
 #       * <sesi>/info.json             (jumlah pesan, ukuran, md5 untuk memeriksa)
 #       * README.md                    (indeks ringkas semua sesi)
-#       * tangkapan/ · eksternal/      (bukti visual · pekerjaan AI lain di luar repo, apa adanya)
+#       * tangkapan/                   (bukti visual dari putaran pengujian)
+#       * <sesi>-eksternal-<alat>/     (sesi AI lain di luar repo: prompt.md + transkrip.md, apa adanya —
+#                                       ikut tergabung ke log-mentah.docx karena punya transkrip.md)
 #
 # Sumber berkas sesi diatur lewat env CHATS_DIR (bawaan: folder chat proyek Freebuff).
 # Jalankan ulang setiap akhir slice / tiap commit, lalu komit hasilnya.
@@ -54,6 +56,8 @@ konversi() { # konversi <sumber.md> <tujuan.docx>
 konversi "$WORD/AGENT.md"                     "$WORD/AGENT.docx"
 konversi "$DOCS/jurnal-prompt.md"             "$WORD/jurnal-prompt.docx"
 # Log mentah: gabungan transkrip SELURUH sesi (urut nama folder = urut waktu), apa adanya.
+# Termasuk sesi eksternal (`*-eksternal-<alat>/`): namanya terbaca di berkas gabungan ini, jadi
+# pembaca bisa melihat bahwa bagian itu dikerjakan AI lain di luar repo.
 TRANSCRIPT=()
 for folder in "$LOGDIR"/*/; do
   if [ -f "${folder}transkrip.md" ]; then

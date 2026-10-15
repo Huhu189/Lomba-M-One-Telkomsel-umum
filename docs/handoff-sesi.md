@@ -670,8 +670,9 @@ Ini salinan **13 Okt 2026, sesudah A.69**; selengkapnya di bagian 0.2.
   A.61–A.64). Daftar per berkas ada di bagian 0.2; daftar pasti: `git status --short`.
 - Putaran **A.33–A.64 sudah dikomit**; daftar berkas per putaran tidak didaftar ulang di sini supaya dokumen
   tetap ringkas — pakai `docs/laporan-pengujian.md` (bagian A.33–A.67) atau `git show --stat <commit>`.
-- `docs/log-mentah/eksternal/log-claude-eksternal.md` dan `prompt-claude-eksternal.md` sudah ikut commit A.33–A.39
-  (catatan mentah eksternal; isinya tidak diubah).
+- Sesi luar repo (Claude) sudah ikut commit A.33–A.39 (catatan mentah eksternal; isinya tidak diubah).
+  Sejak A.97 berkasnya berpindah dari `docs/log-mentah/eksternal/` ke satu sesi di daftar yang sama:
+  `docs/log-mentah/2026-10-10T06-22-04.000Z-eksternal-claude/` (`prompt.md` + `transkrip.md`).
 - Untracked yang **bukan** bagian pekerjaan: arsip/zip, `.agents/`, `.claude/`, `.DS_Store` — jangan ikut dikomit.
   `frontend/dist/` memang diabaikan, jadi hasil build untuk pengukuran tidak ikut masuk.
 
@@ -1067,8 +1068,8 @@ buffer 1 MB), jadi sesi 412 MB aman di mesin 8 GB (puncak terukur **270 MB**, 3 
   `transkrip.md` (utuh), `info.json` (angka + md5), dan `docs/log-mentah/README.md` sebagai indeks yang
   dibuat ulang tiap ekspor.
 - **Struktur `log-mentah/`:** tiga folder sesi (`2026-10-05T07-39-24.876Z`, `2026-10-12T13-01-29.434Z`,
-  `2026-10-13T12-30-29.489Z`) + `tangkapan/` (7 potret bukti) + `eksternal/` (prompt/log AI luar repo) +
-  `README.md`. Dua berkas lama dihapus karena digantikan versi lebih lengkap.
+  `2026-10-13T12-30-29.489Z`) + `2026-10-10T06-22-04.000Z-eksternal-claude/` (sesi AI luar repo, sejak A.97) +
+  `tangkapan/` (7 potret bukti) + `README.md`. Dua berkas lama dihapus karena digantikan versi lebih lengkap.
 - **`docs/README.md` baru** = daftar isi folder docs (dokumen panitia, laporan, log mentah, runner + daftar
   harness, alat ekspor, aturan).
 - **Rujukan path diperbarui** di `AGENT.md`, `00-index.json`, `docs/word/AGENT.md`, `docs/jurnal-prompt.md`,

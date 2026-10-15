@@ -59,9 +59,10 @@ Urutan potong bila waktu mepet: cache L1, xlsx, mode gelap, mode tim, penilaian 
   `<sesi>/transkrip.md` (transkrip mentah: isi utuh, argumen panggilan alat tidak dipotong), dan
   `<sesi>/info.json` (jumlah pesan, ukuran, md5 isi `.gz` supaya byte-exactness bisa diperiksa).
   Indeks ringkas semua sesi ada di `docs/log-mentah/README.md` (dibuat ulang tiap ekspor). Bukti visual
-  di `docs/log-mentah/tangkapan/`; prompt/log pekerjaan AI lain di luar repo di
-  `docs/log-mentah/eksternal/` — pekerjaan luar repo wajib dicatat tempatnya dan tidak boleh dijadikan
-  bukti tanpa diverifikasi ulang di repo ini.
+  di `docs/log-mentah/tangkapan/`. Pekerjaan AI lain di luar repo **ikut disatukan** ke daftar sesi yang
+  sama sebagai folder berlabel `*-eksternal-<alat>/` (berisi `prompt.md` + `transkrip.md` + `info.json`,
+  apa adanya) dan ditandai di kolom "Sumber" indeks: pekerjaan luar repo wajib tercatat dan tidak boleh
+  dijadikan bukti tanpa diverifikasi ulang di repo ini.
 - `docs/export-log-sesi.py` menyegarkan log mentah (gzip byte-exact + transkrip) dengan membaca berkas
   sesi **per pesan**, sehingga sesi 412 MB pun aman di mesin ini (dulu berkasnya dimuat utuh ke memori);
   `docs/export-word.sh` memanggilnya lalu mengekspor dokumen Word. Jalankan keduanya setiap akhir slice

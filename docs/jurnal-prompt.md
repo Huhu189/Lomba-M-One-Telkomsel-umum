@@ -124,7 +124,7 @@ security/presence/Live Monitor, SSE Node, smoke 21/21, dua bug di atas, sampai d
 - **Putaran audit eksternal ProjectLA dan perbaikan per temuan (8 Oktober 2026)**: pengguna
   melampirkan laporan audit statis (`audit-projectla-lomba.md` — 84 temuan: 1 kritis, 18 tinggi,
   51 sedang, 14 rendah; berkas prompt & lognya disalin apa adanya ke
-  `docs/log-mentah/eksternal/prompt-claude-eksternal.md` + `log-claude-eksternal.md`) dengan instruksi
+  `docs/log-mentah/2026-10-10T06-22-04.000Z-eksternal-claude/` — `prompt.md` + `transkrip.md`) dengan instruksi
   "cek lagi dan kerjakan progres penyelesaian bug". Dari 84 temuan hanya **23 yang membawa
   rincian lokasi + skenario** (U-01..U-04, Q-01..Q-19), ditambah enam temuan dari ringkasan
   Top-10 yang skenarionya cukup jelas (S-01, S-04, S-05, S-07, S-14, I-01) — jadi total

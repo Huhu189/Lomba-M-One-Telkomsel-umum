@@ -297,6 +297,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kuis/{kuis}/kejadian', [KecuranganController::class, 'daftar'])->name('kecurangan.daftar');
         Route::put('/kejadian/{kejadian}', [KecuranganController::class, 'tinjau'])->name('kecurangan.tinjau');
         Route::get('/kuis/{kuis}/monitor', [MonitorController::class, 'show'])->name('monitor.show');
+        // Lembar jawaban satu murid (15 Oktober 2026): guru melihat apa yang
+        // sudah ditulis anak itu tanpa berpindah halaman. Isinya SENGAJA tanpa
+        // kunci jawaban dan tanpa nilai per soal — lihat MonitorService.
+        Route::get('/kuis/{kuis}/monitor/{attempt}/jawaban', [MonitorController::class, 'jawaban'])
+            ->name('monitor.jawaban');
         // Throttle `tiket` (K-10): tiap panggilan menulis baris `sse_tickets` +
         // kunci Redis, jadi tanpa batas ini satu akun bisa membengkakkan keduanya.
         Route::post('/kuis/{kuis}/sse-tiket', [TiketSseController::class, 'terbitkan'])
