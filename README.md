@@ -14,7 +14,7 @@ Murid 1	murid1@sekolah.test	password12
 Murid 2	murid2@sekolah.test	password12
 
 contoh materi 
-- https://quizly.projectla.biz.id/materi/190/editor
+- https://quizly.projectla.biz.id/materi/190
 - https://quizly.projectla.biz.id/kuis/hnpssf6a
 jalankan dari akun siswa untuk mengerjakan
 
