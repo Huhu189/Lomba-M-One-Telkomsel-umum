@@ -23,7 +23,10 @@ class SimpanMateriRequest extends FormRequest
             'judul' => ['required', 'string', 'min:3', 'max:150'],
             'deskripsi' => ['nullable', 'string', 'max:2000'],
             'subject_id' => ['required', 'integer', Rule::exists('subjects', 'id')],
-            'class_id' => ['required', 'integer', Rule::exists('classes', 'id')],
+            // Kosong = semua kelas di sekolah materi itu (15 Oktober 2026),
+            // aturannya sama dengan kuis. Kelas tidak lagi wajib: materi
+            // pengayaan/remedial sering ditujukan ke seluruh angkatan.
+            'class_id' => ['nullable', 'integer', Rule::exists('classes', 'id')],
             'tag_id' => ['nullable', 'integer', Rule::exists('tags', 'id')],
             'urutan' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ];

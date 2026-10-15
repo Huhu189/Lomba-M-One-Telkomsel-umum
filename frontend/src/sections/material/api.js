@@ -14,7 +14,7 @@ import {
   skemaPerjalanan,
   skemaTemaKatalog,
   skemaTemaMateri,
-} from './perjalanan.js'
+} from './perjalanan/perjalanan.js'
 
 /** Satu berkas materi yang sudah selesai diunggah. */
 export const skemaUnggahan = z.object({
@@ -25,7 +25,7 @@ export const skemaUnggahan = z.object({
   kategori: z.string(),
   kategori_label: z.string(),
   tampil_langsung: z.boolean(),
-  // 'semat' | 'dokumen' | 'unduh' — lihat sections/material/sajianBerkas.js.
+  // 'semat' | 'dokumen' | 'unduh' — lihat sections/material/berkas/sajianBerkas.js.
   sajian: z.string().optional(),
   ukuran: z.number(),
   ukuran_manusia: z.string(),
@@ -50,7 +50,7 @@ export const skemaBlokMateri = z.object({
   teks: z.string().nullable().optional(),
   unggahan_kode: z.string().nullable().optional(),
   // Sumber kedua klip media: tautan https yang diselipkan guru (YouTube/Drive/
-  // berkas langsung) — lihat sections/material/tautanMedia.js.
+  // berkas langsung) — lihat sections/material/berkas/tautanMedia.js.
   tautan: z.string().nullable().optional(),
   keterangan: z.string().nullable().optional(),
   quiz_id: z.number().nullable().optional(),
@@ -82,7 +82,8 @@ export const skemaMateri = z.object({
   status: z.string(),
   status_label: z.string().optional(),
   subject_id: z.number().optional(),
-  class_id: z.number().optional(),
+  // null = semua kelas (15 Oktober 2026), sama seperti kuis.
+  class_id: z.number().nullable().optional(),
   tag_id: z.number().nullable().optional(),
   urutan: z.number().optional(),
   // Tema perjalanan: pilihan guru + konfigurasi lengkap (nama pos & tingkat).
@@ -390,7 +391,7 @@ export const skemaHasilBuangBerkas = z.object({
  *   judul: string,
  *   deskripsi?: string,
  *   subject_id: number,
- *   class_id: number,
+ *   class_id: number|null,
  *   tag_id?: number|null,
  * }} MuatanMateri
  * @typedef {{

@@ -32,7 +32,12 @@ class MateriResource extends JsonResource
             'tag_id' => $this->tag_id,
             'urutan' => $this->urutan,
             'mapel_nama' => $this->whenLoaded('mapel', fn () => $this->mapel->nama),
-            'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->kelas->nama),
+            // Materi tanpa kelas = "Semua kelas". Dihitung lewat `relationLoaded`,
+            // BUKAN `whenLoaded(...)`: untuk relasi yang kosong (kelasnya null),
+            // `whenLoaded` mengembalikan null walau relasinya sudah dimuat — jadi
+            // daftar materi menampilkan "-" untuk materi yang berlaku di semua
+            // kelas, tepat di layar yang paling perlu mengatakannya (15 Okt 2026).
+            'kelas_nama' => $this->relationLoaded('kelas') ? $this->namaKelas() : null,
             'tema_nama' => $this->whenLoaded('tag', fn () => $this->tag?->nama),
             'publikasi_at' => $this->publikasi_at?->toIso8601String(),
             'jumlah_blok' => $this->whenCounted('blok'),

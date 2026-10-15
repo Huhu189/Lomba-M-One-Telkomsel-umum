@@ -9,11 +9,11 @@ import PetaPerjalanan, {
   FOTO_ADEgan,
   adeganDigambar,
   fotoAdegan,
-} from '../../../sections/material/PetaPerjalanan.jsx'
+} from '../../../sections/material/perjalanan/PetaPerjalanan.jsx'
 
 /**
- * @param {Partial<import('../../../sections/material/perjalanan.js').DataPerjalanan>} [ubah]
- * @returns {import('../../../sections/material/perjalanan.js').DataPerjalanan}
+ * @param {Partial<import('../../../sections/material/perjalanan/perjalanan.js').DataPerjalanan>} [ubah]
+ * @returns {import('../../../sections/material/perjalanan/perjalanan.js').DataPerjalanan}
  */
 function peta(ubah = {}) {
   return {

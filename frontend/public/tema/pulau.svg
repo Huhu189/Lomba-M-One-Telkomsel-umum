@@ -17,7 +17,7 @@
   kedua benda itu digambar di repo dan penanda teksnya dibuang (dijaga tes).
 
   Bentuknya mengikuti rute pos tema ini (`RUTE_TEMA.pulau` di
-  `frontend/src/sections/material/perjalanan.js`): tiap pos berdiri DI ATAS
+  `frontend/src/sections/material/perjalanan/perjalanan.js`): tiap pos berdiri DI ATAS
   sesuatu yang digambar di sini, bukan di ruang kosong. Karena itu tiap tempat
   yang diinjak pos diberi `id` supaya bisa diperiksa mesin:
 

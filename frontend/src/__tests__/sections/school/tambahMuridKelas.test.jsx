@@ -17,7 +17,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanKelas from '../../../sections/school/HalamanKelas.jsx'
+import HalamanKelas from '../../../sections/school/halaman/HalamanKelas.jsx'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 
 vi.mock('../../../sections/school/api.js', async (importOriginal) => {

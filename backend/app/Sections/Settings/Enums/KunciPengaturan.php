@@ -131,6 +131,25 @@ enum KunciPengaturan: string
         };
     }
 
+    /**
+     * Tampil di panel setelan atau tidak.
+     *
+     * Panel sengaja hanya memuat setelan yang benar-benar dipakai guru. Sisanya
+     * (proteksi sangat rinci, bonus penyemangat, ambang tambahan, preset ujian)
+     * tetap hidup dengan nilai bawaannya — server memakainya apa adanya — tetapi
+     * tidak lagi ditawarkan, supaya guru tidak tenggelam di puluhan saklar.
+     */
+    public function tampil(): bool
+    {
+        return match ($this) {
+            self::Retry, self::BatasPercobaan, self::Remedial,
+            self::Ranking, self::LayarGuru, self::ModeTim,
+            self::AntiCheat, self::BlockPaste, self::BlockTabSwitch, self::BlockDevtools,
+            self::IzinkanTamu, self::AmbangPaham => true,
+            default => false,
+        };
+    }
+
     /** Kelompok tampilan di halaman pengaturan. */
     public function kelompok(): string
     {

@@ -4,7 +4,7 @@ import {
   labelDokumen,
   namaBerkas,
   sajianBerkas,
-} from '../../../sections/material/sajianBerkas.js'
+} from '../../../sections/material/berkas/sajianBerkas.js'
 
 describe('sajianBerkas', () => {
   it('memakai sajian dari server apa adanya', () => {

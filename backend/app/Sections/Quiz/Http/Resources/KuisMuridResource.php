@@ -35,7 +35,7 @@ class KuisMuridResource extends JsonResource
             'deskripsi' => $this->deskripsi,
             'status' => $this->status->value,
             'mapel_nama' => $this->whenLoaded('mapel', fn () => $this->mapel?->nama),
-            'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->kelas?->nama),
+            'kelas_nama' => $this->whenLoaded('kelas', fn () => $this->namaKelas()),
             'mulai_at' => $this->mulai_at?->toIso8601String(),
             'selesai_at' => $this->selesai_at?->toIso8601String(),
             'durasi_menit' => $this->durasi_menit,

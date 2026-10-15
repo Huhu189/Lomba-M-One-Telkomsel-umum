@@ -38,7 +38,7 @@ export const skemaLampiran = z.object({
   kategori: z.string(),
   kategori_label: z.string(),
   tampil_langsung: z.boolean(),
-  // 'semat' | 'dokumen' | 'unduh' — lihat sections/material/sajianBerkas.js.
+  // 'semat' | 'dokumen' | 'unduh' — lihat sections/material/berkas/sajianBerkas.js.
   sajian: z.string().optional(),
   ukuran: z.number(),
   ukuran_manusia: z.string(),

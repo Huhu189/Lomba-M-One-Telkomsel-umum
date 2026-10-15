@@ -15,7 +15,13 @@ import { QueryClient } from '@tanstack/react-query'
 export const klienQuery = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Satu kali ulang, kecuali penolakan pasti (401/403/404): mengulangnya tidak
+      // mengubah hasil dan hanya melipatgandakan permintaan.
+      retry: (jumlah, galat) => {
+        const status = /** @type {any} */ (galat)?.response?.status
+        if (status === 401 || status === 403 || status === 404) return false
+        return jumlah < 1
+      },
       // Fokus jendela TIDAK memicu pengambilan ulang.
       //
       // Bawaannya (`true`) membuat SETIAP query yang aktif diambil ulang begitu

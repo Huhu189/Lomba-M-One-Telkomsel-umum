@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import EditorSoal from '../../../sections/question/EditorSoal.jsx'
+import EditorSoal from '../../../sections/question/editor/EditorSoal.jsx'
 
 const daftarMapel = [{ id: 1, nama: 'Matematika' }]
 

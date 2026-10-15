@@ -218,7 +218,7 @@ export const MIN_HURUF_SILANG = 2
  * boleh diunggah itu jangan buat manual diketik, buat opsi banyak").
  *
  * Daftarnya dicerminkan dari apa yang benar-benar bisa dikirim murid
- * (`sections/attempt/UnggahLampiran.jsx`: foto, rekaman diri, berkas) dan dari
+ * (`sections/attempt/komponen/UnggahLampiran.jsx`: foto, rekaman diri, berkas) dan dari
  * klasifikasi isi berkas di server
  * (`Sections/Material/Services/KlasifikasiBerkas.php`), jadi tidak ada pilihan
  * yang menjanjikan jenis berkas yang tidak bisa diunggah. `semua` sengaja

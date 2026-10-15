@@ -41,7 +41,7 @@ class AttemptHasilResource extends JsonResource
             'status_label' => $this->status->label(),
             'judul_kuis' => $this->whenLoaded('kuis', fn () => $this->kuis->judul),
             'mapel_nama' => $this->whenLoaded('kuis', fn () => $this->kuis->mapel?->nama),
-            'kelas_nama' => $this->whenLoaded('kuis', fn () => $this->kuis->kelas?->nama),
+            'kelas_nama' => $this->whenLoaded('kuis', fn () => $this->kuis->namaKelas()),
             'mulai_at' => $this->mulai_at?->toIso8601String(),
             'deadline_at' => $this->deadline_at?->toIso8601String(),
             'dikumpulkan_at' => $this->dikumpulkan_at?->toIso8601String(),

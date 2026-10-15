@@ -16,7 +16,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanAkunSekolah from '../../../sections/admin/HalamanAkunSekolah.jsx'
+import HalamanAkunSekolah from '../../../sections/admin/halaman/HalamanAkunSekolah.jsx'
 
 vi.mock('../../../sections/admin/api.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())
@@ -113,18 +113,33 @@ function tombolLabel(label) {
 }
 
 /**
- * Satu pilihan di dalam menu "…" baris tabel (bukan tab di panelnya).
+ * Wadah menu "…" BARIS TABEL saja. Menu baris dirender lewat `createPortal`
+ * ke `document.body` (supaya tidak terpotong oleh tabel yang bisa discroll),
+ * jadi ia ANAK LANGSUNG `document.body` — bukan isi `wadah` uji ini. Menu panel
+ * "Kelola akun" tetap menempel di dalam `wadah` (varian `-lengket`).
+ * @returns {HTMLElement[]}
+ */
+const menuBaris = () =>
+  /** @type {HTMLElement[]} */ ([...document.body.querySelectorAll(':scope > .menu-aksi-daftar')])
+
+/** Semua menu "…" yang sedang terbuka: menu baris MAUPUN menu panel. @returns {HTMLElement[]} */
+const daftarMenu = () =>
+  /** @type {HTMLElement[]} */ ([...document.body.querySelectorAll('.menu-aksi-daftar')])
+
+/**
+ * Satu pilihan di dalam menu "…" yang sedang terbuka (baris tabel atau panel
+ * "Kelola akun") — bukan tab/pil tindakan yang sudah tidak ada lagi.
  * @param {string} teks @returns {HTMLButtonElement|null}
  */
 function itemMenu(teks) {
-  const semua = /** @type {HTMLButtonElement[]} */ ([
-    ...wadah.querySelectorAll('.menu-aksi-daftar button'),
-  ])
+  const semua = /** @type {HTMLButtonElement[]} */ (
+    daftarMenu().flatMap((menu) => [...menu.querySelectorAll('button')])
+  )
   return semua.find((satu) => satu.textContent?.includes(teks)) ?? null
 }
 
-/** Jumlah menu baris yang sedang terbuka. */
-const jumlahMenuTerbuka = () => wadah.querySelectorAll('.menu-aksi-daftar').length
+/** Jumlah menu yang sedang terbuka (baris tabel MAUPUN panel "Kelola akun"). */
+const jumlahMenuTerbuka = () => daftarMenu().length
 
 /** Buka menu baris milik satu akun. @param {string} nama */
 function bukaMenu(nama) {
@@ -226,6 +241,12 @@ describe('HalamanAkunSekolah', () => {
     expect(itemMenu('Ubah email')).not.toBeNull()
     expect(itemMenu('Setel ulang kata sandi')).not.toBeNull()
     expect(itemMenu('Tangguhkan akun')).not.toBeNull()
+
+    // Menunya benar-benar di-portal ke document.body — itulah yang membuatnya
+    // tidak terpotong saat tabelnya discroll mendatar (dan bukan di dalam
+    // `wadah` uji, yang meniru tabelnya).
+    expect(menuBaris()).toHaveLength(1)
+    expect(wadah.querySelector('.menu-aksi-daftar')).toBeNull()
 
     // Hanya satu menu boleh terbuka: membuka baris lain menutup yang lama.
     bukaMenu('Bu Rina')

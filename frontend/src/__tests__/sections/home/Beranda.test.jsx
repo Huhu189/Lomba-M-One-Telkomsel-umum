@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sapaanWaktu } from '../../../sections/home/Beranda.jsx'
+import { sapaanWaktu } from '../../../sections/home/halaman/Beranda.jsx'
 import { inisial } from '../../../shared/layout/KerangkaUmum.jsx'
 
 describe('sapaanWaktu', () => {

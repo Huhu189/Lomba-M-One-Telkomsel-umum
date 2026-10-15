@@ -22,8 +22,8 @@ import {
   tingkatKe,
   titikJalur,
   RUTE_TEMA,
-} from '../../../sections/material/perjalanan.js'
-import { blokBaru } from '../../../sections/material/editorMateri.js'
+} from '../../../sections/material/perjalanan/perjalanan.js'
+import { blokBaru } from '../../../sections/material/editor/editorMateri.js'
 
 /** Katalog tema seperti dikirim GET /api/v1/materi/tema. */
 const TEMA = {
@@ -65,7 +65,7 @@ const TANPA = {
 /**
  * @param {number} nomor
  * @param {{ selesai?: boolean, wajib?: boolean, nama?: string }} [ubah]
- * @returns {import('../../../sections/material/perjalanan.js').DataLangkah}
+ * @returns {import('../../../sections/material/perjalanan/perjalanan.js').DataLangkah}
  */
 function langkah(nomor, ubah = {}) {
   return {

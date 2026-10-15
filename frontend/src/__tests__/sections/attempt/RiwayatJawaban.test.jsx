@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import RiwayatJawaban from '../../../sections/attempt/RiwayatJawaban.jsx'
+import RiwayatJawaban from '../../../sections/attempt/komponen/RiwayatJawaban.jsx'
 import { STATUS_LOKAL, STATUS_TERKIRIM } from '../../../sections/attempt/riwayatJawaban.js'
 
 /** Baris riwayat contoh. */

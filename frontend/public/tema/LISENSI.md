@@ -1,7 +1,7 @@
 # Aset latar tema perjalanan
 
 Berkas di folder ini adalah **gambar latar** tema yang dipakai peta perjalanan
-materi (`frontend/src/sections/material/PetaPerjalanan.jsx`, peta `adegan` →
+materi (`frontend/src/sections/material/perjalanan/PetaPerjalanan.jsx`, peta `adegan` →
 berkas). Semuanya harus berlisensi bebas dan boleh dipakai ulang, termasuk untuk
 keperluan komersial, tanpa izin tambahan — jadi proyek ini tidak menempelkan
 gambar yang hak pakainya tidak jelas.
@@ -93,7 +93,7 @@ adalah tiga burung kecil (masing-masing < 5% lebar kanvas).
 Satu angka dari catatan A.48 sudah **tidak berlaku** sejak A.50: dulu titik jalur
 peta berhenti di `y = 12%` sementara punggungan berkas ini ada di `y ≈ 39%`,
 jadi pos terakhir (dan tiap pos yang baru disisipkan) berdiri di langit. Rute
-tema sekarang (`RUTE_TEMA.gunung` di `sections/material/perjalanan.js`) menaruh
+tema sekarang (`RUTE_TEMA.gunung` di `sections/material/perjalanan/perjalanan.js`) menaruh
 pos terakhir di **`y = 42%`** — di puncak, bukan di langit — dan pagar
 "tidak ada pos di langit" itu ada di `__tests__/theme/latarTema.test.js`. Bedanya tidak
 dikira-kira, tetapi diukur dan dikunci tes
@@ -117,7 +117,7 @@ dikira-kira, tetapi diukur dan dikunci tes
 Dulu di sini ada `gunung.jpg` (foto pendakian sungguhan, CC0). Foto itu
 **dibuang** atas permintaan pemilik produk (catatan A.43): latar tema "Mendaki
 Gunung" diganti ilustrasi. Ilustrasi itu sempat **digambar sendiri** di
-`frontend/src/sections/material/AdeganGunung.jsx` (SVG + animasi CSS), lalu
+`frontend/src/sections/material/perjalanan/AdeganGunung.jsx` (SVG + animasi CSS), lalu
 pemilik produk meminta supaya **memakai gambar jadi dari domain publik yang
 bergaya grafik** alih-alih gambar tangan — maka `gunung.svg` di atas dipasang
 (catatan A.45). Komponen gambar tangan tetap ada dan masih bisa dipakai lagi

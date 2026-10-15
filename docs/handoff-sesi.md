@@ -22,7 +22,7 @@ materi sebagai satu **pos** di peta perjalanan bertema. Dua berkas kunci yang pa
 Tiga tempat yang mengatur tema:
 
 - katalog tema: `backend/app/Sections/Material/Registry/TemaPerjalanan.php`
-- rute pos per tema: `frontend/src/sections/material/perjalanan.js` (`RUTE_TEMA`)
+- rute pos per tema: `frontend/src/sections/material/perjalanan/perjalanan.js` (`RUTE_TEMA`)
 - latar gambar tiap tema: `frontend/public/tema/*.svg` (kini `gunung.svg`, `pulau.svg`, `angkasa.svg`)
 
 Tema **tidak** boleh menaruh pos di ruang kosong — dijaga `frontend/src/__tests__/theme/latarTema.test.js`
@@ -540,7 +540,7 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   Rinciannya di `laporan-pengujian.md` A.45.
 
 - **A.43 — rapikan + GUI langsung diuji (11 Oktober 2026)**: adegan `gunung` kembali **digambar sendiri**
-  (`sections/material/AdeganGunung.jsx`, SVG beranimasi CSS, sudut pandang mendongak dari kaki gunung) dan
+  (`sections/material/perjalanan/AdeganGunung.jsx`, SVG beranimasi CSS, sudut pandang mendongak dari kaki gunung) dan
   foto pihak lain `gunung.jpg` **dihapus** dari repo — keputusan A.37 dibalik atas permintaan pemilik
   produk; `PetaPerjalanan.jsx` kini memilih latar berurutan **video → adegan digambar → foto → gradien**
   (`data-latar="ilustrasi"`), `LISENSI.md` mencatat folder itu kosong. `EditorSoal.jsx` dirapatkan
@@ -595,7 +595,7 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
   `Material/Registry/TemaPerjalanan.php` (tema "Mendaki Gunung": 6 fase + 4 tingkat) + kolom JSON
   `materials.tema` (menyimpan pilihan guru saja) + `TemaMateriService` (validasi kode tema & video latar) +
   `GET /v1/materi/tema`. Tiap blok jadi satu **pos** (nama bisa diganti guru lewat `isi.fase`); muatan murid
-  dan laporan guru mengirim peta yang sama (`perjalanan`). Frontend: `sections/material/perjalanan.js`
+  dan laporan guru mengirim peta yang sama (`perjalanan`). Frontend: `sections/material/perjalanan/perjalanan.js`
   (skema Zod + katalog cadangan + pembantu murni `tingkatKe`/`petaLokal`/`kenaikanUntuk`) dan
   `PetaPerjalanan.jsx` — adegan digambar & **dianimasikan CSS/SVG** (awan `jelajah-awan`, pendaki
   `jelajah-langkah`), dan bila guru menempelkan **video latar** maka video itu yang tampil. Editor materi
@@ -624,7 +624,7 @@ Akun demo: `admin@sekolah.test` / `smoke.murid@sekolah.test`, sandi `Passw0rd!Am
 - **A.36 — gagang pangkas `|` di kedua sisi klip (11 Oktober 2026)**: klip terpilih di timeline materi
   punya satu tanda `|` di tiap sisi. Menyeret tanda kanan menggeser ujung (durasi ikut), tanda kiri
   menggeser awal tanpa memindahkan ujung kanan; keduanya juga bisa dipakai dengan panah kiri/kanan
-  (`role="slider"`). Helper murni `pangkasKiri()`/`pangkasKanan()` di `sections/material/editorMateri.js`
+  (`role="slider"`). Helper murni `pangkasKiri()`/`pangkasKanan()` di `sections/material/editor/editorMateri.js`
   (berbeda dari `setMulai()` yang MEMINDAHKAN klip). Gagang ditaruh di lane, di luar tombol klip, supaya
   tidak ada kontrol bersarang dan tidak bertabrakan dengan seret-klip native. Panjang timeline dibekukan
   selama seret (`pangkasTotalRef`). 6 tes baru di `__tests__/sections/material/editorMateri.test.js`;
@@ -804,7 +804,7 @@ nohup-nya ikut mati. Karena itu jalankan penyalaan layanan dan harness **di dala
 bertahan normal dan runner smoke memakai layanan itu apa adanya tanpa mematikannya.
 
 Tema perjalanan sekarang **tiga** (Mendaki Gunung, Harta Karun di Pulau, Luar Angkasa) dan bebas dari
-"pos di udara": rutenya per tema (`RUTE_TEMA` di `sections/material/perjalanan.js`) dan dijaga
+"pos di udara": rutenya per tema (`RUTE_TEMA` di `sections/material/perjalanan/perjalanan.js`) dan dijaga
 `__tests__/theme/latarTema.test.js`. Menambah tema keempat cukup: satu entri katalog di backend, satu berkas
 latar `public/tema/*.svg` **dengan `id` pada tiap benda yang diinjak pos**, satu entri `RUTE_TEMA`, satu baris
 di `FOTO_ADEgan` — lalu jalankan pagar latar (merah kalau rute dan gambarnya tidak cocok).
@@ -968,7 +968,7 @@ lolos dari pemeriksaan “semua soal yang dipilih aktif”; sekarang info soal y
 
 **(2) Setelan ulangan pindah ke kuisnya; `/pengaturan` kembali jadi akun.** Panel setelan (anti-cheat, batas
 percobaan, peringkat, layar guru, siswa tamu, …) kini ada di **halaman detail kuis** (`/kuis/:slug`) sebagai
-`sections/quiz/PanelSetelanUlangan.jsx` — tanpa pemilih ulangan, jadi tidak ada cara salah memilih. Halaman
+`sections/quiz/setelan/PanelSetelanUlangan.jsx` — tanpa pemilih ulangan, jadi tidak ada cara salah memilih. Halaman
 `/pengaturan` berisi **akun**: nama tampilan, ganti kata sandi (sandi lama wajib; sesi lain diakhiri, sesi yang
 dipakai tetap hidup), tema, dan pintasan avatar. Rutenya pindah keluar dari gerbang guru (kini milik semua
 peran) dan menunya bernama **Akun**. `HalamanPengaturan.jsx` + `lingkup.js` + tesnya dihapus; tautan lama di
@@ -1834,3 +1834,137 @@ dan tamu tidak pernah melihat kuis draf.
 kuisnya **diterbitkan**, baru “Izinkan siswa tamu” dinyalakan. Kuis 280 milik akun kepala sekolah sekarang
 tidak bisa dikelola siapa pun (pemiliknya tidak boleh menulis, guru lain bukan pemiliknya) — buat kuis baru
 dengan akun guru bila ingin diuji.
+
+## 32. A.93 — kuis tanpa kelas, SEO per halaman, pita lengket editor kuis dihapus (15 Oktober 2026)
+
+**Permintaan:** *"aply ini dulu baru lanjutkan dan efisiensikan waktu nya"* (`semua-perubahan.zip`) + sisa putaran
+sebelumnya: *"maksimalkan seo"* dan *"hapus card yang ada di atas layar, sangat mengganggu"* — yang terakhir
+diklarifikasi lewat pertanyaan pilihan: **pita aksi lengket (`.bar-susun`) di editor kuis**.
+
+**Yang dikerjakan:**
+
+1. Isi zip diterapkan ke `backend/` + `frontend/` (kuis tanpa kelas = semua kelas, panel setelan hanya menampilkan
+   yang ditawarkan, halaman akun, pratinjau materi). Diverifikasi dengan `diff -rq` terhadap hasil ekstraksi:
+   hanya `theme.css` yang berbeda, dan itu memang tambahan CSS daftar-soal-bisa-digulir dari putaran sebelumnya.
+2. **Celah yang ditutup:** setelah `class_id` kosong, kelas tidak lagi menandai sekolah — `KuisPolicy@view` dan
+   `AttemptService::mulai` kini memeriksa `school_id` lebih dulu. Tanpa itu, murid sekolah lain bisa masuk kuis
+   "tanpa kelas" milik sekolah ini.
+3. **SEO disambungkan:** `shared/seo/MetaHalaman.jsx` (baru) dipasang sekali di `App.jsx`; lima `document.title`
+   yang tersebar dihapus; `index.html` memuat deskripsi + `robots` statis.
+4. **Pita lengket editor kuis dihapus.** "Simpan draf" pindah ke kaki bagian 1 (di dalam `<form>`, jadi Enter tetap
+   menyimpan dan tombol `sr-saja` dihapus), publikasi tetap di bagian 3, lencana kelengkapan pindah ke judul bagian 3.
+   CSS `.bar-susun` **tetap ada** karena editor materi (`nle-bar`) masih memakainya.
+
+**Jebakan untuk sesi berikutnya:**
+
+- `PanelSetelanUlangan` memakai label dari `TEKS` **bukan** dari server, dan hanya merender kunci dengan
+  `tampil !== false` (dari `KunciPengaturan::tampil()`). Uji yang memakai label server akan merah — itu bukan bug.
+- Ringkasan "n/m aktif" ada di tombol `SetelanUlangan`, bukan di panelnya. Penyebutnya `ringkas.aturan.length + 2`
+  (aturan sesi + saklar induk + izin tamu).
+- Kelengkapan kuis kini **7 butir** (kelas hilang dari daftar); jangan mengembalikan "dari 8 lengkap".
+- Harness `docs/smoke-ui-susun.mjs` sudah memuat **kontrol negatif** `.bar-susun === null` — kalau pita lengketnya
+  dikembalikan, harness merah.
+
+**Status:** `./verify.sh` **SEMUA HIJAU** (Pest 422 · Redis wajib OK · Pint bersih · checkJs 0 galat · ESLint 0 error ·
+Vitest 121 berkas / 1077 tes · realtime 20). Harness peramban belum dijalankan ulang putaran ini, dan `docs/word/*.docx`
+belum diekspor ulang. Rincian: `docs/laporan-pengujian.md` **A.93**.
+
+## 33. A.94 — pita lengket editor materi juga dibuang + dua jebakan harnes editor (15 Oktober 2026)
+
+**Permintaan:** *"prioritaskan Bar aksi lengket di hapus dan lanjutkan lagi, jangan banyak tes, efisienkan waktu,
+boleh pararel"* — lanjutan A.93, yang baru membuang pita itu di **editor kuis**.
+
+### 33.1 Yang berubah
+
+**a. Pita lengket editor materi dihapus.** `frontend/src/sections/material/editor/EditorMateri.jsx`: pita `.bar-susun`
+(Simpan · Terbitkan · Urungkan · lencana "Belum tersimpan") hilang. Yang tersisa `<header class="nle-kepala">`
+(Daftar materi · judul · lencana status) sebagai baris biasa yang ikut tergulir. Aksinya pindah ke blok baru
+`.nle-simpan` sebagai **unsur pertama panel alat** (`.nle-sidebar`): di layar sempit panel alat tampil SEBELUM
+kanvas, jadi tombolnya tetap terjangkau tanpa menggulir jauh; di layar lebar kolom panel itulah yang menempel
+(`.nle-sidebar`). `frontend/src/theme/theme.css`: aturan `.bar-susun` (`position: sticky` + z-index + latar)
+**dihapus** — A.93 masih menyimpannya karena editor materi memakainya, sekarang kelas itu tidak dipakai komponen
+mana pun (yang tersisa hanya kontrol negatif `.bar-susun === null` di `docs/smoke-ui-susun.mjs`).
+
+**b. Dua jebakan harnes `docs/smoke-ui-editor.mjs` — keduanya MERAH PALSU, bukan bug aplikasi.**
+
+1. **"Delete saat fokus di kolom isian" selalu gagal.** `#nle-fase` duduk di dalam
+   `<details class="nle-lanjutan">` yang tertutup, dan isi `<details>` yang tertutup **tidak bisa difokus**:
+   `.focus()` jadi no-op, fokus tinggal di tombol klip, dan timeline membaca Delete → klip terbuang (2 → 1).
+   Harnes kini membuka rangkanya dulu dan **memastikan fokusnya benar-benar pindah** (`fokus di kolom: true`);
+   kalau tidak pindah, pemeriksaannya merah dengan alasan yang terbaca.
+2. **Harnes MENGGANTUNG tepat sebelum bagian "pustaka media"** (dua jalankan berturut-turut berhenti di baris
+   `berkas pustaka audit siap dipakai klip`, tanpa ringkasan dan tanpa pembersihan). Bukan menunggu sia-sia:
+   `Runtime.evaluate` ke halaman **tidak pernah dijawab** — dibuktikan dengan kontrol `about:blank` (menjawab `2`)
+   melawan halaman aplikasi (tidak menjawab) dan `Debugger.pause` yang juga diabaikan, padahal CPU renderer ~0%
+   (jadi bukan loop sibuk). Pelakunya **dialog bawaan peramban** dari `beforeunload`: `EditorMateri` memasang
+   `usePenjagaSebelumTutup(belumTersimpan && …)` (baris 1316), langkah papan tombol meninggalkan perubahan yang
+   belum tersimpan, lalu `Page.navigate` memicu "perubahan belum disimpan" — dan di Chrome headless baru dialog itu
+   **membekukan halaman sampai dijawab**. Harnes sekarang menerima `Page.javascriptDialogOpening`
+   (`accept: true`), dan `evalJs` diberi batas **20 detik** supaya halaman beku berhenti dengan galat yang jelas,
+   bukan menggantung tanpa jejak.
+
+### 33.2 Verifikasi
+
+`./verify.sh` **SEMUA HIJAU** dijalankan SESUDAH kedua berkas frontend diubah: Pest **423 lulus (4278 asersi)** ·
+Redis wajib OK · Pint bersih · checkJs 0 galat · ESLint **0 error** (3 peringatan lama) · Vitest **122 berkas /
+1097 tes** · realtime 20.
+
+`docs/jalankan-smoke-ui.sh editor`: **58/58 lulus, 0 gagal, exit 0** (10 baris `UKUR` tidak dihitung sebagai
+pemeriksaan). Dua jalankan sebelumnya menggantung 5 menit tepat di baris `berkas pustaka audit siap dipakai klip`
+(52 pemeriksaan, 0 gagal) — pada jalankan terakhir, tepat di titik itu muncul
+`(dialog peramban diterima otomatis)` dan seluruh rantai "pustaka media" **tercapai** untuk pertama kali.
+Harnes lain (`susun`, `mobile`, `perjalanan`, …) **tidak** dijalankan ulang putaran ini — sesuai permintaan
+pemilik produk untuk tidak menumpuk pengujian.
+
+### 33.3 Jebakan untuk sesi berikutnya
+
+- **Dialog peramban membekukan halaman headless.** Harnes mana pun yang meninggalkan halaman dengan perubahan
+  belum tersimpan (editor materi & editor soal memasang `usePenjagaSebelumTutup`) harus menangani
+  `Page.javascriptDialogOpening`, atau ia menggantung. `docs/smoke-ui-editor.mjs` sekarang memuat polanya —
+  salin ke harnes lain bila perlu.
+- `evalJs` harnes editor kini punya batas 20 detik: halaman beku = galat, bukan gantung.
+- Kelas `.bar-susun` sudah **tidak ada** di CSS maupun komponen; jangan dihidupkan lagi tanpa alasan
+  (kontrol negatif di `smoke-ui-susun.mjs` akan merah).
+
+**Rincian:** `docs/laporan-pengujian.md` **A.94**.
+
+## 34. A.95 — materi Fotosintesis dijadikan bahan ajar sungguhan (15 Oktober 2026)
+
+**Permintaan:** *"dari https://www.youtube.com/watch?v=nlXwuNHF8JM kau buatkan benar-benar materi khusus yang
+benar, soal asli dll kualitas tinggi — bukan tujuan audit namun beneran dipakai."*
+
+**Keadaan sebelum putaran ini:** materinya sudah ada (`MateriContohSeeder`, video `nlXwuNHF8JM` = 3 menit 5 detik,
+6 pos tema gunung, 4 kuis, 13 soal). Yang membuatnya belum "kualitas tinggi" bukan susunannya, melainkan dua hal:
+
+1. **Kolom `pembahasan` semua soal KOSONG.** Akibatnya kartu ingat sesudah latihan hanya memperlihatkan kunci
+   ("jawabannya A") tanpa alasan — padahal itu satu-satunya tempat anak bisa mengerti kenapa.
+2. **Sisa data harnes audit** masih menempel di bank soal dev (kuis "AUDIT …" yang tidak dipakai siapa pun).
+
+**Yang dikerjakan:**
+
+1. `PEMBAHASAN` (peta teks-soal → pembahasan) berisi **pembahasan untuk 15 soal**, ditulis untuk anak kelas 4
+   (menyebut alasan, bukan mengulang jawaban). Diisi ke soal yang sudah ada **hanya bila kolomnya masih kosong**,
+   jadi tulisan guru tidak pernah ditimpa.
+2. **Ujian penutup bertambah dua soal bertipe baru**: `pilihan_ganda_kompleks` ("pilih semua bahan") dan
+   `klasifikasi` (memilah bahan vs hasil). Ujian penutup kini **7 soal** (dari 5); latihan sisipan tidak diubah.
+3. **`rapikanSisaAudit()`**: membuang kuis berjudul berpola audit yang **tidak** dipakai blok mana pun dan belum
+   pernah dikerjakan, lalu membuang soalnya bila tidak dipakai kuis lain dan belum pernah dijawab. Batas ini
+   yang membuatnya tidak bisa menyentuh pekerjaan guru atau riwayat murid (kuis audit yang masih dipakai blok
+   atau punya attempt **dilewati**, bukan dihapus).
+4. **Bukti "beneran dipakai"** lewat API murid asli 20/20 (lihat `docs/laporan-pengujian.md` A.95):
+   murid kelas 4A menempuh seluruh perjalanan — video tersemat `youtube-nocookie/nlXwuNHF8JM` durasi 185 detik,
+   tiga latihan di dalam video dinilai penuh (15/15, 15/15, 10/10), ujian penutup 35/35, dan **setiap kartu ingat
+   membawa pembahasan** (15/15 kartu pada empat kuis), lalu keenam pos berstatus selesai.
+
+**Jebakan untuk sesi berikutnya:**
+
+- `Slice08Test` mengunci susunan materi contoh (6 blok, urutan tipe, durasi 185 detik, latihan sisipan `host_id`
+  = blok video). Menambah soal di **ujian penutup** aman; mengubah susunan blok tidak.
+- Peta `PEMBAHASAN` dikunci pada **teks soal** (bukan id), karena teks itulah penanda idempoten yang dipakai
+  seeder untuk mencari barisnya. Kalau teks sebuah soal diubah, pembahasannya harus ikut diubah di peta itu.
+- `rapikanSisaAudit()` sengaja memakai pola judul `AUDIT %` / `% AUDIT %`. Jangan menyamakan pola itu dengan
+  judul kuis guru sungguhan.
+
+**Verifikasi:** `php artisan test` **423 lulus (4278 asersi)** · `./vendor/bin/pint --test` **PASS (395 berkas)** ·
+skrip bukti murid (API yang sama dengan UI murid) **20/20 lulus**. Berkas utama: `backend/database/seeders/
+MateriContohSeeder.php` (hanya itu yang berubah di putaran ini) + `docs/penjelasan-fitur.md` bagian 26.

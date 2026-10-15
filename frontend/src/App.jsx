@@ -18,10 +18,10 @@ import KerangkaUmum from './shared/layout/KerangkaUmum.jsx'
 import { RUTE } from './routes.js'
 // Statis (selalu ada di bundel awal): kerangka ulangan, halaman pertama yang
 // dilihat semua orang, pintu masuk, dan 404.
-import Beranda from './sections/home/Beranda.jsx'
-import HalamanTidakDitemukan from './sections/home/HalamanTidakDitemukan.jsx'
-import HalamanMasuk from './sections/auth/HalamanMasuk.jsx'
-import BatasGalatUlangan from './sections/attempt/BatasGalatUlangan.jsx'
+import Beranda from './sections/home/halaman/Beranda.jsx'
+import HalamanTidakDitemukan from './sections/home/halaman/HalamanTidakDitemukan.jsx'
+import HalamanMasuk from './sections/auth/halaman/HalamanMasuk.jsx'
+import BatasGalatUlangan from './sections/attempt/komponen/BatasGalatUlangan.jsx'
 // Malas: tiap halaman jadi berkas terpisah, diunduh saat rutenya dibuka.
 import {
   EditorMateri,
@@ -42,6 +42,7 @@ import {
   HalamanLayar,
   HalamanLupaSandi,
   HalamanMapel,
+  HalamanMasukTamu,
   HalamanMonitor,
   HalamanMurid,
   HalamanPeringkat,
@@ -55,7 +56,8 @@ import {
   PilihHalamanMateri,
 } from './halaman.js'
 import { pasangListenerSesi, useAuthStore } from './sections/auth/authStore.js'
-import { tujuanLanjut } from './sections/quiz/setelanSesi.js'
+import { tujuanLanjut } from './sections/quiz/setelan/setelanSesi.js'
+import MetaHalaman from './shared/seo/MetaHalaman.jsx'
 
 /** Layar tunggu singkat selama sesi diperiksa (mencegah kilatan tampilan tamu). */
 function LayarMemuat() {
@@ -236,9 +238,31 @@ export default function App() {
 
   if (!sesiSiap) return <LayarMemuat />
 
+  /**
+   * Tujuan sesudah masuk (akun, Google, atau siswa tamu): tautan asal dari guru bila
+   * ada, kalau tidak beranda (tamu diantar ke daftar ulangan).
+   * @param {import('./sections/auth/authStore.js').DataUser} user
+   */
+  const setelahMasuk = (user) =>
+    navigate(
+      // Akun dari Google dengan kata sandi belum dibuat tidak
+      // diantar ke tujuan asalnya dulu: lapisan wajib-buat-sandi
+      // didahulukan, karena seluruh rute lain memang ditolak
+      // server sampai kata sandinya ada.
+      user.perluBuatSandi
+        ? RUTE.buatSandi
+        : (tujuanLanjut(
+            /** @type {{ lanjut?: unknown }|null} */ (lokasi.state)?.lanjut,
+          ) ?? (user.isTamu ? RUTE.kuis : RUTE.beranda)),
+      { replace: true },
+    )
+
   return (
     <>
       <ToastHost />
+      {/* Judul tab + meta description/robots mengikuti jalur (satu sumber,
+          lihat `shared/seo/meta.js`) — bukan lagi di tiap halaman. */}
+      <MetaHalaman jalur={lokasi.pathname} />
       <Routes>
         <Route element={<GerbangUmum />}>
           <Route path={RUTE.beranda} element={<Beranda />} />
@@ -305,6 +329,9 @@ export default function App() {
 
             {/* Materi berblok (slice 08) — guru menyusun, murid menempuh. */}
             <Route path={RUTE.materi} element={<PilihHalamanMateri />} />
+            {/* Tautan satu materi yang dibagikan guru: murid langsung menempuh
+                materinya, guru dibawa ke editornya (lihat `PilihHalamanMateri`). */}
+            <Route path={RUTE.materiTautan} element={<PilihHalamanMateri />} />
 
             {/* Avatar + moderasi (slice 08) — murid memasang, guru meninjau
                 laporan; kepala sekolah tidak memutuskan tampilan avatar murid. */}
@@ -322,26 +349,7 @@ export default function App() {
               path={RUTE.masuk}
               element={
                 <HalamanMasuk
-                  // Bila kedatangan ini dari tautan yang dibagikan guru
-                  // (`state.lanjut`), murid dikembalikan ke halaman itu — baik
-                  // ia masuk dengan akun maupun sebagai siswa tamu. Sisanya:
-                  // siswa tamu langsung diantar ke daftar ulangan tamu, karena
-                  // beranda murid memuat pintasan (materi, progres, lencana)
-                  // yang butuh akun sekolah dan pasti ditolak untuk tamu.
-                  berhasil={(user) =>
-                    navigate(
-                      // Akun dari Google dengan kata sandi belum dibuat tidak
-                      // diantar ke tujuan asalnya dulu: lapisan wajib-buat-sandi
-                      // didahulukan, karena seluruh rute lain memang ditolak
-                      // server sampai kata sandinya ada.
-                      user.perluBuatSandi
-                        ? RUTE.buatSandi
-                        : (tujuanLanjut(
-                            /** @type {{ lanjut?: unknown }|null} */ (lokasi.state)?.lanjut,
-                          ) ?? (user.isTamu ? RUTE.kuis : RUTE.beranda)),
-                      { replace: true },
-                    )
-                  }
+                  berhasil={setelahMasuk}
                 />
               }
             />
@@ -361,6 +369,7 @@ export default function App() {
                 />
               }
             />
+            <Route path={RUTE.masukTamu} element={<HalamanMasukTamu berhasil={setelahMasuk} />} />
             <Route path={RUTE.lupaSandi} element={<HalamanLupaSandi />} />
             <Route path={RUTE.aturUlangSandi} element={<HalamanAturUlangSandi />} />
           </Route>

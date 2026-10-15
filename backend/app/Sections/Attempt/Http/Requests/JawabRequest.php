@@ -29,8 +29,10 @@ class JawabRequest extends FormRequest
             'jawaban' => [
                 'present',
                 function (string $atribut, mixed $nilai, Closure $gagal): void {
-                    if (is_string($nilai) && mb_strlen($nilai) > 2000) {
-                        $gagal('Jawaban terlalu panjang.');
+                    $maks = max(1, (int) config('jawaban.teks_maks', 10000));
+
+                    if (is_string($nilai) && mb_strlen($nilai) > $maks) {
+                        $gagal('Jawaban terlalu panjang (maksimum '.number_format($maks, 0, ',', '.').' karakter).');
                     }
 
                     if (is_array($nilai) && count($nilai) > 50) {

@@ -18,7 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanMateriMurid from '../../../sections/material/HalamanMateriMurid.jsx'
+import { MemoryRouter } from 'react-router-dom'
+import HalamanMateriMurid from '../../../sections/material/halaman/HalamanMateriMurid.jsx'
 
 vi.mock('../../../sections/material/api.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())
@@ -180,9 +181,14 @@ beforeEach(() => {
   bukaBlok.mockImplementation(async (_materiId, blockId) => ({ blok: isi(blockId), attempt: null }))
 
   act(() => {
+    // Halaman ini membaca alamatnya (`/materi/<id>` — tautan yang dibagikan
+    // guru), jadi membutuhkan konteks router. Alamat awalnya `/materi` tanpa id:
+    // yang diuji di sini daftar materinya, lalu murid memilih sendiri.
     root.render(
       <QueryClientProvider client={queryClient}>
-        <HalamanMateriMurid />
+        <MemoryRouter initialEntries={['/materi']}>
+          <HalamanMateriMurid />
+        </MemoryRouter>
       </QueryClientProvider>,
     )
   })
@@ -202,7 +208,13 @@ describe('HalamanMateriMurid · klip tautan', () => {
     await tungguSampai(() => wadah.querySelector('iframe') !== null)
 
     const bingkai = /** @type {HTMLIFrameElement|null} */ (wadah.querySelector('iframe'))
-    expect(bingkai?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abc123')
+    // Alamat dasar tetap dari server; klien hanya menambah parameter autoplay.
+    const alamat = new URL(bingkai?.getAttribute('src') ?? '')
+    expect(`${alamat.origin}${alamat.pathname}`).toBe('https://www.youtube-nocookie.com/embed/abc123')
+    // Video langsung jalan: murid tidak perlu menekan logo YouTube dulu.
+    expect(alamat.searchParams.get('autoplay')).toBe('1')
+    expect(alamat.searchParams.get('mute')).toBe('1')
+    expect(bingkai?.getAttribute('loading')).toBe('eager')
     expect(wadah.textContent ?? '').toContain('Video YouTube')
   })
 })

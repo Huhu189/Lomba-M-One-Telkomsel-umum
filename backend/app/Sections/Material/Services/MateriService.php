@@ -42,7 +42,11 @@ class MateriService
         return Materi::query()->create([
             'school_id' => $sekolah->getKey(),
             'subject_id' => (int) $data['subject_id'],
-            'class_id' => (int) $data['class_id'],
+            // null = semua kelas (lihat SimpanMateriRequest); jangan di-cast ke int,
+            // karena `(int) null` jadi 0 dan materinya kehilangan kelas mana pun.
+            'class_id' => isset($data['class_id']) && $data['class_id'] !== null
+                ? (int) $data['class_id']
+                : null,
             'tag_id' => isset($data['tag_id']) ? (int) $data['tag_id'] : null,
             'judul' => (string) $data['judul'],
             'deskripsi' => $data['deskripsi'] ?? null,
@@ -59,7 +63,12 @@ class MateriService
     {
         $materi->fill([
             'subject_id' => (int) ($data['subject_id'] ?? $materi->subject_id),
-            'class_id' => (int) ($data['class_id'] ?? $materi->class_id),
+            // `array_key_exists` dipakai supaya mengosongkan kelas benar-benar
+            // tersimpan sebagai null "semua kelas" — bukan diabaikan lalu
+            // kembali memakai kelas lamanya.
+            'class_id' => array_key_exists('class_id', $data)
+                ? ($data['class_id'] === null ? null : (int) $data['class_id'])
+                : $materi->class_id,
             'tag_id' => array_key_exists('tag_id', $data)
                 ? ($data['tag_id'] === null ? null : (int) $data['tag_id'])
                 : $materi->tag_id,
@@ -187,7 +196,7 @@ class MateriService
             throw ValidationException::withMessages(['blok' => 'Kuis sisipan harus kuis yang ada di bank soal sekolah ini.']);
         }
 
-        if ((int) $kuis->class_id !== (int) $materi->class_id) {
+        if (! $kuis->untukSemuaKelas() && (int) $kuis->class_id !== (int) $materi->class_id) {
             throw ValidationException::withMessages(['blok' => 'Kuis sisipan harus kuis untuk kelas materi ini.']);
         }
 

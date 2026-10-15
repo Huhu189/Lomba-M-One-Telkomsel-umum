@@ -1034,3 +1034,41 @@ tidak lagi hanya melihat kolom email + kata sandi lalu merasa dipaksa masuk.
 4. Bagikan tautan siswa (halaman kelola kuis menyediakan tombol salin).
 5. Anak membuka tautan → menulis namanya → langsung mengerjakan. Hasilnya tercatat atas namanya dan bisa
    dilihat guru pemilik kuis di halaman kuis itu.
+
+## 26. Materi contoh yang benar-benar bisa dipakai: Fotosintesis kelas 4 (15 Oktober 2026)
+
+### Apa ini
+
+Satu materi **IPA kelas 4** yang sudah jadi dan bisa dipakai murid hari itu juga — bukan contoh kosong dan bukan
+bahan audit. Sumbernya satu video pelajaran sungguhan: *"PROSES FOTOSINTESIS PADA TUMBUHAN (KELAS 4 SD KURIKULUM
+MERDEKA)"* dari kanal **Ratih Setyaningrum**, panjang **3 menit 5 detik** — videonya dipakai sebagai klip materi,
+dengan kredit lengkap di keterangan klipnya.
+
+Materinya dijalankan sebagai **perjalanan Mendaki Gunung Fotosintesis**: enam pos, dari Basecamp sampai Puncak
+(judul tema boleh diganti guru; pos-posnya punya nama pos yang bisa diubah).
+
+### Isinya
+
+- **Empat kuis sungguhan**: tiga latihan yang muncul **di dalam video** (detik 40, 95, dan 150 — bahan, alat &
+  tempat kerja daun, lalu hasilnya) dan satu **ujian penutup** yang mulai tepat saat videonya habis.
+- **15 soal** yang ditulis untuk anak kelas 4, delapan tipe berbeda: pilihan ganda, benar/salah, isian singkat,
+  menjodohkan, mengurutkan, letak kata, pilihan ganda kompleks ("pilih semua bahan"), dan klasifikasi
+  (memilah bahan yang masuk vs hasil yang dibuat).
+- **Pembahasan guru untuk SETIAP soal.** Sesudah murid mengumpulkan latihan, kartu ingat di layarnya tidak hanya
+  menampilkan jawaban benar, tetapi juga alasannya — misalnya kenapa cahaya matahari bukan "bahan" melainkan
+  sumber energi, atau kenapa oksigen tidak termasuk bahan yang diserap. Tulisan guru di kolom pembahasan tidak
+  pernah ditimpa bila seeder dijalankan ulang.
+- **Penjelasan sesudah tiap kuis** (ringkasan singkat yang muncul sebelum murid melanjutkan video), dan penutup
+  berupa rumus inti + tantangan mengamati dua tanaman di rumah selama seminggu.
+- Satu **akun murid contoh** di kelas 4A supaya sisi anak bisa langsung dicoba.
+
+### Cara membukanya
+
+| Peran | Masuk sebagai | Yang dibuka |
+| --- | --- | --- |
+| Guru | `guru1@sekolah.test` / `password12` | Materi → **"Fotosintesis: Perjalanan Memasak Makanan di Daun"** (sudah **terbit**, kelas 4A) |
+| Murid | `murid4a@sekolah.test` / `Passw0rd!Aman` | Beranda → Materi saya → perjalanan yang sama, dari Basecamp |
+
+Menyiapkan ulang di basis data mana pun: `php artisan db:seed --class=MateriContohSeeder` — idempoten, jadi boleh
+dijalankan berulang tanpa menggandakan materi, kuis, atau soal. Seeder yang sama juga membersihkan kuis sisa
+harness audit yang tidak dipakai blok mana pun dan belum pernah dikerjakan murid.

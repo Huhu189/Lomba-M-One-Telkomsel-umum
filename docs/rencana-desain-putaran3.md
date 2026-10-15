@@ -14,12 +14,12 @@ Satu putaran kerja = satu tahap di bawah, dengan bukti yang dijalankan.
 
 | Papan (`.dc.html` + `-HP`) | Layar di aplikasi | Berkas kunci |
 | --- | --- | --- |
-| `Masuk` | masuk & daftar murid | `sections/auth/HalamanMasuk.jsx`, `shared/layout/KerangkaAuth.jsx` |
-| `Ulangan` | daftar ulangan murid | `sections/quiz/PilihHalamanKuis.jsx`, `HalamanKuisMurid.jsx`, `HalamanKuisDetail.jsx` |
-| `Ujian` | kerjakan ulangan | `sections/attempt/HalamanKerjakan.jsx`, `sections/attempt/navigatorSoal.js` |
-| `Materi` | baca materi murid | `sections/material/HalamanMateriMurid.jsx`, `PemutarMateri.jsx` |
-| `Materi-Editor` | editor materi guru | `sections/material/EditorMateri.jsx` |
-| `Kelas` | data induk (kelas) | `sections/school/HalamanKelas.jsx` |
+| `Masuk` | masuk & daftar murid | `sections/auth/halaman/HalamanMasuk.jsx`, `shared/layout/KerangkaAuth.jsx` |
+| `Ulangan` | daftar ulangan murid | `sections/quiz/halaman/PilihHalamanKuis.jsx`, `HalamanKuisMurid.jsx`, `HalamanKuisDetail.jsx` |
+| `Ujian` | kerjakan ulangan | `sections/attempt/halaman/HalamanKerjakan.jsx`, `sections/attempt/navigatorSoal.js` |
+| `Materi` | baca materi murid | `sections/material/halaman/HalamanMateriMurid.jsx`, `PemutarMateri.jsx` |
+| `Materi-Editor` | editor materi guru | `sections/material/editor/EditorMateri.jsx` |
+| `Kelas` | data induk (kelas) | `sections/school/halaman/HalamanKelas.jsx` |
 | `Main` | **bukan layar**: papan aturan, token, dan pratinjau | acuan untuk semua layar |
 
 `Main` memuat hal yang paling berguna dari putaran ini: **Lima aturan**, daftar **yang saya pangkas**, dan

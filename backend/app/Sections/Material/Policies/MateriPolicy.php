@@ -37,9 +37,18 @@ class MateriPolicy
             return false;
         }
 
-        $kelasMurid = $user->murid?->class_id;
+        $murid = $user->murid;
 
-        return $kelasMurid !== null && (int) $kelasMurid === (int) $materi->class_id;
+        // Materi tanpa kelas terbuka untuk semua kelas — tetapi tetap hanya di
+        // sekolah materi itu sendiri (15 Oktober 2026). Tanpa pemeriksaan sekolah
+        // di sini, "semua kelas" ikut memuat materi sekolah lain, sebab kelasnya
+        // tidak lagi jadi penanda sekolah saat `class_id` kosong. Aturannya
+        // sengaja sama dengan `KuisPolicy::view`.
+        if ($murid === null || (int) $murid->school_id !== (int) $materi->school_id) {
+            return false;
+        }
+
+        return $materi->terbukaUntukKelas($murid->class_id === null ? null : (int) $murid->class_id);
     }
 
     public function create(User $user): bool

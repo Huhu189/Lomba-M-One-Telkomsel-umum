@@ -61,7 +61,6 @@ export function kelengkapanKuis(nilai, susunan) {
   return [
     { ok: nilai.judul.trim().length >= 3, teks: 'Judul terisi (minimal 3 huruf)' },
     { ok: nilai.subject_id !== '', teks: 'Mapel dipilih' },
-    { ok: nilai.class_id !== '', teks: 'Kelas dipilih' },
     { ok: Number(nilai.durasi_menit) >= 1, teks: 'Durasi lebih dari 0 menit' },
     {
       ok: nilai.mulai_at !== '' && nilai.selesai_at !== '',
@@ -80,6 +79,28 @@ export function kelengkapanKuis(nilai, susunan) {
  */
 export function siapTerbit(butir) {
   return butir.every((satu) => satu.ok)
+}
+
+/**
+ * Apakah susunan soal sekarang berbeda dari yang tersimpan di server?
+ *
+ * Kenapa perlu (15 Oktober 2026): menyimpan kuis selalu mengirim susunan soal
+ * ke server, padahal guru sering hanya mengubah setelannya — dan server MENOLAK
+ * perubahan susunan selagi kuisnya berjalan (`KuisService::sinkronSoal` → 422
+ * “Susunan soal tidak bisa diubah saat kuis sedang berjalan”). Akibatnya guru
+ * yang cuma mengubah durasi atau kelas dari kuis yang sedang dipakai murid
+ * mendapat galat yang sama sekali bukan perbuatannya.
+ *
+ * Perbandingannya **peka urutan**: memindahkan soal ke nomor lain tetap dihitung
+ * berubah, karena urutan itulah yang dipakai saat pengacakan dimatikan.
+ * @param {number[]} sekarang susunan di layar
+ * @param {number[]} tersimpan susunan yang diketahui ada di server
+ * @returns {boolean}
+ */
+export function susunanBerubah(sekarang, tersimpan) {
+  if (sekarang.length !== tersimpan.length) return true
+
+  return sekarang.some((id, urutan) => id !== tersimpan[urutan])
 }
 
 /**

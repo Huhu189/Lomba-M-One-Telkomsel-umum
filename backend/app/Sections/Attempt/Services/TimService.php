@@ -37,7 +37,7 @@ class TimService
     public function modeTim(Kuis $kuis): bool
     {
         $peta = $this->pengaturan
-            ->semua((int) $kuis->school_id, (int) $kuis->class_id, (int) $kuis->getKey())['pengaturan'];
+            ->semua((int) $kuis->school_id, $kuis->kelasIdAtauNull(), (int) $kuis->getKey())['pengaturan'];
 
         return (bool) ($peta[KunciPengaturan::ModeTim->value]['nilai'] ?? KunciPengaturan::ModeTim->bawaan());
     }
@@ -60,7 +60,7 @@ class TimService
         return [
             'kuis_id' => $kuis->getKey(),
             'judul_kuis' => $kuis->judul,
-            'kelas_nama' => $kuis->kelas?->nama,
+            'kelas_nama' => $kuis->namaKelas(),
             'mapel_nama' => $kuis->mapel?->nama,
             'mode_tim' => $this->modeTim($kuis),
             'ada_attempt' => $this->adaAttemptTim($kuis),
@@ -77,8 +77,7 @@ class TimService
      */
     public function muridKelas(Kuis $kuis): array
     {
-        $murid = Murid::query()
-            ->where('class_id', $kuis->class_id)
+        $murid = $kuis->muridCakupan()
             ->with(['user', 'keanggotaanTim'])
             ->get();
 
@@ -288,8 +287,7 @@ class TimService
             throw ValidationException::withMessages(['tim' => 'Sudah ada tim yang mengerjakan kuis ini; susunan tim tidak bisa dibagi ulang.']);
         }
 
-        $murid = Murid::query()
-            ->where('class_id', $kuis->class_id)
+        $murid = $kuis->muridCakupan()
             ->with('user')
             ->get()
             ->map(static fn (Murid $satu): array => ['id' => (int) $satu->getKey(), 'nama' => (string) $satu->user?->name])
@@ -365,7 +363,7 @@ class TimService
      */
     private function idMuridKelas(Kuis $kuis): array
     {
-        return Murid::query()->where('class_id', $kuis->class_id)->pluck('id')->map('intval')->all();
+        return $kuis->muridCakupan()->pluck('id')->map('intval')->all();
     }
 
     /**

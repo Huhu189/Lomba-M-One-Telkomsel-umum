@@ -382,6 +382,213 @@ async function main() {
     )
   }
 
+  // ---------- 5. Sapuan halaman MURID di ponsel (15 Oktober 2026) ----------
+  //
+  // Sampai putaran ini harness hanya menyapu halaman GURU, padahal yang dipakai
+  // anak setiap hari justru /materi (berikut latihan sisipannya) dan /kerjakan.
+  // Kategori temuan sama persis: gulir mendatar, elemen yang menembus tepi,
+  // sasaran sentuh <44 px, dan teks <14 px.
+  const AKUN_MURID = { email: 'smoke.murid@sekolah.test', password: 'Passw0rd!Aman' }
+
+  const keluar = async () => {
+    await evalJs(`fetch('/api/v1/auth/keluar', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json',
+        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '') },
+    }).then((r) => r.status)`)
+    await sleep(600)
+  }
+
+  await keluar()
+  const masukMurid = await masuk(AKUN_MURID)
+  catat('login murid dari jendela beremulasi ponsel', masukMurid.status === 200, `status ${masukMurid.status}`)
+
+  const temuanMurid = { gulir: [], menembus: [], kecil: [], huruf: [] }
+  let kontrolMurid = 0
+
+  /** Kumpulkan temuan satu halaman ke keranjang milik pemanggilnya. */
+  const periksa = (jalur, d) => {
+    if (d.gulirMendatar > 1) temuanMurid.gulir.push(`${jalur} (+${d.gulirMendatar} px)`)
+    if (d.menembusTotal > 0) temuanMurid.menembus.push(`${jalur}: ${d.menembus.map((m) => `${m.el} → ${m.kanan}px`).join(' · ')}`)
+    if (d.kecilTotal > 0) temuanMurid.kecil.push(`${jalur}: ${d.kecilTotal}/${d.kontrolTotal} <44px (${d.kecil.map((k) => `${k.w}×${k.h} ${k.el}`).join(' · ')})`)
+    if (d.hurufIsi !== null && d.hurufIsi < 14) temuanMurid.huruf.push(`${jalur}: ${d.hurufIsi}px`)
+    kontrolMurid += d.kontrolTotal
+  }
+
+  const HALAMAN_MURID = ['/', '/materi', '/kuis', '/badge', '/progres-tema', '/avatar']
+
+  for (const jalur of HALAMAN_MURID) {
+    await buka(jalur)
+    periksa(jalur, await ukur())
+  }
+
+  // Materi dibuka seperti anak membukanya: pilih materi pertama, lalu tekan
+  // "Buka" pada bagian pertama (blok pertama bisa berupa teks, media, atau kuis).
+  await buka('/materi')
+  const jumlahMateri = await evalJs(`document.querySelectorAll('section.kartu-soal ul li button').length`)
+
+  // Telusuri daftar materi sampai ketemu yang MEMUAT KUIS: latihan sisipan itulah
+  // bagian yang paling sering dipakai anak di ponsel, dan materi pertama bisa
+  // saja hanya berisi media (dulu harness berhenti di situ, jadi panelnya tidak
+  // pernah terukur sama sekali).
+  let materiPertama = null
+  for (let i = 0; i < Math.min(jumlahMateri, 6); i++) {
+    const dipilih = await evalJs(`(() => {
+      const b = document.querySelectorAll('section.kartu-soal ul li button')[${i}]
+      if (!b) return null
+      b.click()
+      return b.textContent.trim().replace(/\\s+/g, ' ').slice(0, 40)
+    })()`)
+    if (dipilih === null) break
+    await sleep(2200)
+
+    const adaKuis = await evalJs(`[...document.querySelectorAll('button')].some((x) => {
+      const teks = x.textContent.trim()
+      if (teks !== 'Buka' && teks !== 'Buka ulang' && !teks.startsWith('Kerjakan:')) return false
+      return /kuis|latihan/i.test(x.closest('li')?.textContent ?? '')
+    })`)
+    if (adaKuis) {
+      materiPertama = dipilih
+      break
+    }
+    if (materiPertama === null) materiPertama = dipilih
+  }
+  // Bagian yang dibuka diutamakan yang MEMUAT KUIS: panel latihan sisipan itulah
+  // yang paling sering dipakai anak di ponsel, dan bagian pertama bisa saja
+  // sekadar media (dulu harness hanya mencoba bagian pertama, jadi panelnya
+  // tidak pernah terukur sama sekali).
+  const bukaBagianKuis = () =>
+    evalJs(`(() => {
+      const tombol = [...document.querySelectorAll('button')]
+      const kuis = tombol.find((x) => {
+        const teks = x.textContent.trim()
+        if (teks !== 'Buka' && teks !== 'Buka ulang' && !teks.startsWith('Kerjakan:')) return false
+        return /kuis|latihan/i.test(x.closest('li')?.textContent ?? '')
+      })
+      const apaSaja = tombol.find((x) => x.textContent.trim() === 'Buka')
+      const b = kuis ?? apaSaja
+      if (!b) return null
+      b.click()
+      return (b.closest('li')?.textContent ?? '').trim().replace(/\\s+/g, ' ').slice(0, 60)
+    })()`)
+
+  const bagianPertama = await bukaBagianKuis()
+  await sleep(3000)
+
+  // Kalau bagian pertama bukan kuis, coba bagian berikutnya sampai panelnya muncul.
+  if (bagianPertama !== null) {
+    for (let coba = 0; coba < 3; coba++) {
+      const adaPanel = await evalJs(`Boolean(document.querySelector('.ks'))`)
+      if (adaPanel) break
+      const lanjut = await evalJs(`(() => {
+        const tombol = [...document.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Buka' && !x.disabled)
+        if (tombol.length === 0) return false
+        tombol[0].click()
+        return true
+      })()`)
+      if (!lanjut) break
+      await sleep(2600)
+    }
+  }
+
+  if (materiPertama === null) {
+    catat('layar materi murid di ponsel', true, '(tidak ada materi terbit untuk kelas murid ini di DB dev — bagian ini dilewati dengan sadar)')
+  } else {
+    periksa('/materi (bagian dibuka)', await ukur())
+    catat('materi murid: bagian pertama bisa dibuka tanpa menyentuh sisi layar', bagianPertama !== null, `${materiPertama} → ${bagianPertama ?? '(tombol Buka tidak ada)'}`)
+
+    // Panel latihan sisipan (kalau bagian yang terbuka memang memuat kuis).
+    const panelLatihan = await evalJs(`(() => {
+      const panel = document.querySelector('.ks')
+      if (!panel) return null
+      const daftar = panel.querySelector('.ks-daftar-soal')
+      const r = panel.getBoundingClientRect()
+      const d = daftar ? daftar.getBoundingClientRect() : null
+      return {
+        lebar: Math.round(r.width),
+        tinggi: Math.round(r.height),
+        vw: window.innerWidth,
+        daftarTinggi: d ? Math.round(d.height) : 0,
+        daftarGulir: daftar ? getComputedStyle(daftar).overflowY : 'tidak ada',
+        soal: panel.querySelectorAll('.ks-soal, .ks-baris-soal, [data-soal]').length,
+      }
+    })()`)
+
+    if (panelLatihan === null) {
+      catat('panel latihan sisipan di ponsel', true, '(bagian pertama bukan kuis — panel latihan tidak muncul, dilewati dengan sadar)')
+    } else {
+      catat(
+        'panel latihan sisipan muat di lebar ponsel',
+        panelLatihan.lebar <= panelLatihan.vw,
+        `lebar=${panelLatihan.lebar} dari ${panelLatihan.vw}`,
+      )
+      catat(
+        'daftar soal latihan digulir, bukan dipotong',
+        panelLatihan.daftarGulir === 'auto' && panelLatihan.daftarTinggi > 0,
+        `tinggi daftar=${panelLatihan.daftarTinggi} overflow-y=${panelLatihan.daftarGulir}`,
+      )
+    }
+  }
+
+  // Peringkat (papan nilai kelas) di ponsel.
+  const kuisMurid = await evalJs(`fetch('/api/v1/kuis?per_page=50', { credentials: 'include', headers: { Accept: 'application/json' } })
+    .then((r) => r.json())
+    .then((d) => {
+      const arr = Array.isArray(d) ? d : (d.data ?? [])
+      const k = arr.find((satu) => satu.status === 'publikasi')
+      return k ? { kunci: k.slug ?? k.id, judul: k.judul } : null
+    })`)
+
+  if (kuisMurid === null) {
+    catat('papan peringkat di ponsel', true, '(tidak ada kuis publikasi di DB dev — dilewati dengan sadar)')
+  } else {
+    await buka(`/peringkat/${kuisMurid.kunci}`)
+    periksa('/peringkat', await ukur())
+    catat('papan peringkat terbuka di ponsel tanpa menggulir mendatar', true, `${kuisMurid.judul}`)
+  }
+
+  catat(
+    'tidak ada gulir mendatar di halaman murid pada lebar ponsel',
+    temuanMurid.gulir.length === 0,
+    temuanMurid.gulir.length === 0 ? `${HALAMAN_MURID.length + 2} halaman murid bersih` : temuanMurid.gulir.join(' · '),
+  )
+  catat(
+    'tidak ada elemen murid yang menembus tepi kanan viewport',
+    temuanMurid.menembus.length === 0,
+    temuanMurid.menembus.length === 0 ? 'bersih' : temuanMurid.menembus.join('  |  '),
+  )
+  catat(
+    `sasaran sentuh halaman murid ≥ 44 px (${kontrolMurid} kontrol diperiksa)`,
+    temuanMurid.kecil.length === 0,
+    temuanMurid.kecil.length === 0 ? 'bersih' : temuanMurid.kecil.join('  |  '),
+  )
+  catat(
+    'ukuran huruf teks halaman murid ≥ 14 px',
+    temuanMurid.huruf.length === 0,
+    temuanMurid.huruf.length === 0 ? 'bersih' : temuanMurid.huruf.join(' · '),
+  )
+
+  // ---------- 6. Editor materi (layar terpadat di aplikasi) di ponsel ----------
+  await keluar()
+  const masukGuruLagi = await masuk(AKUN_GURU)
+  catat('login guru lagi untuk mengukur editor materi', masukGuruLagi.status === 200, `status ${masukGuruLagi.status}`)
+
+  const idMateri = await evalJs(`fetch('/api/v1/materi', { credentials: 'include', headers: { Accept: 'application/json' } })
+    .then((r) => r.json())
+    .then((d) => { const arr = Array.isArray(d) ? d : (d.data ?? []); return arr[0]?.id ?? null })`)
+
+  if (idMateri === null) {
+    catat('editor materi di ponsel', true, '(belum ada materi di DB dev — dilewati dengan sadar)')
+  } else {
+    await buka(`/materi/${idMateri}/editor`)
+    const dEditor = await ukur()
+    catat(
+      'editor materi tidak menggulir mendatar di ponsel',
+      dEditor.gulirMendatar <= 1 && dEditor.menembusTotal === 0,
+      `+${dEditor.gulirMendatar}px · elemen menembus ${dEditor.menembusTotal} · materi #${idMateri}`,
+    )
+  }
+
   // ---------- Bersih-bersih ----------
   await buka('/masuk')
   await evalJs(`fetch('/api/v1/auth/keluar', {

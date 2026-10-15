@@ -165,10 +165,9 @@ class LaporanTagService
     {
         $kuis->loadMissing(['kelas', 'mapel']);
 
-        $ambang = $this->ambang((int) $kuis->school_id, (int) $kuis->class_id, (int) $kuis->getKey());
+        $ambang = $this->ambang((int) $kuis->school_id, $kuis->kelasIdAtauNull(), (int) $kuis->getKey());
 
-        $murid = Murid::query()
-            ->where('class_id', $kuis->class_id)
+        $murid = $kuis->muridCakupan()
             ->with('user')
             ->orderBy('id')
             ->get();
@@ -201,7 +200,7 @@ class LaporanTagService
             'kuis_id' => $kuis->getKey(),
             'judul_kuis' => $kuis->judul,
             'mapel_nama' => $kuis->mapel?->nama,
-            'kelas_nama' => $kuis->kelas?->nama,
+            'kelas_nama' => $kuis->namaKelas(),
             'ambang' => $ambang,
             'murid' => $daftar,
         ];

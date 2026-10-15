@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Sections\Report\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Sections\Attempt\Models\Attempt;
 use App\Sections\Attempt\Models\Tim;
 use App\Sections\Attempt\Services\TimService;
 use App\Sections\Quiz\Models\Kuis;
@@ -24,12 +26,17 @@ class RankingController extends Controller
         RankingService $service,
         TimService $timService,
     ): JsonResponse {
-        $this->authorize('view', $kuis);
-
         $pengguna = $request->user();
 
         if ($pengguna === null) {
             abort(401, 'Sesi tidak ditemukan.');
+        }
+
+        // Murid yang SUDAH mengerjakan kuis ini selalu boleh melihat peringkatnya,
+        // walau kuisnya kini diarsipkan atau kelasnya berubah: ia ikut
+        // dalam peringkat itu. Selain itu, aturan akses kuis biasa yang berlaku.
+        if (! $this->sudahMengerjakan($pengguna, $kuis)) {
+            $this->authorize('view', $kuis);
         }
 
         // Peringkat berisi nama seluruh murid kelas ini. Siswa tamu bukan
@@ -53,5 +60,25 @@ class RankingController extends Controller
             $pengguna->isGuru(),
             $tim instanceof Tim ? (int) $tim->getKey() : null,
         ));
+    }
+
+    /** Murid (bukan tamu) yang punya pengerjaan ulangan terkumpul pada kuis ini. */
+    private function sudahMengerjakan(User $pengguna, Kuis $kuis): bool
+    {
+        if ($pengguna->isGuru() || $pengguna->isTamu()) {
+            return false;
+        }
+
+        $pengguna->loadMissing('murid');
+
+        if ($pengguna->murid === null) {
+            return false;
+        }
+
+        return Attempt::query()
+            ->where('quiz_id', $kuis->getKey())
+            ->where('student_id', $pengguna->murid->getKey())
+            ->whereNotNull('dikumpulkan_at')
+            ->exists();
     }
 }

@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import EditorSoal from '../../../sections/question/EditorSoal.jsx'
+import EditorSoal from '../../../sections/question/editor/EditorSoal.jsx'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)

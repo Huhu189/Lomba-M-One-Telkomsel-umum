@@ -3,7 +3,9 @@
  * konten: { teks, petunjuk? } · kunci: { kata_kunci: [{ teks, bobot? }] }
  * nilai : string
  */
+import BatasKarakter from './BatasKarakter.jsx'
 import MediaSoal from './MediaSoal.jsx'
+import { BATAS_URAIAN } from './batasJawaban.js'
 import { teksAman } from '../tipeSoal.js'
 
 /**
@@ -36,6 +38,8 @@ export default function SoalUraian({
   nama = 'soal',
 }) {
   const kataKunci = daftarKataKunci(kunci)
+  const teks = typeof nilai === 'string' ? nilai : ''
+  const idHitung = `${nama}-hitung`
 
   return (
     <div className="soal-render">
@@ -43,15 +47,22 @@ export default function SoalUraian({
       <MediaSoal konten={konten} />
 
       <textarea
-        className="form-control"
-        rows={4}
+        className="form-control uraian-isian"
+        rows={6}
         name={nama}
         aria-label="Jawaban uraian"
-        value={typeof nilai === 'string' ? nilai : ''}
+        aria-describedby={dinonaktifkan ? undefined : idHitung}
+        maxLength={BATAS_URAIAN}
+        value={teks}
         disabled={dinonaktifkan}
         onChange={(e) => onUbah?.(e.target.value)}
         placeholder={teksAman(konten.petunjuk) || 'Tulis jawabanmu dengan kalimat lengkap…'}
       />
+      {!dinonaktifkan && (
+        <div className="text-end mt-1">
+          <BatasKarakter id={idHitung} panjang={teks.length} batas={BATAS_URAIAN} />
+        </div>
+      )}
 
       {tampilkanKunci && kataKunci.length > 0 && (
         <p className="teks-lembut small mt-2 mb-0">

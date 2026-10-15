@@ -1,8 +1,8 @@
 /**
  * Penjaga perubahan yang belum tersimpan (14 Oktober 2026, temuan K3).
  *
- * Dua editor panjang — `sections/question/EditorSoal.jsx` dan
- * `sections/material/EditorMateri.jsx` — dulu membuang perubahan tanpa
+ * Dua editor panjang — `sections/question/editor/EditorSoal.jsx` dan
+ * `sections/material/editor/EditorMateri.jsx` — dulu membuang perubahan tanpa
  * peringatan: tautan menu, tombol Batal, tombol kembali peramban, dan refresh
  * langsung menghilangkan pekerjaan guru (badge "Belum tersimpan" terlalu kecil
  * untuk diandalkan). Berkas ini menyediakan dua hal yang dipakai keduanya:

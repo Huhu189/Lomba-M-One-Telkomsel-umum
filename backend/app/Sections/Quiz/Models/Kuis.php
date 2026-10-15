@@ -9,9 +9,11 @@ use App\Sections\Question\Models\Soal;
 use App\Sections\Quiz\Enums\StatusKuis;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Mapel;
+use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
 use Database\Factories\KuisFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -126,6 +128,50 @@ class Kuis extends Model
             ->withPivot('urutan')
             ->withTimestamps()
             ->orderBy('quiz_questions.urutan');
+    }
+
+    /**
+     * Kuis tanpa kelas = terbuka untuk **semua kelas** di sekolahnya.
+     * Guru yang tidak membatasi kelas cukup mengosongkan pilihan kelas.
+     */
+    public function untukSemuaKelas(): bool
+    {
+        return $this->class_id === null;
+    }
+
+    /** Nama kelas untuk tampilan/ekspor; kuis tanpa kelas = "Semua kelas". */
+    public function namaKelas(): string
+    {
+        return $this->class_id === null ? 'Semua kelas' : (string) ($this->kelas?->nama ?? '');
+    }
+
+    /** Kelas kuis sebagai int atau null (null = semua kelas), untuk resolusi pengaturan. */
+    public function kelasIdAtauNull(): ?int
+    {
+        return $this->class_id === null ? null : (int) $this->class_id;
+    }
+
+    /** Apakah murid dari kelas ini boleh mengerjakan kuis ini. */
+    public function terbukaUntukKelas(?int $kelasId): bool
+    {
+        if ($this->untukSemuaKelas()) {
+            return $kelasId !== null;
+        }
+
+        return $kelasId !== null && $kelasId === (int) $this->class_id;
+    }
+
+    /**
+     * Murid yang masuk cakupan kuis: satu kelas, atau seluruh murid sekolah
+     * bila kuis tidak membatasi kelas.
+     *
+     * @return Builder<Murid>
+     */
+    public function muridCakupan(): Builder
+    {
+        return Murid::query()
+            ->where('school_id', $this->school_id)
+            ->when($this->class_id !== null, fn ($q) => $q->where('class_id', $this->class_id));
     }
 
     public function sedangBerjalan(): bool

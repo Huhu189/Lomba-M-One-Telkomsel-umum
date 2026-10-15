@@ -33,7 +33,10 @@ class PenyimpananMateri
     /** Disk tempat berkas materi disimpan (di luar folder publik). */
     public const DISK = 'local';
 
-    public function __construct(private readonly KlasifikasiBerkas $klasifikasi) {}
+    public function __construct(
+        private readonly KlasifikasiBerkas $klasifikasi,
+        private readonly KonversiDokumenLama $konversi,
+    ) {}
 
     public function disk(): Filesystem
     {
@@ -212,6 +215,25 @@ class PenyimpananMateri
 
         $hasil = $this->klasifikasi->kenali($kepala);
 
+        // Dokumen kantor LAMA (.doc/.ppt/.xls, OLE): diubah ke bentuk modern tanpa
+        // makro supaya bisa ditampilkan. Gagal/tidak ada LibreOffice = perilaku lama.
+        if (str_starts_with($kepala, KonversiDokumenLama::MAGIC_OLE)) {
+            $ekstensiNama = $this->klasifikasi->ekstensiNama((string) $unggahan->nama_asli);
+            $ubah = $this->konversi->dikenali($ekstensiNama) ? $this->konversi->ubah($penuh, $ekstensiNama) : null;
+
+            if ($ubah !== null) {
+                copy($ubah['path'], $penuh);
+                @unlink($ubah['path']);
+                $total = (int) filesize($penuh);
+                $mimeBaru = [
+                    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                ][$ubah['ekstensi']];
+                $hasil = ['ekstensi' => $ubah['ekstensi'], 'mime' => $mimeBaru, 'kategori' => KategoriBerkas::Dokumen];
+            }
+        }
+
         // Arsip & berkas tak dikenal selalu disajikan sebagai `.upload` agar
         // browser tidak pernah menjalankannya; mime sajian pun diturunkan ke
         // octet-stream. Gambar/PDF/audio/video dan dokumen kantor memakai
@@ -223,6 +245,7 @@ class PenyimpananMateri
         $this->disk()->move($sementara, $direktori.'/'.$namaSimpan);
 
         $unggahan->forceFill([
+            'ukuran_total' => $total,
             'nama_simpan' => $namaSimpan,
             'ekstensi' => $ekstensiSajian,
             'mime' => $mimeSajian,

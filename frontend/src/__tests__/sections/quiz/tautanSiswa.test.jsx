@@ -17,7 +17,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import TautanSiswa from '../../../sections/quiz/TautanSiswa.jsx'
+import TautanSiswa from '../../../sections/quiz/komponen/TautanSiswa.jsx'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)

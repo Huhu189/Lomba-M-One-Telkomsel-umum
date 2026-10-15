@@ -16,7 +16,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import HalamanKuis from '../../../sections/quiz/HalamanKuis.jsx'
+import HalamanKuis from '../../../sections/quiz/halaman/HalamanKuis.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 
 vi.mock('../../../sections/quiz/api.js', async (importOriginal) => {
@@ -51,7 +51,7 @@ vi.mock('../../../sections/settings/api.js', async (importOriginal) => {
 })
 
 // Editor soal itu berat dan tidak diuji di sini (punya berkas tesnya sendiri).
-vi.mock('../../../sections/question/EditorSoal.jsx', () => ({ default: () => null }))
+vi.mock('../../../sections/question/editor/EditorSoal.jsx', () => ({ default: () => null }))
 
 const apiKuis = await import('../../../sections/quiz/api.js')
 const apiSekolah = await import('../../../sections/school/api.js')
@@ -171,34 +171,39 @@ describe('Editor kuis satu halaman', () => {
 
     // Isian langkah pertama masih di halaman yang sama dengan ringkasan terbit.
     expect(wadah.querySelector('input#kuis-judul')).not.toBeNull()
-    expect(wadah.textContent).toContain('dari 8 lengkap')
+    // 7 butir: kelas tidak lagi jadi syarat terbit (kuis tanpa kelas = semua
+    // kelas), jadi butirnya tinggal judul, mapel, durasi, dua syarat jadwal, dan
+    // dua syarat soal.
+    expect(wadah.textContent).toContain('dari 7 lengkap')
     expect(wadah.textContent).toContain('Judul terisi (minimal 3 huruf)')
   })
 
-  it('bar aksi lengket menyediakan Simpan draf dan Terbitkan dari posisi mana pun', async () => {
+  it('tidak ada pita aksi lengket di atas layar; aksinya ada di bagiannya masing-masing', async () => {
     await bukaEditorBaru()
     await tungguTeks('3. Tinjau dan publikasikan')
 
+    // Pita yang menempel di bawah kepala halaman sudah dihapus (15 Oktober
+    // 2026): ia menutupi bagian atas isi selama menggulir.
+    expect(wadah.querySelector('.bar-susun')).toBeNull()
+
+    // "Simpan draf" ada di kaki bagian 1 dan berada DI DALAM formulirnya, jadi
+    // menekan Enter di kolom tetap menyimpan (dulu diakali tombol tersembunyi).
     const simpan = tombol('Simpan draf')
-    const terbit = tombol('Terbitkan kuis')
-
-    // Keduanya di bar lengket di ATAS halaman, bukan di dasar bagian 3.
     expect(simpan).not.toBeNull()
+    expect(simpan?.type).toBe('submit')
+    expect(wadah.querySelector('form#form-kuis')?.contains(simpan ?? null)).toBe(true)
+    expect(wadah.querySelectorAll('button[type="submit"]')).toHaveLength(1)
+
+    // "Terbitkan kuis" di kaki bagian 3 — di tempat butir kelengkapan terbaca,
+    // dan masih mati selama drafnya belum lengkap (server tetap penentu).
+    const terbit = tombol('Publikasikan kuis')
     expect(terbit).not.toBeNull()
-
-    const bar = wadah.querySelector('.bar-susun')
-    expect(bar).not.toBeNull()
-    expect(bar?.textContent).toContain('Simpan draf')
-    expect(bar?.textContent).toContain('Terbitkan kuis')
-
-    // Draf baru belum lengkap → menerbitkan masih dikunci (server tetap penentu,
-    // ini hanya supaya guru tidak menekan tombol yang pasti ditolak).
     expect(terbit?.disabled).toBe(true)
+    expect(wadah.querySelector('#bagian-terbit')?.contains(terbit ?? null)).toBe(true)
 
-    // "Simpan draf" mengirim formulir bagian 1 lewat atribut form, jadi tetap
-    // bekerja walau tombolnya berada di luar <form>.
-    expect(simpan?.getAttribute('form')).toBe('form-kuis')
-    expect(wadah.querySelector('form#form-kuis')).not.toBeNull()
+    // Hanya satu tombol bernama "Simpan draf" di seluruh halaman.
+    const semua = /** @type {HTMLButtonElement[]} */ ([...wadah.querySelectorAll('button')])
+    expect(semua.filter((satu) => satu.textContent?.includes('Simpan draf'))).toHaveLength(1)
   })
 
   it('bagian 2 punya "Simpan susunan" sebagai jalan keluar tanpa menerbitkan', async () => {

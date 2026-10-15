@@ -314,7 +314,7 @@ describe('SoalUraian', () => {
 
     expect(html).toContain('Jelaskan cara menjumlahkan.')
     expect(html.match(/<textarea/g)).toHaveLength(1)
-    expect(html).toContain('rows="4"')
+    expect(html).toContain('rows="6"')
     expect(html).toContain('name="s2"')
   })
 

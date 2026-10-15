@@ -89,7 +89,14 @@ class AttemptService
                     'kuis' => 'Kuis ini tidak dibuka untuk siswa tamu. Minta gurumu membukanya atau masuk dengan akun murid.',
                 ]);
             }
-        } elseif ((int) $profil->class_id !== (int) $kuis->class_id) {
+        } elseif (
+            // Kuis tanpa kelas berlaku untuk seluruh kelas di sekolahnya — bukan
+            // seluruh sekolah di aplikasi. Batas sekolah dijaga di sini juga,
+            // bukan hanya di policy: jalur "kerjakan" tidak boleh bergantung
+            // pada satu pemeriksaan otorisasi saja.
+            (int) $profil->school_id !== (int) $kuis->school_id
+            || ! $kuis->terbukaUntukKelas($profil->class_id === null ? null : (int) $profil->class_id)
+        ) {
             throw ValidationException::withMessages(['kuis' => 'Kuis ini bukan untuk kelasmu.']);
         }
 
@@ -166,7 +173,7 @@ class AttemptService
         $nomorPercobaan = $sudahDikumpulkan + 1;
 
         if ($sudahDikumpulkan > 0) {
-            $peta = $this->pengaturan->semua((int) $kuis->school_id, (int) $kuis->class_id, (int) $kuis->getKey())['pengaturan'];
+            $peta = $this->pengaturan->semua((int) $kuis->school_id, $kuis->kelasIdAtauNull(), (int) $kuis->getKey())['pengaturan'];
             $retryDiizinkan = (bool) ($peta[KunciPengaturan::Retry->value]['nilai'] ?? KunciPengaturan::Retry->bawaan());
             // Bawaan 3 percobaan (sama dengan nilai bawaan kunci pengaturan).
             $batasPercobaan = (int) ($peta[KunciPengaturan::BatasPercobaan->value]['nilai'] ?? KunciPengaturan::BatasPercobaan->bawaan());
@@ -575,7 +582,7 @@ class AttemptService
 
         $peta = $this->pengaturan->semua(
             (int) $attempt->school_id,
-            (int) $kuis->class_id,
+            $kuis->kelasIdAtauNull(),
             (int) $kuis->getKey(),
         )['pengaturan'];
 
@@ -591,7 +598,7 @@ class AttemptService
     {
         $peta = $this->pengaturan->semua(
             (int) $kuis->school_id,
-            (int) $kuis->class_id,
+            $kuis->kelasIdAtauNull(),
             (int) $kuis->getKey(),
         )['pengaturan'];
 

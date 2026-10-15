@@ -59,7 +59,7 @@ class RankingService
     private function pengaturan(Kuis $kuis): array
     {
         return $this->pengaturan
-            ->semua((int) $kuis->school_id, (int) $kuis->class_id, (int) $kuis->getKey())['pengaturan'];
+            ->semua((int) $kuis->school_id, $kuis->kelasIdAtauNull(), (int) $kuis->getKey())['pengaturan'];
     }
 
     /** Apakah ranking ditampilkan untuk murid pada kuis ini. */

@@ -28,7 +28,7 @@ class PengaturanService
      *     sekolah_id: int,
      *     kelas_id: int|null,
      *     kuis_id: int|null,
-     *     pengaturan: array<string, array{nilai: bool|int, tipe: string, label: string, kelompok: string, bawaan: bool|int, sumber: string, terkunci: bool}>
+     *     pengaturan: array<string, array{nilai: bool|int, tipe: string, label: string, kelompok: string, tampil: bool, bawaan: bool|int, sumber: string, terkunci: bool}>
      * }
      */
     public function semua(int $sekolahId, ?int $kelasId = null, ?int $kuisId = null): array
@@ -67,6 +67,7 @@ class PengaturanService
                 'tipe' => $kunci->tipe(),
                 'label' => $kunci->label(),
                 'kelompok' => $kunci->kelompok(),
+                'tampil' => $kunci->tampil(),
                 'bawaan' => $kunci->bawaan(),
                 'sumber' => $sumber,
                 'terkunci' => isset($sekolah['terkunci'][$k]),

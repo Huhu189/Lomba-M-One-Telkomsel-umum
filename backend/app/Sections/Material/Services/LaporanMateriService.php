@@ -9,7 +9,6 @@ use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\ProgresMateri;
 use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Report\Services\LaporanTagService;
-use App\Sections\School\Models\Murid;
 
 /**
  * Laporan materi untuk guru: siapa sudah menempuh sampai mana, dan bagaimana
@@ -33,11 +32,13 @@ class LaporanMateriService
     {
         $materi->loadMissing(['kelas', 'mapel', 'tag', 'blok.kuis.soal.tag']);
 
-        $ambang = $this->tag->ambang((int) $materi->school_id, (int) $materi->class_id, null);
+        // Materi tanpa kelas (15 Oktober 2026) memakai ambang pengaturan tingkat
+        // sekolah, dan cakupan muridnya seluruh sekolah — bukan "kelas 0" yang
+        // tidak pernah ada, yang dulu membuat laporannya selalu kosong.
+        $ambang = $this->tag->ambang((int) $materi->school_id, $materi->kelasIdAtauNull(), null);
         $blok = $materi->blok;
 
-        $murid = Murid::query()
-            ->where('class_id', $materi->class_id)
+        $murid = $materi->muridCakupan()
             ->with('user')
             ->orderBy('id')
             ->get();
@@ -195,7 +196,7 @@ class LaporanMateriService
                 'judul' => $materi->judul,
                 'status' => $materi->status->value,
                 'mapel_nama' => $materi->mapel?->nama,
-                'kelas_nama' => $materi->kelas?->nama,
+                'kelas_nama' => $materi->namaKelas(),
                 'tema_nama' => $materi->tag?->nama,
             ],
             // Peta perjalanan kelas: nama pos yang sesungguhnya (termasuk nama

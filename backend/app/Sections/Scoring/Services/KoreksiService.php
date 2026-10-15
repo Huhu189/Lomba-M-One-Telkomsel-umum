@@ -93,7 +93,7 @@ class KoreksiService
             'kuis_id' => $kuis->getKey(),
             'judul_kuis' => $kuis->judul,
             'mapel_nama' => $kuis->mapel?->nama,
-            'kelas_nama' => $kuis->kelas?->nama,
+            'kelas_nama' => $kuis->namaKelas(),
             'alasan_min' => self::ALASAN_MIN,
             'ai_aktif' => $this->aiAktif(),
             'jumlah' => count($item),

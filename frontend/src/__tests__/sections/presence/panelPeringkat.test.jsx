@@ -20,8 +20,8 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import PanelLayarMurid from '../../../sections/presence/PanelLayarMurid.jsx'
-import HalamanPeringkat from '../../../sections/report/HalamanPeringkat.jsx'
+import PanelLayarMurid from '../../../sections/presence/komponen/PanelLayarMurid.jsx'
+import HalamanPeringkat from '../../../sections/report/halaman/HalamanPeringkat.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 
 vi.mock('../../../sections/report/api.js', async (importOriginal) => {

@@ -261,6 +261,9 @@ export async function imporMurid(berkas) {
   form.append('file', berkas)
   const respons = await client.post('/v1/murid/impor', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    // Impor ratusan baris + hash sandi jauh lebih lama dari batas bawaan 15 detik;
+    // timeout di klien padahal server masih bekerja membuat guru mengulang impor.
+    timeout: 120_000,
   })
   return skemaResponsImpor.parse(respons.data)
 }

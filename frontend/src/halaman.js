@@ -38,53 +38,55 @@ import { RUTE } from './routes.js'
  */
 const muat = {
   // Auth (slice 01).
-  daftar: () => import('./sections/auth/HalamanDaftar.jsx'),
-  lupaSandi: () => import('./sections/auth/HalamanLupaSandi.jsx'),
-  aturUlangSandi: () => import('./sections/auth/HalamanAturUlangSandi.jsx'),
-  buatSandi: () => import('./sections/auth/HalamanBuatSandi.jsx'),
-  verifikasiEmail: () => import('./sections/auth/HalamanVerifikasiEmail.jsx'),
-  perluVerifikasi: () => import('./sections/auth/HalamanPerluVerifikasi.jsx'),
+  daftar: () => import('./sections/auth/halaman/HalamanDaftar.jsx'),
+  lupaSandi: () => import('./sections/auth/halaman/HalamanLupaSandi.jsx'),
+  masukTamu: () => import('./sections/auth/halaman/HalamanMasukTamu.jsx'),
+  aturUlangSandi: () => import('./sections/auth/halaman/HalamanAturUlangSandi.jsx'),
+  buatSandi: () => import('./sections/auth/halaman/HalamanBuatSandi.jsx'),
+  verifikasiEmail: () => import('./sections/auth/halaman/HalamanVerifikasiEmail.jsx'),
+  perluVerifikasi: () => import('./sections/auth/halaman/HalamanPerluVerifikasi.jsx'),
 
   // Data induk & akun (slice 02).
-  akun: () => import('./sections/settings/HalamanAkun.jsx'),
+  akun: () => import('./sections/settings/halaman/HalamanAkun.jsx'),
   // Panel admin sekolah (14 Okt 2026) — hanya peran admin.
-  adminAkun: () => import('./sections/admin/HalamanAkunSekolah.jsx'),
-  kelas: () => import('./sections/school/HalamanKelas.jsx'),
-  mapel: () => import('./sections/school/HalamanMapel.jsx'),
-  murid: () => import('./sections/school/HalamanMurid.jsx'),
-  imporMurid: () => import('./sections/school/HalamanImporMurid.jsx'),
+  adminAkun: () => import('./sections/admin/halaman/HalamanAkunSekolah.jsx'),
+  kelas: () => import('./sections/school/halaman/HalamanKelas.jsx'),
+  mapel: () => import('./sections/school/halaman/HalamanMapel.jsx'),
+  murid: () => import('./sections/school/halaman/HalamanMurid.jsx'),
+  imporMurid: () => import('./sections/school/halaman/HalamanImporMurid.jsx'),
 
   // Bank soal, tag, dan kuis (slice 03).
-  bankSoal: () => import('./sections/question/HalamanBankSoal.jsx'),
-  tag: () => import('./sections/question/HalamanTag.jsx'),
-  kuis: () => import('./sections/quiz/PilihHalamanKuis.jsx'),
-  kuisDetail: () => import('./sections/quiz/HalamanKuisDetail.jsx'),
+  bankSoal: () => import('./sections/question/halaman/HalamanBankSoal.jsx'),
+  tag: () => import('./sections/question/halaman/HalamanTag.jsx'),
+  kuis: () => import('./sections/quiz/halaman/PilihHalamanKuis.jsx'),
+  kuisDetail: () => import('./sections/quiz/halaman/HalamanKuisDetail.jsx'),
 
   // Pengerjaan & hasil ulangan (slice 04).
-  kerjakan: () => import('./sections/attempt/HalamanKerjakan.jsx'),
-  hasil: () => import('./sections/attempt/HalamanHasil.jsx'),
-  tim: () => import('./sections/attempt/HalamanTim.jsx'),
+  kerjakan: () => import('./sections/attempt/halaman/HalamanKerjakan.jsx'),
+  hasil: () => import('./sections/attempt/halaman/HalamanHasil.jsx'),
+  tim: () => import('./sections/attempt/halaman/HalamanTim.jsx'),
 
   // Peringkat, laporan, lencana, progres, koreksi (slice 05–06).
-  peringkat: () => import('./sections/report/HalamanPeringkat.jsx'),
-  laporan: () => import('./sections/report/HalamanLaporan.jsx'),
-  badge: () => import('./sections/report/HalamanBadge.jsx'),
-  progresTema: () => import('./sections/report/HalamanProgresTema.jsx'),
-  koreksi: () => import('./sections/scoring/HalamanKoreksi.jsx'),
+  peringkat: () => import('./sections/report/halaman/HalamanPeringkat.jsx'),
+  laporan: () => import('./sections/report/halaman/HalamanLaporan.jsx'),
+  badge: () => import('./sections/report/halaman/HalamanBadge.jsx'),
+  progresTema: () => import('./sections/report/halaman/HalamanProgresTema.jsx'),
+  koreksi: () => import('./sections/scoring/halaman/HalamanKoreksi.jsx'),
 
   // Anti-cheat & layar kelas (slice 07, 10).
-  monitor: () => import('./sections/cheat/HalamanMonitor.jsx'),
-  layar: () => import('./sections/presence/HalamanLayar.jsx'),
+  monitor: () => import('./sections/cheat/halaman/HalamanMonitor.jsx'),
+  layar: () => import('./sections/presence/halaman/HalamanLayar.jsx'),
 
   // Materi & avatar (slice 08).
-  materi: () => import('./sections/material/PilihHalamanMateri.jsx'),
-  editorMateri: () => import('./sections/material/EditorMateri.jsx'),
-  avatar: () => import('./sections/avatar/PilihHalamanAvatar.jsx'),
+  materi: () => import('./sections/material/halaman/PilihHalamanMateri.jsx'),
+  editorMateri: () => import('./sections/material/editor/EditorMateri.jsx'),
+  avatar: () => import('./sections/avatar/halaman/PilihHalamanAvatar.jsx'),
 }
 
 // Halaman auth.
 export const HalamanDaftar = malasHalaman(muat.daftar)
 export const HalamanLupaSandi = malasHalaman(muat.lupaSandi)
+export const HalamanMasukTamu = malasHalaman(muat.masukTamu)
 export const HalamanAturUlangSandi = malasHalaman(muat.aturUlangSandi)
 export const HalamanBuatSandi = malasHalaman(muat.buatSandi)
 export const HalamanVerifikasiEmail = malasHalaman(muat.verifikasiEmail)

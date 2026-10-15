@@ -43,12 +43,17 @@ class MateriController extends Controller
         }
 
         $kelasId = $pengguna?->murid?->class_id;
+        $sekolahId = $pengguna?->murid?->school_id;
 
+        // Materi tanpa kelas ikut tampil untuk semua kelas di sekolah murid
+        // (15 Oktober 2026) — sama seperti daftar kuis murid.
         return MateriResource::collection(
             Materi::query()
                 ->when(
-                    $kelasId !== null,
-                    fn ($query) => $query->where('class_id', $kelasId),
+                    $kelasId !== null && $sekolahId !== null,
+                    fn ($query) => $query
+                        ->where('school_id', $sekolahId)
+                        ->where(fn ($q) => $q->where('class_id', $kelasId)->orWhereNull('class_id')),
                     fn ($query) => $query->whereRaw('1 = 0'),
                 )
                 ->where('status', StatusMateri::Publikasi->value)

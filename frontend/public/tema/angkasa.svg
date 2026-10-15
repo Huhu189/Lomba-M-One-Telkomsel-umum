@@ -13,7 +13,7 @@
   bintang besar. Sisanya digambar di sini (karya sendiri, CC0).
 
   Bentuknya mengikuti rute pos tema ini (`RUTE_TEMA.angkasa` di
-  `frontend/src/sections/material/perjalanan.js`): pos meluncur dari landasan di
+  `frontend/src/sections/material/perjalanan/perjalanan.js`): pos meluncur dari landasan di
   kiri bawah ke Bulan di kanan atas, dan tiap pos berdiri **di atas benda yang
   digambar** — bukan di ruang kosong. Benda itu diberi `id` supaya bisa
   diperiksa mesin:

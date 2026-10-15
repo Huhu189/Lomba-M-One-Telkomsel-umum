@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
             SekolahSeeder::class,
             MasterDataSeeder::class,
             BankSoalSeeder::class,
+            // Materi contoh bertema perjalanan (Mendaki Gunung) — supaya demo
+            // punya satu perjalanan utuh: video, kuis sisipan, dan pos terakhir.
+            MateriContohSeeder::class,
         ]);
     }
 }

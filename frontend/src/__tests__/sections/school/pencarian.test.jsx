@@ -19,7 +19,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanMurid from '../../../sections/school/HalamanMurid.jsx'
+import HalamanMurid from '../../../sections/school/halaman/HalamanMurid.jsx'
 import { paramMurid } from '../../../sections/school/api.js'
 
 vi.mock('../../../sections/school/api.js', async (importOriginal) => {

@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import UnggahLampiran from '../../../sections/attempt/UnggahLampiran.jsx'
+import UnggahLampiran from '../../../sections/attempt/komponen/UnggahLampiran.jsx'
 
 vi.mock('../../../sections/attempt/lampiran.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())

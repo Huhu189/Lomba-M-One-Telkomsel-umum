@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import SetelanUlangan from '../../../sections/quiz/SetelanUlangan.jsx'
+import SetelanUlangan from '../../../sections/quiz/setelan/SetelanUlangan.jsx'
 
 vi.mock('../../../sections/settings/api.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())
@@ -117,17 +117,18 @@ describe('SetelanUlangan (satu tombol)', () => {
     pasang()
 
     // Data uji: yang menyala hanya proteksi rinci "blokir tempel" dan izin tamu
-    // = 2. Penyebutnya 8: saklar induk + 2 anti-cheat rinci (satu mati) +
-    // 5 aturan sesi (retry, ranking, mode tim, layar, rekam).
-    expect(await tungguTeks('2/8 aktif')).toBe(true)
+    // = 2. Penyebutnya 7: saklar induk anti-cheat + izin tamu + 5 aturan sesi
+    // (retry, ranking, mode tim, layar, rekam). Setelan yang tidak ditawarkan
+    // (`tampil: false`) tidak ikut dihitung — jumlahnya bukan 12 lagi.
+    expect(await tungguTeks('2/7 aktif')).toBe(true)
   })
 
   it('menekannya membuka panel berisi setelan, dan tombol tutup tersedia', async () => {
     pasang()
-    await tungguTeks('2/8 aktif')
+    await tungguTeks('2/7 aktif')
 
     act(() => tombol('Setelan ulangan')?.click())
-    await tungguTeks('Blokir tempel (paste) jawaban')
+    await tungguTeks('Blokir tempel jawaban')
 
     expect(cari('input#set-block_paste')).not.toBeNull()
     expect(cari('input#set-izinkan_tamu')).not.toBeNull()
@@ -143,10 +144,10 @@ describe('SetelanUlangan (satu tombol)', () => {
     ambilPengaturan.mockResolvedValue({ ...RESOLUSI, boleh_ubah: false })
 
     pasang()
-    await tungguTeks('2/8 aktif')
+    await tungguTeks('2/7 aktif')
 
     act(() => tombol('Setelan ulangan')?.click())
-    await tungguTeks('Izinkan siswa tamu')
+    await tungguTeks('Siswa tamu')
 
     const saklarTamu = /** @type {HTMLInputElement|null} */ (cari('input#set-izinkan_tamu'))
     const saklarAntiCheat = /** @type {HTMLInputElement|null} */ (cari('input#set-block_paste'))
@@ -162,33 +163,33 @@ describe('SetelanUlangan (satu tombol)', () => {
     expect(teks).toContain('Hanya bisa dibaca')
     expect(teks).toContain('hanya bisa diubah guru pemilik kuis ini')
 
-    // Tidak ada tombol massal yang mengundang menyimpan.
-    expect(tombol('Nyalakan semua')).toBeNull()
+    // Saklar lain pun tidak terkecuali: seluruh panel memang hanya-baca.
+    expect(/** @type {HTMLInputElement|null} */ (cari('input#set-anti_cheat'))?.disabled).toBe(true)
 
     // Kontrol positif: dengan `boleh_ubah` true, saklarnya hidup lagi.
     ambilPengaturan.mockResolvedValue(RESOLUSI)
     act(() => root.unmount())
     root = createRoot(wadah)
     pasang()
-    await tungguTeks('2/8 aktif')
+    await tungguTeks('2/7 aktif')
     act(() => tombol('Setelan ulangan')?.click())
-    await tungguTeks('Izinkan siswa tamu')
+    await tungguTeks('Siswa tamu')
 
     expect(/** @type {HTMLInputElement|null} */ (cari('input#set-izinkan_tamu'))?.disabled).toBe(false)
-    expect(tombol('Nyalakan semua')).not.toBeNull()
+    expect(wadah.textContent).not.toContain('Hanya bisa dibaca')
   })
 
   it('menjelaskan kapan pintu tamu benar-benar terbuka', async () => {
     pasang()
-    await tungguTeks('2/8 aktif')
+    await tungguTeks('2/7 aktif')
 
     act(() => tombol('Setelan ulangan')?.click())
-    await tungguTeks('Izinkan siswa tamu')
+    await tungguTeks('Siswa tamu')
 
     // Guru yang mengeluh "sudah dinyalakan tapi murid tetap dipaksa masuk"
     // harus menemukan sebabnya di panel ini, bukan lewat bertanya.
     const teks = wadah.textContent ?? ''
-    expect(teks).toContain('cukup menulis namanya di halaman masuk')
-    expect(teks).toContain('baru terbuka setelah kuis ini diterbitkan')
+    expect(teks).toContain('cukup menulis nama')
+    expect(teks).toContain('Pintu tamu baru terbuka setelah kuis diterbitkan')
   })
 })

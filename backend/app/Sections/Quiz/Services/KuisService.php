@@ -194,14 +194,10 @@ class KuisService
         }
 
         // Mapel dan kelas sengaja tidak wajib saat menyusun draf (guru boleh
-        // membuat soal lebih dulu), tapi tidak boleh kosong saat kuis terbit:
-        // tanpa kelas kuis tidak akan pernah muncul di daftar murid mana pun.
+        // membuat soal lebih dulu), dan kelas boleh kosong
+        // selamanya (= semua kelas bisa mengerjakan). Hanya mapel yang wajib saat terbit.
         if ($kuis->subject_id === null) {
             $galat['subject_id'] = 'Mapel wajib dipilih sebelum kuis diterbitkan.';
-        }
-
-        if ($kuis->class_id === null) {
-            $galat['class_id'] = 'Kelas wajib dipilih sebelum kuis diterbitkan.';
         }
 
         return $galat;

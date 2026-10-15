@@ -44,7 +44,8 @@ class ProgresMateriService
     ) {}
 
     /**
-     * Materi terbit untuk kelas murid.
+     * Materi terbit untuk kelas murid — termasuk materi tanpa kelas, yang
+     * terbuka untuk semua kelas di sekolahnya (15 Oktober 2026).
      *
      * @return Collection<int, Materi>
      */
@@ -57,7 +58,8 @@ class ProgresMateriService
         }
 
         return Materi::query()
-            ->where('class_id', $profil->class_id)
+            ->where('school_id', $profil->school_id)
+            ->where(fn ($query) => $query->where('class_id', $profil->class_id)->orWhereNull('class_id'))
             ->where('status', StatusMateri::Publikasi->value)
             ->with(['mapel', 'tag'])
             ->withCount('blok')
@@ -446,7 +448,7 @@ class ProgresMateriService
             throw ValidationException::withMessages(['materi' => 'Materi ini belum diterbitkan guru.']);
         }
 
-        if ((int) $profil->class_id !== (int) $materi->class_id) {
+        if (! $materi->terbukaUntukKelas($profil->class_id === null ? null : (int) $profil->class_id)) {
             throw ValidationException::withMessages(['materi' => 'Materi ini bukan untuk kelasmu.']);
         }
 
@@ -592,7 +594,16 @@ class ProgresMateriService
         $tuan = $media->filter(function (BlokMateri $b) use ($mime): bool {
             $tipeMime = (string) ($mime[(string) ($b->isi['unggahan_kode'] ?? '')] ?? '');
 
-            return str_starts_with($tipeMime, 'video/') || str_starts_with($tipeMime, 'audio/');
+            if (str_starts_with($tipeMime, 'video/') || str_starts_with($tipeMime, 'audio/')) {
+                return true;
+            }
+
+            // Klip **tautan** (15 Oktober 2026): berkasnya tidak pernah diunggah,
+            // jadi mime-nya memang tidak ada di tabel unggahan — yang menentukan
+            // adalah tautannya punya pemutar sematan (YouTube/Drive). Tanpa ini,
+            // kuis sisipan pada video YouTube yang diselipkan guru tidak pernah
+            // dianggap "di dalam video": ia jatuh jadi blok kuis biasa di bawahnya.
+            return TautanMedia::sematan((string) ($b->isi['tautan'] ?? '')) !== null;
         });
 
         $peta = [];

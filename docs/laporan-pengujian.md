@@ -1245,7 +1245,7 @@ ditemukan audit.
 | Berkas | Perbaikan | Alasan |
 | --- | --- | --- |
 | `frontend/src/theme/theme.css` | `.form-check` & `.form-check-label` minimal 44 px; `.soal-opsi .form-check-input` 1,35 rem; kelas baru `.tautan-jari` (padding blok 0,65 rem) | Audit UI menemukan **107 sasaran sentuh < 44 px** di halaman Kerjakan kuis (radio opsi 17×17, kotak centang 15×15) — terlalu kecil untuk jari anak SD |
-| `frontend/src/sections/attempt/HalamanKerjakan.jsx` | Tautan "Kembali ke daftar" memakai `.tautan-jari` | Tautan 17 px tinggi tidak layak jadi sasaran jari |
+| `frontend/src/sections/attempt/halaman/HalamanKerjakan.jsx` | Tautan "Kembali ke daftar" memakai `.tautan-jari` | Tautan 17 px tinggi tidak layak jadi sasaran jari |
 | `backend/app/Sections/Cheat/Enums/KategoriKecurangan.php` | Komentar enum diperbaiki | Komentar lama menyebut `tamper_suspected` sebagai kategori turunan server, padahal chunk anti-cheat menaruhnya di daftar kategori KLIEN — menyesatkan pembaca berikutnya |
 | `backend/database/seeders/RolesAndAdminSeeder.php` | Penegasan akun guru kedua + peran | Guru kedua dipakai uji kepemilikan (guru lain menolak mengubah milik orang lain) |
 | `backend/tests/Feature/Slice09TimTest.php` | Test baru **Q-18**: ekspor nilai memakai snapshot anggota tim | Uji nyata bahwa mengubah nama anak/nama tim setelah ujian **tidak** mengubah buku nilai |
@@ -1336,7 +1336,7 @@ I-01..I-06, dan U-01..U-07 — **belum dikerjakan** dan tidak diklaim selesai (l
 - Backend, basis data: migrasi baru `2026_10_09_000001_isi_pemilik_baris_tanpa_pemilik.php` dan
   `2026_10_09_000002_ganti_email_demo_ke_domain_test.php`; seeder `RolesAndAdminSeeder.php` dan
   `BankSoalSeeder.php`; factory `KuisFactory.php` + `SoalFactory.php` (state `milik()`).
-- Frontend: `sections/quiz/HalamanKuisDetail.jsx`, `sections/quiz/HalamanKuisMurid.jsx`,
+- Frontend: `sections/quiz/halaman/HalamanKuisDetail.jsx`, `sections/quiz/halaman/HalamanKuisMurid.jsx`,
   `sections/quiz/api.js` (komentar kontrak), `sections/settings/lingkup.js` (baru),
   `sections/settings/HalamanPengaturan.jsx`, `sections/settings/api.js` (parameter `kuis_id`).
 - Realtime: `realtime/src/server.js`.
@@ -1556,7 +1556,7 @@ terpisah), serta agregat baca `RankingService::semua`, `EksporNilaiService::bari
 | `backend/app/Sections/School/Http/Controllers/MuridController.php` | `index()` menerima `Request`, menghitung `per_page` (batas 1..200, bawaan 50) dan `page`, lalu `->paginate()` alih-alih `->get()` |
 | `backend/tests/Feature/SekolahTest.php` | Test murid tunggal membaca `data[]`; ditambah test paginasi (5 murid, `per_page=2`, halaman 3 memuat sisa, `per_page=1000` dipangkas ke `meta.per_page=200`) |
 | `frontend/src/sections/school/api.js` | `ambilMurid(classId, halaman)` mengembalikan `skemaHalamanMurid` (`data[]` + `meta`); skema baru menolak array telanjang |
-| `frontend/src/sections/school/HalamanMurid.jsx` | Tabel membaca `data.data`; ditambah state halaman, tombol **Sebelumnya/Berikutnya**, penunjuk "Halaman X dari Y", dan ringkasan "Menampilkan N dari M murid"; filter kelas mereset ke halaman 1 |
+| `frontend/src/sections/school/halaman/HalamanMurid.jsx` | Tabel membaca `data.data`; ditambah state halaman, tombol **Sebelumnya/Berikutnya**, penunjuk "Halaman X dari Y", dan ringkasan "Menampilkan N dari M murid"; filter kelas mereset ke halaman 1 |
 | `frontend/src/__tests__/sections/school/paginasi.test.js` | 4 uji skema halaman (data+meta, halaman kosong, tolak array telanjang, tolak tanpa meta) |
 
 Catatan: skrip smoke UI (`docs/smoke-ui-slice07.mjs`) sudah defensif (`Array.isArray(...) ? ... :
@@ -1629,9 +1629,9 @@ Baru: `docs/smoke-ui-nav.mjs` (smoke CDP: laci hamburger + responsivitas aksi di
 | `frontend/src/icons.jsx` | +13 ikon (menu, pensil, tongSampah, tambah, simpan, kisi, lapis, tanda, papan, gear, grafik, putar, jeda) + entri `daftarIkon` |
 | `frontend/src/shared/layout/KerangkaUmum.jsx` | Shell baru: `TautBagian` (ikon+label), `MENU_GURU`/`MENU_MURID`, tombol hamburger, laci + overlay, kunci gulir, tutup lewat Escape/tautan |
 | `frontend/src/theme/theme.css` | `.tombol-menu`, `.laci-overlay`, `.laci-nav*`, `.kartu-aksi`; `.papan-nav` membungkus (tidak menggeser) |
-| `frontend/src/sections/quiz/HalamanKuis.jsx` | Baris aksi ber-ikon + `.kartu-aksi` |
-| `frontend/src/sections/material/EditorMateri.jsx` | `MediaTersinkron` (media native) + `posisiTujuan`; pratinjau menerima `bermain`/`detik` |
-| `frontend/src/sections/material/editorMateri.js` | `offsetMedia()` (murni, teruji) + `dariServer` menolak durasi ≤ 0 |
+| `frontend/src/sections/quiz/halaman/HalamanKuis.jsx` | Baris aksi ber-ikon + `.kartu-aksi` |
+| `frontend/src/sections/material/editor/EditorMateri.jsx` | `MediaTersinkron` (media native) + `posisiTujuan`; pratinjau menerima `bermain`/`detik` |
+| `frontend/src/sections/material/editor/editorMateri.js` | `offsetMedia()` (murni, teruji) + `dariServer` menolak durasi ≤ 0 |
 | `frontend/src/__tests__/…` | `icons.test.jsx` (+2), `editorMateri.test.js` (+5), `kerangkaUmum.test.jsx` (baru, 5) |
 
 ### A.24.4 Verifikasi (dijalankan, bukan klaim)
@@ -1714,9 +1714,9 @@ Diubah:
 - `frontend/src/shared/ui/Tombol.jsx` (varian `bahaya`, ukuran `sedang`, `TombolIkon`)
 - `frontend/src/shared/layout/KerangkaUmum.jsx` (panel samping berkelompok + laci berkelompok)
 - `frontend/index.html` (Nunito + Nunito Sans via Google Fonts, tetap ada fallback sistem)
-- `frontend/src/sections/school/HalamanKelas.jsx`, `HalamanMapel.jsx`, `HalamanMurid.jsx`
-- `frontend/src/sections/question/HalamanTag.jsx`, `HalamanBankSoal.jsx`
-- `frontend/src/sections/quiz/HalamanKuis.jsx`
+- `frontend/src/sections/school/halaman/HalamanKelas.jsx`, `HalamanMapel.jsx`, `HalamanMurid.jsx`
+- `frontend/src/sections/question/halaman/HalamanTag.jsx`, `HalamanBankSoal.jsx`
+- `frontend/src/sections/quiz/halaman/HalamanKuis.jsx`
 - `frontend/src/__tests__/shared/layout/kerangkaUmum.test.jsx` (tes kelompok menu + ikon berbeda)
 
 ### A.25.4 Verifikasi (dijalankan, bukan klaim)
@@ -1792,9 +1792,9 @@ Dibuat:
   `frontend/src/__tests__/sections/home/dashboard.test.js`
 
 Diubah:
-- `frontend/src/sections/attempt/HalamanKerjakan.jsx` (kepala lengket, satu soal per layar, navigator,
+- `frontend/src/sections/attempt/halaman/HalamanKerjakan.jsx` (kepala lengket, satu soal per layar, navigator,
   penanda ragu, dialog ringkasan kumpul, banner koneksi putus)
-- `frontend/src/sections/home/Beranda.jsx` (dasbor guru + beranda murid)
+- `frontend/src/sections/home/halaman/Beranda.jsx` (dasbor guru + beranda murid)
 - `frontend/src/theme/theme.css` (gaya kepala ulangan, kartu ulangan, navigator, skala murid,
   kartu "perlu perhatian", angka ringkas)
 - `frontend/src/icons.jsx` (`IkonBendera`)
@@ -1878,10 +1878,10 @@ Dibuat:
 - `frontend/src/__tests__/sections/cheat/ringkasMonitor.test.js`
 
 Diubah:
-- `frontend/src/sections/cheat/HalamanMonitor.jsx` (kepala, angka ringkas, `TabelData`, terakhir aktif,
+- `frontend/src/sections/cheat/halaman/HalamanMonitor.jsx` (kepala, angka ringkas, `TabelData`, terakhir aktif,
   pil saringan catatan, keadaan kosong)
-- `frontend/src/sections/scoring/HalamanKoreksi.jsx` (kepala, skeleton, kosong-data, ukuran tombol)
-- `frontend/src/sections/report/HalamanProgresTema.jsx` (kepala, saringan tema, skeleton, dua keadaan kosong)
+- `frontend/src/sections/scoring/halaman/HalamanKoreksi.jsx` (kepala, skeleton, kosong-data, ukuran tombol)
+- `frontend/src/sections/report/halaman/HalamanProgresTema.jsx` (kepala, saringan tema, skeleton, dua keadaan kosong)
 - `frontend/src/theme/theme.css` (`.kolom-progres`)
 
 ### A.27.4 Verifikasi (dijalankan, bukan klaim)
@@ -1931,7 +1931,7 @@ sudah dikerjakan lebih dulu di A.17, jadi tidak disentuh lagi di sini. Sekalian 
 *Definition of Done* yang selama ini tersisa: **"satu sistem tombol"** — tidak ada lagi kelas tombol
 bawaan Bootstrap di JSX.
 
-### A.28.1 Papan 10 — Susun kuis tiga langkah (`sections/quiz/HalamanKuis.jsx`)
+### A.28.1 Papan 10 — Susun kuis tiga langkah (`sections/quiz/halaman/HalamanKuis.jsx`)
 
 - **Alur tiga langkah** memakai pil langkah bernomor baru (`LangkahPil` → `.pil-langkah`): langkah aktif
   ditandai `aria-current="step"` + teks pembaca layar "(sedang dibuka)", tiap langkah tombol asli (bisa
@@ -1950,7 +1950,7 @@ bawaan Bootstrap di JSX.
 - Kepala halaman memakai `HeaderHalaman` (jejak = tombol kembali) + lencana status kuis; daftar kuis
   memakai satu tombol ikon hapus (`TombolIkon`, `aria-label` menyebut judul kuis).
 
-### A.28.2 Papan 11 — Editor soal berpratinjau (`sections/question/EditorSoal.jsx`)
+### A.28.2 Papan 11 — Editor soal berpratinjau (`sections/question/editor/EditorSoal.jsx`)
 
 - Tata letak baru: **tiga kartu bernomor** di kolom utama (1. Pilih jenis soal → 2. Tulis soalnya →
   3. Pengaturan soal) dan **sisi kanan lengket** (`.sisi-lengket`, jadi statis di bawah `lg`) berisi
@@ -1992,10 +1992,10 @@ Dibuat:
 
 Diubah:
 
-- `frontend/src/sections/quiz/HalamanKuis.jsx` — alur tiga langkah + kepala halaman + bank soal centang.
-- `frontend/src/sections/quiz/HalamanKuisDetail.jsx`, `HalamanKuisMurid.jsx` — tautan jadi `TombolTaut`.
-- `frontend/src/sections/question/EditorSoal.jsx` — tiga kartu + sisi pratinjau/kelengkapan.
-- `frontend/src/sections/question/HalamanBankSoal.jsx` — `HeaderHalaman` + editor sebagai halaman.
+- `frontend/src/sections/quiz/halaman/HalamanKuis.jsx` — alur tiga langkah + kepala halaman + bank soal centang.
+- `frontend/src/sections/quiz/halaman/HalamanKuisDetail.jsx`, `HalamanKuisMurid.jsx` — tautan jadi `TombolTaut`.
+- `frontend/src/sections/question/editor/EditorSoal.jsx` — tiga kartu + sisi pratinjau/kelengkapan.
+- `frontend/src/sections/question/halaman/HalamanBankSoal.jsx` — `HeaderHalaman` + editor sebagai halaman.
 - `frontend/src/sections/question/validasi.js` — `kelengkapanSoal()` + `siapSoal()` (dan `skorWajar()`).
 - `frontend/src/__tests__/sections/question/validasi.test.js` — 4 tes kelengkapan + kesetaraan.
 - `frontend/src/sections/{material,presence,attempt,school,settings}/*.jsx` — sisa kelas tombol Bootstrap.
@@ -2408,9 +2408,9 @@ Backend (diubah): `Material/Http/Controllers/MateriController.php`,
 `Material/Http/Resources/MateriResource.php`, `Material/Services/MateriService.php`,
 `Material/Services/ProgresMateriService.php`, `tests/Feature/Slice08Test.php`.
 Backend (dibuat): `database/migrations/2026_10_10_000001_tambah_rasio_materi.php`.
-Frontend (diubah): `sections/material/EditorMateri.jsx`, `sections/material/HalamanMateriMurid.jsx`,
-`sections/material/api.js`, `sections/material/editorMateri.js`, `theme/theme.css`.
-Frontend (dibuat): `sections/material/PemutarMateri.jsx`, `sections/material/pemutarMateri.js`,
+Frontend (diubah): `sections/material/editor/EditorMateri.jsx`, `sections/material/halaman/HalamanMateriMurid.jsx`,
+`sections/material/api.js`, `sections/material/editor/editorMateri.js`, `theme/theme.css`.
+Frontend (dibuat): `sections/material/pemutar/PemutarMateri.jsx`, `sections/material/pemutar/pemutarMateri.js`,
 `__tests__/sections/material/editorMateriBingkai.test.js`, `__tests__/sections/material/pemutarMateri.test.js`.
 Dokumentasi (diubah): `laporan-pengujian.md` (bagian ini), `handoff-sesi.md`, `jurnal-prompt.md`,
 `penjelasan-fitur.md` (bagian 6 + daftar batasan), `word/*.docx` (tiga berkas yang sumbernya berubah).
@@ -2632,7 +2632,7 @@ Dibuat:
 - `frontend/src/sections/attempt/luring.js`
 - `frontend/src/sections/attempt/riwayatJawaban.js`
 - `frontend/src/sections/attempt/snapshot.js`
-- `frontend/src/sections/attempt/RiwayatJawaban.jsx`
+- `frontend/src/sections/attempt/komponen/RiwayatJawaban.jsx`
 - `frontend/src/__tests__/sections/attempt/luring.test.js`
 - `frontend/src/__tests__/sections/attempt/riwayatJawaban.test.js`
 - `frontend/src/__tests__/sections/attempt/snapshot.test.js`
@@ -2640,7 +2640,7 @@ Dibuat:
 - `docs/smoke-ui-luring.mjs`
 
 Diubah:
-- `frontend/src/sections/attempt/HalamanKerjakan.jsx` (keadaan jaringan, gerbang luring, riwayat, salinan
+- `frontend/src/sections/attempt/halaman/HalamanKerjakan.jsx` (keadaan jaringan, gerbang luring, riwayat, salinan
   attempt + tombol lanjut, jam monotonik, pemulihan antrean, banner, panel riwayat)
 - `frontend/src/sections/attempt/hitungMundur.js` (`jamKlien`, `sekarangTerkunci`, `hitungSisaAman`,
   `TOLERANSI_GESER_JAM_MS`)
@@ -2689,7 +2689,7 @@ blok yang sudah ada, tanpa mengubah cara blok disimpan atau dinilai.
   warna, wajib/opsional, selesai), posisi kini, jumlah langkah, `persen`, `tingkat` (nomor/nama/berikut/sisa),
   satuan, `tuntas`, dan `video_url` bertanda tangan. **Laporan guru** (`LaporanMateriService`) memakai peta
   yang **sama persis** — nama pos yang dilihat guru dan murid tidak bisa berbeda.
-- **`frontend/src/sections/material/perjalanan.js` (baru)** — skema Zod (langkah, tingkat, perjalanan,
+- **`frontend/src/sections/material/perjalanan/perjalanan.js` (baru)** — skema Zod (langkah, tingkat, perjalanan,
   katalog tema), **katalog cadangan** `TEMA_CADANGAN` yang identik dengan registry server (dipakai editor
   sebelum katalog termuat, jadi panel template tidak pernah kosong), dan pembantu murni: `faseKe`,
   `terapkanTema`, `langkahLokal`, `tingkatKe`, `petaLokal`, `titikJalur`, `posisiAktif`, `kenaikanUntuk`,
@@ -2789,8 +2789,8 @@ Dibuat — backend:
 - `backend/tests/Feature/Slice12TemaMateriTest.php`
 
 Dibuat — frontend:
-- `frontend/src/sections/material/perjalanan.js`
-- `frontend/src/sections/material/PetaPerjalanan.jsx`
+- `frontend/src/sections/material/perjalanan/perjalanan.js`
+- `frontend/src/sections/material/perjalanan/PetaPerjalanan.jsx`
 - `frontend/src/__tests__/sections/material/perjalanan.test.js`
 - `frontend/src/__tests__/sections/material/petaPerjalanan.test.jsx`
 
@@ -2806,10 +2806,10 @@ Diubah:
 - `backend/app/Sections/Material/Services/MateriService.php`, `ProgresMateriService.php`,
   `LaporanMateriService.php`
 - `backend/routes/api.php` (`GET /materi/tema`)
-- `frontend/src/sections/material/EditorMateri.jsx` (panel Template + pratinjau peta)
-- `frontend/src/sections/material/HalamanMateriMurid.jsx` (peta + banner kenaikan)
+- `frontend/src/sections/material/editor/EditorMateri.jsx` (panel Template + pratinjau peta)
+- `frontend/src/sections/material/halaman/HalamanMateriMurid.jsx` (peta + banner kenaikan)
 - `frontend/src/sections/material/api.js` (skema + `katalogTema()` + `tema` pada `sinkronBlok()`)
-- `frontend/src/sections/material/editorMateri.js`
+- `frontend/src/sections/material/editor/editorMateri.js`
 - `frontend/src/theme/theme.css` (adegan perjalanan, animasi awan & pendaki)
 - `frontend/src/__tests__/sections/material/api.test.js`, `editorMateri.test.js`, `pemutarMateri.test.js`
 - `docs/penjelasan-fitur.md` (bagian 6), `docs/laporan-pengujian.md` (A.34 ini), `docs/handoff-sesi.md`
@@ -2914,7 +2914,7 @@ Dibuat:
 Diubah:
 - `frontend/src/icons.jsx` (21 ikon jenis soal)
 - `frontend/src/sections/question/tipeSoal.js` (`IKON_TIPE`, `ikonTipe()`, medan `ikon` di `DAFTAR_TIPE`)
-- `frontend/src/sections/question/EditorSoal.jsx` (urutan kartu + pemilih petak berikon yang bisa dilipat)
+- `frontend/src/sections/question/editor/EditorSoal.jsx` (urutan kartu + pemilih petak berikon yang bisa dilipat)
 - `frontend/src/theme/theme.css` (`.pemilih-jenis`, `.petak-tipe`, dan variannya)
 - `docs/smoke-ui-susun.mjs`, `docs/smoke-ui-kuis-manual.mjs` (judul & kelas baru)
 - `docs/laporan-pengujian.md` (A.35 ini), `docs/penjelasan-fitur.md`, `docs/handoff-sesi.md`
@@ -3012,8 +3012,8 @@ memanggil fungsi internal):
 ### A.36.6 Berkas yang dibuat/diubah
 
 Diubah:
-- `frontend/src/sections/material/editorMateri.js` (`pangkasKiri`, `pangkasKanan`)
-- `frontend/src/sections/material/EditorMateri.jsx` (gagang pangkas, seret, papan tombol)
+- `frontend/src/sections/material/editor/editorMateri.js` (`pangkasKiri`, `pangkasKanan`)
+- `frontend/src/sections/material/editor/EditorMateri.jsx` (gagang pangkas, seret, papan tombol)
 - `frontend/src/theme/theme.css` (`.nle-pangkas-grup`, `.nle-pangkas`, `.nle-pangkas-kiri/kanan`)
 - `frontend/src/__tests__/sections/material/editorMateri.test.js` (6 tes pangkas)
 - `docs/smoke-ui-durasi-klip.mjs` (7 pemeriksaan gagang baru; putaran lanjutan menambah 4 lagi)
@@ -3134,8 +3134,8 @@ Pemeriksaan baru yang relevan di harness:
 ### A.37.6 Berkas yang dibuat/diubah
 
 Diubah:
-- `frontend/src/sections/material/PetaPerjalanan.jsx` (buang adegan SVG → video/foto/gradien)
-- `frontend/src/sections/material/EditorMateri.jsx` (keterangan template opsional)
+- `frontend/src/sections/material/perjalanan/PetaPerjalanan.jsx` (buang adegan SVG → video/foto/gradien)
+- `frontend/src/sections/material/editor/EditorMateri.jsx` (keterangan template opsional)
 - `frontend/src/theme/theme.css` (buang gaya adegan, panggung foto/video + gradien cadangan)
 - `frontend/src/__tests__/sections/material/petaPerjalanan.test.jsx`
 - `frontend/public/tema/LISENSI.md`
@@ -3244,9 +3244,9 @@ Diubah — backend:
 - `backend/tests/Feature/Slice08Test.php` (1 tes baru)
 
 Diubah — frontend:
-- `frontend/src/sections/material/EditorMateri.jsx` (`PemilihKuis`, panel penjelasan)
-- `frontend/src/sections/material/editorMateri.js` (`MAKS_PENJELASAN`, `penjelasanTerisi()`, baca/kirim penjelasan)
-- `frontend/src/sections/material/PemutarMateri.jsx` (`PenjelasanKuis`)
+- `frontend/src/sections/material/editor/EditorMateri.jsx` (`PemilihKuis`, panel penjelasan)
+- `frontend/src/sections/material/editor/editorMateri.js` (`MAKS_PENJELASAN`, `penjelasanTerisi()`, baca/kirim penjelasan)
+- `frontend/src/sections/material/pemutar/PemutarMateri.jsx` (`PenjelasanKuis`)
 - `frontend/src/sections/material/api.js` (skema `penjelasan` untuk guru & murid)
 - `frontend/src/theme/theme.css` (`.nle-pemilih-*`, `.nle-penjelasan`, `.pm-penjelasan*`)
 - `frontend/src/__tests__/sections/material/editorMateri.test.js`, `api.test.js`
@@ -3480,7 +3480,7 @@ Dibuat — kode produk backend:
 - `backend/app/Sections/Tamu/Http/Controllers/TamuController.php`
 
 Dibuat — UI:
-- `frontend/src/sections/auth/MasukTamu.jsx`
+- `frontend/src/sections/auth/komponen/MasukTamu.jsx`
 
 Dibuat — tes:
 - `backend/tests/Feature/TamuTest.php` (15 tes)
@@ -3502,11 +3502,11 @@ Diubah — UI:
 - `frontend/src/sections/auth/api.js` (`skemaInfoTamu`, `ambilInfoTamu`, `masukTamu`, `isTamu` pada `skemaUser`)
 - `frontend/src/sections/auth/authStore.js` (`masukTamu`, tipe `DataUser`)
 - `frontend/src/sections/auth/validasi.js` (`skemaTamu`)
-- `frontend/src/sections/auth/HalamanMasuk.jsx` (formulir tamu + info publik)
+- `frontend/src/sections/auth/halaman/HalamanMasuk.jsx` (formulir tamu + info publik)
 - `frontend/src/App.jsx` (tamu diantar ke daftar ulangan)
 - `frontend/src/shared/layout/KerangkaUmum.jsx` (menu + label siswa tamu)
-- `frontend/src/sections/home/Beranda.jsx` (beranda tamu tanpa pintasan akun)
-- `frontend/src/sections/quiz/HalamanKuisMurid.jsx` (salinan + sembunyikan Peringkat)
+- `frontend/src/sections/home/halaman/Beranda.jsx` (beranda tamu tanpa pintasan akun)
+- `frontend/src/sections/quiz/halaman/HalamanKuisMurid.jsx` (salinan + sembunyikan Peringkat)
 - `frontend/src/sections/report/api.js` + `HalamanLaporan.jsx` (panel siswa tamu)
 - `frontend/src/theme/theme.css` (gaya blok `.auth-tamu`)
 - `frontend/src/__tests__/sections/auth/authStore.sesi.test.js` (`isTamu: false` pada fixture)
@@ -3685,7 +3685,7 @@ Diubah:
 - `backend/app/Providers/AppServiceProvider.php` (limiter `tamu`)
 - `backend/routes/api.php` (`/auth/tamu` pakai `throttle:tamu`, keluar dari grup `auth`)
 - `frontend/src/sections/auth/api.js` (+`skemaResponTamu`, kirim & simpan kode perangkat)
-- `frontend/src/sections/auth/MasukTamu.jsx` (salinan bantuan menjelaskan perangkat, bukan nama unik)
+- `frontend/src/sections/auth/komponen/MasukTamu.jsx` (salinan bantuan menjelaskan perangkat, bukan nama unik)
 - `frontend/src/security/useExamSecurity.js` (T5)
 - `backend/tests/Feature/TamuTest.php` (+6 tes), `docs/penjelasan-fitur.md`, `docs/catatan-demo.md`,
   `docs/handoff-sesi.md`
@@ -4438,7 +4438,7 @@ kerusakannya lebih luas dari dugaan: dua dari lima titik jalur lama berdiri di u
 
 ### A.50.2 Yang dikerjakan
 
-- **Jalur peta jadi rute per tema (`RUTE_TEMA` di `sections/material/perjalanan.js`).** Tiap titik
+- **Jalur peta jadi rute per tema (`RUTE_TEMA` di `sections/material/perjalanan/perjalanan.js`).** Tiap titik
 ditetapkan dari hasil ukur latarnya sendiri, dan `titikJalur(jumlah, adegan)` hanya **menyebar pos rata
 di sepanjang rute** — jadi menambah/menyisipkan bagian tidak lagi melempar pos ke tempat lain, apalagi ke
 langit. Tema tak dikenal (materi lama) tetap mendapat rute pendakian.
@@ -4484,8 +4484,8 @@ ketahuan.
 
 ### A.50.4 Berkas
 
-- `frontend/src/sections/material/perjalanan.js` (`RUTE_TEMA`, `ruteUntuk`, `titikJalur(jumlah, adegan)`)
-- `frontend/src/sections/material/PetaPerjalanan.jsx` (titik jalur mengikuti adegan + dua berkas latar baru)
+- `frontend/src/sections/material/perjalanan/perjalanan.js` (`RUTE_TEMA`, `ruteUntuk`, `titikJalur(jumlah, adegan)`)
+- `frontend/src/sections/material/perjalanan/PetaPerjalanan.jsx` (titik jalur mengikuti adegan + dua berkas latar baru)
 - `frontend/src/theme/theme.css` (aturan jalur terang untuk `[data-adegan='angkasa']`)
 - `frontend/public/tema/pulau.svg`, `frontend/public/tema/angkasa.svg`, `frontend/public/tema/LISENSI.md`
 - `backend/app/Sections/Material/Registry/TemaPerjalanan.php` (dua template baru)
@@ -4531,7 +4531,7 @@ sehingga murid ke-51 tetap terbaca "tidak ada" padahal ada.
   mencari spasi), `%` dan `_` yang diketik guru di-escape supaya tidak berubah jadi wildcard (mencari
   "100%" harus menyaring), dan `nis`/`nisn` yang boleh NULL tidak membuat murid tanpa NIS hilang dari
   hasil pencarian nama.
-- **Kotak cari di halaman Murid** (`sections/school/HalamanMurid.jsx`): jeda **300 ms** sebelum kata kunci
+- **Kotak cari di halaman Murid** (`sections/school/halaman/HalamanMurid.jsx`): jeda **300 ms** sebelum kata kunci
   dikirim (tanpa jeda, satu ketikan "rina" menembak empat permintaan dan hasil ketikan pertama bisa tiba
   sesudah yang terakhir), daftar kembali ke **halaman 1** setiap kata kunci berubah, hasil lama tetap
   tampil selama pencarian baru berjalan (`keepPreviousData`, jadi tabel tidak berkedip), keadaan kosong
@@ -4563,7 +4563,7 @@ LULUS · kelas lain + kata kunci yang sama menghasilkan kosong (dua filter benar
 ### A.51.3 Berkas
 
 - `backend/app/Sections/School/Http/Controllers/MuridController.php` (filter `cari` + `saringPencarian`)
-- `frontend/src/sections/school/HalamanMurid.jsx`, `frontend/src/sections/school/api.js` (`paramMurid`)
+- `frontend/src/sections/school/halaman/HalamanMurid.jsx`, `frontend/src/sections/school/api.js` (`paramMurid`)
 - `frontend/src/__tests__/sections/school/pencarian.test.jsx` (baru), `backend/tests/Feature/SekolahTest.php`
 - `docs/smoke-ui-murid.mjs` (baru, dijalankan lewat `docs/jalankan-smoke-ui.sh murid`),
   `docs/penjelasan-fitur.md` (bagian 19), `docs/handoff-sesi.md`
@@ -4680,7 +4680,7 @@ memeriksa teks native akan salah tuduh di jsdom (dan di sebagian peramban) yang 
   `frontend/src/__tests__/security/deteksiTamper.test.js`,
   `frontend/src/__tests__/sections/school/penyorotan.test.js`
 - Diubah: `frontend/src/security/pengaturanProteksi.js` (saklar `detect_tamper`),
-  `frontend/src/security/useExamSecurity.js` (wiring pemindai + label), `frontend/src/sections/school/HalamanMurid.jsx`
+  `frontend/src/security/useExamSecurity.js` (wiring pemindai + label), `frontend/src/sections/school/halaman/HalamanMurid.jsx`
   (komponen `Sorot`), `frontend/src/__tests__/security/{pengaturanProteksi,useExamSecurity}.test.*`,
   `frontend/src/__tests__/sections/school/pencarian.test.jsx`, `backend/tests/Feature/SekolahTest.php`,
   `backend/app/Sections/Settings/Enums/KunciPengaturan.php` (saklar `DetectTamper`)
@@ -4769,7 +4769,7 @@ memakai `filter[class_id]` supaya kelasnya disaring **di server**. Hasil ulang: 
   `backend/app/Sections/Attempt/Http/Resources/AttemptResource.php`,
   `backend/app/Providers/AppServiceProvider.php` (limiter `denyut`), `backend/routes/api.php`,
   `frontend/src/sections/attempt/api.js` (`denyutProteksi` + skema `denyut`),
-  `frontend/src/sections/attempt/HalamanKerjakan.jsx` (wiring), `docs/smoke-http-fitur.mjs`
+  `frontend/src/sections/attempt/halaman/HalamanKerjakan.jsx` (wiring), `docs/smoke-http-fitur.mjs`
 
 ### A.54.5 Batasan jujur
 
@@ -4805,7 +4805,7 @@ tata letaknya:
 
 ### A.55.1 Yang dikerjakan
 
-- **Panel kuis keluar dari bingkai video** (`frontend/src/sections/material/PemutarMateri.jsx` +
+- **Panel kuis keluar dari bingkai video** (`frontend/src/sections/material/pemutar/PemutarMateri.jsx` +
   `frontend/src/theme/theme.css`): bingkai video dan panel kuis kini bersaudara di dalam satu panggung
   (`.pm-panggung`), sehingga panel tumbuh setinggi isinya dan tidak pernah menutupi gambar. Aturan
   `.pm-kuis-vertikal`, `.pm-kuis-horizontal`, dan `@container` yang lama dihapus; `container-type:
@@ -4852,7 +4852,7 @@ tata letaknya:
 - Baru: `docs/smoke-ui-kuis-materi.mjs` (harness GUI kuis di halaman materi; mandiri — soal, kuis, dan
   materi ujinya dibuat di awal dan dihapus lagi di blok `finally`).
 - Diubah: `frontend/src/theme/theme.css` (`.pm-panggung`, `.pm-kuis` jadi kartu di luar bingkai, aturan
-  `horizontal` ≥1200 px, bilah atas bisa menyusut), `frontend/src/sections/material/PemutarMateri.jsx`
+  `horizontal` ≥1200 px, bilah atas bisa menyusut), `frontend/src/sections/material/pemutar/PemutarMateri.jsx`
   (panggung + panel + fokus/gulir), `docs/jalankan-bukti-editor.sh`, `docs/jalankan-smoke-materi.sh`,
   `docs/jalankan-smoke-perjalanan.sh`, `docs/jalankan-smoke-ui.sh`, `docs/jalankan-tangkap-halaman.sh`
   (`--mute-audio`), `docs/penjelasan-fitur.md` (tata letak panel kuis diperjelas).
@@ -4980,7 +4980,7 @@ muncul sesuai keadaan: kuis masih draf (tautan baru hidup setelah diterbitkan) d
   pintu tamu. Nilai itu divalidasi `tujuanLanjut()` (hanya jalur internal, menolak `//host`, `\`, dan skema
   lain) supaya tidak jadi redirect terbuka.
 
-Aturan ringkasannya ditaruh sebagai logika murni di `frontend/src/sections/quiz/setelanSesi.js` (tanpa DOM)
+Aturan ringkasannya ditaruh sebagai logika murni di `frontend/src/sections/quiz/setelan/setelanSesi.js` (tanpa DOM)
 supaya bisa diuji tanpa peramban: **17 tes** menutup saklar induk mati, payload API yang rusak, kelompok
 pengaturan yang bukan proteksi, ambang bilangan bulat yang bukan saklar, dan pagar `tujuanLanjut`.
 
@@ -5014,15 +5014,15 @@ Rincian harness baru — semuanya diukur di peramban, bukan dibaca dari berkas s
 ```
 
 Yang membuat pemeriksaan panel kuat: angka di layar dibandingkan dengan **resolusi server dihitung ulang
-oleh modul aplikasi yang sama** (`ringkasSetelan` diimpor harness dari `sections/quiz/setelanSesi.js`),
+oleh modul aplikasi yang sama** (`ringkasSetelan` diimpor harness dari `sections/quiz/setelan/setelanSesi.js`),
 bukan dengan angka yang ditulis di harness. Jadi bila ringkasan di layar menyimpang dari aturan produk,
 harness-nya merah.
 
 ### A.59.3 Berkas
 
-- **Baru:** `frontend/src/sections/quiz/setelanSesi.js` (logika murni),
+- **Baru:** `frontend/src/sections/quiz/setelan/setelanSesi.js` (logika murni),
   `frontend/src/__tests__/sections/quiz/setelanSesi.test.js` (17 tes), `docs/smoke-ui-setelan-sesi.mjs`.
-- **Diubah:** `frontend/src/sections/quiz/HalamanKuis.jsx` (panel + tombol + kueri resolusi + catatan),
+- **Diubah:** `frontend/src/sections/quiz/halaman/HalamanKuis.jsx` (panel + tombol + kueri resolusi + catatan),
   `frontend/src/App.jsx` (`KeMasuk` + jalur pulang `state.lanjut` divalidasi `tujuanLanjut`),
   `frontend/src/icons.jsx` (ikon `IkonTautan` + entri `daftarIkon`), `docs/penjelasan-fitur.md` (bagian 5
   ditambah “Melihat akibatnya sebelum kuis diterbitkan”), `docs/catatan-demo.md`,
@@ -5160,9 +5160,9 @@ keadaan sebelum aturan dinyalakan — yang berubah hanya kotak sentuhnya.
 - **Diubah (backend):** `backend/app/Sections/School/Services/ImporMuridService.php`,
   `backend/tests/Feature/ImporMuridTest.php` (+2 tes).
 - **Diubah (frontend):** `frontend/src/shared/ui/Tombol.jsx` (`TombolTautIkon`),
-  `frontend/src/sections/home/Beranda.jsx` (aksi jadwal jadi ikon + label objek),
-  `frontend/src/sections/cheat/HalamanMonitor.jsx` (nama, lencana dibuang, `p-3`),
-  `frontend/src/sections/quiz/HalamanKuisDetail.jsx` & `frontend/src/sections/presence/HalamanLayar.jsx`
+  `frontend/src/sections/home/halaman/Beranda.jsx` (aksi jadwal jadi ikon + label objek),
+  `frontend/src/sections/cheat/halaman/HalamanMonitor.jsx` (nama, lencana dibuang, `p-3`),
+  `frontend/src/sections/quiz/halaman/HalamanKuisDetail.jsx` & `frontend/src/sections/presence/halaman/HalamanLayar.jsx`
   (label tombol „Monitor Ulangan”), `frontend/src/sections/settings/HalamanPengaturan.jsx` +
   `frontend/src/sections/settings/lingkup.js` (satu lingkup: ulangan),
   `frontend/src/__tests__/sections/settings/lingkup.test.js` (6 tes),
@@ -5244,11 +5244,11 @@ proses pembuatan susun soal buat spesifik per soalnya, jangan dipaksa semua dala
 
 ### A.61.4 Berkas
 
-- **Diubah (frontend):** `sections/attempt/HalamanKerjakan.jsx` (penjaga versi + spanduk),
+- **Diubah (frontend):** `sections/attempt/halaman/HalamanKerjakan.jsx` (penjaga versi + spanduk),
   `sections/attempt/api.js` (`versi_soal`, `soal_diubah_at`, `ambilVersiSoal`),
-  `sections/question/api.js` (`terkunci`), `sections/question/EditorSoal.jsx` (spanduk aturan, skor/tipe/aktif
+  `sections/question/api.js` (`terkunci`), `sections/question/editor/EditorSoal.jsx` (spanduk aturan, skor/tipe/aktif
   terkunci saat kuis berjalan, pemilih jenis jadi langkah 1, ringkasan kunci di bawah soal),
-  `sections/quiz/HalamanKuis.jsx` (pengingat kebijakan baru + total susunan di bawah),
+  `sections/quiz/halaman/HalamanKuis.jsx` (pengingat kebijakan baru + total susunan di bawah),
   `theme/theme.css` (`.ringkas-kunci-soal`, `.ringkas-susunan-akhir`).
 - **Diubah (harness/docs):** `docs/smoke-ui-kuis-manual.mjs` (tiga pemeriksaan baru + urutan langkah),
   `docs/catatan-demo.md`, `docs/laporan-pengujian.md` (entri ini).
@@ -5305,7 +5305,7 @@ Boleh dirombak asal pembuatan soal lebih mudah.
 
 ### A.62.4 Berkas
 
-- **Diubah (frontend):** `sections/question/EditorSoal.jsx` (kartu pertanyaan: pertanyaan + poin di atas,
+- **Diubah (frontend):** `sections/question/editor/EditorSoal.jsx` (kartu pertanyaan: pertanyaan + poin di atas,
   baris opsi berlingkaran kiri, mapel/tag pindah ke pengaturan, pemilih jenis dilipat jadi chip),
   `theme/theme.css` (`.baris-opsi`, `.pilih-opsi`, `.poin-soal`, `.soal-teks-utama`, penanda `<details>`
   pemilih jenis, varian padat ≥992px).
@@ -5551,8 +5551,8 @@ Catatan throttle jujur: sesi `auth` sesekali menabrak batas masuk per menit saat
 - **Baru (harness):** `docs/smoke-ui-mapel.mjs`, `docs/smoke-ui-avatar.mjs`, `docs/smoke-ui-auth.mjs`.
 - **Diubah (produk):** `backend/app/Sections/School/Http/Requests/SimpanMapelRequest.php` (+`messages()`),
   `backend/app/Sections/School/Http/Requests/SimpanMuridRequest.php` (+`messages()`),
-  `frontend/src/sections/school/HalamanMapel.jsx` (galat per kolom),
-  `frontend/src/sections/school/HalamanMurid.jsx` (galat per kolom).
+  `frontend/src/sections/school/halaman/HalamanMapel.jsx` (galat per kolom),
+  `frontend/src/sections/school/halaman/HalamanMurid.jsx` (galat per kolom).
 - **Diubah (runner):** `docs/jalankan-smoke-ui.sh` — `MAIL_MAILER=log` untuk harness `auth` saja, dengan
   peringatan tercetak bila backend-nya kebetulan sudah hidup.
 - **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 8).
@@ -5834,11 +5834,11 @@ literal regex di halaman — kesalahan alat kontrol, bukan produk; varian final 
 
 **Frontend**
 
-- `sections/quiz/PanelSetelanUlangan.jsx` (baru) = panel setelan **satu kuis**, tanpa pemilih lingkup:
+- `sections/quiz/setelan/PanelSetelanUlangan.jsx` (baru) = panel setelan **satu kuis**, tanpa pemilih lingkup:
   selalu menyimpan `lingkup: 'kuis'`, `lingkup_id: kuisId`. Nilai yang dikunci sekolah tetap ditandai
   “dikunci sekolah”, saklarnya mati, dan tombol massal melewatinya sambil melaporkan berapa yang dilewati.
 - Panel itu dipasang di `HalamanKuisDetail` (halaman `/kuis/:slug`) untuk guru/admin; murid tidak melihatnya.
-- `sections/settings/HalamanAkun.jsx` (baru) menggantikan `HalamanPengaturan.jsx`: nama tampilan + email
+- `sections/settings/halaman/HalamanAkun.jsx` (baru) menggantikan `HalamanPengaturan.jsx`: nama tampilan + email
   (hanya dibaca), ganti kata sandi (sandi lama wajib), tema terang/gelap, pintasan avatar untuk murid, dan
   penunjuk bahwa setelan ulangan ada di tiap kuis. Akun siswa tamu mendapat penjelasan, bukan formulir yang
   pasti ditolak.
@@ -5884,8 +5884,8 @@ literal regex di halaman — kesalahan alat kontrol, bukan produk; varian final 
 - **Baru (produk):** `backend/app/Sections/Auth/Services/AkunService.php`,
   `backend/app/Sections/Auth/Http/Controllers/AkunController.php`,
   `backend/app/Sections/Auth/Http/Requests/{PerbaruiAkunRequest,GantiSandiRequest}.php`,
-  `frontend/src/sections/settings/HalamanAkun.jsx`, `frontend/src/sections/settings/validasiAkun.js`,
-  `frontend/src/sections/quiz/PanelSetelanUlangan.jsx`.
+  `frontend/src/sections/settings/halaman/HalamanAkun.jsx`, `frontend/src/sections/settings/validasiAkun.js`,
+  `frontend/src/sections/quiz/setelan/PanelSetelanUlangan.jsx`.
 - **Baru (uji):** `backend/tests/Feature/AkunTest.php`,
   `frontend/src/__tests__/sections/question/bankSoalLazy.test.jsx`,
   `frontend/src/__tests__/sections/quiz/setelanUlangan.test.jsx`,
@@ -5893,10 +5893,10 @@ literal regex di halaman — kesalahan alat kontrol, bukan produk; varian final 
   `frontend/src/__tests__/sections/settings/validasiAkun.test.js`.
 - **Diubah (produk):** `backend/routes/api.php`, `backend/app/Providers/AppServiceProvider.php` (limiter `sandi`),
   `frontend/src/App.jsx`, `frontend/src/routes.js`, `frontend/src/shared/layout/KerangkaUmum.jsx`,
-  `frontend/src/sections/question/api.js`, `frontend/src/sections/question/HalamanBankSoal.jsx`,
-  `frontend/src/sections/quiz/HalamanKuis.jsx`, `frontend/src/sections/quiz/HalamanKuisDetail.jsx`,
-  `frontend/src/sections/settings/api.js`, `frontend/src/sections/presence/HalamanLayar.jsx`,
-  `frontend/src/sections/attempt/HalamanTim.jsx`.
+  `frontend/src/sections/question/api.js`, `frontend/src/sections/question/halaman/HalamanBankSoal.jsx`,
+  `frontend/src/sections/quiz/halaman/HalamanKuis.jsx`, `frontend/src/sections/quiz/halaman/HalamanKuisDetail.jsx`,
+  `frontend/src/sections/settings/api.js`, `frontend/src/sections/presence/halaman/HalamanLayar.jsx`,
+  `frontend/src/sections/attempt/halaman/HalamanTim.jsx`.
 - **Dihapus:** `frontend/src/sections/settings/HalamanPengaturan.jsx`,
   `frontend/src/sections/settings/lingkup.js`, `frontend/src/__tests__/sections/settings/lingkup.test.js`.
 - **Diubah (harness):** `docs/smoke-ui-pengaturan.mjs` (ditulis ulang: halaman akun + panel per kuis),
@@ -6113,7 +6113,7 @@ butuh kamera sungguhan (lihat batasan di bawah).
   `app/Sections/Presence/Services/MonitorService.php`, `app/Sections/Report/Services/EksporNilaiService.php`,
   `app/Sections/School/Services/ImporMuridService.php`, `app/Sections/Scoring/Services/PenilaiAiService.php`,
   `config/queue.php`.
-- **Diubah (frontend):** `frontend/src/sections/attempt/UnggahLampiran.jsx`.
+- **Diubah (frontend):** `frontend/src/sections/attempt/komponen/UnggahLampiran.jsx`.
 - **Baru (uji):** `frontend/src/__tests__/sections/attempt/unggahLampiranRekam.test.jsx` (205 baris, 3 tes).
 - **Diubah (docs):** `docs/laporan-pengujian.md` (entri ini), `docs/handoff-sesi.md` (bagian 14).
 - **Commit:** `b1025b4` (rekam diri + tes), `90512a2` (kueri backend), dan satu commit dokumentasi
@@ -6611,7 +6611,7 @@ Uji baru menjaga pagar, bukan hanya jalur bahagia:
   HalamanAkunSekolah.jsx}` · `src/__tests__/sections/admin/{api,dasborAdmin,akunSekolah}.test.js` +
   `{halamanAkunSekolah,berandaAdmin}.test.jsx`.
 - **Frontend diubah:** `src/routes.js` · `src/halaman.js` · `src/App.jsx` (penjaga `HanyaAdmin`) ·
-  `src/shared/layout/KerangkaUmum.jsx` (`GRUP_ADMIN`) · `src/sections/home/Beranda.jsx` ·
+  `src/shared/layout/KerangkaUmum.jsx` (`GRUP_ADMIN`) · `src/sections/home/halaman/Beranda.jsx` ·
   `src/__tests__/halaman.test.js`.
 - **Dokumen:** `docs/laporan-pengujian.md` · `docs/handoff-sesi.md`.
 
@@ -6736,10 +6736,10 @@ Uji baru menjaga pagar, bukan hanya jalur bahagia:
   `src/__tests__/sections/school/hanyaMelihat.test.jsx` · `src/sections/admin/*` (5 berkas A.75) ·
   `src/__tests__/sections/admin/*` (5 berkas A.75).
 - **Frontend diubah:** `App.jsx` · `halaman.js` · `routes.js` · `theme.css` ·
-  `shared/layout/KerangkaUmum.jsx` · `sections/home/Beranda.jsx` · `sections/school/HalamanKelas.jsx`,
-  `HalamanMapel.jsx`, `HalamanMurid.jsx` · `sections/question/HalamanBankSoal.jsx`, `HalamanTag.jsx` ·
-  `sections/quiz/HalamanKuis.jsx`, `HalamanKuisDetail.jsx` · `sections/material/HalamanMateri.jsx` ·
-  `sections/cheat/HalamanMonitor.jsx` · `sections/admin/BerandaAdmin.jsx`, `HalamanAkunSekolah.jsx` ·
+  `shared/layout/KerangkaUmum.jsx` · `sections/home/halaman/Beranda.jsx` · `sections/school/halaman/HalamanKelas.jsx`,
+  `HalamanMapel.jsx`, `HalamanMurid.jsx` · `sections/question/halaman/HalamanBankSoal.jsx`, `HalamanTag.jsx` ·
+  `sections/quiz/halaman/HalamanKuis.jsx`, `HalamanKuisDetail.jsx` · `sections/material/halaman/HalamanMateri.jsx` ·
+  `sections/cheat/halaman/HalamanMonitor.jsx` · `sections/admin/halaman/BerandaAdmin.jsx`, `HalamanAkunSekolah.jsx` ·
   `__tests__/halaman.test.js`, `__tests__/sections/admin/halamanAkunSekolah.test.jsx`.
 - **Komit:** `a66a06b` (61 berkas) di atas `12b29cf`, sudah **di-push** ke `origin/main`.
 
@@ -6869,7 +6869,7 @@ Vitest **87 berkas / 821 tes** · peramban kepala sekolah dan halaman-halaman ba
   +pemeriksaan keadaan awal “pintu tamu tertutup sebelum diuji”).
 - **Data dev dibersihkan:** kuis sisa 313 “Pintu tamu uji …” (terbit, `izinkan_tamu=true`) + baris
   `settings`-nya + soal “Soal pintu tamu”, yaitu peninggalan run `tamu` sebelum akunnya dipindah ke guru.
-- **Diubah (aplikasi):** `frontend/src/sections/admin/HalamanAkunSekolah.jsx` (Esc menu “…” tidak lagi
+- **Diubah (aplikasi):** `frontend/src/sections/admin/halaman/HalamanAkunSekolah.jsx` (Esc menu “…” tidak lagi
   menutup panelnya).
 - **Komit:** `…` “Uji jalur kepala sekolah di peramban sungguhan dan pindahkan harness guru ke akun guru”
   (35 berkas, di atas `64f48e5`) — **belum di-push**.
@@ -6918,7 +6918,7 @@ Penyebabnya kombinasi dua hal yang masing-masing benar:
   baru*, dan menegaskan **jawaban ulangan tetap tersimpan di perangkat ini** beserta jalan kembali lewat menu.
 - **`frontend/src/halaman.js`** — 28 halaman memakai `malasHalaman(muat.…)`; pemuatnya ditempelkan sebagai
   properti `pemuat` supaya bisa dijaga tes.
-- **`frontend/src/sections/home/Beranda.jsx`** — dasbor admin (`BerandaAdmin`) yang juga dimuat malas kini
+- **`frontend/src/sections/home/halaman/Beranda.jsx`** — dasbor admin (`BerandaAdmin`) yang juga dimuat malas kini
   memakai pembungkus yang sama: sebelumnya satu kegagalan unduh di beranda admin juga menutup seluruh aplikasi.
 - **`frontend/src/__tests__/halaman.test.js`** — pagar bundelnya diperbarui ke sifat baru (tiap halaman
   dibungkus pembungkus malas, **punya pemuatnya sendiri-sendiri**, dan semua pemuat benar-benar impor
@@ -6968,7 +6968,7 @@ Langkah luring yang tadinya merah, sekarang di layar sungguhan (kutipan keluaran
 
 - **Baru:** `frontend/src/shared/ui/MalasHalaman.jsx`, `frontend/src/shared/ui/GagalMuatHalaman.jsx`,
   `frontend/src/__tests__/shared/malasHalaman.test.jsx` (5 tes).
-- **Diubah:** `frontend/src/halaman.js`, `frontend/src/App.jsx` (komentar), `frontend/src/sections/home/Beranda.jsx`,
+- **Diubah:** `frontend/src/halaman.js`, `frontend/src/App.jsx` (komentar), `frontend/src/sections/home/halaman/Beranda.jsx`,
   `frontend/src/__tests__/halaman.test.js`, `docs/smoke-ui-luring.mjs`.
 - **Dihapus:** `docs/smoke-ui-luring-diag.mjs` (harness diagnostik sementara; tidak pernah dikomit).
 - **Komit:** “Perbaiki modul halaman yang gagal diunduh agar tidak mematikan seluruh aplikasi” (lihat handoff).
@@ -7009,7 +7009,7 @@ memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend men
 
 ### A.79.3 Yang saya perbaiki setelah menerapkannya (dan alasannya)
 
-1. **`frontend/src/sections/material/KartuIngat.jsx` — JSDoc salah nama parameter.** Berkas kiriman menulis
+1. **`frontend/src/sections/material/perjalanan/KartuIngat.jsx` — JSDoc salah nama parameter.** Berkas kiriman menulis
    `@param {'ingat'|'belum'} nilai` untuk fungsi yang parameternya bernama `nilaiBaru`, sehingga
    `npm run check` (checkJs) **GAGAL** (`TS8024` + `TS7006`). Diperbaiki ke `nilaiBaru`; bukan sekadar
    mematikan pemeriksaan.
@@ -7078,7 +7078,7 @@ memuat siswa tamu, dengan peringkat seri yang sama (1, 2, 2, 4). Uji backend men
   `backend/app/Sections/Question/Registry/RangkumKunci.php`,
   `frontend/src/sections/material/{KuisSisipan.jsx,KartuIngat.jsx,ringkasanKuis.js}`,
   `frontend/src/__tests__/sections/material/{kuisSisipan.test.jsx,ringkasanKuis.test.js}`.
-- **Disunting setelah ditinjau:** `frontend/src/sections/material/KartuIngat.jsx` (JSDoc),
+- **Disunting setelah ditinjau:** `frontend/src/sections/material/perjalanan/KartuIngat.jsx` (JSDoc),
   `docs/smoke-ui-kuis-materi.mjs` (harness mengikuti desain baru + 2 pemeriksaan baru).
 - **Komit:** “Terapkan perubahan kuis sisipan materi + sesuaikan harnessnya” (lihat handoff).
 
@@ -7206,7 +7206,7 @@ Dua keputusan yang sengaja diambil:
   `peringkat_asli`), `tests/Feature/Slice05Test.php`, `tests/Feature/RankingSemangatTest.php` (baru).
 - **Frontend:** `src/sections/report/api.js` (skema `guru`/`terbuka_*`/`bonus_*`/`detail_saya` + kunci jejak
   bonus opsional), `src/sections/report/tampilan.js` (`angkaTampil`, `catatanBonusBaris`, `ringkasAturanPapan`,
-  `angkaRapi`), `src/sections/report/HalamanPeringkat.jsx` (mode proyektor + kolom catatan guru),
+  `angkaRapi`), `src/sections/report/halaman/HalamanPeringkat.jsx` (mode proyektor + kolom catatan guru),
   `src/theme/theme.css` (`.peringkat-dibantu`), `src/__tests__/sections/report/tampilan.test.js`,
   `src/__tests__/sections/report/halamanPeringkat.test.jsx` (baru).
 - **Docs/harness:** `docs/smoke-ui-slice05.mjs` (+7 pemeriksaan, 20 → 27; ALAT dapat `klik`),
@@ -7235,7 +7235,7 @@ keputusan arsitektur yang menentukan seluruh sisanya:
   lewat layar kelas. Ini diuji dua lapis: Pest menulis daftar kunci payload murid secara penuh (menambah
   kolom apa pun menggagalkan tes), dan harness membandingkan payload nyata dari peramban.
 - **Komponen papannya satu.** Isi papan dipindah dari `HalamanPeringkat.jsx` ke
-  `src/sections/report/PapanPeringkat.jsx`, dan pengambilannya ke `src/sections/report/usePeringkat.js`
+  `src/sections/report/komponen/PapanPeringkat.jsx`, dan pengambilannya ke `src/sections/report/usePeringkat.js`
   (dengan `TOP_GURU`/`TOP_MURID` yang sama). Halaman peringkat dan panel baru sama-sama memakai keduanya,
   sehingga "sama persis" bukan janji yang dijaga manual — secara struktur hanya ada satu cara menggambar
   papan. Panel meminta `top` yang sama dengan halaman murid (20 baris).
@@ -7301,12 +7301,12 @@ keputusan arsitektur yang menentukan seluruh sisanya:
 - **Backend:** `app/Sections/Presence/Enums/ModeLayar.php` (case `Peringkat` + label + catatan pagar),
   `app/Sections/Presence/Services/LayarService.php` (docblock pagar mode),
   `tests/Feature/Slice10LayarTest.php` (tes baru + `daftar_mode` 4 → 5).
-- **Frontend:** `src/sections/report/PapanPeringkat.jsx` (baru — papan dipindah ke sini),
+- **Frontend:** `src/sections/report/komponen/PapanPeringkat.jsx` (baru — papan dipindah ke sini),
   `src/sections/report/usePeringkat.js` (baru — satu jalur data, `TOP_GURU`/`TOP_MURID`),
-  `src/sections/report/HalamanPeringkat.jsx` (kini memakai keduanya),
-  `src/sections/presence/PanelPeringkatMurid.jsx` (baru), `src/sections/presence/PanelLayarMurid.jsx`
+  `src/sections/report/halaman/HalamanPeringkat.jsx` (kini memakai keduanya),
+  `src/sections/presence/komponen/PanelPeringkatMurid.jsx` (baru), `src/sections/presence/komponen/PanelLayarMurid.jsx`
   (cabang mode `peringkat`), `src/sections/presence/layar.js` (`MODE_PERIANGKAT`, `tanpaTulisan`,
-  `ringkasLayar`), `src/sections/presence/HalamanLayar.jsx` (pratinjau mode + kolom tulisan dimatikan),
+  `ringkasLayar`), `src/sections/presence/halaman/HalamanLayar.jsx` (pratinjau mode + kolom tulisan dimatikan),
   `src/__tests__/sections/presence/panelPeringkat.test.jsx` (baru),
   `src/__tests__/sections/presence/layar.test.js` (aturan mode baru).
 - **Docs/harness:**  `docs/smoke-ui-layar.mjs` (+18 pemeriksaan, 34 → 52), `docs/penjelasan-fitur.md`
@@ -7487,11 +7487,11 @@ tidak menyimpan apa pun.
 - **Backend:** `app/Sections/School/Services/MuridService.php` (email ikut disimpan di `ubah`),
   `tests/Feature/SekolahTest.php` (+1 tes: email baru benar-benar mengganti alamat masuknya, alamat lama
   hilang, `email_verified_at` tetap utuh).
-- **Frontend aplikasi:** `src/sections/school/HalamanKelas.jsx` (tombol `+` per baris + panel murid dengan
-  `class_id` terjaga), `src/sections/question/EditorSoal.jsx` (pembuat mapel + centang "Simpan & lanjut" +
-  pewarisan `jenisAwal`/`tagAwal` + `onSimpan(muatan, opsi)`), `src/sections/question/HalamanBankSoal.jsx`
-  (warisan jenis/mapel/tag + `onMapelDibuat` + `key` editor naik), `src/sections/quiz/HalamanKuis.jsx`
-  (`onMapelDibuat` untuk editor soal-baru-di-kuis), `src/sections/quiz/PanelSetelanUlangan.jsx` (saklar
+- **Frontend aplikasi:** `src/sections/school/halaman/HalamanKelas.jsx` (tombol `+` per baris + panel murid dengan
+  `class_id` terjaga), `src/sections/question/editor/EditorSoal.jsx` (pembuat mapel + centang "Simpan & lanjut" +
+  pewarisan `jenisAwal`/`tagAwal` + `onSimpan(muatan, opsi)`), `src/sections/question/halaman/HalamanBankSoal.jsx`
+  (warisan jenis/mapel/tag + `onMapelDibuat` + `key` editor naik), `src/sections/quiz/halaman/HalamanKuis.jsx`
+  (`onMapelDibuat` untuk editor soal-baru-di-kuis), `src/sections/quiz/setelan/PanelSetelanUlangan.jsx` (saklar
   berlebar tetap + `aria-label`), `src/theme/theme.css` (`.saklar-setelan`, `.saklar-setelan-teks`).
 - **Frontend uji (Vitest, lokasi terpusat):** `src/__tests__/sections/school/tambahMuridKelas.test.jsx`
   (baru, 4 tes), `src/__tests__/sections/question/mapelBaruEditor.test.jsx` (baru, 4 tes),
@@ -7526,7 +7526,7 @@ Dua hal yang dikerjakan, keduanya soal bentuk pemakaian, bukan aturan baru:
 
 ### A.84.2 Yang berubah
 
-**Editor kuis (`frontend/src/sections/quiz/HalamanKuis.jsx`):**
+**Editor kuis (`frontend/src/sections/quiz/halaman/HalamanKuis.jsx`):**
 
 - Alur langkah (`langkah` 0–2 yang menyembunyikan isi) diganti **bagian** (`bagian` 0–2) yang hanya
   dipakai pil pelompat: `LangkahPil` tetap, tetapi `onPilih` kini menggulir ke bagiannya
@@ -7547,7 +7547,7 @@ Dua hal yang dikerjakan, keduanya soal bentuk pemakaian, bukan aturan baru:
 - `LANGKAH_KUIS` → **`BAGIAN_KUIS`** (`susunKuis.js`), dengan komentar bahwa namanya bagian, bukan
   langkah yang harus dilalui.
 
-**Setelan ulangan (`frontend/src/sections/quiz/SetelanUlangan.jsx`, baru):**
+**Setelan ulangan (`frontend/src/sections/quiz/setelan/SetelanUlangan.jsx`, baru):**
 
 - Satu tombol + `<PanelForm>` (dialog samping, pola yang sudah dipakai panel form lain). Ringkasan di
   tombol memakai `ringkasSetelan()` yang **sama** dengan bagian "Tinjau" di editor, jadi angka di dua
@@ -7734,7 +7734,7 @@ jadi koma di dalam satu nama kolom dibuang supaya tidak menciptakan kolom baru),
 boleh **dibaca** dari soal lama, tetapi editor menyusunnya sebagai baris). Batas server tetap dijaga dan
 **diucapkan**: tabel maksimal `MAKS_SEL` = 40 sel, teka silang maksimal `MAKS_SISI_SILANG` per sisi.
 
-**`frontend/src/sections/question/EditorSoal.jsx`** (+656) — pembuat GUI-nya:
+**`frontend/src/sections/question/editor/EditorSoal.jsx`** (+656) — pembuat GUI-nya:
 
 - **Tabel:** `<table class="tabel-editor">` dengan kepala kolom yang bisa diketik, satu `<input>` per sel,
   isian "Jawaban diterima" **hanya muncul pada sel yang kosong** (sel berisi teks memang tidak dinilai),
@@ -7797,7 +7797,7 @@ tabel 9 kolom **menggulir di dalam bungkusnya** (geser halaman 0 px).
 
 ### A.86.5 Berkas
 
-- **Frontend aplikasi:** `src/sections/question/EditorSoal.jsx`, `src/sections/question/tipeSoal.js`,
+- **Frontend aplikasi:** `src/sections/question/editor/EditorSoal.jsx`, `src/sections/question/tipeSoal.js`,
   `src/theme/theme.css`. **Tidak ada** berkas backend/realtime yang diubah.
 - **Frontend uji (Vitest, lokasi terpusat):** `src/__tests__/sections/question/guiGridEditor.test.jsx`
   (baru, 15 tes — menguji lewat DOM editor dan **memeriksa muatan `onSimpan`**), 
@@ -7849,7 +7849,7 @@ dst.) supaya editor tidak lagi penuh kotak merah.
 **2. Jenis berkas tugas unggah dipilih dari daftar.**
 
 Daftarnya (`JENIS_BERKAS_TUGAS`) dicerminkan dari apa yang benar-benar bisa
-dikirim murid (`sections/attempt/UnggahLampiran.jsx`: foto, rekaman diri, berkas)
+dikirim murid (`sections/attempt/komponen/UnggahLampiran.jsx`: foto, rekaman diri, berkas)
 dan dari klasifikasi isi berkas di server
 (`Sections/Material/Services/KlasifikasiBerkas.php`: gambar JPG/PNG/GIF/WEBP,
 PDF, video MP4/WEBM, suara MP3/WAV/OGG, arsip & dokumen kantor):
@@ -7943,7 +7943,7 @@ tombolnya kebetulan mati.
 
 ### A.87.5 Berkas
 
-- **Frontend aplikasi:** `src/sections/question/EditorSoal.jsx` (tombol hapus
+- **Frontend aplikasi:** `src/sections/question/editor/EditorSoal.jsx` (tombol hapus
   hantu di seluruh editor, kaki tabel untuk hapus kolom, papan jodoh, pengurut
   ▲/▼, pemilih jenis berkas), `src/sections/question/tipeSoal.js`
   (`JENIS_BERKAS_TUGAS`, `MAKS_JENIS_BERKAS`, `pilihanJenisBerkas`,
@@ -8070,7 +8070,7 @@ untuk catatan antrean.
   `tests/Feature/TeknikKoreksiTest.php` (baru), `Slice06Test.php`, `Slice08Test.php`.
 - **Frontend:** `sections/question/teknikKoreksi.js` (baru), `tipeSoal.js`,
   `validasi.js`, `EditorSoal.jsx`, `sections/scoring/api.js`, `tampilan.js`,
-  `HalamanKoreksi.jsx`, `sections/material/sajianBerkas.js` (baru), `api.js`,
+  `HalamanKoreksi.jsx`, `sections/material/berkas/sajianBerkas.js` (baru), `api.js`,
   `EditorMateri.jsx`, `HalamanMateriMurid.jsx`, `PemutarMateri.jsx`,
   `sections/attempt/lampiran.js`, `UnggahLampiran.jsx`, `theme/theme.css`,
   dan lima berkas tes baru/diperbarui.
@@ -8207,10 +8207,10 @@ Dua perbaikan:
   `Sections/Auth/Http/Resources/UserResource.php` (`perluBuatSandi`, `punyaGoogle`), `config/services.php`,
   `bootstrap/app.php` (alias `sandi-disetel`), `routes/api.php`, `app/Providers/AppServiceProvider.php`
   (limiter `google`), `.env.example`.
-- **Frontend baru:** `sections/auth/GoogleMasuk.jsx`, `sections/auth/HalamanBuatSandi.jsx`,
+- **Frontend baru:** `sections/auth/komponen/GoogleMasuk.jsx`, `sections/auth/halaman/HalamanBuatSandi.jsx`,
   `__tests__/sections/auth/googleMasuk.test.jsx`, `__tests__/sections/auth/buatSandiPertama.test.jsx`.
 - **Frontend diubah:** `sections/auth/api.js`, `sections/auth/authStore.js`, `sections/auth/validasi.js`,
-  `sections/auth/HalamanMasuk.jsx`, `sections/auth/HalamanDaftar.jsx`, `routes.js`, `halaman.js`, `App.jsx`,
+  `sections/auth/halaman/HalamanMasuk.jsx`, `sections/auth/halaman/HalamanDaftar.jsx`, `routes.js`, `halaman.js`, `App.jsx`,
   `theme/theme.css`, `__tests__/halaman.test.js`, `__tests__/sections/auth/masukTautanUlangan.test.jsx`,
   `__tests__/sections/auth/authStore.sesi.test.js`,
   `__tests__/sections/scoring/koreksiSekaliKlik.test.jsx` (tes dibuat menunggu elemen, tidak lagi rapuh).
@@ -8239,20 +8239,20 @@ Tambahan dari sesi yang sama: **tautan siswa** di halaman kelola kuis dibuat tet
 soalnya panjang (bar lengket) — diangkat jadi komponen `TautanSiswa.jsx`.
 
 ### A.90.2 Yang berubah
-- **`sections/material/pratinjauOOXML.js` (baru, 722 baris)** — pembaca OOXML murni tanpa pustaka baru
+- **`sections/material/editor/pratinjauOOXML.js` (baru, 722 baris)** — pembaca OOXML murni tanpa pustaka baru
   (`jszip` sudah dipakai proyek): `word/document.xml` (paragraf, butir, tabel, gambar), `ppt/slides/*.xml`
   (**urutan diambil dari `presentation.xml`**, bukan nomor berkas), dan `xl/worksheets/*.xml` (nama lembar,
   string bersama/inline, angka). Format kantor lama (`.doc`/`.ppt`/`.xls`) dan arsip sengaja ditolak, bukan
   ditebak.
-- **`sections/material/PratinjauDokumen.jsx` (baru)** — menggambar hasil bacaan itu di dalam kotak setinggi
+- **`sections/material/editor/PratinjauDokumen.jsx` (baru)** — menggambar hasil bacaan itu di dalam kotak setinggi
   `min(70vh, 40rem)` dengan kepala lengket, plus tombol “Tautan berkas” sebagai jalan keluar. Kegagalan
   dibedakan apa adanya: berkas rusak ≠ penolakan server ≠ berkas tanpa URL.
-- **`sections/material/HalamanMateriMurid.jsx` & `PemutarMateri.jsx`** — `media.sematan` dari server dipasang
+- **`sections/material/halaman/HalamanMateriMurid.jsx` & `PemutarMateri.jsx`** — `media.sematan` dari server dipasang
   sebagai `<iframe>` pada klip tautan (dan blok `tautan` ikut diisi supaya tidak ada media yang tampil kosong);
   blok teks/gambar/PDF memakai jalur “latihan di bawah bacaan”.
-- **`sections/quiz/TautanSiswa.jsx` (baru)** + `HalamanKuis.jsx` / `HalamanKuisDetail.jsx` — tautan siswa
+- **`sections/quiz/komponen/TautanSiswa.jsx` (baru)** + `HalamanKuis.jsx` / `HalamanKuisDetail.jsx` — tautan siswa
   beserta tombol salinnya dipindah jadi satu komponen lengket, labelnya bisa diganti sesuai tempat memasangnya.
-- **`sections/quiz/PanelSetelanUlangan.jsx`** — catatan syarat pintu tamu (kuis harus terbit) di bawah saklar.
+- **`sections/quiz/setelan/PanelSetelanUlangan.jsx`** — catatan syarat pintu tamu (kuis harus terbit) di bawah saklar.
 - **`theme/theme.css`** — gaya pratinjau dokumen, bingkai klip, dan bar tautan siswa.
 - **Backend nyaris tidak disentuh:** satu-satunya perubahan adalah komentar di `ProgresMateriService.php`
   (penjelasan nilai `sajian`); alamat bingkai memang sudah dihitung server di `Registry\TautanMedia`
@@ -8291,13 +8291,13 @@ soalnya panjang (bar lengket) — diangkat jadi komponen `TautanSiswa.jsx`.
   ada uji beban untuk dokumen yang sangat besar (ratusan gambar).
 
 ### A.90.5 Berkas
-- **Frontend baru:** `sections/material/pratinjauOOXML.js`, `sections/material/PratinjauDokumen.jsx`,
-  `sections/quiz/TautanSiswa.jsx`, `__tests__/sections/material/pratinjauOOXML.test.js`,
+- **Frontend baru:** `sections/material/editor/pratinjauOOXML.js`, `sections/material/editor/PratinjauDokumen.jsx`,
+  `sections/quiz/komponen/TautanSiswa.jsx`, `__tests__/sections/material/pratinjauOOXML.test.js`,
   `__tests__/sections/material/pratinjauDokumen.test.jsx`, `__tests__/sections/material/halamanMateriMurid.test.jsx`,
   `__tests__/sections/quiz/tautanSiswa.test.jsx`.
-- **Frontend diubah:** `sections/material/HalamanMateriMurid.jsx`, `sections/material/PemutarMateri.jsx`,
-  `sections/material/api.js`, `sections/quiz/HalamanKuis.jsx`, `sections/quiz/HalamanKuisDetail.jsx`,
-  `sections/quiz/PanelSetelanUlangan.jsx`, `theme/theme.css`,
+- **Frontend diubah:** `sections/material/halaman/HalamanMateriMurid.jsx`, `sections/material/pemutar/PemutarMateri.jsx`,
+  `sections/material/api.js`, `sections/quiz/halaman/HalamanKuis.jsx`, `sections/quiz/halaman/HalamanKuisDetail.jsx`,
+  `sections/quiz/setelan/PanelSetelanUlangan.jsx`, `theme/theme.css`,
   `__tests__/sections/material/penjelasanKuisSajian.test.jsx`, `__tests__/sections/quiz/setelanUlanganTombol.test.jsx`,
   `__tests__/sections/attempt/lampiranTerlipat.test.jsx`.
 - **Backend diubah:** `Sections/Material/Services/ProgresMateriService.php` (komentar `sajian` saja).
@@ -8382,8 +8382,8 @@ memang membuat `GET /v1/tamu` menjawab `true` (`TamuTest`).
 ### A.91.6 Berkas
 - **Backend diubah:** `Sections/Settings/Http/Controllers/PengaturanController.php` (`boleh_ubah` + pesan 403),
   `tests/Feature/PengaturanTest.php` (2 tes baru).
-- **Frontend diubah:** `sections/settings/api.js` (skema `boleh_ubah`), `sections/quiz/PanelSetelanUlangan.jsx`
-  (hanya-baca), `sections/auth/HalamanMasuk.jsx` (catatan pintu tertutup),
+- **Frontend diubah:** `sections/settings/api.js` (skema `boleh_ubah`), `sections/quiz/setelan/PanelSetelanUlangan.jsx`
+  (hanya-baca), `sections/auth/halaman/HalamanMasuk.jsx` (catatan pintu tertutup),
   `__tests__/sections/quiz/setelanUlanganTombol.test.jsx`, `__tests__/sections/auth/masukTautanUlangan.test.jsx`.
 
 ## A.92 — Bukti peramban jalur tamu (harness `tamu`) sesudah A.91 (15 Oktober 2026)
@@ -8400,3 +8400,225 @@ sehingga `GET /v1/tamu` kembali `diizinkan=false`.
 
 Batasan: harness ini mewakili keadaan **pintu terbuka**; keadaan pintu tertutup (yang dikeluhkan pemilik
 produk) diuji di jsdom (`masukTautanUlangan`) dan lewat HTTP (`PengaturanTest`), bukan di peramban.
+
+---
+
+## A.93 — Kuis tanpa kelas (berlaku semua kelas), SEO per halaman, dan pita lengket di editor kuis dihapus (15 Oktober 2026)
+
+### A.93.1 Permintaan
+
+Tiga hal dalam satu putaran, semuanya dari pemilik produk:
+
+1. **Terapkan `semua-perubahan.zip`** (perubahan yang dikerjakan di sesi lain) ke proyek, lalu lanjutkan.
+2. **"maksimalkan seo"** (dari putaran sebelumnya, belum selesai saat sesi berakhir).
+3. **"hapus card yang ada di atas layar, sangat mengganggu"** — setelah ditanya, yang dimaksud: **pita aksi lengket**
+   (`.bar-susun`) di atas halaman editor kuis. Pilihan itu dikonfirmasi pemilik produk lewat pertanyaan pilihan.
+
+### A.93.2 Yang berubah
+
+**a. Isi zip diterapkan (kuis tanpa kelas, panel setelan dirapikan, halaman akun, pratinjau materi).**
+`Kuis::untukSemuaKelas()/kelasIdAtauNull()/muridCakupan()/terbukaUntukKelas()`, `KuisService` (kelas tidak lagi
+syarat terbit), `KuisController@index`, `KuisPolicy@view`, `AttemptService`, `LaporanTagService`, `RankingService`,
+`KunciPengaturan::tampil()` + `PengaturanService` (setelan yang tidak ditawarkan disembunyikan), `PanelSetelanUlangan`,
+`SetelanUlangan`, `HalamanKuis`, `EditorMateri`, `tautanMedia`, `HalamanAkun`, dan berkas pendukungnya.
+
+**b. Satu celah yang ditemukan saat memeriksa zip itu — dan ditutup.**
+"Kuis tanpa kelas" berarti semua kelas **di sekolah kuis itu**, tetapi setelah `class_id` kosong, kelas tidak lagi
+menjadi penanda sekolah: `KuisPolicy@view` dan `AttemptService::mulai` hanya memeriksa kecocokan kelas. Akibatnya
+murid sekolah lain (yang punya kelas) ikut lolos ke kuis tanpa kelas milik sekolah ini. Sekarang keduanya memeriksa
+`school_id` lebih dulu — pagar di service tetap ada sebagai lapis kedua, bukan hanya mengandalkan policy.
+
+**c. SEO diselesaikan (modulnya sudah ada, tapi belum tersambung ke mana pun).**
+`shared/seo/meta.js` (sudah ada sebelumnya) kini benar-benar dipakai: `shared/seo/MetaHalaman.jsx` memasang judul +
+`description` + `robots` setiap jalur berubah, dipanggil **sekali** di `App.jsx`. Lima halaman yang dulu menulis
+`document.title` sendiri-sendiri (beranda, 404, kartu auth, dasbor admin, kelola akun sekolah) tidak lagi
+melakukannya — sisa judul di halaman lain tidak lagi "tertinggal" dari halaman sebelumnya. `index.html` memuat
+deskripsi + `robots` statis untuk keadaan sebelum JavaScript jalan.
+
+**d. Pita aksi lengket di editor kuis dihapus** (`HalamanKuis.jsx`), aksinya pindah ke tempatnya:
+"Simpan draf" ke kaki bagian 1 (**di dalam** formulirnya, jadi Enter di kolom tetap menyimpan dan tombol tersembunyi
+`sr-saja` tidak perlu lagi), "Publikasikan kuis" tetap di kaki bagian 3, dan lencana "x dari y lengkap" pindah ke
+judul bagian 3. Tautan siswa tetap ada di bagian 3.
+
+### A.93.3 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root) | **SEMUA HIJAU (exit 0)** — Pest **422 lulus (4241 asersi)** · Redis wajib **OK** · Pint **392 berkas bersih** · checkJs **exit 0** · ESLint **0 error** (3 peringatan lama) · Vitest **121 berkas / 1077 tes** · realtime **20** |
+| `php artisan test --filter=Slice05Test` | 11 lulus — termasuk tes baru: kuis tanpa kelas boleh dikerjakan kelas lain **di sekolah yang sama**, dan **ditolak 403** untuk murid sekolah lain |
+| `npx vitest run src/__tests__/seo/` | **9 lulus** — meta halaman publik `index, follow`; halaman aplikasi `noindex, follow`; query & garis miring diabaikan; `pasangMeta` tidak menggandakan tag; `MetaHalaman` mengikuti pergantian jalur |
+| `npx vitest run src/__tests__/sections/quiz/` | **59 lulus / 7 berkas** — termasuk kontrol negatif baru: `.bar-susun` **tidak ada**, "Simpan draf" hanya satu dan berada di dalam `<form>`, publikasi ada di bagian 3 |
+| `node --check docs/smoke-ui-susun.mjs` | lolos (harness diperbarui mengikuti UI baru) |
+| Pemeriksaan tipe (`npm run check`) | 7 galat yang tertinggal dari perubahan yang diterapkan (JSDoc `saklar()`/`angka()`/`TEKS` dan `pasangMeta`) **diperbaiki**, sekarang 0 |
+
+Tes yang ikut disesuaikan supaya tidak menyatakan perilaku lama: `editorSatuHalaman.test.jsx` (kelengkapan **7**
+butir, pita lengket → aksi di bagiannya), `setelanUlangan.test.jsx` (label saklar dari `TEKS`, setelan
+`tampil: false` tidak dirender, saklar terkunci memakai `ranking`), `setelanUlanganTombol.test.jsx`
+(ringkasan **2/7 aktif**, teks pintu tamu), `Slice05Test.php` (kelas bukan lagi syarat terbit).
+
+### A.93.4 Batasan jujur
+
+- **Harness peramban tidak dijalankan** putaran ini (`docs/jalankan-smoke-ui.sh susun` dan lainnya): yang tersedia
+  hanya mesin pengembangan lokal dan Chrome CDP, dan waktu yang ada dipakai untuk uji otomatis + `verify.sh`.
+  Harness `susun` sudah disesuaikan teksnya, tetapi **belum dibuktikan ulang di peramban**.
+- **Ekspor Word tidak diulang** (`docs/word/*.docx`) dan log mentah belum disegarkan
+  (`docs/export-log-sesi.py` + `export-word.sh`).
+- Uji cross-school di atas memakai `Sekolah::factory()` kedua di dalam basis data uji yang sama; ia membuktikan
+  pagar policy/service, bukan konfigurasi multi-sekolah di produksi (aplikasi ini satu sekolah per instalasi).
+
+## A.94 — Pita lengket editor materi juga dihapus + dua jebakan harnes editor (15 Oktober 2026)
+
+### A.94.1 Permintaan
+
+*"prioritaskan Bar aksi lengket di hapus dan lanjutkan lagi, jangan banyak tes, efisienkan waktu, boleh
+pararel"* — lanjutan A.93, yang baru membuang pita lengket di **editor kuis**. Tiga hal yang menjadi
+sasaran: hilangkan pita lengket di editor materi, lanjutkan pekerjaan tanpa menumpuk pengujian, dan pakai
+waktu seefisien mungkin (boleh menjalankan beberapa hal bersamaan).
+
+### A.94.2 Yang berubah
+
+**a. Pita aksi lengket editor materi dibuang.** `frontend/src/sections/material/editor/EditorMateri.jsx`: pita
+`.bar-susun` (Simpan · Terbitkan · Urungkan · lencana "Belum tersimpan") hilang dari halaman. Yang tinggal
+`<header class="nle-kepala">` (Daftar materi · judul materi · lencana status) sebagai baris biasa yang ikut
+tergulir bersama isinya — tidak lagi menutupi bagian atas layar selagi guru bekerja. Aksinya pindah ke blok
+baru `.nle-simpan` sebagai **unsur pertama panel alat** (`.nle-sidebar`). Di layar sempit panel alat tampil
+**sebelum** kanvas, jadi tombol Simpan/Terbitkan tetap terjangkau tanpa menggulir jauh; di layar lebar kolom
+panel itulah yang menempel (`.nle-sidebar`), jadi tombolnya tetap di tempat yang sama seperti sebelumnya.
+`frontend/src/theme/theme.css`: aturan `.bar-susun` (`position: sticky` + z-index + latar) **dihapus** — A.93
+masih menyimpannya karena editor materi memakainya, dan sekarang tidak ada komponen yang memakai kelas itu lagi.
+
+**b. Dua jebakan harnes `docs/smoke-ui-editor.mjs` — keduanya MERAH PALSU, bukan bug aplikasi.**
+
+1. **"Delete saat fokus di kolom isian tidak membuang klip" selalu gagal** (`2 → 1 klip`). `#nle-fase` duduk di
+   dalam `<details class="nle-lanjutan">` yang tertutup, dan isi `<details>` yang tertutup **tidak bisa
+   difokus**: `.focus()` menjadi no-op, fokus tinggal di tombol klip yang baru diklik, dan timeline membaca
+   Delete sebagai perintah buang klip. Harnes kini **membuka rangkanya lebih dulu** dan **memastikan fokusnya
+   benar-benar pindah** (`fokus di kolom: true`); kalau tidak pindah, pemeriksaannya merah dengan alasan yang
+   langsung terbaca — jadi pemeriksaan itu tidak lagi bisa merah tanpa sebab.
+2. **Harnes menggantung tepat sebelum bagian "pustaka media".** Dua jalankan berturut-turut berhenti di baris
+   `berkas pustaka audit siap dipakai klip` tanpa ringkasan dan tanpa blok pembersihan (materi/kuis audit tidak
+   dihapus). Ini bukan sekadar "menunggu sia-sia": `Runtime.evaluate` ke halaman **tidak pernah dijawab**.
+   Dibuktikan dengan kontrol di Chrome yang sama — target `about:blank` menjawab `1+1 = 2` sementara halaman
+   aplikasi tidak menjawab sama sekali, dan `Debugger.pause` juga diabaikan, padahal CPU renderer ~0% (jadi
+   bukan loop sibuk). Pelakunya **dialog bawaan peramban** dari `beforeunload`: `EditorMateri` memasang
+   `usePenjagaSebelumTutup(belumTersimpan && …)` di baris 1316, langkah papan tombol meninggalkan perubahan yang
+   belum tersimpan, lalu `Page.navigate` memicu "perubahan belum disimpan" — dan di Chrome headless baru dialog
+   itu **membekukan halaman sampai dijawab**. Harnes sekarang menerima `Page.javascriptDialogOpening`
+   (`accept: true`) dan mencatatnya di log; `evalJs` juga diberi batas **20 detik** supaya halaman beku berhenti
+   dengan galat yang jelas, bukan menggantung tanpa jejak.
+
+### A.94.3 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `./verify.sh` (root), dijalankan **sesudah** kedua berkas frontend diubah | **SEMUA HIJAU (exit 0)** — Pest **423 lulus (4278 asersi)** · Redis wajib **OK** · Pint **bersih** · checkJs **exit 0** · ESLint **0 error** (3 peringatan lama) · Vitest **122 berkas / 1097 tes** · realtime **20** |
+| `docs/jalankan-smoke-ui.sh editor` (jalankan terakhir) | **58/58 lulus, 0 gagal, exit 0** · 10 baris `UKUR` (ukuran, bukan pemeriksaan) · termasuk dua pemeriksaan yang diperbaiki dan seluruh rantai "pustaka media": tombol "Hapus berkas" **125×44 px**, dialog konfirmasi menyebut dampaknya, berkas hilang dari pustaka + klipnya hilang dari timeline + server membersihkan blok & baris unggahan, dan editor tidak lagi mengaku ada perubahan belum tersimpan · baris `(dialog peramban diterima otomatis)` muncul **tepat di titik** yang dulu menggantung |
+| Pembersihan harnes | `LULUS · materi/kuis/soal audit dihapus kembali · materi 189 · kuis 434 · soal 1 → 200,200,200` — basis data dev tidak meninggalkan sisa audit |
+| `node --check docs/smoke-ui-editor.mjs` | lolos (harnes diperbarui) |
+| Dua jalankan lebih awal (sebelum perbaikan dialog) | 52 pemeriksaan lulus, **0 gagal** di luar satu merah palsu yang diperbaiki, lalu menggantung di bagian "pustaka media" |
+
+Perubahan tata letak tidak menambah/mengubah pemeriksaan lain: harnes editor yang sama tetap mengukur
+gulir mendatar 0 px di 390/768/1366 px, elemen yang menembus tepi kanan, dan sasaran sentuh.
+
+### A.94.4 Batasan jujur
+
+- **Harnes lain tidak dijalankan ulang** putaran ini (`susun`, `mobile`, `perjalanan`, `kuis-materi`, …). Itu
+  memang permintaan pemilik produk ("jangan banyak tes"); yang dijalankan hanyalah harnes yang menyentuh
+  perubahan ini (`editor`) plus `./verify.sh` yang mencakup seluruh uji otomatis (Pest/Pint/checkJs/ESLint/
+  Vitest/realtime). Risiko yang tersisa disebut apa adanya: perubahan hanya menyentuh JSX/CSS editor materi,
+  dan kelas `.bar-susun` kini tidak dipakai komponen mana pun, sehingga harnes lain tidak punya alasan untuk
+  berubah — tetapi itu **alasan**, bukan bukti.
+- **`docs/word/*.docx` belum diekspor ulang** dan log mentah belum disegarkan (`docs/export-log-sesi.py` +
+  `export-word.sh`).
+- Angka "dua jalankan menggantung" di atas berasal dari Chrome headless di mesin pengembangan ini; sifatnya
+  lingkungan (headless baru memberlakukan dialog secara memblokir), bukan perilaku peramban pengguna akhir —
+  di peramban biasa, guru melihat pertanyaan "perubahan belum disimpan" dan bisa memilih tinggal.
+- **Tidak ada asersi peramban khusus "pita itu tidak lagi muncul" di editor materi.** Bukti putaran ini adalah:
+  kelas `.bar-susun` **dihapus** dari `theme.css` dan tidak dipakai komponen mana pun (`grep -rn "bar-susun"
+  frontend/src` hanya menyisakan komentar + kontrol negatif di `docs/smoke-ui-susun.mjs` untuk editor kuis),
+  ditambah harnes editor yang tetap 58/58 (semua ukuran tata letak) sesudah perubahannya. Kalau ingin pagar
+  eksplisit, tambahkan pemeriksaan `document.querySelector('.bar-susun') === null` di harnes editor pada putaran
+  berikutnya — itu **satu** baris dan tidak dijalankan sekarang supaya tidak menumpuk pengujian.
+
+## A.95 — Materi Fotosintesis dijadikan bahan ajar sungguhan (15 Oktober 2026)
+
+### A.95.1 Permintaan
+
+*"dari https://www.youtube.com/watch?v=nlXwuNHF8JM kau buatkan benar-benar materi khusus yang benar, soal asli
+dll kualitas tinggi — bukan tujuan audit namun beneran dipakai."*
+
+### A.95.2 Keadaan sebelum putaran ini (apa yang sudah ada, apa yang kurang)
+
+Materinya sudah ada sejak seeder sebelumnya: `MateriContohSeeder` menyusun **"Fotosintesis: Perjalanan Memasak
+Makanan di Daun"** dari video **`nlXwuNHF8JM`** = *PROSES FOTOSINTESIS PADA TUMBUHAN (KELAS 4 SD KURIKULUM
+MERDEKA)*, kanal Ratih Setyaningrum, panjang asli **185 detik**; 6 pos tema *Mendaki Gunung*, 4 kuis (3 latihan
+di dalam video pada detik 40/95/150 + ujian penutup setelah video), 13 soal, status **terbit** untuk kelas 4A.
+
+Yang membuatnya belum "kualitas tinggi" bukan susunannya, melainkan dua hal yang ditemukan saat diperiksa:
+
+1. **Kolom `pembahasan` dari 13 soal semuanya KOSONG.** Akibatnya `RingkasanKuisService` mengirim kartu ingat
+   tanpa alasan — anak melihat "jawaban benar: klorofil" tanpa keterangan kenapa.
+2. **Sisa data harnes audit** masih menempel di bank soal dev: kuis `AUDIT Kuis Editor Materi` (2 baris),
+   `Kuis AUDIT Editor Materi`, dan soal `Apa itu fotosintetis?` (salah tulis) — sisa dua jalankan harnes yang
+   mati di tengah sehingga blok `finally`-nya tidak pernah berjalan.
+
+### A.95.3 Yang berubah
+
+Berkas tunggal: `backend/database/seeders/MateriContohSeeder.php`.
+
+1. **`PEMBAHASAN` — pembahasan guru untuk 15 soal**, dikunci pada teks soalnya (bukan id, karena id berubah tiap
+   basis data sedangkan teks soal adalah penanda idempoten yang sudah dipakai seeder). Ditulis untuk anak kelas 4:
+   menyebut **alasan**, bukan mengulang jawaban. Contoh: *"Cahaya matahari juga bukan bahan: ia sumber energi yang
+   menyalakan dapur di daun"*, *"Oksigen justru DILEPAS tumbuhan saat fotosintesis, jadi oksigen bukan bahan yang
+   diserap"*. Panjang tiap teks dijaga di bawah batas kolom (`SimpanSoalRequest`: 500).
+   **Pengisian hanya terjadi bila kolomnya masih kosong**, jadi pembahasan yang sudah ditulis guru lewat editor
+   soal tidak pernah ditimpa seeder.
+2. **Ujian penutup bertambah dua soal bertipe baru** — `pilihan_ganda_kompleks` ("pilih SEMUA yang dibutuhkan")
+   dan `klasifikasi` (memilah bahan yang masuk vs hasil yang dibuat) — sehingga ujian penutup menjadi **7 soal**.
+   Keduanya objektif, jadi tetap sah dipakai di mesin kuis yang sama; renderer muridnya sudah ada
+   (`SoalPilihanGandaKompleks`, `SoalKlasifikasi`). Latihan sisipan **tidak** disentuh (susunannya dikunci
+   `Slice08Test`).
+3. **`rapikanSisaAudit()`** — membuang kuis berjudul berpola audit (`AUDIT …` / `… AUDIT …`) yang **tidak** dipakai
+   blok materi mana pun **dan** belum pernah dikerjakan, lalu membuang soalnya hanya bila tidak dipakai kuis lain
+   dan belum pernah dijawab. Kuis audit yang masih dipakai blok atau punya attempt (mis. `AUDIT Kuis Sisipan
+   Materi` di kelas 3) **dilewati**, bukan dihapus.
+
+### A.95.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `php artisan test` (backend, sesudah seeder diubah) | **423 lulus (4278 asersi)**, 24,40 detik — termasuk `Slice08Test` yang mengunci susunan materi contoh (6 blok, urutan tipe, 185 detik, latihan sisipan `host_id` = blok video) |
+| `./vendor/bin/pint --test` | **PASS — 395 berkas** |
+| `php artisan db:seed --class=MateriContohSeeder` (basis data dev) | selesai tanpa galat; **15/15 soal bertag Fotosintesis punya pembahasan** (123–246 huruf), ujian penutup **7 soal**, sisa kuis audit turun dari 4 → **1** (yang tersisa memang masih dipakai blok + punya attempt) |
+| Skrip bukti murid lewat API murid yang sama dengan UI (`/tmp/bukti-murid.py`) | **20/20 pemeriksaan lulus** |
+
+Isi 20 pemeriksaan itu, apa adanya:
+
+- murid kelas 4A (`murid4a@sekolah.test`) bisa masuk; materi muncul di **beranda murid**;
+- `GET /materi/{186}/progres` membalas **6 pos** dengan tema *Mendaki Gunung Fotosintesis*;
+- pos pembuka dibuka **dan** diselesaikan;
+- klip video: `POST /materi/186/blok/625/buka` membalas sematan
+  **`https://www.youtube-nocookie.com/embed/nlXwuNHF8JM`** dengan **durasi 185 detik**;
+- tiga latihan **di dalam** video dibuka, **semua soalnya dijawab**, dikumpulkan, dan dinilai penuh:
+  **15/15 · 15/15 · 10/10**; masing-masing pos lalu ditandai selesai;
+- video bisa ditutup **setelah** latihan di dalamnya selesai (sebelumnya server menolak dengan
+  *"Jawab dulu kuis di dalam video…"* — tingkah laku yang memang diinginkan, dan ikut terbukti di sini);
+- **ujian penutup**: terbuka setelah pos wajib selesai, **7 soal** dijawab semua, **skor 35/35**;
+- **kartu ingat sesudah tiap kuis dibaca lewat `GET /materi/186/blok/{id}/ringkasan-kuis`**:
+  **15/15 kartu** pada empat kuis (3+3+2+7 soal) membawa `catatan` (pembahasan guru) — inilah perbaikan mutu yang diminta;
+- akhir perjalanan: keenam pos berstatus `selesai`.
+
+### A.95.5 Batasan jujur
+
+- **Isi soal & pembahasan ditulis dari topik video + kurikulum kelas 4, bukan dari transkrip video.** Asisten ini
+  tidak bisa menonton video; yang dibaca hanyalah judul, deskripsi, dan panjang videonya. Karena itu **guru
+  sebaiknya membaca sekali** soal pembahasan sebelum dipakai di kelas — sama seperti materi yang disusun orang lain.
+  Semua isinya dapat diubah lewat editor materi/soal seperti biasa.
+- **Bukti "beneran dipakai" dikumpulkan lewat API murid (skrip Python), bukan dengan mengklik UI di peramban.**
+  Endpoint yang dipakai persis yang dipakai UI murid (`buka`, `selesai`, `mulai`/`jawab`/`kumpulkan`, `hasil`,
+  `ringkasan-kuis`) dan validasi Zod klien tidak diuji di sini — tata letak/kliknya sendiri sudah pernah diuji
+  harnes peramban pada putaran lain.
+- **Video memerlukan internet.** Materi luring tidak bisa memuat klip YouTube itu (batasan yang sudah tercatat di
+  `docs/penjelasan-fitur.md`).
+- Progres murid contoh di basis data dev **direset** ke keadaan awal setelah bukti ini diambil, supaya demo bisa
+  ditinggalkan dalam keadaan mulai dari Basecamp.

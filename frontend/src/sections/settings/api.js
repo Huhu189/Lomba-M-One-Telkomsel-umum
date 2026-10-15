@@ -18,6 +18,7 @@ export const skemaNilaiPengaturan = z.object({
   tipe: z.enum(['boolean', 'integer']),
   label: z.string(),
   kelompok: z.string(),
+  tampil: z.boolean().optional().default(true),
   bawaan: z.union([z.boolean(), z.number()]),
   sumber: z.enum(['bawaan', 'sekolah', 'kelas', 'kuis']),
   terkunci: z.boolean(),

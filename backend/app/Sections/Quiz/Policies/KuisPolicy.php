@@ -46,9 +46,17 @@ class KuisPolicy
             return app(TamuService::class)->izinkanKuis($kuis);
         }
 
-        $kelasMurid = $user->murid?->class_id;
+        $murid = $user->murid;
 
-        return $kelasMurid !== null && (int) $kelasMurid === (int) $kuis->class_id;
+        // Kuis tanpa kelas terbuka untuk semua kelas — tetapi tetap hanya di
+        // sekolah kuis itu sendiri. Tanpa pemeriksaan sekolah di sini, "semua
+        // kelas" ikut memuat kelas sekolah lain (kelasnya tidak lagi jadi
+        // penanda sekolah saat `class_id` kosong).
+        if ($murid === null || (int) $murid->school_id !== (int) $kuis->school_id) {
+            return false;
+        }
+
+        return $kuis->terbukaUntukKelas($murid->class_id === null ? null : (int) $murid->class_id);
     }
 
     public function create(User $user): bool

@@ -1,12 +1,16 @@
 /**
- * Tes render statis panel kuis sisipan: tahap mengerjakan (kemajuan, navigasi,
- * tombol kumpulkan di soal terakhir) dan tahap hasil (skor + bintang tertulis,
- * tab hanya untuk yang dibuka guru).
+ * Tes render statis panel kuis sisipan: tahap mengerjakan (kemajuan + satu
+ * DAFTAR soal yang bisa digulir) dan tahap hasil (skor + bintang tertulis, tab
+ * hanya untuk yang dibuka guru).
+ *
+ * Sejak 15 Oktober 2026 panelnya tidak lagi satu soal per layar: permintaan
+ * pemilik produk — *“jangan bersifat proses dengan tombol Berikutnya, jadikan
+ * scrollbar”* — jadi semua soal tampil sekaligus di wadah bergulir.
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import KuisSisipan from '../../../sections/material/KuisSisipan.jsx'
+import KuisSisipan from '../../../sections/material/kuis/KuisSisipan.jsx'
 
 const attempt = /** @type {any} */ ({
   id: 9,
@@ -43,18 +47,41 @@ function render(lebih) {
 }
 
 describe('KuisSisipan — mengerjakan', () => {
-  it('menampilkan satu soal, kemajuan tertulis, dan navigasi', () => {
+  it('menampilkan SEMUA soal dalam satu daftar bergulir, tanpa tombol Berikutnya', () => {
     const html = render({ judul: 'Penjumlahan', catatan: 'Video berhenti sampai kuis ini selesai.' })
 
-    expect(html).toContain('Soal 1 dari 2')
+    expect(html).toContain('2 soal · gulir untuk melihat semuanya')
     expect(html).toContain('0/2 terjawab')
     expect(html).toContain('Penjumlahan')
     expect(html).toContain('Berapa 2 + 3?')
-    // Soal kedua belum dirender; tombolnya Berikutnya, bukan Kumpulkan.
-    expect(html).not.toContain('Langit biru.')
-    expect(html).toContain('Berikutnya')
-    expect(html).not.toContain('Simpan jawaban &amp; kumpulkan')
+    // Soal kedua ikut tampil — dulu baru muncul setelah menekan “Berikutnya”.
+    expect(html).toContain('Langit biru.')
+    expect(html).toContain('Soal 1')
+    expect(html).toContain('Soal 2')
+
+    // Wadah yang bisa digulir (dan terjangkau papan ketik), satu tombol kumpulkan.
+    expect(html).toContain('ks-daftar-soal')
+    expect(html).toContain('role="region"')
+    expect(html).toContain('tabindex="0"')
+    expect(html).not.toContain('Berikutnya')
+    expect(html).not.toContain('Sebelumnya')
+    expect(html).toContain('Simpan jawaban &amp; kumpulkan')
     expect(html).toContain('role="progressbar"')
+  })
+
+  it('menandai soal yang terjawab dan menghitung sisanya', () => {
+    const html = render({ jawaban: { 1: 'B' } })
+
+    expect(html).toContain('1/2 terjawab')
+    expect(html).toContain('ks-soal-terjawab')
+    expect(html).toContain('1 soal belum dijawab')
+  })
+
+  it('tanpa sisa: tidak ada peringatan soal yang belum dijawab', () => {
+    const html = render({ jawaban: { 1: 'B', 2: true } })
+
+    expect(html).toContain('2/2 terjawab')
+    expect(html).not.toContain('soal belum dijawab')
   })
 
   it('tombol Lewati hanya ada bila diberikan (kuis opsional)', () => {

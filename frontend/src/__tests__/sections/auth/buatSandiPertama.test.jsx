@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import HalamanBuatSandi from '../../../sections/auth/HalamanBuatSandi.jsx'
+import HalamanBuatSandi from '../../../sections/auth/halaman/HalamanBuatSandi.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 

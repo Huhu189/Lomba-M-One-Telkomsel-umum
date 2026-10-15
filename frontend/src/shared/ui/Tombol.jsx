@@ -90,6 +90,7 @@ export function Tombol({
  * Tautan bergaya tombol (navigasi internal).
  * @param {{
  *   to: string,
+ *   state?: unknown,
  *   varian?: 'utama'|'tepi'|'bahaya'|'teks',
  *   ukuran?: 'sedang'|'besar',
  *   lebar?: boolean,
@@ -101,6 +102,7 @@ export function Tombol({
  */
 export function TombolTaut({
   to,
+  state,
   varian = 'utama',
   ukuran,
   lebar = false,
@@ -112,7 +114,7 @@ export function TombolTaut({
   const kelas = kelasTombol({ varian, ukuran, besar, lebar, className })
 
   return (
-    <Link to={to} className={kelas}>
+    <Link to={to} state={state} className={kelas}>
       {Ikon && <Ikon size={20} />}
       <span>{children}</span>
     </Link>

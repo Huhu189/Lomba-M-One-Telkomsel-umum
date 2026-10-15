@@ -17,7 +17,7 @@ import {
   jenisOOXML,
   tanpaIsi,
   uraiOOXML,
-} from '../../../sections/material/pratinjauOOXML.js'
+} from '../../../sections/material/editor/pratinjauOOXML.js'
 
 const NS_W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'

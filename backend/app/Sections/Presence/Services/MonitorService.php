@@ -91,7 +91,7 @@ class MonitorService
                 'id' => $kuisId,
                 'judul' => $kuis->judul,
                 'status' => $kuis->status->value,
-                'kelas_nama' => $kuis->kelas?->nama,
+                'kelas_nama' => $kuis->namaKelas(),
             ],
             'murid' => $murid,
             'jumlah_online' => count(array_filter($murid, static fn (array $m): bool => $m['online'] === true)),

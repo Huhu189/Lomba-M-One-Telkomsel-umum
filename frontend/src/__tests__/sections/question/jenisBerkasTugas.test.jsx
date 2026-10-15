@@ -7,7 +7,7 @@
  * tertentu saja". Dulu guru mengetik teks bebas ("Foto JPG atau PNG") yang tidak
  * pernah diperiksa terhadap apa yang benar-benar bisa diunggah murid; sekarang
  * jenisnya dipilih dari daftar yang dicerminkan dari unggahan murid
- * (`sections/attempt/UnggahLampiran.jsx`) dan klasifikasi isi berkas di server
+ * (`sections/attempt/komponen/UnggahLampiran.jsx`) dan klasifikasi isi berkas di server
  * (`Sections/Material/Services/KlasifikasiBerkas.php`).
  *
  * Dua hal diuji di sini: helper murni yang menentukan kalimat `jenis_berkas`,
@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import EditorSoal from '../../../sections/question/EditorSoal.jsx'
+import EditorSoal from '../../../sections/question/editor/EditorSoal.jsx'
 import {
   JENIS_BERKAS_TUGAS,
   MAKS_JENIS_BERKAS,

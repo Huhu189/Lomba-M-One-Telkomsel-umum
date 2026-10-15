@@ -21,7 +21,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanMasuk from '../../../sections/auth/HalamanMasuk.jsx'
+import HalamanMasuk from '../../../sections/auth/halaman/HalamanMasuk.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 
 vi.mock('../../../sections/auth/api.js', async (importOriginal) => {
@@ -117,8 +117,12 @@ describe('HalamanMasuk — datang dari tautan ulangan', () => {
   it('tanpa tautan ulangan, urutannya seperti semula (akun dulu)', async () => {
     await pasang({})
 
+    // Pintu tamu kini hanya tautan ke halamannya sendiri (bukan formulir di sini).
     const html = wadah.innerHTML
-    expect(html.indexOf('type="email"')).toBeLessThan(html.indexOf('auth-tamu'))
+    const tautTamu = wadah.querySelector('a[href="/masuk-tamu"]')
+    expect(tautTamu).not.toBeNull()
+    expect(wadah.querySelector('section.auth-tamu')).toBeNull()
+    expect(html.indexOf('type="email"')).toBeLessThan(html.indexOf('/masuk-tamu'))
     expect(wadah.textContent).toContain('Selamat datang kembali!')
     expect(wadah.querySelector('details.auth-lipat-akun')).toBeNull()
   })

@@ -39,39 +39,41 @@ export default function TabelData({
   className = '',
 }) {
   return (
-    <table className={`tabel-data ${className}`.trim()} aria-label={label}>
-      {caption && <caption>{caption}</caption>}
-      <thead>
-        <tr>
-          {kolom.map((satu) => (
-            <th key={satu.kunci} scope="col" className={satu.aksi ? 'kolom-aksi' : undefined}>
-              {satu.judul}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {baris.map((satu, indeks) => (
-          <tr
-            key={kunciBaris ? kunciBaris(satu, indeks) : indeks}
-            className={kelasBaris ? kelasBaris(satu, indeks) : undefined}
-          >
-            {kolom.map((kolomSatu) => (
-              <td
-                key={kolomSatu.kunci}
-                className={
-                  [kolomSatu.aksi ? 'kolom-aksi' : '', kolomSatu.kelas ?? '']
-                    .filter(Boolean)
-                    .join(' ') || undefined
-                }
-                data-label={kolomSatu.aksi ? undefined : kolomSatu.judul}
-              >
-                {kolomSatu.sel ? kolomSatu.sel(satu) : String(satu[kolomSatu.kunci] ?? '')}
-              </td>
+    <div className="tabel-data-bungkus">
+      <table className={`tabel-data ${className}`.trim()} aria-label={label}>
+        {caption && <caption>{caption}</caption>}
+        <thead>
+          <tr>
+            {kolom.map((satu) => (
+              <th key={satu.kunci} scope="col" className={satu.aksi ? 'kolom-aksi' : undefined}>
+                {satu.judul}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {baris.map((satu, indeks) => (
+            <tr
+              key={kunciBaris ? kunciBaris(satu, indeks) : indeks}
+              className={kelasBaris ? kelasBaris(satu, indeks) : undefined}
+            >
+              {kolom.map((kolomSatu) => (
+                <td
+                  key={kolomSatu.kunci}
+                  className={
+                    [kolomSatu.aksi ? 'kolom-aksi' : '', kolomSatu.kelas ?? '']
+                      .filter(Boolean)
+                      .join(' ') || undefined
+                  }
+                  data-label={kolomSatu.aksi ? undefined : kolomSatu.judul}
+                >
+                  {kolomSatu.sel ? kolomSatu.sel(satu) : String(satu[kolomSatu.kunci] ?? '')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

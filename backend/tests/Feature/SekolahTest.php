@@ -28,7 +28,13 @@ it('murid dapat membaca sekolah, kelas, dan mapel', function (): void {
     Sanctum::actingAs(User::factory()->muridAktif()->create());
 
     $this->getJson('/api/v1/sekolah')->assertOk()->assertJsonPath('nama', $this->sekolah->nama);
-    $this->getJson('/api/v1/kelas')->assertOk()->assertJsonCount(3);
+
+    // Data induk contoh bertambah satu kelas pada 15 Oktober 2026 (4A) untuk
+    // materi contoh bertema gunung (`MateriContohSeeder`), jadi yang dijaga di
+    // sini adalah isinya — bukan angka tetap yang akan usang sendiri.
+    $kelas = $this->getJson('/api/v1/kelas')->assertOk()->json();
+    expect(collect($kelas)->pluck('nama'))->toContain('4A', '5A', '6A', '6B');
+
     $this->getJson('/api/v1/mapel')->assertOk()->assertJsonCount(3);
 });
 

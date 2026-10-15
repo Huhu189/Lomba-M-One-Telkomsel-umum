@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import JSZip from 'jszip'
-import { PenjelasanKuis } from '../../../sections/material/PemutarMateri.jsx'
+import { PenjelasanKuis } from '../../../sections/material/pemutar/PemutarMateri.jsx'
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)
 glob.IS_REACT_ACT_ENVIRONMENT = true

@@ -172,7 +172,7 @@ class LayarService
         $kuis->loadMissing('kelas');
 
         $payload['diubah_oleh'] = $baris->diubah_oleh ?? null;
-        $payload['kelas_nama'] = $kuis->kelas?->nama;
+        $payload['kelas_nama'] = $kuis->namaKelas();
         $payload['judul_kuis'] = (string) $kuis->judul;
         $payload['maks_judul'] = self::MAKS_JUDUL;
         $payload['maks_isi'] = self::MAKS_ISI;

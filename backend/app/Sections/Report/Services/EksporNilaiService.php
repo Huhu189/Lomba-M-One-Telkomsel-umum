@@ -83,7 +83,7 @@ class EksporNilaiService
                     EksporMuridService::amankanSel($satu['nama']),
                     EksporMuridService::amankanSel($satu['nis']),
                     EksporMuridService::amankanSel($satu['nisn']),
-                    EksporMuridService::amankanSel($kuis->kelas?->nama),
+                    EksporMuridService::amankanSel($kuis->namaKelas()),
                     EksporMuridService::amankanSel($satu['tim']),
                     (string) $satu['jumlah_anggota'],
                     $this->angka($attempt->skor),

@@ -17,7 +17,7 @@ import {
   muatanBlok,
   tampilanKlip,
   ubahTampilan,
-} from '../../../sections/material/editorMateri.js'
+} from '../../../sections/material/editor/editorMateri.js'
 
 const video = () => blokBaru('media', { track: 0, mulai_detik: 0, durasi_detik: 60 })
 /**

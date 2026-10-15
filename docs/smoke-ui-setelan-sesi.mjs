@@ -16,7 +16,7 @@
 //      menyala, termasuk saat ada proteksi dan izin tamu yang dinyalakan
 //      sungguhan: angkanya dibandingkan dengan `GET /v1/pengaturan?kuis_id=` yang
 //      dihitung ulang oleh modul aplikasi sendiri
-//      (`sections/quiz/setelanSesi.js`), bukan oleh salinan aturan di harness.
+//      (`sections/quiz/setelan/setelanSesi.js`), bukan oleh salinan aturan di harness.
 //   4. **Tombol "Buat tautan siswa"** menghasilkan tautan `/kuis/<slug>` di dalam
 //      aplikasi (bukan tautan bertoken/domain luar), dan tombol "Salin tautan"
 //      benar-benar mengisi klip papan (diperiksa dengan membacanya kembali).
@@ -47,7 +47,7 @@ const AKUN = { email: 'guru1@sekolah.test', password: 'password12' }
 
 // Diimpor dari modul aplikasi yang sama, supaya yang dibandingkan benar-benar
 // logika produk (bukan salinan aturan di dalam harness).
-const jalurModul = fileURLToPath(new URL('../frontend/src/sections/quiz/setelanSesi.js', import.meta.url))
+const jalurModul = fileURLToPath(new URL('../frontend/src/sections/quiz/setelan/setelanSesi.js', import.meta.url))
 const { ringkasSetelan, tautanSiswa } = await import(jalurModul)
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

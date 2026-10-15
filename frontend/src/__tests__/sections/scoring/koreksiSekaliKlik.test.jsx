@@ -13,7 +13,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanKoreksi from '../../../sections/scoring/HalamanKoreksi.jsx'
+import HalamanKoreksi from '../../../sections/scoring/halaman/HalamanKoreksi.jsx'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 
 vi.mock('../../../sections/scoring/api.js', () => ({

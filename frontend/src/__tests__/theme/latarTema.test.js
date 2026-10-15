@@ -10,7 +10,7 @@
  *    tegak panjang (bekas "tebing").
  * 2. **Pos mendarat di gambarnya** — inilah keluhan pemilik produk yang
  *    melahirkan berkas ini: *"saat disisipkan kuis hasilnya masih di udara"*.
- *    Rute pos (`RUTE_TEMA` di `sections/material/perjalanan.js`) diuji **langsung
+ *    Rute pos (`RUTE_TEMA` di `sections/material/perjalanan/perjalanan.js`) diuji **langsung
  *    terhadap gambarnya**, jadi kalau rutenya digeser atau gambarnya diubah
  *    tanpa keduanya diselaraskan, tesnya merah:
  *
@@ -26,7 +26,7 @@
  * (`docs/smoke-ui-perjalanan.mjs`), yang mengukur hasil render sungguhan.
  */
 import { describe, expect, it } from 'vitest'
-import { RUTE_TEMA } from '../../sections/material/perjalanan.js'
+import { RUTE_TEMA } from '../../sections/material/perjalanan/perjalanan.js'
 import mentahGunung from '../../../public/tema/gunung.svg?raw'
 import mentahPulau from '../../../public/tema/pulau.svg?raw'
 import mentahAngkasa from '../../../public/tema/angkasa.svg?raw'

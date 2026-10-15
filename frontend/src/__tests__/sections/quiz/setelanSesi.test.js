@@ -19,7 +19,7 @@ import {
   ringkasSetelan,
   tautanSiswa,
   tujuanLanjut,
-} from '../../../sections/quiz/setelanSesi.js'
+} from '../../../sections/quiz/setelan/setelanSesi.js'
 
 /**
  * Nilai pengaturan bentuk API: `{ nilai, tipe, label, kelompok, bawaan, sumber, terkunci }`.

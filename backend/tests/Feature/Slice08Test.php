@@ -6,10 +6,12 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Sections\Attempt\Models\Attempt;
+use App\Sections\Material\Enums\StatusMateri;
 use App\Sections\Material\Jobs\SapuUnggahanYatim;
 use App\Sections\Material\Models\BlokMateri;
 use App\Sections\Material\Models\Materi;
 use App\Sections\Material\Models\UnggahanMateri;
+use App\Sections\Material\Registry\TemaPerjalanan;
 use App\Sections\Material\Services\MateriService;
 use App\Sections\Material\Services\PenyimpananMateri;
 use App\Sections\Question\Models\Soal;
@@ -23,6 +25,8 @@ use App\Sections\School\Models\Sekolah;
 use App\Sections\Settings\Enums\KunciPengaturan;
 use App\Sections\Settings\Enums\LingkupPengaturan;
 use App\Sections\Settings\Services\PengaturanService;
+use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\MateriContohSeeder;
 use Database\Seeders\RolesAndAdminSeeder;
 use Database\Seeders\SekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -870,6 +874,64 @@ it('penyebaran materi: hanya materi TERBIT kelas murid yang sampai ke perangkatn
     $this->getJson("/api/v1/materi/{$materi->id}/laporan")->assertStatus(403);
 });
 
+it('materi tanpa kelas terbuka untuk semua kelas di sekolahnya, tetapi tidak menyeberang sekolah', function (): void {
+    // Kelas tidak lagi wajib: materi pengayaan/remedial sering ditujukan ke
+    // seluruh angkatan (15 Oktober 2026). Disimpan sebagai null — bukan kelas
+    // palsu — supaya laporan per kelas dan cakupan murid tidak salah hitung.
+    $materi = m08Materi($this, ['judul' => 'Materi Pengayaan Tanpa Kelas', 'class_id' => null]);
+
+    expect($materi->class_id)->toBeNull()
+        ->and($materi->namaKelas())->toBe('Semua kelas');
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+
+    $this->putJson("/api/v1/materi/{$materi->id}/blok", ['blok' => [
+        ['tipe' => 'teks', 'wajib' => true, 'isi' => ['teks' => 'Baca dulu.']],
+    ]])->assertOk();
+    $this->postJson("/api/v1/materi/{$materi->id}/publikasi")->assertOk();
+
+    // Murid dari kelas LAIN di sekolah yang sama: materinya sampai ke daftarnya.
+    $kelasLain = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '5B', 'tingkat' => 5]);
+    $muridLain = Murid::factory()->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $kelasLain->id,
+    ]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->murid->user);
+    $this->getJson('/api/v1/materi-saya')->assertOk()->assertJsonPath('materi.0.id', $materi->id);
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($muridLain->user);
+    $this->getJson('/api/v1/materi-saya')->assertOk()->assertJsonPath('materi.0.id', $materi->id);
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+
+    // Murid sekolah LAIN: ditolak, walau materinya tidak membatasi kelas.
+    // "Semua kelas" berarti semua kelas di sekolah materi itu, bukan semua sekolah.
+    $sekolahLain = Sekolah::factory()->create();
+    $kelasAsing = Kelas::factory()->untukSekolah($sekolahLain)->create(['nama' => '6A', 'tingkat' => 6]);
+    $muridAsing = Murid::factory()->create([
+        'school_id' => $sekolahLain->id,
+        'class_id' => $kelasAsing->id,
+    ]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($muridAsing->user);
+    $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertForbidden();
+    $this->getJson('/api/v1/materi-saya')->assertOk()->assertJsonCount(0, 'materi');
+
+    // Laporan materi tanpa kelas memuat murid SELURUH sekolah — dulu `class_id`
+    // yang kosong membuat laporannya selalu kosong tanpa penjelasan.
+    auth()->forgetGuards();
+    Sanctum::actingAs($this->guru);
+    $laporan = $this->getJson("/api/v1/materi/{$materi->id}/laporan")->assertOk();
+    $muridDilaporkan = collect($laporan->json('murid'))->pluck('murid_id')->all();
+
+    expect($muridDilaporkan)->toContain($this->murid->id)->toContain($muridLain->id);
+});
+
 /**
  * Materi dengan satu kuis sisipan (satu soal pilihan ganda, kunci B, skor 4)
  * yang saklar layar sesudah kuisnya diatur `$tampilan`, sudah terbit.
@@ -1070,4 +1132,105 @@ it('menyimpan klip media dari TAUTAN dan menyematkannya lewat alamat resmi serve
             ['tipe' => 'media', 'wajib' => true, 'isi' => ['tautan' => $buruk]],
         ]])->assertStatus(422);
     }
+});
+
+it('materi contoh bertema gunung siap dipakai murid: video, kuis di dalamnya, dan pos berurutan', function (): void {
+    $this->seed(MasterDataSeeder::class);
+    $this->seed(MateriContohSeeder::class);
+
+    $materi = Materi::query()->where('judul', MateriContohSeeder::JUDUL)->firstOrFail();
+
+    // Kerangka gunung dipakai utuh: enam pos, satu untuk tiap fase tema bawaan.
+    expect($materi->status)->toBe(StatusMateri::Publikasi)
+        ->and($materi->tema['kode'] ?? null)->toBe(TemaPerjalanan::BAWAAN)
+        ->and($materi->blok()->count())->toBe(6);
+
+    // Kuis buatan seeder wajib punya slug. Klien mensyaratkan `slug` ada dan
+    // menjalankan skemanya atas SELURUH daftar, jadi satu baris ber-slug kosong
+    // membuat beranda menulis "Gagal memuat jadwal kuis" dan daftar ulangan murid
+    // menulis "Gagal memuat ulangan" walau server menjawab 200.
+    expect(Kuis::query()->where(function ($q): void {
+        $q->whereNull('slug')->orWhere('slug', '');
+    })->count())->toBe(0);
+
+    $murid = User::query()->where('email', 'murid4a@sekolah.test')->firstOrFail();
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($murid);
+
+    $daftar = $this->getJson('/api/v1/materi-saya')->assertOk();
+    expect(collect($daftar->json('materi'))->pluck('judul'))
+        ->toContain(MateriContohSeeder::JUDUL);
+
+    $progres = $this->getJson("/api/v1/materi/{$materi->id}/progres")->assertOk();
+    $blok = collect($progres->json('blok'));
+    $urutan = $blok->pluck('tipe')->all();
+
+    expect($urutan)->toBe(['teks', 'media', 'kuis', 'kuis', 'kuis', 'kuis']);
+
+    // Klip videonya memakai panjang ASLI video yang dirujuk (3 menit 5 detik),
+    // supaya pos-pos sesudahnya mulai setelah videonya benar-benar habis.
+    $video = $blok->firstWhere('tipe', 'media');
+    expect((float) $video['durasi_detik'])->toBe((float) MateriContohSeeder::DURASI_VIDEO)
+        ->and((float) $video['durasi_detik'])->toBe(185.0)
+        ->and($video['media']['sumber'] ?? null)->toBeNull();
+
+    // Tiga latihannya benar-benar DI DALAM video (host = blok video), bukan bagian
+    // terpisah di bawahnya — inilah yang membedakan materi contoh ini dari
+    // materi teks biasa. Keduanya bertitik mulai di dalam jendela klip.
+    $sisipan = $blok
+        ->where('tipe', 'kuis')
+        ->filter(static fn (array $satu): bool => $satu['host_id'] !== null)
+        ->values();
+
+    expect($sisipan)->toHaveCount(3)
+        ->and($sisipan->pluck('host_id')->unique()->all())->toBe([$video['block_id']])
+        ->and($sisipan->every(static fn (array $satu): bool => $satu['wajib'] === true))->toBeTrue();
+
+    $mulaiVideo = (float) $video['mulai_detik'];
+    $akhirKlip = $mulaiVideo + (float) $video['durasi_detik'];
+
+    foreach ($sisipan as $satu) {
+        expect((float) $satu['mulai_detik'])->toBeGreaterThan($mulaiVideo)
+            ->toBeLessThan($akhirKlip);
+    }
+
+    // Ujian puncaknya di luar klip: mulai tepat saat videonya berakhir.
+    $ujianPuncak = $blok->where('tipe', 'kuis')->firstWhere('host_id', null);
+    expect((float) $ujianPuncak['mulai_detik'])->toBe($akhirKlip);
+
+    // Pos Puncak belum bisa dibuka sebelum pos wajib sebelumnya selesai: server
+    // tetap penentu urutannya, bukan tombol di layar.
+    $terakhir = $blok->last();
+    expect($terakhir['boleh_dibuka'])->toBeFalse();
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$terakhir['block_id']}/buka")
+        ->assertStatus(422);
+
+    // Perjalanan murid dari pos pertama sampai latihan sisipan.
+    $posSatu = $blok->first();
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$posSatu['block_id']}/buka")
+        ->assertOk()
+        ->assertJsonPath('blok.tipe', 'teks');
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$posSatu['block_id']}/selesai")
+        ->assertOk();
+
+    // Membuka klip video: server menghitung bingkai sematannya (YouTube), jadi
+    // pemutar dan kuis sisipannya hidup di layar murid.
+    $bukaVideo = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$video['block_id']}/buka")
+        ->assertOk();
+    expect($bukaVideo->json('blok.media.sumber'))->toBe('tautan')
+        ->and((string) $bukaVideo->json('blok.media.sematan'))->toContain('youtube');
+
+    // Video belum boleh ditutup selama latihan di dalamnya belum dikumpulkan.
+    $this->postJson("/api/v1/materi/{$materi->id}/blok/{$video['block_id']}/selesai")
+        ->assertStatus(422);
+
+    // Membuka latihan sisipan membuat attempt latihan sungguhan di mesin kuis,
+    // dan penjelasan sesudah kuis ikut dikirim (tanpa kunci jawaban).
+    $bukaLatihan = $this->postJson("/api/v1/materi/{$materi->id}/blok/{$sisipan[0]['block_id']}/buka")
+        ->assertOk();
+
+    expect($bukaLatihan->json('blok.kuis.jumlah_soal'))->toBe(3)
+        ->and($bukaLatihan->json('blok.penjelasan.teks'))->toContain('BAHAN fotosintesis')
+        ->and($bukaLatihan->json('attempt.id'))->not->toBeNull();
 });

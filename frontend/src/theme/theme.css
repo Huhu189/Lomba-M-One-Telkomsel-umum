@@ -1046,6 +1046,10 @@ a {
   display: flex;
   justify-content: center;
   overflow: hidden;
+  /* Selebar kolom formulir, seperti tombol “Masuk”/“Daftar” di bawahnya —
+   * tombol Google yang lebih kecil dan mengambang di tengah terlihat berbeda
+   * dari pintu lainnya (15 Okt 2026). */
+  width: 100%;
   min-height: 44px;
 }
 
@@ -1057,6 +1061,13 @@ a {
 .google-tombol-muat {
   min-height: 0;
   height: 0;
+}
+
+/* Pintu siswa tamu di halaman masuk (15 Okt 2026): tautan bergaya tombol yang
+ * sama dengan pintu lain, bukan kelas manual — jaraknya diberi sendiri supaya
+ * tetap terpisah dari tombol “Daftar sebagai murid” di atasnya. */
+.auth-pintu-tamu {
+  margin-top: var(--sp-3);
 }
 
 /* Blok "masuk sebagai siswa tamu" di halaman masuk: satu pemisah + satu isian. */
@@ -2765,11 +2776,70 @@ a {
   align-items: start;
 }
 
-/* Bilah aksi editor materi (Simpan/Terbitkan) merentang di atas kedua kolom
- * grid `.nle`, jadi ia terlihat dari posisi mana pun — dulu tombolnya ada di
- * dasar sidebar dan terkubur di bawah lima blok alat (temuan K2, 14 Okt 2026). */
-.nle-bar {
+/* Kepala halaman editor materi: jalan kembali + judul + status.
+ *
+ * Sejak 15 Oktober 2026 baris ini TIDAK lengket lagi (dulu `.bar-susun`, pita
+ * yang menempel di bawah kepala aplikasi). Pita lengket itu menutupi bagian
+ * atas layar selama menggulir — keluhan yang sama seperti pita editor kuis yang
+ * dihapus lebih dulu — dan tingginya ikut tumbuh saat judul panjang, sehingga
+ * memakan ruang kerja. Sekarang ia baris biasa yang tergulir bersama halaman,
+ * sementara aksi Simpan/Terbitkan tinggal di `.nle-simpan` (kepala panel alat). */
+.nle-kepala {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+  min-width: 0;
+}
+
+/* Judul materi: boleh panjang, tapi tidak mendorong tombol keluar layar. */
+.nle-kepala-judul {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Blok Simpan & Terbitkan di kepala panel alat.
+ *
+ * Menggantikan pita lengket: di layar sempit panel alat jadi statis dan muncul
+ * SEBELUM kanvas, jadi tombolnya tetap terjangkau tanpa menggulir jauh; di
+ * layar lebar kolomnya sendiri sudah menempel (`.nle-sidebar`). */
+.nle-simpan {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: stretch;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--garis);
+}
+
+.nle-simpan > .badge-status {
+  justify-self: start;
+}
+
+/* Tautan materi di kepala panel alat: tombolnya selebar kolom supaya sebaris
+ * dengan Simpan/Terbitkan, sementara kotak tautannya melipat ke baris sendiri. */
+.nle-simpan > .tautan-materi > .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Daftar soal kuis di panel klip (15 Oktober 2026).
+ *
+ * Guru harus bisa MEMBACA soal yang tersimpan di kuis itu tanpa keluar ke menu
+ * Kuis. Karena itu barisnya diberi garis pemisah tipis dan teksnya dibiarkan
+ * membungkus — daftar panjang lebih baik memanjang ke bawah daripada dipotong
+ * dengan gulir-dalam-gulir yang menyulitkan di ponsel. */
+.nle-soal-kuis {
+  padding: 0.5rem 0.6rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-soal-kuis ol > li:last-child {
+  border-bottom: 0 !important;
 }
 
 .nle-sidebar {
@@ -3095,10 +3165,35 @@ a {
 
 /* Timeline: penggaris, track bertingkat, playhead, dan tombol tambah. */
 .nle-timeline {
+  position: relative;
   overflow: hidden;
   background: var(--kartu);
   border: 1px solid var(--garis);
   border-radius: var(--radius);
+}
+
+.nle-gulir {
+  overflow: hidden clip;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.nle-zoom-isi {
+  min-width: 100%;
+}
+
+.nle-potong {
+  font-weight: 700;
+}
+
+.nle-zoom {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.nle-zoom input {
+  width: 6rem;
 }
 
 .nle-ruler {
@@ -3181,6 +3276,38 @@ a {
   border: 1px solid var(--garis);
   border-inline-start-width: 3px;
   border-radius: var(--radius-kecil);
+  /* Klip bisa hanya beberapa detik, jadi panjangnya jadi acuan bagi isinya
+   * (lihat aturan @container di bawah). */
+  container-type: inline-size;
+}
+
+/* Judul klip: satu baris + elipsis DI DALAM lebar klipnya.
+ *
+ * Sebelumnya isinya dibiarkan melebar lalu dipotong mentah oleh `overflow:
+ * hidden` milik kotaknya. Akibatnya teksnya hilang separuh tanpa tanda (guru
+ * tidak tahu ada lanjutannya), dan di ponsel potongan itu diukur sebagai elemen
+ * yang menembus tepi kanan viewport oleh `docs/smoke-ui-mobile.mjs` (temuan
+ * 15 Okt 2026: judul 214 px di klip selebar ±100 px). */
+.nle-klip-judul {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nle-klip-ringkas {
+  margin-inline-start: 0.35rem;
+  color: var(--teks-lembut);
+}
+
+/* Ringkasan isi/detik klip (detail kedua) hanya ditampilkan bila klipnya cukup
+ * lebar: di klip pendek — dan karenanya selalu di layar ponsel — yang dibuang
+ * lebih dulu adalah keterangan tambahan ini, bukan judulnya. */
+@container (max-width: 11rem) {
+  .nle-klip-ringkas {
+    display: none;
+  }
 }
 
 .nle-klip-teks {
@@ -3379,6 +3506,66 @@ a {
 
 .nle-menu button:hover {
   background: var(--kartu-lembut);
+}
+
+.nle-urutan {
+  padding: 0.75rem;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius);
+}
+
+.nle-urutan-baris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-kecil);
+}
+
+.nle-urutan-baris.aktif {
+  background: var(--sorot-hangat);
+  border-color: var(--garis);
+}
+
+.nle-urutan-pilih {
+  display: flex;
+  flex: 1 1 12rem;
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0;
+  font: inherit;
+  color: var(--teks);
+  text-align: start;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.nle-urutan-isi {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nle-lanjutan {
+  margin-block: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-lanjutan > summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .nle-inspector {
@@ -3768,6 +3955,17 @@ a {
 
 /* ---------- Tabel data: tabel di desktop, kartu bertumpuk di bawah 700 px ---- */
 
+/* Tabel punya aturan lebar sendiri (auto table layout) yang bisa melebihi
+ * lebar induknya begitu ada kolom lebar tetap/nowrap (kolom-aksi, kolom-progres).
+ * Tanpa pembungkus ini tabel mendorong .kartu-soft keluar dari layar alih-alih
+ * discroll secara horizontal (temuan: TabelData keluar dari card). */
+.tabel-data-bungkus {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .tabel-data {
   width: 100%;
   border-collapse: separate;
@@ -3848,11 +4046,12 @@ a {
   display: inline-flex;
 }
 
+/* Posisi (position/top/right) datang dari inline style saat dirender lewat
+ * createPortal ke document.body — dihitung dari getBoundingClientRect() tombol
+ * "…" nya saat dibuka. Dulu `position: absolute` relatif ke `.menu-aksi`, tapi
+ * itu membuatnya ikut terpotong saat leluhurnya (tabel) jadi bisa discroll. */
 .menu-aksi-daftar {
-  position: absolute;
   z-index: 30;
-  top: calc(100% + var(--sp-1));
-  inset-inline-end: 0;
   min-width: 13rem;
   display: flex;
   flex-direction: column;
@@ -3863,6 +4062,16 @@ a {
   border-radius: var(--radius-kecil);
   box-shadow: var(--bayangan-besar);
   text-align: start;
+}
+
+/* Varian untuk menu yang tombolnya TIDAK di dalam tabel (panel "Kelola akun"):
+ * tidak di-portal, jadi ia tetap menempel di bawah tombolnya seperti dulu.
+ * Tanpa aturan ini menu itu ikut kehilangan posisi absolut dan berubah jadi
+ * deretan sejajar tombolnya. */
+.menu-aksi-daftar-lengket {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  inset-inline-end: 0;
 }
 
 .menu-aksi-item {
@@ -4177,37 +4386,21 @@ a {
   color: var(--putih);
 }
 
-/* ---------- Penyusunan kuis satu halaman: pil pelompat + bar aksi lengket ---------- */
+/* ---------- Penyusunan kuis satu halaman: pil pelompat ---------- */
 
 /*
- * Bar aksi lengket di halaman susun kuis (14 Oktober 2026). Halaman ini satu
- * halaman utuh berisi tiga bagian, jadi tombol Simpan/Terbitkan harus tetap
- * terjangkau tanpa menggulir ke bawah: bar-nya menempel di bawah kepala halaman
- * sambil menggulir. Latarnya opak supaya teks di bawahnya tidak menembus.
+ * Catatan (15 Oktober 2026): pita aksi lengket `.bar-susun` yang dulu menempel
+ * di sini sudah DIHAPUS dari seluruh aplikasi — di editor kuis lebih dulu, lalu
+ * di editor materi. Pita itu menutupi bagian atas layar selama menggulir, dan
+ * aksinya kini tinggal di dalam bagiannya masing-masing (editor kuis) atau di
+ * kepala panel alat `.nle-simpan` (editor materi).
  */
-.bar-susun {
-  position: sticky;
-  /* Menempel di BAWAH kepala aplikasi (yang juga lengket di top: 0, z-index
-   * 100). Dulu `top: var(--sp-2)`, sehingga bar ini bersembunyi di balik kepala
-   * begitu halaman digulir — tombol Simpan/Terbitkan justru menghilang. */
-  top: calc(var(--tinggi-kepala) + var(--sp-2));
-  z-index: 30;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-3);
-  align-items: center;
-  padding: var(--sp-2) var(--sp-3);
-  background-color: var(--kartu);
-  border: 1.5px solid var(--garis);
-  border-radius: var(--radius);
-  box-shadow: var(--bayangan);
-}
-
 /*
- * Tautan siswa (14 Oktober 2026): tombol + kotak tautan yang dipakai di bar
- * lengket halaman susun kuis DAN di baris aksi detail kuis. Bentuknya satu
- * baris yang boleh melipat, kotaknya selebar baris supaya tautan panjang tetap
- * terbaca utuh dan tidak mendorong tombol keluar layar di HP.
+ * Tautan siswa (14 Oktober 2026): tombol + kotak tautan yang dipakai di baris
+ * aksi detail kuis dan di pita lengket halaman susun kuis (15 Oktober 2026:
+ * pita itu sudah dihapus, jadi kini hanya dipasang di dalam bagiannya sendiri).
+ * Bentuknya satu baris yang boleh melipat, kotaknya selebar baris supaya tautan
+ * panjang tetap terbaca utuh dan tidak mendorong tombol keluar layar di HP.
  */
 .tautan-siswa {
   display: flex;
@@ -4225,6 +4418,33 @@ a {
 }
 
 .tautan-siswa-kotak input {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+/*
+ * Tautan materi (15 Oktober 2026): satu klik menyalin alamat `/materi/<id>` yang
+ * dibagikan guru ke kelasnya. Bentuknya mengikuti `.tautan-siswa` supaya kedua
+ * tautan terasa satu keluarga — tetapi tombolnya menyalin LANGSUNG (tanpa tombol
+ * "Salin" kedua di dalam kotak), karena di editor materi guru membagikan tautan
+ * berulang kali dan satu langkah tambahan itu terasa setiap kali.
+ */
+.tautan-materi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.tautan-materi-kotak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  flex: 1 1 100%;
+}
+
+.tautan-materi-kotak input {
   flex: 1 1 220px;
   min-width: 180px;
 }
@@ -4693,7 +4913,7 @@ a {
 /* Sisi kanan yang mengikuti gulir (pratinjau + kelengkapan). */
 .sisi-lengket {
   position: sticky;
-  /* Sama seperti .bar-susun: menempel di bawah kepala aplikasi. */
+  /* Menempel di bawah kepala aplikasi (yang juga lengket di `top: 0`). */
   top: calc(var(--tinggi-kepala) + var(--sp-4));
   /* Pratinjau soal bergambar/tabel bisa lebih tinggi dari layar. Tanpa batas
    * tinggi + gulir sendiri, tombol Simpan di bawah kartu Kelengkapan keluar
@@ -5126,10 +5346,40 @@ a {
   margin: 0;
 }
 
+/*
+ * Daftar soal latihan yang bisa digulir (15 Oktober 2026).
+ *
+ * Panel kuis sisipan dulu satu soal per layar dengan tombol “Berikutnya”;
+ * permintaan pemilik produk: jadikan satu daftar bergulir. Tingginya dibatasi
+ * `min(70vh, 44rem)` supaya kartunya tidak memanjang mengikuti jumlah soal — dan
+ * karena panel ini juga muncul menumpuk di atas klip/video, batas itu yang
+ * membuatnya tetap muat di layar. `scrollbar-gutter: stable` mencegah isi
+ * bergeser saat gulirannya muncul.
+ */
+.ks-daftar-soal {
+  display: grid;
+  gap: var(--sp-3);
+  max-block-size: min(70vh, 44rem);
+  padding-inline-end: var(--sp-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .ks-soal {
   padding: var(--sp-3);
   background: var(--kartu-lembut);
   border-radius: var(--radius);
+}
+
+/* Penanda soal yang sudah dijawab: teks + ikon, bukan hanya warna. */
+.ks-soal-terjawab {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--status-benar);
 }
 
 .ks-soal-kepala {
@@ -6160,4 +6410,88 @@ a {
     opacity: 1;
     animation: none;
   }
+}
+
+/* ===== Panel setelan ulangan: kartu per kelompok, baris dengan penjelasan ===== */
+.setelan-panel { display: grid; gap: 1rem; }
+.setelan-kartu {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  padding: 0.25rem 1rem 0.5rem;
+  background: var(--bs-body-bg);
+}
+.setelan-judul {
+  margin: 0;
+  padding: 0.75rem 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+.setelan-baris {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 52px;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.setelan-judul + .setelan-baris { border-top: 0; }
+.setelan-teks { flex: 1; min-width: 0; cursor: pointer; }
+.setelan-anak { margin-left: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--bs-border-color); }
+.setelan-catatan { margin: 0 0 0.25rem; }
+.setelan-angka { width: 7.5rem; flex-shrink: 0; }
+.setelan-baris .form-check-input { width: 2.5em; height: 1.4em; cursor: pointer; margin: 0; float: none; }
+
+/* Buat kuis cepat di dalam editor materi. */
+.nle-kuis-cepat {
+  margin-block-end: 0.75rem;
+  padding: 0.75rem;
+  background: var(--kartu-lembut);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-kc-soal {
+  margin-block-end: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kecil);
+}
+
+.nle-kc-opsi {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block-end: 0.35rem;
+}
+
+.nle-kc-opsi .form-check-input {
+  flex: none;
+  margin: 0;
+}
+
+/* ── Penghitung karakter jawaban (uraian / isian singkat) ───────────────── */
+.hitung-karakter {
+  color: var(--teks-lembut);
+  font-variant-numeric: tabular-nums;
+}
+
+.hitung-karakter.hitung-hampir {
+  color: var(--status-peringatan, #b45309);
+  font-weight: 600;
+}
+
+.hitung-karakter.hitung-habis {
+  color: var(--status-salah);
+  font-weight: 700;
+}
+
+.uraian-isian {
+  resize: vertical;
+  min-height: 9rem;
+  line-height: 1.6;
 }

@@ -26,6 +26,9 @@ class MasterDataSeeder extends Seeder
             ['nama' => '6A', 'tingkat' => 6],
             ['nama' => '6B', 'tingkat' => 6],
             ['nama' => '5A', 'tingkat' => 5],
+            // Kelas 4 dipakai materi contoh bertema gunung (`MateriContohSeeder`):
+            // videonya memang untuk kelas 4 SD, jadi demonya pun sepadan.
+            ['nama' => '4A', 'tingkat' => 4],
         ];
 
         foreach ($daftarKelas as $kelas) {

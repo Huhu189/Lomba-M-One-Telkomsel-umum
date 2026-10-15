@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import JSZip from 'jszip'
-import PratinjauDokumen from '../../../sections/material/PratinjauDokumen.jsx'
+import PratinjauDokumen from '../../../sections/material/editor/PratinjauDokumen.jsx'
 
 const glob = /** @type {Record<string, unknown>} */ (globalThis)
 glob.IS_REACT_ACT_ENVIRONMENT = true
@@ -26,7 +26,7 @@ let asliBuatUrl
 /** @type {typeof URL.revokeObjectURL} */
 let asliLepasUrl
 
-/** @param {import('../../../sections/material/PratinjauDokumen.jsx').BerkasPratinjau} berkas */
+/** @param {import('../../../sections/material/editor/PratinjauDokumen.jsx').BerkasPratinjau} berkas */
 function pasang(berkas) {
   act(() => root.render(<PratinjauDokumen berkas={berkas} />))
 }

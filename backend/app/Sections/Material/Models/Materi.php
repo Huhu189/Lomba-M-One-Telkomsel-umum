@@ -9,9 +9,11 @@ use App\Sections\Material\Enums\StatusMateri;
 use App\Sections\Question\Models\Tag;
 use App\Sections\School\Models\Kelas;
 use App\Sections\School\Models\Mapel;
+use App\Sections\School\Models\Murid;
 use App\Sections\School\Models\Sekolah;
 use Database\Factories\MateriFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -93,5 +95,51 @@ class Materi extends Model
     public function terbit(): bool
     {
         return $this->status === StatusMateri::Publikasi;
+    }
+
+    /**
+     * Materi tanpa kelas = terbuka untuk **semua kelas** di sekolahnya
+     * (15 Oktober 2026). Guru yang tidak membatasi kelas cukup mengosongkan
+     * pilihan kelasnya — aturannya sengaja sama dengan kuis (`Kuis::untukSemuaKelas`)
+     * supaya "tanpa kelas" tidak berarti dua hal berbeda di aplikasi yang sama.
+     */
+    public function untukSemuaKelas(): bool
+    {
+        return $this->class_id === null;
+    }
+
+    /** Nama kelas untuk tampilan; materi tanpa kelas = "Semua kelas". */
+    public function namaKelas(): string
+    {
+        return $this->class_id === null ? 'Semua kelas' : (string) ($this->kelas?->nama ?? '');
+    }
+
+    /** Kelas materi sebagai int atau null (null = semua kelas). */
+    public function kelasIdAtauNull(): ?int
+    {
+        return $this->class_id === null ? null : (int) $this->class_id;
+    }
+
+    /** Apakah murid dari kelas ini boleh menempuh materi ini. */
+    public function terbukaUntukKelas(?int $kelasId): bool
+    {
+        if ($this->untukSemuaKelas()) {
+            return $kelasId !== null;
+        }
+
+        return $kelasId !== null && $kelasId === (int) $this->class_id;
+    }
+
+    /**
+     * Murid yang masuk cakupan materi: satu kelas, atau seluruh murid sekolah
+     * bila materinya tidak membatasi kelas.
+     *
+     * @return Builder<Murid>
+     */
+    public function muridCakupan(): Builder
+    {
+        return Murid::query()
+            ->where('school_id', $this->school_id)
+            ->when($this->class_id !== null, fn ($q) => $q->where('class_id', $this->class_id));
     }
 }

@@ -40,7 +40,6 @@ describe('kelengkapanKuis', () => {
     expect(butir.map((satu) => satu.teks)).toEqual([
       'Judul terisi (minimal 3 huruf)',
       'Mapel dipilih',
-      'Kelas dipilih',
       'Durasi lebih dari 0 menit',
       'Jadwal mulai dan selesai terisi',
       'Jadwal selesai setelah jadwal mulai',
@@ -59,7 +58,6 @@ describe('kelengkapanKuis', () => {
     expect(belum).toEqual([
       'Judul terisi (minimal 3 huruf)',
       'Mapel dipilih',
-      'Kelas dipilih',
       'Durasi lebih dari 0 menit',
       'Minimal satu soal dipilih',
     ])

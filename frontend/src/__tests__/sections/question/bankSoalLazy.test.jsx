@@ -19,7 +19,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanBankSoal from '../../../sections/question/HalamanBankSoal.jsx'
+import HalamanBankSoal from '../../../sections/question/halaman/HalamanBankSoal.jsx'
 import { paramSoal } from '../../../sections/question/api.js'
 
 vi.mock('../../../sections/question/api.js', async (importOriginal) => {

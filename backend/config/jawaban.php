@@ -20,6 +20,10 @@ declare(strict_types=1);
 */
 
 return [
+    // Panjang maksimal jawaban teks (karakter), mis. uraian. Harus sama dengan
+    // BATAS_URAIAN di frontend (question/render/batasJawaban.js).
+    'teks_maks' => (int) env('JAWABAN_TEKS_MAKS', 10000),
+
     // Ukuran satu potongan (byte). Klien memotong berkas sebesar ini.
     'chunk_byte' => (int) env('JAWABAN_CHUNK_BYTE', 1024 * 1024),
 

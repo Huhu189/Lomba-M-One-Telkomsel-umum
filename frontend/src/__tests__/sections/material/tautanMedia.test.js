@@ -3,7 +3,7 @@
  *
  * Dua hal yang dijaga di sini:
  *
- * 1. **Aturan tautan** (`sections/material/tautanMedia.js`) harus kembar dengan
+ * 1. **Aturan tautan** (`sections/material/berkas/tautanMedia.js`) harus kembar dengan
  *    `Registry\TautanMedia` di server — kelas PHP-nya diuji terpisah di
  *    `backend/tests/Unit/TautanMediaTest.php` dengan daftar alamat yang sama.
  *    Editor hanya memakai cermin ini untuk pesan galat ramah; yang memutuskan
@@ -20,8 +20,9 @@ import {
   mimeTautan,
   namaTautan,
   pesanGalatTautan,
-} from '../../../sections/material/tautanMedia.js'
-import { blokBaru, dariServer, muatanBlok, rencanaLepasBerkas } from '../../../sections/material/editorMateri.js'
+  sematanOtomatis,
+} from '../../../sections/material/berkas/tautanMedia.js'
+import { blokBaru, dariServer, muatanBlok, rencanaLepasBerkas } from '../../../sections/material/editor/editorMateri.js'
 
 describe('aturan tautan (cermin server)', () => {
   it('menerima alamat https publik', () => {
@@ -145,5 +146,28 @@ describe('klip media bersumber tautan', () => {
 
     expect(baru.tautan).toBe('https://sekolah.example.test/materi/pecahan.mp4')
     expect(baru.unggahan_kode).toBe('')
+  })
+})
+
+describe('sematanOtomatis', () => {
+  it('menambah parameter autoplay hanya pada bingkai YouTube', () => {
+    const alamat = new URL(sematanOtomatis('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ') ?? '')
+
+    expect(`${alamat.origin}${alamat.pathname}`).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+    expect(alamat.searchParams.get('autoplay')).toBe('1')
+    expect(alamat.searchParams.get('mute')).toBe('1')
+    expect(alamat.searchParams.get('playsinline')).toBe('1')
+  })
+
+  it('membiarkan Drive dan host lain apa adanya (tidak ada autoplay resmi)', () => {
+    const drive = 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/preview'
+
+    expect(sematanOtomatis(drive)).toBe(drive)
+    expect(sematanOtomatis('https://contoh.example.test/embed/x')).toBe('https://contoh.example.test/embed/x')
+  })
+
+  it('mengembalikan undefined untuk nilai kosong', () => {
+    expect(sematanOtomatis(null)).toBeUndefined()
+    expect(sematanOtomatis('')).toBeUndefined()
   })
 })

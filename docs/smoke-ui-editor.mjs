@@ -224,6 +224,29 @@ async function main() {
   const pending = new Map()
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data)
+
+    // Dialog bawaan peramban ("perubahan belum disimpan" dari `beforeunload`)
+    // MEMBEKUKAN halaman sampai dijawab — di Chrome headless baru, dialog tidak
+    // menutup sendiri, dan setiap `Runtime.evaluate` sesudahnya menunggu tanpa
+    // jawaban. Inilah sebab harness ini dulu menggantung tepat SEBELUM bagian
+    // "pustaka media": langkah papan tombol meninggalkan perubahan yang belum
+    // tersimpan, lalu `Page.navigate` memicu dialog yang tidak pernah dijawab
+    // (editor materi memang memasang penjaga itu di
+    // `usePenjagaSebelumTutup(belumTersimpan && …)`). Kita TERIMA dialognya:
+    // navigasi lanjut dan perubahan materi audit itu memang boleh dibuang.
+    if (msg.method === 'Page.javascriptDialogOpening') {
+      console.log(`   (dialog peramban diterima otomatis: "${msg.params?.message ?? ''}")`)
+      ws.send(
+        JSON.stringify({
+          id: ++id,
+          method: 'Page.handleJavaScriptDialog',
+          params: { accept: true },
+          sessionId: msg.sessionId,
+        }),
+      )
+      return
+    }
+
     if (msg.id && pending.has(msg.id)) {
       const { res, rej } = pending.get(msg.id)
       pending.delete(msg.id)
@@ -242,8 +265,16 @@ async function main() {
   await send('Page.enable', {}, sessionId)
   await send('Page.addScriptToEvaluateOnNewDocument', { source: UKUR }, sessionId)
 
+  // Batas waktu 20 detik per `Runtime.evaluate`: kalau halaman MEMBEKU (main thread
+  // diblokir dialog/loop), panggilan CDP tidak akan pernah dijawab dan harness dulu
+  // menggantung tanpa jejak. Sekarang ia berhenti dengan galat yang jelas — sehingga
+  // "harness tidak menamatkan diri" tidak lagi bisa dikira "semua lulus".
   const evalJs = async (expression) => {
-    const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, sessionId)
+    const jawab = send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, sessionId)
+    const batas = new Promise((_, tolak) => {
+      setTimeout(() => tolak(new Error('eval tidak dijawab (halaman membeku?)')), 20_000)
+    })
+    const r = await Promise.race([jawab, batas])
     if (r.exceptionDetails) {
       throw new Error('eval error: ' + (r.exceptionDetails.exception?.description ?? ''))
     }
@@ -699,15 +730,27 @@ async function main() {
     await evalJs(`(() => { const el = document.querySelector('.nle-klip-teks'); el.focus(); el.click(); return true })()`)
     await tunggu(`document.querySelector('#nle-fase') !== null`, 8000)
     const sebelumKetik = await evalJs(`document.querySelectorAll('.nle-klip').length`)
-    await evalJs(`document.querySelector('#nle-fase').focus(); true`)
+    // Kolom "nama pos" duduk di dalam <details class="nle-lanjutan"> yang tertutup.
+    // Selama tertutup, `.focus()` TIDAK bisa mendarat di sana (isi <details> yang
+    // tertutup tidak bisa difokus), jadi Delete tetap dibaca timeline lewat tombol
+    // klip yang masih terfokus dan klipnya ikut terbuang — pemeriksaannya lalu
+    // merah walau kode aplikasinya benar. Buka dulu rangkanya, lalu pastikan
+    // fokusnya SUNGGUH pindah; kalau tidak, pemeriksaan ini tidak membuktikan apa pun.
+    const fokusDiIsian = await evalJs(`(() => {
+      const isian = document.querySelector('#nle-fase')
+      const rangka = isian.closest('details')
+      if (rangka) rangka.open = true
+      isian.focus()
+      return document.activeElement === isian
+    })()`)
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 }, sessionId)
     await sleep(400)
     const sesudahKetik = await evalJs(`document.querySelectorAll('.nle-klip').length`)
     catat(
       'papan tombol: Delete saat fokus di kolom isian tidak membuang klip',
-      sesudahKetik === sebelumKetik,
-      `${sebelumKetik} → ${sesudahKetik} klip`,
+      fokusDiIsian === true && sesudahKetik === sebelumKetik,
+      `${sebelumKetik} → ${sesudahKetik} klip · fokus di kolom: ${fokusDiIsian}`,
     )
 
     // --- Pembuangan berkas pustaka dari editor (14 Oktober 2026) ---

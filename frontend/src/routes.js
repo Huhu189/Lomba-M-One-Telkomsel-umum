@@ -5,6 +5,9 @@ export const RUTE = {
   beranda: '/',
   masuk: '/masuk',
   daftar: '/daftar',
+  // Halaman tersendiri untuk masuk sebagai siswa tamu (cukup nama) — dibuka dari
+  // tautan di halaman masuk, tidak lagi ditempel di bawah formulir akun.
+  masukTamu: '/masuk-tamu',
   lupaSandi: '/lupa-sandi',
   aturUlangSandi: '/atur-ulang-sandi',
   // Lapisan "buat kata sandi dulu" untuk akun yang dibuat lewat Google
@@ -53,6 +56,9 @@ export const RUTE = {
   layarKuis: '/kuis/:slug/layar',
   // Materi berblok (slice 08) — guru menyusun, murid menempuh.
   materi: '/materi',
+  // Satu materi tertentu dari tautan yang dibagikan (15 Oktober 2026). Murid
+  // yang membukanya langsung menempuh materinya; guru dibawa ke editornya.
+  materiTautan: '/materi/:id',
   // Editor materi guru (gaya video editor) — dibuka setelah materi dibuat.
   materiEditor: '/materi/:id/editor',
   // Avatar murid + moderasi (slice 08) — murid memasang, guru meninjau laporan.
@@ -163,4 +169,17 @@ export function ruteLayarKuis(kunci) {
  */
 export function ruteMateriEditor(id) {
   return `/materi/${id}/editor`
+}
+
+/**
+ * Tautan satu materi (yang dibagikan guru ke kelasnya) dari id materi.
+ *
+ * Alamatnya `/materi/<id>` — persis yang disalin tombol "Salin tautan materi"
+ * di editor (`materiTautan.js`), jadi tautan yang diuji di sana dan rute yang
+ * terdaftar di `App.jsx` tidak bisa berbeda.
+ * @param {number} id
+ * @returns {string}
+ */
+export function ruteMateriTautan(id) {
+  return `/materi/${id}`
 }

@@ -16,7 +16,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import HalamanAkun from '../../../sections/settings/HalamanAkun.jsx'
+import HalamanAkun from '../../../sections/settings/halaman/HalamanAkun.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 import { useTemaStore } from '../../../shared/store/tema.js'
 
@@ -129,7 +129,6 @@ describe('HalamanAkun', () => {
     expect(wadah.textContent).toContain('Tampilan')
     // Penunjuk jujur ke tempat setelan ulangan sekarang berada.
     expect(wadah.textContent).toContain('Setelan ulangan')
-    expect(wadah.textContent).toContain('per ulangan')
 
     // Saklar anti-cheat tidak boleh ada lagi di sini.
     expect(wadah.querySelectorAll('input[role="switch"]').length).toBe(0)

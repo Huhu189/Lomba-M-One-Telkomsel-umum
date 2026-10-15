@@ -5,8 +5,9 @@
 //   1. Halaman kuis: tombol "Buat kuis" membuka **satu halaman tiga bagian**
 //      (14 Oktober 2026 — dulu tiga langkah berurutan). Ketiga bagian tampil
 //      sekaligus, pil di atasnya hanya pelompat (aria-current="step"), tidak ada
-//      tombol "Lanjut: …", dan bar aksi lengket menyediakan "Simpan draf" +
-//      "Terbitkan kuis" dari posisi mana pun; bank soal bisa dicentang, dan
+//      tombol "Lanjut: …", dan **tidak ada pita aksi lengket** di atas layar
+//      (15 Oktober 2026): "Simpan draf" ada di dalam formulir bagian 1 dan
+//      "Publikasikan kuis" di kaki bagian 3; bank soal bisa dicentang, dan
 //      bagian 3 menampilkan ringkasan + butir kelengkapan;
 //   2. Halaman bank soal: "Tambah soal" membuka editor tiga kartu bernomor
 //      (tulis soal → pengaturan → pilih jenis) dengan sisi pratinjau/kelengkapan,
@@ -145,7 +146,10 @@ async function main() {
     const aktif = pil.filter((p) => p.getAttribute('aria-current') === 'step')
     const judulBagian = ['1. Info dan jadwal', '2. Susun soal', '3. Tinjau dan publikasikan']
     const adaBagian = judulBagian.map((t) => [...document.querySelectorAll('h2')].some((h) => h.textContent.trim() === t))
-    const bar = document.querySelector('.bar-susun')
+    // Pita aksi lengket di atas layar sudah dihapus (15 Oktober 2026) —
+    // disimpan sebagai kontrol negatif: kalau ia muncul lagi, harness merah.
+    const pita = document.querySelector('.bar-susun')
+    const lencana = document.querySelector('#bagian-terbit-judul .badge-status')
     const tombolLanjut = [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Lanjut:'))
     return {
       jumlah: pil.length,
@@ -159,8 +163,18 @@ async function main() {
       adaBankSoal: Boolean(document.querySelector('#cari-soal-kuis')),
       adaKelengkapan: Boolean(document.querySelector('section[aria-labelledby="bagian-terbit-judul"]')),
       tombolLanjut: tombolLanjut.map((b) => b.textContent.trim()),
-      bar: bar ? { teks: bar.textContent, posisi: getComputedStyle(bar).position } : null,
-      tombolBar: bar ? [...bar.querySelectorAll('button')].map((b) => ({ teks: b.textContent.trim(), mati: b.disabled })) : [],
+      pita: pita ? pita.textContent.trim() : null,
+      lencana: lencana?.textContent.trim() ?? '',
+      simpanDalamForm: (() => {
+        const form = document.querySelector('form#form-kuis')
+        const tombolSimpan = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Simpan draf'))
+        return Boolean(form && tombolSimpan && form.contains(tombolSimpan))
+      })(),
+      jumlahSimpan: [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Simpan draf')).length,
+      terbit: (() => {
+        const tombol = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Publikasikan kuis'))
+        return tombol ? { ada: true, mati: tombol.disabled, diBagian3: Boolean(document.querySelector('#bagian-terbit')?.contains(tombol)) } : { ada: false, mati: false, diBagian3: false }
+      })(),
     }
   })()`)
   cek('satu halaman: tiga pil bagian tampil', satuHalaman.jumlah === 3, satuHalaman.nama.join(' | '))
@@ -168,11 +182,14 @@ async function main() {
   cek('satu halaman: pil bagian ≥48px', satuHalaman.tinggi >= 48, `tinggi=${satuHalaman.tinggi}`)
   cek('satu halaman: ketiga bagian tampil SEKALIGUS (tak ada yang tersembunyi)', satuHalaman.adaBagian.every(Boolean) && satuHalaman.adaJudul && satuHalaman.adaBankSoal && satuHalaman.adaKelengkapan, `bagian=${satuHalaman.adaBagian.join(',')}`)
   cek('satu halaman: tidak ada lagi tombol "Lanjut: …"', satuHalaman.tombolLanjut.length === 0, satuHalaman.tombolLanjut.join(' / '))
-  cek('satu halaman: bar aksi lengket menyimpan & menerbitkan dari posisi mana pun', satuHalaman.bar !== null && satuHalaman.bar.posisi === 'sticky' && satuHalaman.tombolBar.length === 2, `posisi=${satuHalaman.bar?.posisi} tombol=${satuHalaman.tombolBar.map((t) => t.teks).join(',')}`)
-  cek('satu halaman: Terbitkan masih mati selagi kuis belum lengkap', satuHalaman.tombolBar.some((t) => t.teks.includes('Terbitkan kuis') && t.mati === true), JSON.stringify(satuHalaman.tombolBar))
+  cek('satu halaman: tidak ada pita aksi lengket di atas layar', satuHalaman.pita === null, satuHalaman.pita ?? '')
+  cek('satu halaman: lencana kelengkapan duduk di judul bagian 3', satuHalaman.lencana.includes('lengkap'), satuHalaman.lencana)
+  cek('satu halaman: "Simpan draf" ada di dalam formulirnya dan hanya satu di halaman', satuHalaman.simpanDalamForm && satuHalaman.jumlahSimpan === 1, `dalamForm=${satuHalaman.simpanDalamForm} jumlah=${satuHalaman.jumlahSimpan}`)
+  cek('satu halaman: publikasi ada di bagian 3 dan masih mati selagi belum lengkap', satuHalaman.terbit.ada && satuHalaman.terbit.diBagian3 && satuHalaman.terbit.mati === true, JSON.stringify(satuHalaman.terbit))
 
-  // Isi formulir bagian 1 lalu simpan draf dari bar lengket (tombolnya berada di
-  // luar <form>, jadi ini sekaligus membuktikan atribut `form` bekerja).
+  // Isi formulir bagian 1 lalu simpan draf lewat tombol di kaki bagian 1.
+  // Tombolnya kini DI DALAM formulir, jadi tidak lagi bergantung pada atribut
+  // `form` — dan menekan Enter di kolom tetap menyimpan.
   await evalJs(`(() => {
     const pilih = (sel) => { const s = document.querySelector(sel); const opsi = [...s.options].filter((o) => o.value !== ''); return opsi[0]?.value ?? '' }
     window.__isi('#kuis-judul', 'Smoke UI: susun kuis satu halaman')
@@ -184,7 +201,7 @@ async function main() {
     window.__isi('#kuis-selesai', iso(150))
     return true
   })()`)
-  await evalJs(`[...document.querySelectorAll('.bar-susun button')].find((b) => b.textContent.includes('Simpan draf')).click()`)
+  await evalJs(`document.querySelector('form#form-kuis button[type="submit"]').click()`)
   await sleep(2500)
 
   const bagian2 = await evalJs(`(() => {
@@ -202,7 +219,7 @@ async function main() {
       pilAktif,
     }
   })()`)
-  cek('simpan draf dari bar lengket menyimpan kuis', bagian2.toast.includes('Kuis dibuat sebagai draf'), bagian2.toast)
+  cek('simpan draf dari bagian 1 menyimpan kuis', bagian2.toast.includes('Kuis dibuat sebagai draf'), bagian2.toast)
   cek('bagian 2: bank soal tampil dengan kotak centang', bagian2.jumlahSoal > 0 && bagian2.centang, `soal=${bagian2.jumlahSoal}`)
   cek('bagian 2: panel susunan tampil (kosong atau terisi)', bagian2.adaSusunan === true, '')
   cek('bagian 2: ada tombol "Simpan susunan" tanpa harus menerbitkan', bagian2.adaSimpanSusunan === true, '')
@@ -247,14 +264,11 @@ async function main() {
     const butir = [...(daftarKelengkapan?.querySelectorAll('.badge-status') ?? [])].map((b) => b.textContent.trim())
     const ringkas = [...document.querySelectorAll('.petak-ringkas')].map((e) => e.textContent.trim())
     const publikasi = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Publikasikan kuis'))
-    const bar = document.querySelector('.bar-susun')
-    const terbitBar = bar ? [...bar.querySelectorAll('button')].find((b) => b.textContent.includes('Terbitkan kuis')) : null
     return {
       butir,
       ringkas,
       adaPublikasi: Boolean(publikasi),
       publikasiAktif: publikasi ? !publikasi.disabled : false,
-      terbitBarAktif: terbitBar ? !terbitBar.disabled : false,
       // Setelan ulangan kini SATU tombol: panelnya tidak lagi menggelar saklar
       // di halaman, dan tidak ada satu saklar pun sebelum panelnya dibuka.
       tombolSetelan: [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Setelan ulangan')).length,
@@ -264,7 +278,7 @@ async function main() {
   cek('bagian 3: butir kelengkapan tampil dengan status Lengkap/Belum', bagian3.butir.length >= 6, bagian3.butir.join(','))
   cek('bagian 3: semua butir lengkap setelah formulir diisi', bagian3.butir.every((b) => b === 'Lengkap'), bagian3.butir.filter((b) => b !== 'Lengkap').join(','))
   cek('bagian 3: ringkasan kelas/jadwal/soal tampil', bagian3.ringkas.length === 3, bagian3.ringkas.map((r) => r.slice(0, 40)).join(' | '))
-  cek('bagian 3: tombol publikasi aktif karena kuis siap', bagian3.adaPublikasi && bagian3.publikasiAktif && bagian3.terbitBarAktif, `panel=${bagian3.publikasiAktif} bar=${bagian3.terbitBarAktif}`)
+  cek('bagian 3: tombol publikasi aktif karena kuis siap', bagian3.adaPublikasi && bagian3.publikasiAktif, `aktif=${bagian3.publikasiAktif}`)
   cek('setelan ulangan jadi SATU tombol (tidak diulang di halaman), tanpa saklar tergeletak', bagian3.tombolSetelan === 1 && bagian3.saklarDiHalaman === 0, `tombol=${bagian3.tombolSetelan} saklar=${bagian3.saklarDiHalaman}`)
 
   // Panel setelan benar-benar terbuka dan berisi saklar (dulu tergeletak di halaman).
@@ -293,7 +307,7 @@ async function main() {
     const akar = document.documentElement
     const pil = [...document.querySelectorAll('.pil-langkah')]
     const kanan = Math.max(...pil.map((p) => p.getBoundingClientRect().right))
-    const kecil = [...document.querySelectorAll('.pil-langkah, .bar-susun button, .baris-ringkas button, .pilih-soal')]
+    const kecil = [...document.querySelectorAll('.pil-langkah, #form-kuis button, .baris-ringkas button, .pilih-soal')]
       .filter((el) => el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().height < 44)
     return {
       luber: akar.scrollWidth - akar.clientWidth,

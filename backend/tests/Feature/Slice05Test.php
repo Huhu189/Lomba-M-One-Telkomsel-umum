@@ -115,28 +115,68 @@ it('draf kuis bisa dibuat hanya dengan judul, mapel dan kelas menyusul', functio
     ])->assertOk()->assertJsonPath('class_id', $this->kelas->id);
 });
 
-it('kuis tanpa mapel atau kelas tidak bisa diterbitkan', function (): void {
+it('kuis tanpa mapel tidak bisa diterbitkan, tetapi kelas tidak lagi wajib', function (): void {
     auth()->forgetGuards();
     Sanctum::actingAs($this->guru);
 
     $draf = $this->postJson('/api/v1/kuis', ['judul' => 'Draf tanpa kelas'])->assertCreated();
 
+    // Mapel tetap penjaga; kelas tidak lagi — kuis tanpa kelas berarti "semua
+    // kelas di sekolah ini" (lihat Kuis::untukSemuaKelas).
     $this->postJson("/api/v1/kuis/{$draf->json('id')}/publikasi")
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['subject_id', 'class_id']);
+        ->assertJsonValidationErrors(['subject_id'])
+        ->assertJsonMissingValidationErrors(['class_id']);
 
-    // Begitu mapel dan kelas diisi, penjaga itu tidak lagi menghalangi.
+    // Mapel diisi, kelas dibiarkan kosong: server menerimanya apa adanya.
     $this->putJson("/api/v1/kuis/{$draf->json('id')}", [
         'judul' => 'Draf tanpa kelas',
         'subject_id' => $this->mapel->id,
-        'class_id' => $this->kelas->id,
+        'class_id' => null,
         'durasi_menit' => 30,
-    ])->assertOk();
+    ])->assertOk()->assertJsonPath('class_id', null);
 
     // Yang masih kurang tinggal soal + jadwal (bukan lagi mapel/kelas).
     $this->postJson("/api/v1/kuis/{$draf->json('id')}/publikasi")
         ->assertStatus(422)
         ->assertJsonMissingValidationErrors(['subject_id', 'class_id']);
+});
+
+it('kuis tanpa kelas terbuka untuk semua kelas di sekolahnya, tetapi tidak menyeberang sekolah', function (): void {
+    $siap = siapkanKuis05($this);
+
+    // Kelas dikosongkan: kuisnya jadi "berlaku untuk semua kelas".
+    $siap['kuis']->update(['class_id' => null]);
+    $kuis = $siap['kuis']->refresh();
+    expect($kuis->class_id)->toBeNull();
+
+    // Murid dari kelas LAIN di sekolah yang sama: boleh membuka & mengerjakan.
+    $kelasLain = Kelas::factory()->untukSekolah($this->sekolah)->create(['nama' => '5B', 'tingkat' => 5]);
+    $muridLain = Murid::factory()->create([
+        'school_id' => $this->sekolah->id,
+        'class_id' => $kelasLain->id,
+    ]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($muridLain->user);
+    $this->getJson("/api/v1/kuis/{$kuis->id}")->assertOk();
+    $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertCreated();
+
+    // Murid sekolah LAIN: ditolak, walau kuisnya tidak membatasi kelas.
+    // "Semua kelas" berarti semua kelas di sekolah kuis itu, bukan semua sekolah.
+    $sekolahLain = Sekolah::factory()->create();
+    $kelasAsing = Kelas::factory()->untukSekolah($sekolahLain)->create(['nama' => '6A', 'tingkat' => 6]);
+    $muridAsing = Murid::factory()->create([
+        'school_id' => $sekolahLain->id,
+        'class_id' => $kelasAsing->id,
+    ]);
+
+    auth()->forgetGuards();
+    Sanctum::actingAs($muridAsing->user);
+    $this->getJson("/api/v1/kuis/{$kuis->id}")->assertForbidden();
+    // "Mulai" ditolak lebih dulu oleh otorisasi kuis, jadi 403 — bukan 422 dari
+    // pemeriksaan kelas di AttemptService (pagar itu tetap ada sebagai lapis kedua).
+    $this->postJson("/api/v1/kuis/{$kuis->id}/mulai")->assertForbidden();
 });
 
 it('respons mulai menyertakan attempt_no dan asli', function (): void {

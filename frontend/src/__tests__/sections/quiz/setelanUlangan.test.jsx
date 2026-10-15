@@ -11,8 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import PanelSetelanUlangan from '../../../sections/quiz/PanelSetelanUlangan.jsx'
-import { useToastStore } from '../../../shared/ui/toast.jsx'
+import PanelSetelanUlangan from '../../../sections/quiz/setelan/PanelSetelanUlangan.jsx'
 
 vi.mock('../../../sections/settings/api.js', async (importOriginal) => {
   const asli = /** @type {Record<string, unknown>} */ (await importOriginal())
@@ -36,10 +35,25 @@ const RESOLUSI = {
   kelas_id: null,
   kuis_id: 191,
   pengaturan: Object.fromEntries([
-    nilai('anti_cheat', { nilai: true, label: 'Aktifkan anti-cheat' }),
-    nilai('block_paste', { nilai: false, label: 'Blokir tempel (paste) jawaban' }),
+    nilai('anti_cheat', { nilai: true, label: 'Aktifkan anti-cheat', tampil: true }),
+    nilai('block_paste', { nilai: false, label: 'Blokir tempel (paste) jawaban', tampil: true }),
     // Dikunci sekolah: nilai sekolah yang menang, saklarnya tidak bisa diubah.
-    nilai('block_print', { nilai: true, label: 'Sembunyikan saat dicetak', sumber: 'sekolah', terkunci: true }),
+    nilai('ranking', {
+      nilai: true,
+      label: 'Tampilkan peringkat',
+      kelompok: 'Hasil & tampilan',
+      sumber: 'sekolah',
+      terkunci: true,
+      tampil: true,
+    }),
+    // Setelan yang sengaja **tidak lagi ditawarkan** ke guru: server tetap
+    // memakainya dengan nilai bawaannya, tetapi panel tidak menampilkannya
+    // (lihat KunciPengaturan::tampil()).
+    nilai('detect_window_resize', {
+      nilai: true,
+      label: 'Blur singkat saat ukuran jendela berubah',
+      tampil: false,
+    }),
   ]),
 }
 
@@ -66,12 +80,6 @@ function cari(pemilih) {
   return /** @type {HTMLElement|null} */ (wadah.querySelector(pemilih))
 }
 
-/** @param {string} teks @returns {HTMLButtonElement|null} */
-function tombol(teks) {
-  const semua = /** @type {HTMLButtonElement[]} */ ([...wadah.querySelectorAll('button')])
-  return semua.find((satu) => satu.textContent?.includes(teks)) ?? null
-}
-
 /**
  * Menunggu sampai layar memuat teks tertentu.
  * @param {string} teks
@@ -93,7 +101,6 @@ beforeEach(() => {
   simpanPengaturan.mockReset()
   ambilPengaturan.mockResolvedValue(RESOLUSI)
   simpanPengaturan.mockResolvedValue(RESOLUSI)
-  useToastStore.setState({ toasts: [] })
 
   wadah = document.createElement('div')
   document.body.appendChild(wadah)
@@ -109,22 +116,24 @@ describe('PanelSetelanUlangan', () => {
   it('memuat setelan kuis yang sedang dibuka, tanpa pemilih lingkup', async () => {
     pasang(191)
 
-    expect(await tungguTeks('Blokir tempel (paste) jawaban')).toBe(true)
+    expect(await tungguTeks('Blokir tempel jawaban')).toBe(true)
     // Hanya kuis ini yang diminta — tidak ada daftar ulangan untuk dipilih.
     expect(ambilPengaturan.mock.calls[0]?.slice(0, 2)).toEqual([null, 191])
     expect(cari('select')).toBeNull()
   })
 
-  it('menghitung saklar aktif dan menandai nilai yang dikunci sekolah', async () => {
+  it('menandai nilai yang dikunci sekolah dan mematikan saklarnya', async () => {
     pasang()
     await tungguTeks('Anti-cheat')
 
-    expect(wadah.textContent).toContain('2/3 aktif')
-    expect(wadah.textContent).toContain('dikunci sekolah')
+    // Angka "n/m aktif" bukan urusan panel ini: ringkasannya ada di tombol
+    // "Setelan ulangan" (dijaga di setelanUlanganTombol.test.jsx). Yang dijaga di
+    // sini: nilai yang dikunci sekolah dijelaskan dan saklarnya mati.
+    expect(wadah.textContent).toContain('Dikunci sekolah')
 
-    const cetak = /** @type {HTMLInputElement} */ (cari('#set-block_print'))
-    expect(cetak.disabled).toBe(true)
-    expect(cetak.checked).toBe(true)
+    const peringkat = /** @type {HTMLInputElement} */ (cari('#set-ranking'))
+    expect(peringkat.disabled).toBe(true)
+    expect(peringkat.checked).toBe(true)
   })
 
   it('menyimpan perubahan pada lapis kuis kuis ini', async () => {
@@ -149,24 +158,16 @@ describe('PanelSetelanUlangan', () => {
     })
   })
 
-  it('"Nyalakan semua" melewati saklar yang dikunci sekolah', async () => {
+  it('hanya menampilkan setelan yang diminta server', async () => {
     pasang()
     await tungguTeks('Anti-cheat')
 
-    await act(async () => {
-      tombol('Nyalakan semua')?.click()
-      await sleep(80)
-    })
+    // Setelan `tampil: false` tetap berlaku di server dengan nilai bawaannya,
+    // tetapi tidak lagi ditawarkan — panelnya tidak tenggelam di puluhan saklar.
+    expect(cari('#set-detect_window_resize')).toBeNull()
+    expect(wadah.textContent).not.toContain('Blur singkat saat ukuran jendela berubah')
 
-    const kunciDisimpan = simpanPengaturan.mock.calls.map((satu) => satu[0].kunci)
-    expect(kunciDisimpan).toEqual(['anti_cheat', 'block_paste'])
-    expect(kunciDisimpan).not.toContain('block_print')
-
-    // Pesan massal disampaikan lewat toast (host-nya tidak dirender di uji ini),
-    // jadi yang diperiksa isi antrean toast — di situlah guru membacanya.
-    const toasts = /** @type {Array<{ pesan: string }>} */ (useToastStore.getState().toasts)
-    const pesan = toasts.map((satu) => satu.pesan).join(' ')
-    expect(pesan).toContain('2 setelan dinyalakan.')
-    expect(pesan).toContain('dilewati karena dikunci sekolah')
+    // Kontrol positif: setelan yang memang ditawarkan tidak ikut hilang.
+    expect(cari('#set-anti_cheat')).not.toBeNull()
   })
 })

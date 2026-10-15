@@ -58,10 +58,13 @@ class KuisController extends Controller
 
         $kelasId = $pengguna?->murid?->class_id;
 
+        // Kuis tanpa kelas (class_id null) terbuka untuk semua kelas di sekolah murid.
         $daftar = Kuis::query()
             ->when(
                 $kelasId !== null,
-                fn ($query) => $query->where('class_id', $kelasId),
+                fn ($query) => $query
+                    ->where('school_id', $pengguna->murid->school_id)
+                    ->where(fn ($q) => $q->where('class_id', $kelasId)->orWhereNull('class_id')),
                 fn ($query) => $query->whereRaw('1 = 0'),
             )
             ->where('status', StatusKuis::Publikasi->value)

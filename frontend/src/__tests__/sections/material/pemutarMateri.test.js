@@ -9,7 +9,7 @@ import {
   skemaBukaBlok,
   skemaRingkasanMateri,
 } from '../../../sections/material/api.js'
-import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from '../../../sections/material/pemutarMateri.js'
+import { kuisJatuhTempo, sisaWajib, sisipanUntuk } from '../../../sections/material/pemutar/pemutarMateri.js'
 
 /** @param {Record<string, unknown>} lebih */
 const blok = (lebih) => ({

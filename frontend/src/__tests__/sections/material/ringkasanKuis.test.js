@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { skemaRingkasanKuis } from '../../../sections/material/api.js'
-import { tampilanKlip, ubahTampilan, muatanBlok, blokBaru } from '../../../sections/material/editorMateri.js'
+import { tampilanKlip, ubahTampilan, muatanBlok, blokBaru } from '../../../sections/material/editor/editorMateri.js'
 import {
   adaLayarTambahan,
   bintangDariPersen,
@@ -16,7 +16,7 @@ import {
   saklarSesudahKuis,
   statusRingkasan,
   urutKartu,
-} from '../../../sections/material/ringkasanKuis.js'
+} from '../../../sections/material/kuis/ringkasanKuis.js'
 
 /** @param {number} id @param {number} nomor @param {boolean|null} benar */
 const kartu = (id, nomor, benar) => ({ question_id: id, nomor, depan: `Soal ${nomor}`, belakang: 'A', catatan: null, benar })

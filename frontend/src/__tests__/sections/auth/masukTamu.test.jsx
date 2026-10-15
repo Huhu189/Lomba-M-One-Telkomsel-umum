@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import MasukTamu from '../../../sections/auth/MasukTamu.jsx'
+import MasukTamu from '../../../sections/auth/komponen/MasukTamu.jsx'
 import { useAuthStore } from '../../../sections/auth/authStore.js'
 import { useToastStore } from '../../../shared/ui/toast.jsx'
 

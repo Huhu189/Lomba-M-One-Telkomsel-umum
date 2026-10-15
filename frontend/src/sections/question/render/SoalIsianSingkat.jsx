@@ -3,7 +3,9 @@
  * konten: { teks, petunjuk? } · kunci: { jawaban_baku: [teks, …], sinonim?: [[alias, …]] }
  * nilai : string
  */
+import BatasKarakter from './BatasKarakter.jsx'
 import MediaSoal from './MediaSoal.jsx'
+import { BATAS_ISIAN_SINGKAT } from './batasJawaban.js'
 import { daftarTeks, teksAman } from '../tipeSoal.js'
 
 /**
@@ -29,6 +31,8 @@ export default function SoalIsianSingkat({
   tampilkanKunci = false,
   nama = 'soal',
 }) {
+  const teks = typeof nilai === 'string' ? nilai : ''
+  const idHitung = `${nama}-hitung`
   const jawabanBaku = daftarTeks(kunci.jawaban_baku)
   const semuaKandidat = jawabanBaku.map((_, indeks) => kandidat(kunci, indeks))
 
@@ -42,11 +46,19 @@ export default function SoalIsianSingkat({
         type="text"
         name={nama}
         aria-label="Jawaban isian singkat"
-        value={typeof nilai === 'string' ? nilai : ''}
+        maxLength={BATAS_ISIAN_SINGKAT}
+        aria-describedby={dinonaktifkan || teks.length < BATAS_ISIAN_SINGKAT * 0.9 ? undefined : idHitung}
+        value={teks}
         disabled={dinonaktifkan}
         onChange={(e) => onUbah?.(e.target.value)}
         placeholder={teksAman(konten.petunjuk) || 'Tulis jawabanmu…'}
       />
+
+      {!dinonaktifkan && teks.length >= BATAS_ISIAN_SINGKAT * 0.9 && (
+        <div className="text-end mt-1">
+          <BatasKarakter id={idHitung} panjang={teks.length} batas={BATAS_ISIAN_SINGKAT} />
+        </div>
+      )}
 
       {tampilkanKunci && semuaKandidat.length > 0 && (
         <ul className="list-unstyled teks-lembut small mt-2 mb-0">

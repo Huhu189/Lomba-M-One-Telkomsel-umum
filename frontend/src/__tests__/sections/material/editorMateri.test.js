@@ -15,6 +15,10 @@ import {
   dariServer,
   durasiTotal,
   formatWaktu,
+  gandakanKlip,
+  geserUrutan,
+  ringkasKlip,
+  urutanWaktu,
   klipPada,
   lepasBerkas,
   muatanBlok,
@@ -29,12 +33,12 @@ import {
   sisipBlok,
   susunTrack,
   trackMaksimal,
-} from '../../../sections/material/editorMateri.js'
+} from '../../../sections/material/editor/editorMateri.js'
 
 /**
- * @param {import('../../../sections/material/editorMateri.js').TipeBlok} tipe
- * @param {Partial<import('../../../sections/material/editorMateri.js').BarisBlok>} [ubah]
- * @returns {import('../../../sections/material/editorMateri.js').BarisBlok}
+ * @param {import('../../../sections/material/editor/editorMateri.js').TipeBlok} tipe
+ * @param {Partial<import('../../../sections/material/editor/editorMateri.js').BarisBlok>} [ubah]
+ * @returns {import('../../../sections/material/editor/editorMateri.js').BarisBlok}
  */
 function klip(tipe, ubah = {}) {
   return { ...blokBaru(tipe), ...ubah }
@@ -384,5 +388,64 @@ describe('membuang berkas pustaka dari susunan klip', () => {
     const hasil = lepasBerkas(blok, 'berkas-a')
 
     expect(hasil).toEqual({ blok, klip: 0, penjelasan: 0 })
+  })
+})
+
+describe('urutan tayang, gandakan, dan ringkasan klip', () => {
+  const tiga = () => [
+    klip('teks', { teks: 'A', mulai_detik: 0, durasi_detik: 4 }),
+    klip('teks', { teks: 'B', mulai_detik: 4, durasi_detik: 6 }),
+    klip('teks', { teks: 'C', mulai_detik: 10, durasi_detik: 2 }),
+  ]
+
+  it('mengurutkan indeks menurut waktu mulai', () => {
+    const blok = [klip('teks', { mulai_detik: 8 }), klip('teks', { mulai_detik: 0 }), klip('teks', { mulai_detik: 3 })]
+
+    expect(urutanWaktu(blok)).toEqual([1, 2, 0])
+  })
+
+  it('menukar klip dengan tetangga tanpa mengubah panjang dan celah', () => {
+    const hasil = geserUrutan(tiga(), 0, 1)
+
+    expect(hasil.indeks).toBe(0)
+    expect(hasil.blok[1]).toMatchObject({ teks: 'B', mulai_detik: 0, durasi_detik: 6 })
+    expect(hasil.blok[0]).toMatchObject({ teks: 'A', mulai_detik: 6, durasi_detik: 4 })
+    expect(hasil.blok[2].mulai_detik).toBe(10)
+  })
+
+  it('mempertahankan celah di antara dua klip yang ditukar', () => {
+    const blok = [
+      klip('teks', { mulai_detik: 0, durasi_detik: 2 }),
+      klip('teks', { mulai_detik: 5, durasi_detik: 3 }),
+    ]
+    const hasil = geserUrutan(blok, 1, -1)
+
+    expect(hasil.blok[1].mulai_detik).toBe(0)
+    expect(hasil.blok[0].mulai_detik).toBe(6)
+  })
+
+  it('tidak berbuat apa-apa di ujung urutan', () => {
+    const blok = tiga()
+
+    expect(geserUrutan(blok, 0, -1).blok).toBe(blok)
+    expect(geserUrutan(blok, 2, 1).blok).toBe(blok)
+  })
+
+  it('menggandakan klip tepat setelah klip asal dan memilih salinannya', () => {
+    const hasil = gandakanKlip(tiga(), 0)
+
+    expect(hasil.indeks).toBe(1)
+    expect(hasil.blok).toHaveLength(4)
+    expect(hasil.blok[1]).toMatchObject({ teks: 'A', mulai_detik: 4, durasi_detik: 4 })
+  })
+
+  it('meringkas isi klip dalam satu baris', () => {
+    expect(ringkasKlip(klip('teks', { teks: '  Halo\n  dunia  ' }))).toBe('Halo dunia')
+    expect(ringkasKlip(klip('teks'))).toBe('Teks kosong')
+    expect(ringkasKlip(klip('teks', { teks: 'x'.repeat(80) }), {}, 10)).toBe('xxxxxxxxx…')
+    expect(ringkasKlip(klip('media'), { namaBerkas: 'bab1.mp4' })).toBe('bab1.mp4')
+    expect(ringkasKlip(klip('media'))).toBe('Belum ada media')
+    expect(ringkasKlip(klip('kuis'))).toBe('Belum pilih kuis')
+    expect(ringkasKlip(klip('kuis', { quiz_id: '3' }), { judulKuis: 'Pecahan' })).toBe('Pecahan')
   })
 })

@@ -106,6 +106,13 @@ describe('klienQuery', () => {
   })
 
   it('tetap mencoba ulang sekali untuk galat sesaat', () => {
-    expect(klienQuery.getDefaultOptions().queries?.retry).toBe(1)
+    const ulang = /** @type {(n: number, g: unknown) => boolean} */ (klienQuery.getDefaultOptions().queries?.retry)
+    expect(ulang(0, { response: { status: 500 } })).toBe(true)
+    expect(ulang(1, { response: { status: 500 } })).toBe(false)
+  })
+
+  it('tidak mengulang penolakan pasti (401/403/404)', () => {
+    const ulang = /** @type {(n: number, g: unknown) => boolean} */ (klienQuery.getDefaultOptions().queries?.retry)
+    for (const status of [401, 403, 404]) expect(ulang(0, { response: { status } })).toBe(false)
   })
 })

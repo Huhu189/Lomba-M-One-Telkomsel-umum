@@ -54,6 +54,8 @@ const jalurMenu = [
 const halamanMalas = [
   'HalamanDaftar',
   'HalamanLupaSandi',
+  // Pintu siswa tamu di halamannya sendiri (15 Oktober 2026).
+  'HalamanMasukTamu',
   'HalamanAturUlangSandi',
   // Lapisan wajib-buat-sandi akun Google (14 Oktober 2026).
   'HalamanBuatSandi',
@@ -159,10 +161,10 @@ describe('bundel awal App.jsx', () => {
     const statis = [...app.matchAll(/^import\s+\w+\s+from\s+'(\.\/sections\/[^']+)'/gm)].map((m) => m[1])
 
     expect(statis).toEqual([
-      './sections/home/Beranda.jsx',
-      './sections/home/HalamanTidakDitemukan.jsx',
-      './sections/auth/HalamanMasuk.jsx',
-      './sections/attempt/BatasGalatUlangan.jsx',
+      './sections/home/halaman/Beranda.jsx',
+      './sections/home/halaman/HalamanTidakDitemukan.jsx',
+      './sections/auth/halaman/HalamanMasuk.jsx',
+      './sections/attempt/komponen/BatasGalatUlangan.jsx',
     ])
   })
 

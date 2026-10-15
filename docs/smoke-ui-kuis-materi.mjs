@@ -147,31 +147,27 @@ const UKUR = `window.__ukurHalaman = function () {
   }
 };
 
-// Panel kuis sisipan sejak 14 Okt 2026 memakai pola SATU SOAL PER LAYAR (sama
-// seperti layar ulangan resmi), jadi tombol "Simpan jawaban & kumpulkan" hanya
-// ada di soal TERAKHIR — soal sebelumnya menampilkan "Berikutnya". Pengukur di
-// bawah mengukur keadaan soal terakhir, karena itulah yang diperiksa: tombol
-// kumpulkan harus terlihat tanpa menggulir panel saat ia memang tampil.
-// Ditulis async dan menyerahkan kendali tiap kali selesai mengklik: perpindahan
-// soal digerakkan state React, dan satu eval yang berjalan lurus tidak pernah
-// memberi React kesempatan menggambar ulang — tombol "Berikutnya" yang terlihat
-// selalu yang lama, sehingga tombol kumpulkan seolah tidak pernah muncul.
-window.__keSoalTerakhir = async function (batas) {
-  const adaTombolKumpul = () =>
-    [...document.querySelectorAll('button')].some((b) => (b.textContent || '').includes('kumpulkan'))
-  const tungguGambar = () => new Promise((selesai) => setTimeout(selesai, 120))
+// Panel kuis sisipan sejak 15 Okt 2026 adalah SATU DAFTAR SOAL YANG BISA DIGULIR
+// (permintaan pemilik produk: "jangan bersifat proses dengan tombol Berikutnya —
+// jadikan scrollbar"), jadi tidak ada lagi perpindahan soal: seluruh soal sudah
+// terpasang dan tombol "Simpan jawaban & kumpulkan" ada di bawah daftarnya.
+// Fungsi ini memastikan daftarnya benar-benar wadah bergulir dan tombol
+// kumpulkannya memang ada; angkanya dipakai harness untuk mencatat apa adanya.
+window.__siapkanKumpulkan = function () {
+  const daftar = document.querySelector('.ks-daftar-soal')
+  const tombol = [...document.querySelectorAll('button')].find((b) =>
+    (b.textContent || '').includes('kumpulkan'),
+  )
 
-  for (let i = 0; i < (batas || 12); i++) {
-    if (adaTombolKumpul()) return true
-    const lanjut = [...document.querySelectorAll('button')].find((b) =>
-      (b.textContent || '').trim().startsWith('Berikutnya'),
-    )
-    if (!lanjut) return adaTombolKumpul()
-    lanjut.click()
-    await tungguGambar()
-  }
+  window.__daftarSoalInfo = daftar
+    ? {
+        soal: daftar.querySelectorAll('.ks-soal').length,
+        overflowY: getComputedStyle(daftar).overflowY,
+        bisaDigulir: daftar.scrollHeight > daftar.clientHeight + 1,
+      }
+    : null
 
-  return adaTombolKumpul()
+  return Boolean(daftar && tombol)
 };
 
 window.__ukur = function () {
@@ -514,11 +510,17 @@ async function main() {
       await sleep(500)
       await evalJs(`document.querySelectorAll('ol.list-unstyled:not(.jelajah-daftar) > li')[0].querySelector('button')?.click(); true`)
       const adaSoal = await tunggu(`(document.body.innerText || '').includes('Soal 1')`, 15000)
-      // Maju ke soal terakhir dulu: tombol kumpulkan ada di sana (satu soal per
-      // layar), dan yang diperiksa harness ini adalah "tombolnya terlihat",
-      // bukan "tombolnya ada sejak soal pertama".
-      const keAkhir = await evalJs(`window.__keSoalTerakhir(12)`)
-      catat(`blok kuis biasa: soal terakhir bisa dijangkau dari soal 1 [${namaVp}]`, keAkhir === true)
+      // Panelnya kini satu daftar bergulir: semua soal sudah terpasang dan
+      // tombol kumpulkan ada di bawahnya, jadi tidak ada lagi "maju ke soal
+      // terakhir".
+      const siap = await evalJs(`window.__siapkanKumpulkan()`)
+      const daftarSoal = await evalJs(`window.__daftarSoalInfo`)
+      info(`daftar soal blok kuis [${namaVp}]`, daftarSoal)
+      catat(
+        `blok kuis biasa: seluruh soal terpasang di daftar bergulir [${namaVp}]`,
+        siap === true && (daftarSoal?.soal ?? 0) >= 1 && daftarSoal?.overflowY === 'auto',
+        daftarSoal ? `${daftarSoal.soal} soal · overflow-y=${daftarSoal.overflowY}` : 'wadah daftar tidak ada',
+      )
 
       const nilai = await evalJs(`(() => {
         const tombol = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('kumpulkan'))
@@ -579,9 +581,9 @@ async function main() {
         }
 
         await sleep(600)
-        // Sama seperti blok kuis berdiri sendiri: maju ke soal terakhir supaya
-        // tombol kumpulkan benar-benar ada saat diukur.
-        await evalJs(`window.__keSoalTerakhir(12)`)
+        // Sama seperti blok kuis berdiri sendiri: daftar bergulir + tombol
+        // kumpulkan di bawahnya.
+        await evalJs(`window.__siapkanKumpulkan()`)
         await sleep(200)
         const m = await evalJs('window.__ukur()')
         info(`panel kuis sisipan ${nama} [${namaVp}]`, m)
@@ -673,7 +675,7 @@ async function main() {
 
     const jawabSatu = await pilihOpsi('B')
     await sleep(700)
-    await evalJs(`window.__keSoalTerakhir(12)`)
+    await evalJs(`window.__siapkanKumpulkan()`)
     await sleep(600)
     const jawabDua = await pilihOpsi('B')
     await sleep(700)
