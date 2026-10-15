@@ -6,9 +6,12 @@ Distribusi materi dan ulangan adalah dua fondasi belajar anak sekolah dasar. Gur
 
 Dibuat untuk **M-ONE Telkomsel Coding Competition** (Kategori Umum), tema *Innovating Education Through Technology*, subtema *Web Education for Kids*.
 
-- Demo: [LINK_DEPLOY]
-- Akun demo guru: [EMAIL_GURU] / murid: [EMAIL_MURID] (kata sandi diberikan lewat dokumen pengumpulan)
-
+- Demo: quizly.projectla.biz.id
+- Akun demo guru:
+Admin	admin@sekolah.test	Passw0rd!Aman
+Guru	guru1@sekolah.test	password12
+Murid 1	murid1@sekolah.test	password12
+Murid 2	murid2@sekolah.test	password12
 ## Masalah yang dijawab
 
 - Guru SD menghabiskan banyak waktu menyusun materi dan soal, lalu memeriksanya satu per satu.
