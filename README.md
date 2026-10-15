@@ -12,6 +12,10 @@ Admin	admin@sekolah.test	Passw0rd!Aman
 Guru	guru1@sekolah.test	password12
 Murid 1	murid1@sekolah.test	password12
 Murid 2	murid2@sekolah.test	password12
+
+contoh materi 
+https://quizly.projectla.biz.id/materi/190/editor
+
 ## Masalah yang dijawab
 
 - Guru SD menghabiskan banyak waktu menyusun materi dan soal, lalu memeriksanya satu per satu.
