@@ -8770,3 +8770,93 @@ Yang **masih** belum dijalankan untuk fitur A.96: `docs/smoke-http-fitur.mjs` da
   menulis di berkas aslinya setelah penggabungan; salinan di repo tidak ikut berubah setelah itu.
 - **Isi sesi eksternal bukan bukti** (aturan `AGENT.md`): semua yang dipakai dari sana tetap harus
   diverifikasi ulang di repo ini. Pemindahan ini hanya soal keterbacaan, bukan pengakuan hasil.
+
+## A.98 — SEO dinaikkan dan unduhan halaman diringankan (15 Oktober 2026)
+
+### A.98.1 Permintaan
+
+*"apply ini secara cepat dan tambahkan log naikan seo dan performancenya"* (bundel `seo-perf.zip`: hasil audit
+lemah SEO + performa pada `frontend/src`).
+
+### A.98.2 Keadaan sebelum putaran ini
+
+1. **Kartu pratinjau tautan tidak ada.** `index.html` hanya memuat `description` + `robots`; tag
+   `og:*` dan `twitter:card` belum ada sama sekali. Pemindai pratinjau (WhatsApp, Telegram, Facebook)
+   **tidak menjalankan JavaScript**, jadi apa pun yang dipasang `shared/seo/meta.js` tidak pernah sampai
+   ke mereka — tautan ulangan yang dibagikan guru tampil sebagai tautan gundul.
+2. **Meta halaman berhenti di judul + deskripsi.** `pasangMeta()` belum memasang `<link rel="canonical">`,
+   `og:url`, maupun `lang` dokumen. Halaman aplikasi yang saling menautkan diri bisa terbaca mesin
+   pencari sebagai beberapa alamat berbeda untuk isi yang sama, dan pembaca layar tidak tahu bahasanya.
+3. **Belum ada `robots.txt`.** Tidak ada satu pun arahan mana yang boleh dirayapi, sehingga halaman
+   berisi data sekolah (kuis, kunci, nilai, panel admin) ikut ditawarkan ke perayap.
+4. **Halaman putih sebelum JavaScript selesai.** `<div id="root"></div>` kosong: di jaringan sekolah
+   lambat, yang dilihat lebih dulu adalah layar kosong.
+5. **`jszip` (96 KB) ikut terunduh setiap kali penyunting materi dibuka** — padahal pratinjau berkas
+   kantor (Word/PowerPoint/Excel) hanya dipakai bila materinya memang berisi berkas itu.
+6. **Titik status server menembak `/health` tiap 30 detik per pengguna aktif** — di kelas penuh itu
+   ratusan permintaan per menit untuk satu titik kecil di kaki halaman.
+
+### A.98.3 Yang berubah
+
+**SEO**
+
+1. `frontend/index.html` — tag statis untuk pemindai pratinjau tautan: `og:type`, `og:site_name`,
+   `og:locale`, `og:title`, `og:description`, `twitter:card`, dan `theme-color`. Ditambah kerangka
+   "Menyiapkan…" di dalam `#root` yang tampil sebelum JavaScript selesai (React menggantinya pada render
+   pertama).
+2. `frontend/public/robots.txt` (baru) — `Allow` untuk halaman publik (`/`, `/masuk`, `/daftar`),
+   `Disallow` untuk `/api/`, `/sanctum/`, `/kerjakan/`, `/kuis`, `/admin`, `/pengaturan`. Halaman publik
+   boleh diindeks; halaman aplikasi tidak.
+3. `frontend/src/shared/seo/meta.js` — `pasangMeta()` kini memasang **kartu pratinjau lengkap**
+   (`og:*` + `twitter:*`), `lang` dokumen (hanya bila `index.html` belum menetapkannya), dan
+   `<link rel="canonical">` + `og:url` **hanya di halaman yang boleh diindeks** — di halaman `noindex`
+   keduanya dibuang supaya tidak ada dua sinyal yang bertentangan. Pembersihan jalur diangkat jadi
+   `bersihkanJalur()` (memotong `?query` **dan** `#hash`) dan dipakai bersama `metaUntukJalur()`.
+4. `frontend/src/__tests__/seo/meta.test.jsx` — 4 tes baru: canonical + `og:url` ada di halaman publik,
+   **tidak ada** di halaman `noindex`, berpindah halaman tidak menumpuk tag, dan `lang` hanya diisi bila
+   belum ada (9 → **13 tes**).
+
+**Performa**
+
+5. `frontend/src/sections/material/editor/pratinjauOOXML.js` — `import JSZip from 'jszip'` (statis) diganti
+   `await import('jszip')` di dalam `uraiOOXML()`, sehingga pustaka itu baru diunduh saat dokumen kantor
+   **benar-benar dipratinjau**. Tipe JSDoc memakai `import('jszip')` supaya `checkJs` tetap ketat tanpa
+   impor statis.
+6. `frontend/src/shared/layout/KerangkaUmum.jsx` — `refetchInterval` titik status `/health` 30 detik →
+   **60 detik** (beserta alasannya sebagai komentar: satu titik kecil di kaki halaman tidak perlu lebih
+   segar, dan tiap pengguna aktif menembaknya).
+7. `frontend/src/sections/question/render/SoalHotspotGambar.jsx` — gambar hotspot memakai
+   `decoding="async"` supaya penguraiannya tidak menahan render soal.
+
+### A.98.4 Bukti (dijalankan, bukan klaim)
+
+| Perintah | Hasil |
+| --- | --- |
+| `npx vitest run src/__tests__/seo/meta.test.jsx` | **13 lulus** (4 di antaranya baru: canonical/`og:url`, `noindex` tanpa keduanya, tag tidak menumpuk, `lang`) |
+| `npm run test` (Vitest penuh) | **127 berkas, 1.140 tes lulus** (exit 0) |
+| `npm run check` (`tsc --noEmit`) | **exit 0** — tipe JSDoc `import('jszip')` diterima tanpa impor statis |
+| `npm run lint` (ESLint) | **exit 0** (3 peringatan lama `react-hooks/incompatible-library`, bukan dari berkas ini) |
+
+Performa diukur dari **keluaran build sungguhan** (`npm run build`), bukan perkiraan — satu build dengan berkas
+lama lalu satu build dengan berkas baru:
+
+| Ukuran | Sebelum | Sesudah |
+| --- | --- | --- |
+| JavaScript yang diunduh saat **penyunting materi** dibuka | `editorMateri` **131.139 B** (jszip tercampur di dalamnya) | `editorMateri` **35.517 B** + `jszip.min` 95.960 B yang **belum** diunduh |
+| Cara `jszip` dirujuk dari chunk itu | tercampur: `editorMateri-FxNMMPgl.js` **satu-satunya** berkas yang memuat kode jszip | diamis: `await import(\`./jszip.min-B4TBn35v.js\`)` — 95.960 B (24,50 KB brotli) menyusul hanya saat pratinjau |
+| Selisih eager | — | **−95.622 B (−72,9%)** per pembukaan penyunting materi |
+
+### A.98.5 Batasan jujur
+
+- **Tidak ada `og:image`.** Bundel audit menyebutnya sebagai tambahan berikutnya (kartu 1200×630 dengan URL
+  absolut); belum ada gambarnya, jadi belum dipasang — tanpa berkas itu tag-nya hanya akan menunjuk 404.
+- **`docs/smoke-ui-*.mjs` belum dijalankan ulang pada putaran ini**, jadi tag `og:*` di `index.html` baru
+  diperiksa dari berkasnya (dibaca langsung) dan bukan dari pratinjau tautan sungguhan.
+- **Angka canonical/`og:url` mengambil `location.origin`.** Di pemasangan lewat JS itu benar (halaman sudah
+  punya origin); kalau kelak aplikasi disajikan dari sub-jalur, asalnya harus disesuaikan.
+- **`robots.txt` hanya berlaku untuk perayap yang menghormatinya** — halaman `noindex` di `meta.js` tetap
+  jadi lapis kedua, dan bukan pengganti pembatasan akses (yang tetap dipegang policy backend).
+- **Backend tidak disentuh sama sekali** di putaran ini, jadi `php artisan test`/Pint tidak dijalankan ulang —
+  tidak ada berkas backend yang berubah.
+- **`docs/word/*.docx` belum dibangun ulang** (termasuk dokumen laporan ini); ekspornya butuh beberapa menit
+  dan putaran ini diminta cepat. Jalankan `docs/export-word.sh` sebelum mengumpulkan.

@@ -63,7 +63,9 @@ function StatusSistem() {
   const health = useQuery({
     queryKey: ['health'],
     queryFn: ambilHealth,
-    refetchInterval: 30_000,
+    // 60 dtk: titik status tidak perlu lebih segar, dan tiap pengguna aktif
+    // menembak /health dari sini (kelas penuh = ratusan permintaan per menit).
+    refetchInterval: 60_000,
     retry: 1,
   })
 

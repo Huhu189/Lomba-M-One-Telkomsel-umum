@@ -1969,3 +1969,27 @@ benar, soal asli dll kualitas tinggi — bukan tujuan audit namun beneran dipaka
 **Verifikasi:** `php artisan test` **423 lulus (4278 asersi)** · `./vendor/bin/pint --test` **PASS (395 berkas)** ·
 skrip bukti murid (API yang sama dengan UI murid) **20/20 lulus**. Berkas utama: `backend/database/seeders/
 MateriContohSeeder.php` (hanya itu yang berubah di putaran ini) + `docs/penjelasan-fitur.md` bagian 26.
+
+## 35. A.98 — SEO dinaikkan dan unduhan halaman diringankan (15 Oktober 2026)
+
+**Permintaan:** *"apply ini secara cepat dan tambahkan log naikan seo dan performancenya"* (`seo-perf.zip`).
+
+**Yang dikerjakan** (rincian + angka di `docs/laporan-pengujian.md` A.98):
+
+1. **Kartu pratinjau tautan** di `frontend/index.html` — `og:type`, `og:site_name`, `og:locale`, `og:title`,
+   `og:description`, `twitter:card`, `theme-color`, plus kerangka "Menyiapkan…" di dalam `#root` yang tampil
+   sebelum JavaScript selesai (React menggantinya pada render pertama). Pemindai WhatsApp/Telegram **tidak**
+   menjalankan JS, jadi tag ini memang harus statis di berkas itu.
+2. **`frontend/public/robots.txt` (baru)** — halaman publik boleh dirayapi; `/api/`, `/sanctum/`, `/kerjakan/`,
+   `/kuis`, `/admin`, `/pengaturan` tidak.
+3. **`pasangMeta()` bertambah**: kartu `og:*` + `twitter:*`, `lang` dokumen (hanya bila belum ada), dan
+   `<link rel="canonical">` + `og:url` **hanya di halaman `index, follow`** — di halaman `noindex` keduanya
+   dibuang supaya tidak ada sinyal bertentangan. Jalur dibersihkan lewat `bersihkanJalur()` baru (buang `?` dan `#`).
+4. **`jszip` jadi unduhan diamis** di `sections/material/editor/pratinjauOOXML.js`: `import JSZip from 'jszip'`
+   → `await import('jszip')` di dalam `uraiOOXML()`. Terukur: penyunting materi **131.139 B → 35.517 B**,
+   dengan 95.960 B jszip menyusul hanya saat dokumen kantor benar-benar dipratinjau.
+5. `KerangkaUmum.jsx` — titik status `/health` 30 → **60 detik**; `SoalHotspotGambar.jsx` — `decoding="async"`.
+
+**Verifikasi:** Vitest **127 berkas / 1.140 tes lulus** · `npm run check` (tsc) **exit 0** · ESLint **exit 0** ·
+`vitest run src/__tests__/seo/meta.test.jsx` **13 lulus**. Backend tidak disentuh, jadi Pest/Pint tidak dijalankan
+ulang. Belum dijalankan: `docs/smoke-ui-*.mjs` dan ekspor ulang `docs/word/*.docx`.

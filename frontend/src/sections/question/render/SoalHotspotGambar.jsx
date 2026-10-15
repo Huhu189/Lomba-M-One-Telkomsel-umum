@@ -97,6 +97,7 @@ export default function SoalHotspotGambar({
             className="hotspot-media"
             src={media}
             alt={altMedia(konten)}
+            decoding="async"
             onError={() => setGagalMuat(true)}
           />
 

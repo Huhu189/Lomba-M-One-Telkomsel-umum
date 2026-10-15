@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /$
+Allow: /masuk
+Allow: /daftar
+Disallow: /api/
+Disallow: /sanctum/
+Disallow: /kerjakan/
+Disallow: /kuis
+Disallow: /admin
+Disallow: /pengaturan

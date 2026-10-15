@@ -101,6 +101,17 @@ const AWALAN = [
   ['/buat-sandi', 'Buat kata sandi'],
 ]
 
+/** Nama situs untuk `og:site_name`. */
+export const NAMA_SITUS = 'Ulangan Sekolah'
+
+/**
+ * Jalur tanpa `?query`, `#hash`, dan garis miring di ujung (`/` tetap `/`).
+ * @param {string} jalur
+ */
+export function bersihkanJalur(jalur) {
+  return (jalur.split(/[?#]/)[0] || '/').replace(/\/+$/, '') || '/'
+}
+
 /**
  * Judul, deskripsi, dan arahan robot untuk satu jalur.
  *
@@ -111,7 +122,7 @@ const AWALAN = [
  * @returns {{ judul: string, deskripsi: string, robotika: string }}
  */
 export function metaUntukJalur(jalur) {
-  const bersih = (jalur.split('?')[0] || '/').replace(/\/+$/, '') || '/'
+  const bersih = bersihkanJalur(jalur)
 
   const publik = META_PUBLIK[bersih]
   if (publik) return publik
@@ -132,32 +143,82 @@ export function metaUntukJalur(jalur) {
 }
 
 /**
- * Terapkan meta satu jalur ke dokumen: judul tab + `<meta name="description">`
- * + `<meta name="robots">`. Elemen meta dibuat sekali bila belum ada, jadi
- * halaman pertama pun mendapatkannya walau `index.html` tidak memuatnya.
+ * Terapkan meta satu jalur ke dokumen: judul tab, `description`, `robots`,
+ * kartu pratinjau (Open Graph + Twitter), dan `<link rel="canonical">`.
+ * Elemen dibuat sekali bila belum ada, jadi halaman pertama pun mendapatkannya
+ * walau `index.html` tidak memuatnya.
+ *
+ * Canonical + `og:url` hanya dipasang di halaman yang boleh diindeks; di halaman
+ * `noindex` keduanya dibuang supaya tidak ada sinyal yang bertentangan.
+ *
+ * Catatan: pemasangan di sini terjadi lewat JS. Perayap yang menjalankan JS
+ * (Google) membacanya; pemindai pratinjau tautan (WhatsApp, Telegram, Facebook)
+ * TIDAK — mereka hanya membaca `index.html` statis, jadi tag dasarnya juga harus
+ * ada di sana.
  *
  * @param {string} jalur
  * @param {Document} [dokumen] dipakai uji; bawaan `document` peramban
  */
 export function pasangMeta(jalur, dokumen = document) {
   const { judul, deskripsi, robotika } = metaUntukJalur(jalur)
+  const head = dokumen.head
 
   dokumen.title = judul
 
+  // Bahasa dokumen: dipakai pembaca layar dan mesin pencari. Hanya diisi bila
+  // index.html belum menetapkannya.
+  if (!dokumen.documentElement?.getAttribute('lang')) {
+    dokumen.documentElement?.setAttribute('lang', 'id')
+  }
+
   /**
-   * @param {string} nama nama meta (mis. `description`)
-   * @param {string} isi isi meta yang dipasang/diganti
+   * @param {'name'|'property'} atribut
+   * @param {string} nama
+   * @param {string} isi
    */
-  const atur = (nama, isi) => {
-    let el = dokumen.head?.querySelector(`meta[name="${nama}"]`)
+  const atur = (atribut, nama, isi) => {
+    let el = head?.querySelector(`meta[${atribut}="${nama}"]`)
     if (!el) {
       el = dokumen.createElement('meta')
-      el.setAttribute('name', nama)
-      dokumen.head?.appendChild(el)
+      el.setAttribute(atribut, nama)
+      head?.appendChild(el)
     }
     el.setAttribute('content', isi)
   }
 
-  atur('description', deskripsi)
-  atur('robots', robotika)
+  /** @param {'name'|'property'} atribut @param {string} nama */
+  const buang = (atribut, nama) => {
+    head?.querySelector(`meta[${atribut}="${nama}"]`)?.remove()
+  }
+
+  atur('name', 'description', deskripsi)
+  atur('name', 'robots', robotika)
+
+  atur('property', 'og:type', 'website')
+  atur('property', 'og:site_name', NAMA_SITUS)
+  atur('property', 'og:locale', 'id_ID')
+  atur('property', 'og:title', judul)
+  atur('property', 'og:description', deskripsi)
+  atur('name', 'twitter:card', 'summary')
+  atur('name', 'twitter:title', judul)
+  atur('name', 'twitter:description', deskripsi)
+
+  const bisaDiindeks = robotika.startsWith('index')
+  const asal = dokumen.location?.origin
+  let taut = head?.querySelector('link[rel="canonical"]') ?? null
+
+  if (bisaDiindeks && asal && asal !== 'null') {
+    const url = `${asal}${bersihkanJalur(jalur)}`
+
+    if (!taut) {
+      taut = dokumen.createElement('link')
+      taut.setAttribute('rel', 'canonical')
+      head?.appendChild(taut)
+    }
+    taut.setAttribute('href', url)
+    atur('property', 'og:url', url)
+  } else {
+    taut?.remove()
+    buang('property', 'og:url')
+  }
 }

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
     <!--
       Nunito (judul) + Nunito Sans (teks) sesuai papan Standar. Bila jaringan
       sekolah memblokir Google Fonts, rantai fallback di theme.css tetap
@@ -26,10 +27,42 @@
       content="Aplikasi ulangan dan materi sekolah: guru menyusun soal, murid mengerjakan dari tautan kelas, dan nilainya terkumpul otomatis."
     />
     <meta name="robots" content="index, follow" />
+    <!--
+      Kartu pratinjau tautan (WhatsApp, Telegram, Facebook) dibaca dari berkas
+      statis ini: pemindainya tidak menjalankan JavaScript, jadi tag og/twitter
+      TIDAK bisa dipasang oleh `shared/seo/meta.js` seperti judul tab di SPA.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ulangan Sekolah" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:title" content="Ulangan Sekolah" />
+    <meta
+      property="og:description"
+      content="Buat ulangan, koreksi otomatis, dan materi berjalan untuk kelasmu."
+    />
+    <meta name="twitter:card" content="summary" />
     <title>Ulangan Sekolah</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Penanda "Menyiapkan…" tampil seketika sebelum JavaScript selesai: yang
+      dilihat pengguna lebih dulu bukan halaman putih kosong. React mengganti isi
+      #root pada render pertama.
+    -->
+    <div id="root">
+      <div
+        style="
+          display: flex;
+          min-height: 100vh;
+          align-items: center;
+          justify-content: center;
+          font-family: system-ui, sans-serif;
+          color: #6b7280;
+        "
+      >
+        Menyiapkan…
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

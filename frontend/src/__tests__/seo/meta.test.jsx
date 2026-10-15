@@ -102,6 +102,53 @@ describe('pasangMeta', () => {
   })
 })
 
+describe('pasangMeta: canonical + kartu pratinjau', () => {
+  beforeEach(() => {
+    document.head.innerHTML = ''
+    document.title = ''
+  })
+
+  /** @param {string} sel @param {string} atr @returns {string|null} */
+  const baca = (sel, atr) => document.head.querySelector(sel)?.getAttribute(atr) ?? null
+
+  it('halaman publik mendapat canonical, og:url, dan kartu pratinjau', () => {
+    pasangMeta(`${RUTE.masuk}?lanjut=/kuis/1`)
+
+    const url = `${document.location.origin}${RUTE.masuk}`
+    expect(baca('link[rel="canonical"]', 'href')).toBe(url)
+    expect(baca('meta[property="og:url"]', 'content')).toBe(url)
+    expect(baca('meta[property="og:title"]', 'content')).toBe(META_PUBLIK[RUTE.masuk].judul)
+    expect(baca('meta[name="twitter:card"]', 'content')).toBe('summary')
+  })
+
+  it('halaman noindex tidak membawa canonical maupun og:url', () => {
+    pasangMeta(RUTE.beranda)
+    pasangMeta('/kuis/abc123/laporan')
+
+    expect(document.head.querySelector('link[rel="canonical"]')).toBeNull()
+    expect(document.head.querySelector('meta[property="og:url"]')).toBeNull()
+  })
+
+  it('berpindah halaman tidak menumpuk tag', () => {
+    pasangMeta(RUTE.beranda)
+    pasangMeta(RUTE.masuk)
+    pasangMeta(RUTE.daftar)
+
+    expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(1)
+    expect(document.head.querySelectorAll('meta[property="og:title"]')).toHaveLength(1)
+  })
+
+  it('mengisi lang hanya bila belum ada', () => {
+    document.documentElement.removeAttribute('lang')
+    pasangMeta(RUTE.beranda)
+    expect(document.documentElement.getAttribute('lang')).toBe('id')
+
+    document.documentElement.setAttribute('lang', 'en')
+    pasangMeta(RUTE.beranda)
+    expect(document.documentElement.getAttribute('lang')).toBe('en')
+  })
+})
+
 describe('MetaHalaman', () => {
   /** @type {HTMLElement} */
   let wadah

@@ -20,8 +20,6 @@
  * membaca ZIP dan mengembalikan struktur data (gambar dikembalikan sebagai
  * byte), jadi bisa diuji tanpa React.
  */
-import JSZip from 'jszip'
-
 /** Jenis dokumen yang bisa dipratinjau. */
 export const JENIS = ['word', 'powerpoint', 'excel']
 
@@ -206,7 +204,7 @@ function dasarJalur(jalur) {
 }
 
 /**
- * @param {JSZip} zip @param {string} jalur
+ * @param {import('jszip')} zip @param {string} jalur
  * @returns {Promise<Document|null>}
  */
 async function bacaXml(zip, jalur) {
@@ -222,7 +220,7 @@ async function bacaXml(zip, jalur) {
 /**
  * Peta `rId` → jalur bagian di dalam ZIP. Target eksternal (tautan luar)
  * dilewati karena bukan berkas milik paket.
- * @param {JSZip} zip @param {string} jalurRels @param {string} dasar
+ * @param {import('jszip')} zip @param {string} jalurRels @param {string} dasar
  * @returns {Promise<Map<string, string>>}
  */
 async function petaRels(zip, jalurRels, dasar) {
@@ -260,7 +258,7 @@ function tipeGambar(jalur) {
 /**
  * Baca byte gambar dari ZIP. Gambar terlalu besar atau bertipe yang tidak bisa
  * digambar peramban dilewati, bukan digagalkan.
- * @param {JSZip} zip @param {string[]} rujukan
+ * @param {import('jszip')} zip @param {string[]} rujukan
  * @returns {Promise<Map<string, GambarBerkas>>}
  */
 async function bacaGambar(zip, rujukan) {
@@ -384,7 +382,7 @@ function tabelWord(tbl, rels) {
   return baris
 }
 
-/** @param {JSZip} zip @returns {Promise<HasilOOXML>} */
+/** @param {import('jszip')} zip @returns {Promise<HasilOOXML>} */
 async function uraiWord(zip) {
   /** @type {BlokDokumen[]} */
   const blok = []
@@ -439,7 +437,7 @@ function nomorBerkas(jalur) {
   return cocok === null ? 0 : Number(cocok[1])
 }
 
-/** @param {JSZip} zip @returns {string[]} */
+/** @param {import('jszip')} zip @returns {string[]} */
 function slideMenurutNomor(zip) {
   return Object.keys(zip.files)
     .filter((jalur) => /^ppt\/slides\/slide\d+\.xml$/u.test(jalur))
@@ -463,7 +461,7 @@ function teksParagraf(p) {
 }
 
 /**
- * @param {JSZip} zip @param {string} jalur @param {number} nomor
+ * @param {import('jszip')} zip @param {string} jalur @param {number} nomor
  * @returns {Promise<SlideDokumen>}
  */
 async function satuSlide(zip, jalur, nomor) {
@@ -509,7 +507,7 @@ async function satuSlide(zip, jalur, nomor) {
   return { nomor, judul, butir, gambar }
 }
 
-/** @param {JSZip} zip @returns {Promise<HasilOOXML>} */
+/** @param {import('jszip')} zip @returns {Promise<HasilOOXML>} */
 async function uraiPowerpoint(zip) {
   const dok = await bacaXml(zip, 'ppt/presentation.xml')
   const rels = await petaRels(zip, 'ppt/_rels/presentation.xml.rels', 'ppt')
@@ -537,7 +535,7 @@ async function uraiPowerpoint(zip) {
 
 /* ------------------------------------------------------------------ Excel */
 
-/** @param {JSZip} zip @returns {Promise<string[]>} */
+/** @param {import('jszip')} zip @returns {Promise<string[]>} */
 async function sharedStrings(zip) {
   /** @type {string[]} */
   const daftar = []
@@ -640,14 +638,14 @@ function barisLembar(root, bersama) {
   return { baris, terpotong }
 }
 
-/** @param {JSZip} zip @returns {string[]} */
+/** @param {import('jszip')} zip @returns {string[]} */
 function lembarMenurutNomor(zip) {
   return Object.keys(zip.files)
     .filter((jalur) => /^xl\/worksheets\/sheet\d+\.xml$/u.test(jalur))
     .sort((a, b) => nomorBerkas(a) - nomorBerkas(b))
 }
 
-/** @param {JSZip} zip @returns {Promise<HasilOOXML>} */
+/** @param {import('jszip')} zip @returns {Promise<HasilOOXML>} */
 async function uraiExcel(zip) {
   const bersama = await sharedStrings(zip)
   const wb = await bacaXml(zip, 'xl/workbook.xml')
@@ -715,6 +713,9 @@ export async function uraiOOXML(isi, jenis) {
     throw new Error('Jenis dokumen tidak dikenal')
   }
 
+  // Dimuat saat dokumen benar-benar dipratinjau, bukan saat halaman materi
+  // dibuka: kebanyakan materi tidak berisi berkas kantor.
+  const { default: JSZip } = await import('jszip')
   const zip = await JSZip.loadAsync(isi)
   if (jenis === 'word') return uraiWord(zip)
   if (jenis === 'powerpoint') return uraiPowerpoint(zip)
