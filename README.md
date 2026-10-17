@@ -195,7 +195,7 @@ Menampilkan slide guru di perangkat siswa mengurangi multitasking dan meningkatk
 
 Sumber: hal-ensta-bretagne.archives-ouvertes.fr/IBSHS/hal-04107214v1
 informasi 
-ratelimit sengaja di hapus demi kemudahan testing
+<p>ratelimit sengaja di hapus demi kemudahan testing</p>
 model: deepseek 4.1 flash
        sonnet 4.6-5.5 
        glm 5.3
